@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: oklch(0.6 0.2 260); /* Modern SaaS Blue */
+  --color-secondary: oklch(0.7 0.1 260);
+  --color-success: oklch(0.7 0.2 150);
+  --color-warning: oklch(0.8 0.2 80);
+  --color-danger: oklch(0.6 0.2 20);
+  --color-surface: oklch(0.98 0 0);
+  
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+}
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  @apply bg-surface text-slate-900;
+}

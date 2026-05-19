@@ -1,0 +1,193 @@
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { Warehouse, Mail, Lock, Github, Chrome, ArrowRight } from 'lucide-react'
+import Button from '@/components/atoms/Button'
+import InputField from '@/components/atoms/InputField'
+import { useAuthStore } from '@/store/authStore'
+
+const LoginPage = () => {
+  const navigate = useNavigate()
+  const { login } = useAuthStore()
+  const [isLoading, setIsLoading] = useState(false)
+
+  const handleLogin = (e) => {
+    e.preventDefault()
+    setIsLoading(true)
+    // Simulate login
+    setTimeout(() => {
+      login({ name: 'Admin User', role: 'ADMIN' }, 'mock-jwt-token')
+      navigate('/admin/dashboard')
+    }, 1500)
+  }
+
+  const handleDemoLogin = (role) => {
+    setIsLoading(true)
+    const demoUsers = {
+      ADMIN: { name: 'System Admin', role: 'ADMIN', email: 'admin@stockspace.com' },
+      TENANT: { name: 'Acme Corp Tenant', role: 'TENANT', email: 'tenant@acme.com' },
+      OWNER: { name: 'Global Warehouses Owner', role: 'OWNER', email: 'owner@global.com' },
+      STAFF: { name: 'John Staff', role: 'STAFF', email: 'staff@stockspace.com' },
+    }
+
+    const userData = demoUsers[role]
+    setTimeout(() => {
+      login(userData, `mock-jwt-token-${role.toLowerCase()}`)
+      const redirectPath = {
+        ADMIN: '/admin/dashboard',
+        TENANT: '/tenant/dashboard',
+        OWNER: '/owner/dashboard',
+        STAFF: '/staff/dashboard',
+      }
+      navigate(redirectPath[role])
+      setIsLoading(false)
+    }, 1000)
+  }
+
+  return (
+    <div className="flex min-h-screen bg-white">
+      {/* Left Side: Form */}
+      <div className="flex w-full flex-col justify-center px-4 md:w-1/2 lg:px-24 xl:px-48">
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="w-full max-w-sm mx-auto md:mx-0"
+        >
+          <div className="mb-8 flex items-center gap-2">
+            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
+              <Warehouse className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-slate-900">StockSpace</span>
+          </div>
+
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-slate-900">Welcome Back</h1>
+            <p className="mt-2 text-slate-500 text-sm">Please enter your details or use a demo account.</p>
+          </div>
+
+          {/* Demo Accounts Section */}
+          <div className="mb-8 p-4 rounded-xl bg-slate-50 border border-slate-100">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Quick Login (Development Only)</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                onClick={() => handleDemoLogin('ADMIN')}
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+              >
+                Admin Role
+              </button>
+              <button 
+                onClick={() => handleDemoLogin('TENANT')}
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+              >
+                Tenant Role
+              </button>
+              <button 
+                onClick={() => handleDemoLogin('OWNER')}
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+              >
+                Owner Role
+              </button>
+              <button 
+                onClick={() => handleDemoLogin('STAFF')}
+                className="px-3 py-2 text-xs font-medium rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-primary hover:text-white hover:border-primary transition-colors"
+              >
+                Staff Role
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-4">
+            <InputField 
+              label="Email Address" 
+              type="email" 
+              placeholder="name@company.com" 
+              required
+            />
+            <div className="space-y-1">
+              <InputField 
+                label="Password" 
+                type="password" 
+                placeholder="••••••••" 
+                required
+              />
+              <div className="flex justify-end">
+                <Link to="/forgot-password" size="sm" className="text-xs font-medium text-primary hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
+
+            <Button type="submit" className="w-full h-11" isLoading={isLoading}>
+              Sign In
+            </Button>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-slate-200"></span>
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase">
+                <span className="bg-white px-2 text-slate-400 font-semibold tracking-widest">Or continue with</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="outline" className="h-10 text-xs">
+                <Chrome className="h-4 w-4 mr-2" /> Google
+              </Button>
+              <Button variant="outline" className="h-10 text-xs">
+                <Github className="h-4 w-4 mr-2" /> Github
+              </Button>
+            </div>
+          </form>
+
+          <p className="mt-8 text-center text-sm text-slate-500">
+            Don't have an account?{' '}
+            <Link to="/register" className="font-bold text-primary hover:underline">
+              Create an account
+            </Link>
+          </p>
+        </motion.div>
+      </div>
+
+      {/* Right Side: Illustration/Hero */}
+      <div className="hidden w-1/2 bg-slate-900 md:block relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+           <img 
+            src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1200" 
+            alt="Warehouse" 
+            className="h-full w-full object-cover opacity-40"
+           />
+           <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 via-slate-900/60 to-transparent" />
+        </div>
+        
+        <div className="relative z-10 flex h-full flex-col justify-between p-16 text-white">
+          <div className="max-w-md">
+            <h2 className="text-4xl font-bold leading-tight">
+              Manage your <br />
+              <span className="text-primary">logistics ecosystem</span> <br />
+              in one place.
+            </h2>
+            <p className="mt-6 text-lg text-slate-400">
+              Join 10,000+ businesses optimizing their supply chain with StockSpace.
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white/10 p-8 backdrop-blur-md border border-white/10">
+            <p className="text-lg font-medium italic text-white/90">
+              "StockSpace has completely transformed how we handle our regional distribution. The WMS integration is flawless."
+            </p>
+            <div className="mt-6 flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-slate-100" />
+              <div>
+                <p className="font-bold">Alex Rivera</p>
+                <p className="text-sm text-slate-400">COO at LogiFlow</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default LoginPage
