@@ -14,7 +14,6 @@ import UnauthorizedPage from '@/features/auth/pages/UnauthorizedPage'
 
 // Admin Pages
 import AdminDashboard from '@/features/admin/pages/AdminDashboard'
-import UsersPage from '@/features/admin/pages/UsersPage'
 import WarehouseApprovalPage from '@/features/admin/pages/WarehouseApprovalPage'
 import TransactionsPage from '@/features/admin/pages/TransactionsPage'
 import DepositApprovalPage from '@/features/admin/pages/DepositApprovalPage'
@@ -60,7 +59,6 @@ const App = () => {
           {/* Admin Routes */}
           <Route element={<RoleGuard allowedRoles={['ADMIN']} />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/listings" element={<WarehouseApprovalPage />} />
             <Route path="/admin/transactions" element={<TransactionsPage />} />
             <Route path="/admin/deposits" element={<DepositApprovalPage />} />
@@ -102,7 +100,7 @@ const App = () => {
       </Routes>
     </BrowserRouter>
   )
-  //check config mail 
+  //check config mail
 }
 
 export default App

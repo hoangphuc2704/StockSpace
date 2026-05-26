@@ -1,14 +1,23 @@
 import {
-  LayoutDashboard, Users, Warehouse, Package,
-  Truck, Clock, DollarSign, BarChart,
-  Settings, HelpCircle, ShieldCheck, CreditCard,
-  Bell, FileText
+  LayoutDashboard,
+  Users,
+  Warehouse,
+  Package,
+  Truck,
+  Clock,
+  DollarSign,
+  BarChart,
+  Settings,
+  HelpCircle,
+  ShieldCheck,
+  CreditCard,
+  Bell,
+  FileText,
 } from 'lucide-react'
 
 export const NAVIGATION_CONFIG = {
   ADMIN: [
     { id: 'dash', label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
-    { id: 'users', label: 'User Management', icon: Users, path: '/admin/users' },
     { id: 'warehouses', label: 'Warehouse Listings', icon: Warehouse, path: '/admin/listings' },
     {
       id: 'finance',
@@ -18,7 +27,7 @@ export const NAVIGATION_CONFIG = {
         { label: 'Transactions', path: '/admin/transactions' },
         { label: 'Deposits', path: '/admin/deposits' },
         { label: 'Payments', path: '/admin/payments' },
-      ]
+      ],
     },
     { id: 'analytics', label: 'Analytics', icon: BarChart, path: '/admin/analytics' },
     { id: 'settings', label: 'Platform Settings', icon: Settings, path: '/admin/settings' },
@@ -34,7 +43,7 @@ export const NAVIGATION_CONFIG = {
       children: [
         { label: 'Employees', path: '/tenant/hr' },
         { label: 'Attendance', path: '/tenant/attendance' },
-      ]
+      ],
     },
     {
       id: 'ops',
@@ -43,7 +52,7 @@ export const NAVIGATION_CONFIG = {
       children: [
         { label: 'Inbound', path: '/tenant/inbound' },
         { label: 'Outbound', path: '/tenant/outbound' },
-      ]
+      ],
     },
     { id: 'bookings', label: 'My Bookings', icon: Warehouse, path: '/tenant/warehouses' },
     { id: 'finance', label: 'Billing', icon: CreditCard, path: '/tenant/payments' },
@@ -63,5 +72,5 @@ export const NAVIGATION_CONFIG = {
   COMMON: [
     { id: 'support', label: 'Help Center', icon: HelpCircle, path: '/support' },
     { id: 'notifications', label: 'Notifications', icon: Bell, path: '/notifications' },
-  ]
+  ],
 }
