@@ -1,8 +1,8 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { useAuthStore } from '@/store/authStore'
+import { useSelector } from 'react-redux'
 
 const RoleGuard = ({ allowedRoles }) => {
-  const { user, isAuthenticated } = useAuthStore()
+  const { user, isAuthenticated } = useSelector((state) => state.auth)
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />

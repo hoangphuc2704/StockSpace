@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import { Bell, Package, Calendar, DollarSign, Info, Check, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNotificationStore } from '@/store/notificationStore'
-import Badge from '@/components/atoms/Badge'
+import { useSelector, useDispatch } from 'react-redux'
 import Button from '@/components/atoms/Button'
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false)
-  const { notifications, markAsRead, markAllAsRead, clearAll } = useNotificationStore()
-  const unreadCount = notifications.filter(n => !n.isRead).length
+  const { notifications } = useSelector((state) => state.notification)
+  const dispatch = useDispatch()
+  const unreadCount = notifications.filter((n) => !n.isRead).length
   const dropdownRef = useRef(null)
 
   useEffect(() => {
@@ -23,22 +23,26 @@ const NotificationBell = () => {
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'booking': return <Calendar className="h-4 w-4 text-primary" />
-      case 'inventory': return <Package className="h-4 w-4 text-warning" />
-      case 'payment': return <DollarSign className="h-4 w-4 text-success" />
-      default: return <Info className="h-4 w-4 text-slate-400" />
+      case 'booking':
+        return <Calendar className="text-primary h-4 w-4" />
+      case 'inventory':
+        return <Package className="text-warning h-4 w-4" />
+      case 'payment':
+        return <DollarSign className="text-success h-4 w-4" />
+      default:
+        return <Info className="h-4 w-4 text-slate-400" />
     }
   }
 
   return (
     <div className="relative" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+        className="relative rounded-full p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-danger border-2 border-white animate-pulse" />
+          <span className="bg-danger absolute top-2 right-2 h-2.5 w-2.5 animate-pulse rounded-full border-2 border-white" />
         )}
       </button>
 
@@ -48,15 +52,21 @@ const NotificationBell = () => {
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-white shadow-2xl border border-slate-200 overflow-hidden z-[100]"
+            className="absolute right-0 z-[100] mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:w-96"
           >
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 p-4">
               <h4 className="font-bold text-slate-900">Notifications</h4>
               <div className="flex gap-2">
-                <button onClick={markAllAsRead} className="text-xs font-bold text-primary hover:underline">
+                <button
+                  onClick={() => dispatch(markAllAsRead())}
+                  className="text-primary text-xs font-bold hover:underline"
+                >
                   Mark all read
                 </button>
-                <button onClick={clearAll} className="text-xs font-bold text-danger hover:underline">
+                <button
+                  onClick={() => dispatch(clearAll())}
+                  className="text-danger text-xs font-bold hover:underline"
+                >
                   Clear
                 </button>
               </div>
@@ -65,7 +75,7 @@ const NotificationBell = () => {
             <div className="max-h-[400px] overflow-y-auto">
               {notifications.length === 0 ? (
                 <div className="p-10 text-center">
-                  <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100">
                     <Bell className="h-6 w-6 text-slate-300" />
                   </div>
                   <p className="text-sm font-medium text-slate-500">No new notifications</p>
@@ -73,21 +83,25 @@ const NotificationBell = () => {
               ) : (
                 <div className="divide-y divide-slate-50">
                   {notifications.map((n) => (
-                    <div 
-                      key={n.id} 
-                      onClick={() => markAsRead(n.id)}
-                      className={`p-4 flex gap-4 hover:bg-slate-50 transition-colors cursor-pointer relative ${!n.isRead ? 'bg-primary/5' : ''}`}
+                    <div
+                      key={n.id}
+                      onClick={() => dispatch(markAsRead(n.id))}
+                      className={`relative flex cursor-pointer gap-4 p-4 transition-colors hover:bg-slate-50 ${!n.isRead ? 'bg-primary/5' : ''}`}
                     >
-                      {!n.isRead && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
-                      <div className="h-10 w-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center shrink-0">
+                      {!n.isRead && (
+                        <div className="bg-primary absolute top-0 bottom-0 left-0 w-1" />
+                      )}
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-100 bg-white shadow-sm">
                         {getTypeIcon(n.type)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-sm font-bold text-slate-900 truncate">{n.title}</p>
-                          <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">{n.time}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <p className="truncate text-sm font-bold text-slate-900">{n.title}</p>
+                          <span className="text-[10px] font-medium whitespace-nowrap text-slate-400">
+                            {n.time}
+                          </span>
                         </div>
-                        <p className="text-xs text-slate-500 line-clamp-2">{n.message}</p>
+                        <p className="line-clamp-2 text-xs text-slate-500">{n.message}</p>
                       </div>
                     </div>
                   ))}
@@ -95,7 +109,7 @@ const NotificationBell = () => {
               )}
             </div>
 
-            <div className="p-3 border-t border-slate-100 text-center">
+            <div className="border-t border-slate-100 p-3 text-center">
               <Button variant="ghost" size="sm" className="w-full text-xs font-bold">
                 View All Activity
               </Button>

@@ -1,6 +1,6 @@
 import axios from 'axios'
-import { useAuthStore } from '@/store/authStore'
-
+import { logout } from '@/store/authSlice'
+import { login } from '@/store/authSlice'
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   headers: {
@@ -8,10 +8,10 @@ const api = axios.create({
   },
 })
 
-// Request Interceptor
+// Request Interceptor will add the token to every request if it exists not localStorage
 api.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().token
+    const token = localStorage.getItem('token') // You can also use a more secure storage mechanism
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -28,14 +28,14 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
-      
+
       try {
         // Logic for refreshing token would go here
         // const newToken = await refreshToken()
-        // useAuthStore.getState().login(user, newToken)
+        // store.dispatch(login({ user, token: newToken }))
         // return api(originalRequest)
       } catch (refreshError) {
-        useAuthStore.getState().logout()
+        store.dispatch(logout())
         return Promise.reject(refreshError)
       }
     }

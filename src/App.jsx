@@ -5,7 +5,7 @@ import RoleGuard from '@/components/guards/RoleGuard'
 // Lazy load components
 // const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 
-import LandingPage from '@/features/landing/pages/LandingPage'
+import LandingPage from './features/landing/pages/LandingPage'
 import WarehouseListingPage from '@/features/warehouse/pages/WarehouseListingPage'
 import WarehouseDetailPage from '@/features/warehouse/pages/WarehouseDetailPage'
 import LoginPage from '@/features/auth/pages/LoginPage'
@@ -24,8 +24,6 @@ import PlatformSettingsPage from '@/features/admin/pages/PlatformSettingsPage'
 // Tenant Pages
 import TenantDashboard from '@/features/dashboard/pages/TenantDashboard'
 import InventoryPage from '@/features/inventory/pages/InventoryPage'
-import HRManagementPage from '@/features/hr-management/pages/HRManagementPage'
-import AttendancePage from '@/features/attendance/pages/AttendancePage'
 import InboundPage from '@/features/inbound/pages/InboundPage'
 import OutboundPage from '@/features/outbound/pages/OutboundPage'
 import MyBookingsPage from '@/features/tenant/pages/MyBookingsPage'
@@ -55,45 +53,43 @@ const App = () => {
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* Protected Routes Layout */}
-        <Route element={<DashboardLayout />}>
-          {/* Admin Routes */}
-          <Route element={<RoleGuard allowedRoles={['ADMIN']} />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
-            <Route path="/admin/listings" element={<WarehouseApprovalPage />} />
-            <Route path="/admin/transactions" element={<TransactionsPage />} />
-            <Route path="/admin/deposits" element={<DepositApprovalPage />} />
-            <Route path="/admin/payments" element={<PaymentsPage />} />
-            <Route path="/admin/analytics" element={<AnalyticsPage />} />
-            <Route path="/admin/settings" element={<PlatformSettingsPage />} />
-          </Route>
+        {/* <Route element={<DashboardLayout />}> */}
+        {/* Admin Routes */}
+        {/* <Route element={<RoleGuard allowedRoles={['ADMIN']} />}> */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/listings" element={<WarehouseApprovalPage />} />
+        <Route path="/admin/transactions" element={<TransactionsPage />} />
+        <Route path="/admin/deposits" element={<DepositApprovalPage />} />
+        <Route path="/admin/payments" element={<PaymentsPage />} />
+        <Route path="/admin/analytics" element={<AnalyticsPage />} />
+        <Route path="/admin/settings" element={<PlatformSettingsPage />} />
+        {/* </Route> */}
 
-          {/* Tenant Routes */}
-          <Route element={<RoleGuard allowedRoles={['TENANT']} />}>
-            <Route path="/tenant/dashboard" element={<TenantDashboard />} />
-            <Route path="/tenant/inventory" element={<InventoryPage />} />
-            <Route path="/tenant/hr" element={<HRManagementPage />} />
-            <Route path="/tenant/attendance" element={<AttendancePage />} />
-            <Route path="/tenant/inbound" element={<InboundPage />} />
-            <Route path="/tenant/outbound" element={<OutboundPage />} />
-            <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
-            <Route path="/tenant/payments" element={<BillingPage />} />
-          </Route>
-
-          {/* Owner Routes */}
-          <Route element={<RoleGuard allowedRoles={['OWNER']} />}>
-            <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-            <Route path="/owner/warehouses" element={<MyWarehousesPage />} />
-            <Route path="/owner/requests" element={<RentalRequestsPage />} />
-            <Route path="/owner/revenue" element={<RevenuePage />} />
-          </Route>
-
-          {/* Staff Routes */}
-          <Route element={<RoleGuard allowedRoles={['STAFF']} />}>
-            <Route path="/staff/dashboard" element={<StaffDashboard />} />
-            <Route path="/staff/tasks" element={<StaffTasksPage />} />
-            <Route path="/staff/inventory" element={<StaffInventoryPage />} />
-          </Route>
+        {/* Tenant Routes */}
+        <Route element={<RoleGuard allowedRoles={['TENANT']} />}>
+          <Route path="/tenant/dashboard" element={<TenantDashboard />} />
+          <Route path="/tenant/inventory" element={<InventoryPage />} />
+          <Route path="/tenant/inbound" element={<InboundPage />} />
+          <Route path="/tenant/outbound" element={<OutboundPage />} />
+          <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
+          <Route path="/tenant/payments" element={<BillingPage />} />
         </Route>
+
+        {/* Owner Routes */}
+        <Route element={<RoleGuard allowedRoles={['OWNER']} />}>
+          <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+          <Route path="/owner/warehouses" element={<MyWarehousesPage />} />
+          <Route path="/owner/requests" element={<RentalRequestsPage />} />
+          <Route path="/owner/revenue" element={<RevenuePage />} />
+        </Route>
+
+        {/* Staff Routes */}
+        <Route element={<RoleGuard allowedRoles={['STAFF']} />}>
+          <Route path="/staff/dashboard" element={<StaffDashboard />} />
+          <Route path="/staff/tasks" element={<StaffTasksPage />} />
+          <Route path="/staff/inventory" element={<StaffInventoryPage />} />
+        </Route>
+        {/* </Route> */}
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
