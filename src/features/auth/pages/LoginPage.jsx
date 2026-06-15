@@ -121,7 +121,7 @@ const LoginPage = () => {
             alt="Warehouse"
             className="h-full w-full object-cover opacity-40"
           />
-          <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 via-slate-900/60 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-tr from-slate-900 via-slate-900/60 to-transparent" />
         </div>
 
         <div className="relative z-10 flex h-full flex-col justify-between p-16 text-white">
