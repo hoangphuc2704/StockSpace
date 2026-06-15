@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom' // Thêm hook điều hướng của React Router
 import {
   HiOutlineUsers,
   HiOutlineHomeModern,
@@ -41,6 +42,9 @@ const growthData = [
 const AdminDashboard = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+
+  const location = useLocation() // Lấy URL hiện tại để giữ trạng thái sáng đèn menu
+  const navigate = useNavigate() // Hook để chuyển trang mà không bị load lại trang
 
   const toggleSidebar = () => {
     setIsSidebarExpanded(!isSidebarExpanded)
@@ -117,15 +121,15 @@ const AdminDashboard = () => {
     },
   ]
 
+  // Cập nhật thêm path (đường dẫn URL) tương ứng với từng mục trong App.jsx của bạn
   const menuItems = [
-    { text: 'Overview', icon: HiOutlineRectangleGroup, active: true },
-    { text: 'Warehouses Approval', icon: HiOutlineHomeModern, active: false },
-    { text: 'Settings', icon: HiOutlineCog6Tooth, active: false },
-    { text: 'Analytics', icon: HiOutlineChartBar, active: false },
-    { text: 'Deposits', icon: HiOutlineCheckCircle, active: false },
-    { text: 'Transactions', icon: HiOutlineExclamationCircle, active: false },
-    { text: 'Payments', icon: HiOutlineCurrencyDollar, active: false },
-    { text: 'Platform Settings', icon: HiOutlineDocumentText, active: false },
+    { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/admin/dashboard' },
+    { text: 'Warehouses Approval', icon: HiOutlineHomeModern, path: '/admin/listings' },
+    { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },
+    { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },
+    { text: 'Transactions', icon: HiOutlineExclamationCircle, path: '/admin/transactions' },
+    { text: 'Payments', icon: HiOutlineCurrencyDollar, path: '/admin/payments' },
+    { text: 'Platform Settings', icon: HiOutlineDocumentText, path: '/admin/settings' },
   ]
 
   return (
@@ -170,31 +174,37 @@ const AdminDashboard = () => {
         >
           {/* Danh sách Menu điều hướng */}
           <nav className="flex-1 space-y-1 py-3">
-            {menuItems.map((item, idx) => (
-              <button
-                key={idx}
-                className={`group flex w-full items-center rounded-xl transition-all ${
-                  isSidebarExpanded
-                    ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-                    : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
-                } ${
-                  item.active
-                    ? 'bg-slate-100 font-semibold text-slate-950'
-                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
-                } `}
-              >
-                <item.icon
-                  className={`shrink-0 transition-transform group-hover:scale-105 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'} ${item.active ? 'text-slate-950' : 'text-slate-600'} `}
-                />
+            {menuItems.map((item, idx) => {
+              // Kiểm tra xem URL hiện tại có trùng khớp với mục menu này không
+              const isActive = location.pathname === item.path
 
-                {/* Text Menu */}
-                <span
-                  className={`overflow-hidden text-ellipsis whitespace-nowrap ${!isSidebarExpanded && 'tracking-tight'}`}
+              return (
+                <button
+                  key={idx}
+                  onClick={() => navigate(item.path)} // Click vào sẽ chuyển hướng trang mượt mà bằng React Router
+                  className={`group flex w-full items-center rounded-xl transition-all ${
+                    isSidebarExpanded
+                      ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
+                      : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
+                  } ${
+                    isActive
+                      ? 'bg-slate-100 font-semibold text-slate-950'
+                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
+                  } `}
                 >
-                  {item.text}
-                </span>
-              </button>
-            ))}
+                  <item.icon
+                    className={`shrink-0 transition-transform group-hover:scale-105 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'} ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
+                  />
+
+                  {/* Text Menu */}
+                  <span
+                    className={`overflow-hidden text-ellipsis whitespace-nowrap ${!isSidebarExpanded && 'tracking-tight'}`}
+                  >
+                    {item.text}
+                  </span>
+                </button>
+              )
+            })}
           </nav>
 
           {/* Nút Đăng xuất ở đáy */}
