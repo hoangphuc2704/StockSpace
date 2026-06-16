@@ -12,11 +12,10 @@ import {
   Calendar,
 } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
-import DataTable from '@/components/organisms/DataTable'
-import Badge from '@/components/atoms/Badge'
-import Button from '@/components/atoms/Button'
-import Sidebar from '../../../components/SideBar' // <-- Import Sidebar dùng chung của hệ thống
-// <-- Sử dụng thanh điều hướng dùng chung
+import DataTable from '../../../components/organisms/DataTable'
+import Badge from '../../../components/atoms/Badge'
+import Button from '../../../components/atoms/Button'
+import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 const MOCK_TRANSACTIONS = [

@@ -19,9 +19,9 @@ import {
   AreaChart,
   Area,
 } from 'recharts'
-import DataTable from '@/components/organisms/DataTable'
-import Button from '@/components/atoms/Button'
-import StatCard from '@/components/molecules/StatCard'
+import DataTable from '../../../components/organisms/DataTable'
+import Button from '../../../components/atoms/Button'
+import StatCard from '../../../components/molecules/StatCard'
 import Sidebar from '../../../components/SideBar' // <-- Import Sidebar dùng chung tại đây (Đổi lại đường dẫn cho đúng dự án của bạn)
 import logoDaidien from '../../../assets/logoDaidien.png'
 

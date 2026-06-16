@@ -11,10 +11,10 @@ import {
   Search,
 } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
-import DataTable from '@/components/organisms/DataTable'
-import Badge from '@/components/atoms/Badge'
-import Button from '@/components/atoms/Button'
-import Avatar from '@/components/atoms/Avatar'
+import DataTable from '../../../components/organisms/DataTable'
+import Badge from '../../../components/atoms/Badge'
+import Button from '../../../components/atoms/Button'
+import Avatar from '../../../components/atoms/Avatar'
 import Sidebar from '../../../components/SideBar' // <-- Tái sử dụng thanh điều hướng chung
 import logoDaidien from '../../../assets/logoDaidien.png'
 

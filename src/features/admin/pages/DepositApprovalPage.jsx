@@ -2,9 +2,9 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { CreditCard, CheckCircle, XCircle, Clock, AlertCircle, FileText } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
-import DataTable from '@/components/organisms/DataTable'
-import Button from '@/components/atoms/Button'
-import Avatar from '@/components/atoms/Avatar'
+import DataTable from '../../../components/organisms/DataTable'
+import Button from '../../../components/atoms/Button'
+import Avatar from '../../../components/atoms/Avatar'
 import Sidebar from '../../../components/SideBar' // <-- Import Sidebar dùng chung của hệ thống
 import logoDaidien from '../../../assets/logoDaidien.png'
 

@@ -26,7 +26,7 @@ import {
   Pie,
   Cell,
 } from 'recharts'
-import Button from '@/components/atoms/Button'
+import Button from '../../../components/atoms/Button'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 

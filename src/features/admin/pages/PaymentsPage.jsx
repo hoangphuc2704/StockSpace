@@ -2,11 +2,10 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { CreditCard, Clock, ArrowUpRight, ArrowDownRight, Download, Filter } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
-import DataTable from '@/components/organisms/DataTable'
-import Button from '@/components/atoms/Button'
-import Avatar from '@/components/atoms/Avatar'
-import Sidebar from '../../../components/SideBar' // <-- Import Sidebar dùng chung của hệ thống
-// <-- Import Sidebar dùng chung hệ thống
+import DataTable from '../../../components/organisms/DataTable'
+import Button from '../../../components/atoms/Button'
+import Avatar from '../../../components/atoms/Avatar'
+import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 const MOCK_PAYMENTS = [

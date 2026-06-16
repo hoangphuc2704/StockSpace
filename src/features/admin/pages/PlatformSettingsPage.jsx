@@ -2,9 +2,8 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Save, Globe, Shield, CreditCard, Lock, AlertCircle } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
-import Button from '@/components/atoms/Button'
-import Sidebar from '../../../components/SideBar' // <-- Import Sidebar dùng chung của hệ thống
-
+import Button from '../../../components/atoms/Button'
+import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 const PlatformSettingsPage = () => {
