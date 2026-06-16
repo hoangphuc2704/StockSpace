@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom' // Thêm hook điều hướng của React Router
 import {
   HiOutlineUsers,
   HiOutlineHomeModern,
@@ -9,10 +8,6 @@ import {
   HiOutlineExclamationCircle,
   HiOutlineClock,
   HiBars3,
-  HiOutlineRectangleGroup,
-  HiOutlineDocumentText,
-  HiOutlineCog6Tooth,
-  HiOutlineArrowRightOnRectangle,
 } from 'react-icons/hi2'
 
 import {
@@ -27,13 +22,14 @@ import {
 import DataTable from '@/components/organisms/DataTable'
 import Button from '@/components/atoms/Button'
 import StatCard from '@/components/molecules/StatCard'
+import Sidebar from '../../../components/SideBar' // <-- Import Sidebar dùng chung tại đây (Đổi lại đường dẫn cho đúng dự án của bạn)
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 const growthData = [
   { name: 'Mon', users: 400, listings: 240 },
   { name: 'Tue', users: 300, listings: 139 },
   { name: 'Wed', users: 200, listings: 980 },
-  { name: 'Thu', users: 278, listings: 390 },
+  { name: 'Thu', text: 'Thu', users: 278, listings: 390 },
   { name: 'Fri', users: 189, listings: 480 },
   { name: 'Sat', users: 239, listings: 380 },
   { name: 'Sun', users: 349, listings: 430 },
@@ -43,11 +39,13 @@ const AdminDashboard = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
-  const location = useLocation() // Lấy URL hiện tại để giữ trạng thái sáng đèn menu
-  const navigate = useNavigate() // Hook để chuyển trang mà không bị load lại trang
-
   const toggleSidebar = () => {
-    setIsSidebarExpanded(!isSidebarExpanded)
+    // Trên màn hình lớn: Đóng/Mở thu gọn sidebar. Trên mobile: Bật menu bay vào
+    if (window.innerWidth < 768) {
+      setIsMobileOpen(!isMobileOpen)
+    } else {
+      setIsSidebarExpanded(!isSidebarExpanded)
+    }
   }
 
   const stats = [
@@ -121,23 +119,11 @@ const AdminDashboard = () => {
     },
   ]
 
-  // Cập nhật thêm path (đường dẫn URL) tương ứng với từng mục trong App.jsx của bạn
-  const menuItems = [
-    { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/admin/dashboard' },
-    { text: 'Warehouses Approval', icon: HiOutlineHomeModern, path: '/admin/listings' },
-    { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },
-    { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },
-    { text: 'Transactions', icon: HiOutlineExclamationCircle, path: '/admin/transactions' },
-    { text: 'Payments', icon: HiOutlineCurrencyDollar, path: '/admin/payments' },
-    { text: 'Platform Settings', icon: HiOutlineDocumentText, path: '/admin/settings' },
-  ]
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* 1. TOP HEADER (Cố định chuẩn YouTube) */}
+      {/* 1. TOP HEADER */}
       <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
         <div className="flex items-center gap-4">
-          {/* Nút Hamburger bật/tắt menu */}
           <button
             onClick={toggleSidebar}
             className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
@@ -145,7 +131,6 @@ const AdminDashboard = () => {
             <HiBars3 className="h-6 w-6" />
           </button>
 
-          {/* Logo Brand */}
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5 text-white">
               <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
@@ -157,7 +142,7 @@ const AdminDashboard = () => {
         </div>
       </header>
 
-      {/* MOBILE TRIGGER (Dành cho màn hình nhỏ, nhấn Hamburger sẽ mở Sidebar bay từ trái vào) */}
+      {/* MOBILE OVERLAY */}
       <div className="md:hidden">
         {isMobileOpen && (
           <div
@@ -168,77 +153,26 @@ const AdminDashboard = () => {
       </div>
 
       <div className="flex pt-14">
-        {/* 2. SIDEBAR*/}
-        <aside
-          className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'} ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'} `}
-        >
-          {/* Danh sách Menu điều hướng */}
-          <nav className="flex-1 space-y-1 py-3">
-            {menuItems.map((item, idx) => {
-              // Kiểm tra xem URL hiện tại có trùng khớp với mục menu này không
-              const isActive = location.pathname === item.path
+        {/* 2. SIDEBAR (Đã áp dụng component dùng chung) */}
+        <Sidebar
+          isSidebarExpanded={isSidebarExpanded}
+          isMobileOpen={isMobileOpen}
+          setIsMobileOpen={setIsMobileOpen}
+          currentRole="ADMIN" // Chỉ định quyền để hiển thị đúng menu mong muốn
+        />
 
-              return (
-                <button
-                  key={idx}
-                  onClick={() => navigate(item.path)} // Click vào sẽ chuyển hướng trang mượt mà bằng React Router
-                  className={`group flex w-full items-center rounded-xl transition-all ${
-                    isSidebarExpanded
-                      ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-                      : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
-                  } ${
-                    isActive
-                      ? 'bg-slate-100 font-semibold text-slate-950'
-                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
-                  } `}
-                >
-                  <item.icon
-                    className={`shrink-0 transition-transform group-hover:scale-105 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'} ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
-                  />
-
-                  {/* Text Menu */}
-                  <span
-                    className={`overflow-hidden text-ellipsis whitespace-nowrap ${!isSidebarExpanded && 'tracking-tight'}`}
-                  >
-                    {item.text}
-                  </span>
-                </button>
-              )
-            })}
-          </nav>
-
-          {/* Nút Đăng xuất ở đáy */}
-          <div className="border-t border-slate-100 py-3">
-            <button
-              className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${
-                isSidebarExpanded
-                  ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-                  : 'flex-col justify-center gap-1 py-3 text-[10px]'
-              } `}
-            >
-              <HiOutlineArrowRightOnRectangle
-                className={`shrink-0 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'}`}
-              />
-              <span className="whitespace-nowrap">Logout</span>
-            </button>
-          </div>
-        </aside>
-
-        {/* 3. MAIN CONTENT CONTAINER (Tự động lùi lề theo thanh bên) */}
+        {/* 3. MAIN CONTENT CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'} `}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
-            {/* Nội dung Dashboard */}
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                  System Overview
-                </h1>
-                <p className="text-sm text-slate-500">
-                  Platform administrator dashboard and analytics.
-                </p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">System Overview</h1>
+              <p className="text-sm text-slate-500">
+                Platform administrator dashboard and analytics.
+              </p>
             </div>
 
             {/* Thẻ Thống Kê */}

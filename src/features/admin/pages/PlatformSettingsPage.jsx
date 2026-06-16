@@ -1,20 +1,10 @@
 import React, { useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Save, Globe, Shield, CreditCard, Lock, AlertCircle } from 'lucide-react'
-import {
-  HiBars3,
-  HiOutlineRectangleGroup,
-  HiOutlineHomeModern,
-  HiOutlineCog6Tooth,
-  HiOutlineChartBar,
-  HiOutlineCheckCircle,
-  HiOutlineExclamationCircle,
-  HiOutlineCurrencyDollar,
-  HiOutlineDocumentText,
-  HiOutlineArrowRightOnRectangle,
-} from 'react-icons/hi2'
+import { HiBars3 } from 'react-icons/hi2'
 import Button from '@/components/atoms/Button'
+import Sidebar from '../../../components/SideBar' // <-- Import Sidebar dùng chung của hệ thống
+
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 const PlatformSettingsPage = () => {
@@ -22,28 +12,19 @@ const PlatformSettingsPage = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
-  const location = useLocation()
-  const navigate = useNavigate()
-
+  // Đồng bộ logic đóng mở cho cả màn hình máy tính và thiết bị di động
   const toggleSidebar = () => {
-    setIsSidebarExpanded(!isSidebarExpanded)
+    if (window.innerWidth < 768) {
+      setIsMobileOpen(!isMobileOpen)
+    } else {
+      setIsSidebarExpanded(!isSidebarExpanded)
+    }
   }
 
   const handleSave = () => {
     setIsSaving(true)
     setTimeout(() => setIsSaving(false), 1500)
   }
-
-  // Danh mục Menu đồng bộ chính xác tuyệt đối với các trang trước
-  const menuItems = [
-    { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/admin/dashboard' },
-    { text: 'Warehouses Approval', icon: HiOutlineHomeModern, path: '/admin/listings' },
-    { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },
-    { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },
-    { text: 'Transactions', icon: HiOutlineExclamationCircle, path: '/admin/transactions' },
-    { text: 'Payments', icon: HiOutlineCurrencyDollar, path: '/admin/payments' },
-    { text: 'Platform Settings', icon: HiOutlineDocumentText, path: '/admin/settings' },
-  ]
 
   const sections = [
     {
@@ -82,7 +63,7 @@ const PlatformSettingsPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* 1. TOP HEADER (Đồng bộ chuẩn YouTube) */}
+      {/* 1. TOP HEADER */}
       <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
         <div className="flex items-center gap-4">
           <button
@@ -114,60 +95,19 @@ const PlatformSettingsPage = () => {
       </div>
 
       <div className="flex pt-14">
-        {/* 2. SIDEBAR (Giữ nguyên trạng thái khi chuyển trang) */}
-        <aside
-          className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'} ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'} `}
-        >
-          <nav className="flex-1 space-y-1 py-3">
-            {menuItems.map((item, idx) => {
-              const isActive = location.pathname === item.path
+        {/* 2. SIDEBAR COMPONENT */}
+        <Sidebar
+          isSidebarExpanded={isSidebarExpanded}
+          isMobileOpen={isMobileOpen}
+          setIsMobileOpen={setIsMobileOpen}
+          currentRole="ADMIN"
+        />
 
-              return (
-                <button
-                  key={idx}
-                  onClick={() => navigate(item.path)}
-                  className={`group flex w-full items-center rounded-xl transition-all ${
-                    isSidebarExpanded
-                      ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-                      : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
-                  } ${
-                    isActive
-                      ? 'bg-slate-100 font-semibold text-slate-950'
-                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
-                  } `}
-                >
-                  <item.icon
-                    className={`shrink-0 transition-transform group-hover:scale-105 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'} ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
-                  />
-                  <span
-                    className={`overflow-hidden text-ellipsis whitespace-nowrap ${!isSidebarExpanded && 'tracking-tight'}`}
-                  >
-                    {item.text}
-                  </span>
-                </button>
-              )
-            })}
-          </nav>
-
-          <div className="border-t border-slate-100 py-3">
-            <button
-              className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${
-                isSidebarExpanded
-                  ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-                  : 'flex-col justify-center gap-1 py-3 text-[10px]'
-              } `}
-            >
-              <HiOutlineArrowRightOnRectangle
-                className={`shrink-0 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'}`}
-              />
-              <span className="whitespace-nowrap">Logout</span>
-            </button>
-          </div>
-        </aside>
-
-        {/* 3. MAIN CONTENT CONTAINER (Bọc các khối cài đặt và đẩy nội dung theo Sidebar) */}
+        {/* 3. MAIN CONTENT CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'} `}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Header cài đặt */}
