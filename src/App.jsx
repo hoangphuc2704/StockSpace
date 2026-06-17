@@ -47,7 +47,7 @@ const App = () => {
         <Route path="/" element={<LandingpageKhamkhao />} />
         <Route path="/warehouses" element={<WarehouseListingPage />} />
         <Route path="/warehouse/:id" element={<WarehouseDetailPage />} />
-        <Route path="/login" element={<LoginPage />} />
+        {/* <Route path="/login" element={<LoginPage />} /> */}
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 

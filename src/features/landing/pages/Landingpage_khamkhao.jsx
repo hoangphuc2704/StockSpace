@@ -20,6 +20,7 @@ import {
 import logoDaidien from '../../../assets/logoDaidien.png'
 import { useNavigate } from 'react-router-dom'
 import BackToTop from '../../../components/BackToTop.jsx'
+import LoginModal from '../../auth/pages/LoginPage.jsx'
 
 const SERVICES = [
   {
@@ -70,7 +71,7 @@ function ProjectManagementIcon() {
 
 const LandingPageKhamkhao = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const navigate = useNavigate()
+  const [isLoginOpen, setIsLoginOpen] = useState(false)
 
   return (
     <div className="min-h-screen bg-white font-sans text-stone-900 antialiased selection:bg-[#FF5A1F] selection:text-white">
@@ -99,14 +100,19 @@ const LandingPageKhamkhao = () => {
           </nav>
 
           <div className="hidden items-center gap-4 md:flex">
-            <div>
-              <button
-                onClick={() => navigate('/login')}
-                className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-2.5 text-xs font-bold text-stone-700 uppercase transition-all hover:bg-stone-50"
-              >
-                Sign in
-              </button>
-            </div>
+            <>
+              <div>
+                {/* 2. Sửa onClick từ navigate thành setIsLoginOpen(true) */}
+                <button
+                  onClick={() => setIsLoginOpen(true)}
+                  className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-2.5 text-xs font-bold text-stone-700 uppercase transition-all hover:bg-stone-50"
+                >
+                  Sign in
+                </button>
+              </div>
+
+              {/* 3. Chèn Modal vào bất kỳ đâu trong phần return */}
+            </>
             <div>
               <a
                 href="#get-started"
@@ -348,6 +354,7 @@ const LandingPageKhamkhao = () => {
         </div>
       </footer>
       <BackToTop />
+      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
     </div>
   )
 }
