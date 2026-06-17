@@ -7,6 +7,14 @@ import { useDispatch } from 'react-redux'
 import { FcGoogle } from 'react-icons/fc'
 import { login } from '@/store/authSlice'
 
+// tài khoản và mật khẩu demo cho từng role
+const demoUsers = {
+  ADMIN: { name: 'Admin User', role: 'ADMIN', email: 'admin@gmail.com', password: '1' },
+  TENANT: { name: 'Tenant User', role: 'TENANT', email: 'tenant@gmail.com', password: '1' },
+  OWNER: { name: 'Owner User', role: 'OWNER', email: 'owner@gmail.com', password: '1' },
+  STAFF: { name: 'Staff User', role: 'STAFF', email: 'staff@gmail.com', password: '1' },
+}
+
 const LoginPage = () => {
   const navigate = useNavigate()
   const dispatch = useDispatch()

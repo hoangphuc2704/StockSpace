@@ -18,6 +18,8 @@ import {
 } from 'lucide-react'
 
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { useNavigate } from 'react-router-dom'
+import BackToTop from '../../../components/BackToTop.jsx'
 
 const SERVICES = [
   {
@@ -68,6 +70,7 @@ function ProjectManagementIcon() {
 
 const LandingPageKhamkhao = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const navigate = useNavigate()
 
   return (
     <div className="min-h-screen bg-white font-sans text-stone-900 antialiased selection:bg-[#FF5A1F] selection:text-white">
@@ -96,18 +99,22 @@ const LandingPageKhamkhao = () => {
           </nav>
 
           <div className="hidden items-center gap-4 md:flex">
-            <a
-              href="#sign-in"
-              className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-2.5 text-xs font-bold text-stone-700 uppercase transition-all hover:bg-stone-50"
-            >
-              Sign in
-            </a>
-            <a
-              href="#get-started"
-              className="inline-flex items-center justify-center rounded-md bg-[#FF5A1F] px-5 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#e04e19]"
-            >
-              Get Started <ArrowRight size={14} className="ml-1" />
-            </a>
+            <div>
+              <button
+                onClick={() => navigate('/login')}
+                className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-2.5 text-xs font-bold text-stone-700 uppercase transition-all hover:bg-stone-50"
+              >
+                Sign in
+              </button>
+            </div>
+            <div>
+              <a
+                href="#get-started"
+                className="inline-flex items-center justify-center rounded-md bg-[#FF5A1F] px-5 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#e04e19]"
+              >
+                Get Started <ArrowRight size={14} className="ml-1" />
+              </a>
+            </div>
           </div>
 
           {/* Mobile Menu Button */}
@@ -340,6 +347,7 @@ const LandingPageKhamkhao = () => {
           </div>
         </div>
       </footer>
+      <BackToTop />
     </div>
   )
 }

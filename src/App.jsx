@@ -4,7 +4,6 @@ import RoleGuard from './components/guards/RoleGuard'
 // Lazy load components
 // const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 import LandingpageKhamkhao from './features/landing/pages/Landingpage_khamkhao'
-// import LandingPage from './features/landing/pages/LandingPage'
 import WarehouseListingPage from './features/warehouse/pages/WarehouseListingPage'
 import WarehouseDetailPage from './features/warehouse/pages/WarehouseDetailPage'
 import LoginPage from './features/auth/pages/LoginPage'
