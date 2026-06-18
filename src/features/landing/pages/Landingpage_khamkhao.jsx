@@ -5,13 +5,11 @@ import {
   Warehouse,
   Boxes,
   Truck,
-  FileSpreadsheet,
   Menu,
   X,
   ArrowRight,
   Phone,
   Mail,
-  MapPin,
   Facebook,
   Youtube,
   Instagram,
@@ -21,6 +19,7 @@ import logoDaidien from '../../../assets/logoDaidien.png'
 import { useNavigate } from 'react-router-dom'
 import BackToTop from '../../../components/BackToTop.jsx'
 import LoginModal from '../../auth/pages/LoginPage.jsx'
+import RegisterModal from '../../auth/pages/RegisterPage.jsx'
 
 const SERVICES = [
   {
@@ -50,7 +49,6 @@ const SERVICES = [
   },
 ]
 
-// Component Icon custom mô phỏng nét vẽ mảnh (Fine-line) như trong ảnh mẫu
 function ProjectManagementIcon() {
   return (
     <svg
@@ -72,10 +70,23 @@ function ProjectManagementIcon() {
 const LandingPageKhamkhao = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false)
+
+  // ĐÃ THÊM: Hàm chuyển nhanh từ Login sang Register
+  const switchToRegister = () => {
+    setIsLoginOpen(false)
+    setIsRegisterOpen(true)
+  }
+
+  // ĐÃ THÊM: Hàm chuyển nhanh từ Register sang Login
+  const switchToLogin = () => {
+    setIsRegisterOpen(false)
+    setIsLoginOpen(true)
+  }
 
   return (
     <div className="min-h-screen bg-white font-sans text-stone-900 antialiased selection:bg-[#FF5A1F] selection:text-white">
-      {/* --- HEADER (Tinh giản, Border mảnh, Nút Cam) --- */}
+      {/* --- HEADER --- */}
       <header className="sticky top-0 z-50 border-b border-stone-200 bg-white/95 backdrop-blur-sm">
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
           <div className="flex items-center gap-3">
@@ -100,25 +111,26 @@ const LandingPageKhamkhao = () => {
           </nav>
 
           <div className="hidden items-center gap-4 md:flex">
-            <>
-              <div>
-                {/* 2. Sửa onClick từ navigate thành setIsLoginOpen(true) */}
-                <button
-                  onClick={() => setIsLoginOpen(true)}
-                  className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-2.5 text-xs font-bold text-stone-700 uppercase transition-all hover:bg-stone-50"
-                >
-                  Sign in
-                </button>
-              </div>
+            <button
+              onClick={() => setIsLoginOpen(true)}
+              className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-2.5 text-xs font-bold text-stone-700 uppercase transition-all hover:bg-stone-50"
+            >
+              Đăng nhập
+            </button>
 
-              {/* 3. Chèn Modal vào bất kỳ đâu trong phần return */}
-            </>
+            <button
+              onClick={() => setIsRegisterOpen(true)}
+              className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-2.5 text-xs font-bold text-stone-700 uppercase transition-all hover:bg-stone-50"
+            >
+              Đăng ký
+            </button>
+
             <div>
               <a
                 href="#get-started"
                 className="inline-flex items-center justify-center rounded-md bg-[#FF5A1F] px-5 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#e04e19]"
               >
-                Get Started <ArrowRight size={14} className="ml-1" />
+                Xem Kho <ArrowRight size={14} className="ml-1" />
               </a>
             </div>
           </div>
@@ -133,10 +145,9 @@ const LandingPageKhamkhao = () => {
         </div>
       </header>
 
-      {/* --- SERVICES SECTION (Style lưới so le cao thấp - Asymmetric Grid) --- */}
+      {/* --- SERVICES SECTION --- */}
       <section id="services" className="bg-white py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          {/* Section Header */}
           <div className="mx-auto mb-20 max-w-3xl space-y-4 text-center">
             <h2 className="text-5xl font-extrabold tracking-tight text-stone-900 uppercase sm:text-6xl">
               Dịch vụ cốt lõi
@@ -161,12 +172,9 @@ const LandingPageKhamkhao = () => {
             </div>
           </div>
 
-          {/* Grid Layout mô phỏng cấu trúc so le tự nhiên từ ảnh mẫu */}
           <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2 lg:grid-cols-3">
             {SERVICES.map((srv, idx) => {
               const IconComp = srv.icon
-
-              // Tạo độ lệch margin-top cho các cột để tạo hiệu ứng so le (Asymmetric) như ảnh
               const getGridSpacing = (index) => {
                 if (index === 0) return 'lg:mt-0'
                 if (index === 1) return 'lg:mt-12'
@@ -183,18 +191,15 @@ const LandingPageKhamkhao = () => {
                   <div className="mb-6 inline-block rounded-sm bg-stone-50 p-3 text-[#FF5A1F]">
                     <IconComp size={32} strokeWidth={1.2} />
                   </div>
-
                   <h3 className="mb-3 text-xl font-bold tracking-tight text-stone-950">
                     {srv.title}
                   </h3>
-
                   <p className="mb-6 text-xs leading-relaxed text-stone-500">{srv.desc}</p>
-
                   <a
                     href="#details"
                     className="inline-flex items-center gap-2 text-xs font-bold tracking-wider text-stone-950 uppercase hover:text-[#FF5A1F]"
                   >
-                    <span className="flex inline-block h-4 w-4 items-center justify-center bg-stone-950 text-[10px] text-white group-hover:bg-[#FF5A1F]">
+                    <span className="flex h-4 w-4 items-center justify-center bg-stone-950 text-[10px] text-white">
                       ➔
                     </span>
                     Xem chi tiết
@@ -206,7 +211,7 @@ const LandingPageKhamkhao = () => {
         </div>
       </section>
 
-      {/* --- CTA SECTION (Nền xám nhạt với Giàn giáo/Kết cấu màu cam nổi bật) --- */}
+      {/* --- CTA SECTION --- */}
       <section className="relative overflow-hidden bg-[#F4F4F4] py-20 lg:py-24">
         <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 lg:grid-cols-12 lg:px-8">
           <div className="z-10 space-y-6 text-left lg:col-span-7">
@@ -236,7 +241,6 @@ const LandingPageKhamkhao = () => {
             </div>
           </div>
 
-          {/* Khung chứa ảnh kết cấu / cấu trúc màu cam góc bên phải */}
           <div className="relative flex h-64 w-full items-center justify-center overflow-hidden lg:col-span-5 lg:h-96">
             <div className="absolute inset-0 bg-[#FF5A1F]/10 opacity-90 mix-blend-multiply" />
             <svg
@@ -254,15 +258,14 @@ const LandingPageKhamkhao = () => {
         </div>
       </section>
 
-      {/* --- FOOTER (Nền tối Charcoal, Chia cột rõ ràng, Nút liên hệ đóng khung) --- */}
+      {/* --- FOOTER --- */}
       <footer className="bg-[#121212] pt-16 pb-12 text-left text-stone-400">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-10 border-b border-stone-800 pb-16 sm:grid-cols-2 lg:grid-cols-12">
-            {/* Cột thông tin thương hiệu */}
             <div className="space-y-6 lg:col-span-4">
               <div className="flex items-center gap-2 text-white">
                 <span className="text-xl font-black tracking-wider uppercase">
-                  <span className="text-white">Stock</span>
+                  <span className="text-white">Stock</span>{' '}
                   <span className="text-[#FF5A1F]">Space</span>
                 </span>
               </div>
@@ -283,7 +286,6 @@ const LandingPageKhamkhao = () => {
               </div>
             </div>
 
-            {/* Cột Links 1 */}
             <div className="lg:col-span-2">
               <h4 className="mb-4 text-xs font-bold tracking-wider text-white uppercase">Menu</h4>
               <ul className="space-y-2.5 text-xs">
@@ -299,7 +301,6 @@ const LandingPageKhamkhao = () => {
               </ul>
             </div>
 
-            {/* Cột Links 2 */}
             <div className="lg:col-span-2">
               <h4 className="mb-4 text-xs font-bold tracking-wider text-white uppercase">Hỗ trợ</h4>
               <ul className="space-y-2.5 text-xs">
@@ -319,12 +320,10 @@ const LandingPageKhamkhao = () => {
               </ul>
             </div>
 
-            {/* Cột Liên Hệ Đóng Khung đặc trưng */}
             <div className="space-y-4 lg:col-span-4">
               <h4 className="mb-4 text-xs font-bold tracking-wider text-white uppercase">
-                Liên hệ với chúng tôi
+                Liên hệ
               </h4>
-
               <div className="flex items-center gap-4 border border-stone-800 bg-[#1a1a1a] p-4 transition-all hover:border-stone-700">
                 <div className="text-[#FF5A1F]">
                   <Phone size={18} />
@@ -334,7 +333,6 @@ const LandingPageKhamkhao = () => {
                   <p className="text-xs font-bold text-white">123456789</p>
                 </div>
               </div>
-
               <div className="flex items-center gap-4 border border-stone-800 bg-[#1a1a1a] p-4 transition-all hover:border-stone-700">
                 <div className="text-[#FF5A1F]">
                   <Mail size={18} />
@@ -347,14 +345,27 @@ const LandingPageKhamkhao = () => {
             </div>
           </div>
 
-          {/* Bản quyền dưới cùng */}
           <div className="flex flex-col items-center justify-between pt-8 text-[11px] text-stone-600 sm:flex-row">
             <p>© {new Date().getFullYear()} StockSpace. Tất cả các quyền được bảo hộ.</p>
           </div>
         </div>
       </footer>
+
       <BackToTop />
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
+
+      {/* ĐÃ CẬP NHẬT: Quản lý và chuyển giao prop cho LoginModal */}
+      <LoginModal
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        onSwitchToRegister={switchToRegister}
+      />
+
+      {/* ĐÃ CẬP NHẬT: Quản lý và chuyển giao prop cho RegisterModal */}
+      <RegisterModal
+        isOpen={isRegisterOpen}
+        onClose={() => setIsRegisterOpen(false)}
+        onSwitchToLogin={switchToLogin}
+      />
     </div>
   )
 }

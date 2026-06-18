@@ -48,7 +48,7 @@ const App = () => {
         <Route path="/warehouses" element={<WarehouseListingPage />} />
         <Route path="/warehouse/:id" element={<WarehouseDetailPage />} />
         {/* <Route path="/login" element={<LoginPage />} /> */}
-        <Route path="/register" element={<RegisterPage />} />
+        {/* <Route path="/register" element={<RegisterPage />} /> */}
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* Protected Routes Layout */}
