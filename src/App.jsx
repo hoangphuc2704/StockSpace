@@ -20,12 +20,13 @@ import AnalyticsPage from './features/admin/pages/AnalyticsPage'
 import PlatformSettingsPage from './features/admin/pages/PlatformSettingsPage'
 
 // Tenant Pages
-import TenantDashboard from './features/dashboard/pages/TenantDashboard'
+import TenantDashboard from './features/tenant/pages/TenantDashboard'
 import InventoryPage from './features/inventory/pages/InventoryPage'
 import InboundPage from './features/inbound/pages/InboundPage'
 import OutboundPage from './features/outbound/pages/OutboundPage'
 import MyBookingsPage from './features/tenant/pages/MyBookingsPage'
 import BillingPage from './features/tenant/pages/BillingPage'
+import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
 
 // Owner Pages
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
@@ -71,6 +72,7 @@ const App = () => {
         <Route path="/tenant/outbound" element={<OutboundPage />} />
         <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
         <Route path="/tenant/payments" element={<BillingPage />} />
+        <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse />} />
         {/* </Route> */}
 
         {/* Owner Routes */}

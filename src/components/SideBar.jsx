@@ -35,6 +35,7 @@ const SIDEBAR_MENUS = {
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/tenant/outbound' },
     { text: 'My Bookings', icon: HiOutlineHomeModern, path: '/tenant/warehouses' },
     { text: 'Billing', icon: HiOutlineCurrencyDollar, path: '/tenant/payments' },
+    { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
   ],
   OWNER: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
