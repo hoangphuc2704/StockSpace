@@ -5,7 +5,7 @@ const RoleGuard = ({ allowedRoles }) => {
   const { user, isAuthenticated } = useSelector((state) => state.auth)
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/" replace />
   }
 
   if (!allowedRoles.includes(user?.role)) {

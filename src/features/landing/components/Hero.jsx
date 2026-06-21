@@ -8,6 +8,18 @@ import Button from '@/components/atoms/Button'
 const LandingNavbar = () => {
   const { user } = useSelector((state) => state.auth)
   const dispatch = useDispatch()
+
+  const getDashboardInfo = (role) => {
+    switch (role) {
+      case 'ROLE_TENANT': return { url: '/tenant/dashboard', label: 'Tenant Dashboard' }
+      case 'ROLE_OWNER': return { url: '/owner/dashboard', label: 'Owner Dashboard' }
+      case 'ROLE_STAFF': return { url: '/staff/dashboard', label: 'Staff Dashboard' }
+      case 'ROLE_INSPECTOR': return { url: '/inspector/dashboard', label: 'Inspector Dashboard' }
+      case 'ROLE_ADMIN': return { url: '/admin/dashboard', label: 'Admin Dashboard' }
+      default: return { url: '/', label: 'Dashboard' }
+    }
+  }
+
   return (
     <nav className="fixed top-0 z-[100] w-full border-b border-white/10 bg-slate-900/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-8">
@@ -36,19 +48,22 @@ const LandingNavbar = () => {
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              <Link to={`/${user.role.toLowerCase()}/dashboard`}>
+              <Link to={getDashboardInfo(user.role).url}>
                 <Button
                   variant="outline"
                   size="sm"
                   className="border-white/20 text-white hover:bg-white/10"
                 >
-                  Dashboard
+                  {getDashboardInfo(user.role).label}
                 </Button>
               </Link>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => dispatch(logout())}
+                onClick={() => {
+                  dispatch(logout())
+                  localStorage.removeItem('token')
+                }}
                 className="text-slate-300 hover:text-white"
               >
                 Logout

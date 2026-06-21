@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Package, AlertTriangle, ArrowUpRight, ArrowDownLeft, Bell, Users } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
 import {
@@ -41,6 +42,7 @@ const activityData = [
 const TenantDashboard = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const navigate = useNavigate()
 
   const toggleSidebar = () => {
     if (window.innerWidth < 768) {
@@ -177,6 +179,9 @@ const TenantDashboard = () => {
                 </p>
               </div>
               <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+                  Back to Website
+                </Button>
                 <Button variant="outline" size="sm">
                   Download PDF
                 </Button>

@@ -6,6 +6,7 @@ import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import { HiX, HiEye, HiEyeOff } from 'react-icons/hi'
 import Loading from '../../../components/Loading'
+import { authApi } from '@/services/authApi'
 
 const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const navigate = useNavigate()
@@ -13,19 +14,52 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const [roleDefault, setroleDefault] = useState('TENANT')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [phone, setPhone] = useState('')
+  const [agreeTerms, setAgreeTerms] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault()
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+    if (!agreeTerms) {
+      setError('You must agree to the Terms of Service')
+      return
+    }
     setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-      onClose()
-      if (onSwitchToLogin) {
-        onSwitchToLogin()
+    setError('')
+    
+    try {
+      const response = await authApi.register({
+        fullName,
+        email,
+        password,
+        phone,
+        role: `ROLE_${roleDefault}`
+      })
+      if (response.success) {
+        alert('Đăng ký thành công, vui lòng đăng nhập.')
+        onClose()
+        if (onSwitchToLogin) {
+          onSwitchToLogin()
+        } else {
+          navigate('/login')
+        }
       } else {
-        navigate('/login')
+        setError(response.message || 'Registration failed')
       }
-    }, 1500)
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -102,12 +136,26 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                 </button>
               </div>
 
+              {error && (
+                <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 border border-red-200">
+                  {error}
+                </div>
+              )}
+
               <form onSubmit={handleRegister} className="space-y-4">
-                <InputField label="Full Name" placeholder="John Doe" required />
+                <InputField 
+                  label="Full Name" 
+                  placeholder="John Doe" 
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required 
+                />
                 <InputField
                   label="Email Address"
                   type="email"
                   placeholder="name@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
 
@@ -117,6 +165,8 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                     label="Password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
                   />
                   <button
@@ -138,6 +188,8 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                     label="Confirm Password"
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
                   <button
@@ -153,12 +205,21 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                   </button>
                 </div>
 
-                <InputField label="Phone Number" type="tel" placeholder="1234567890" required />
+                <InputField 
+                  label="Phone Number" 
+                  type="tel" 
+                  placeholder="1234567890" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required 
+                />
 
                 <div className="flex items-start gap-2 pt-1">
                   <input
                     type="checkbox"
                     className="text-primary focus:ring-primary mt-1 rounded border-slate-300"
+                    checked={agreeTerms}
+                    onChange={(e) => setAgreeTerms(e.target.checked)}
                     required
                   />
                   <p className="text-xs leading-relaxed text-slate-500">

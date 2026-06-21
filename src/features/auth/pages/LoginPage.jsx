@@ -8,6 +8,7 @@ import { HiX, HiEye, HiEyeOff } from 'react-icons/hi'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import { login } from '@/store/authSlice'
+import { authApi } from '@/services/authApi'
 import Loading from '../../../components/Loading'
 import RegisterModal from './RegisterPage'
 
@@ -25,19 +26,50 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
+  
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
 
   if (!isOpen) return null
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault()
     setIsLoading(true)
+    setError('')
 
-    setTimeout(() => {
-      dispatch(login({ user: { name: 'Admin User', role: 'ADMIN' }, token: 'mock-jwt-token' }))
+    try {
+      const response = await authApi.login({ email, password })
+      if (response.success && response.data) {
+        alert('Đăng nhập thành công')
+        const { accessToken, role, fullName } = response.data
+        // dispatch to redux store
+        dispatch(login({ user: { name: fullName, role }, token: accessToken }))
+        // store token in localStorage for apiConfig interceptor
+        localStorage.setItem('token', accessToken)
+        
+        onClose()
+        if (role === 'ROLE_ADMIN') {
+          navigate('/admin/dashboard')
+        } else if (role === 'ROLE_OWNER') {
+          navigate('/owner/dashboard')
+        } else if (role === 'ROLE_TENANT') {
+          navigate('/')
+        } else if (role === 'ROLE_STAFF') {
+          navigate('/staff/dashboard')
+        } else if (role === 'ROLE_INSPECTOR') {
+          navigate('/inspector/dashboard')
+        } else {
+          navigate('/')
+        }
+      } else {
+        setError(response.message || 'Login failed')
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed')
+    } finally {
       setIsLoading(false)
-      onClose()
-      navigate('/admin/dashboard')
-    }, 1500)
+    }
   }
 
   return (
@@ -72,8 +104,21 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
             <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
           </div>
 
+          {error && (
+            <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 border border-red-200">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-4">
-            <InputField label="Email" type="email" placeholder="name@gmail.com" required />
+            <InputField 
+              label="Email" 
+              type="email" 
+              placeholder="name@gmail.com" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required 
+            />
 
             <div className="space-y-1">
               <div className="relative">
@@ -81,6 +126,8 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
                   label="Password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
                 <button
