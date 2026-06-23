@@ -58,10 +58,15 @@ const App = () => {
             const { accessToken, role, fullName } = response.data
             // The getMe endpoint might not return accessToken, so we use token from localStorage
             // Let's verify what it returns. If it doesn't return accessToken, we use the stored one.
-            dispatch(login({ 
-              user: { name: fullName || response.data.fullName, role: role || response.data.role }, 
-              token 
-            }))
+            dispatch(
+              login({
+                user: {
+                  name: fullName || response.data.fullName,
+                  role: role || response.data.role,
+                },
+                token,
+              })
+            )
           } else {
             dispatch(logout())
             localStorage.removeItem('token')
@@ -118,12 +123,12 @@ const App = () => {
         </Route>
 
         {/* Owner Routes */}
-        <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}>
-          <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-          <Route path="/owner/warehouses" element={<MyWarehousesPage />} />
-          <Route path="/owner/requests" element={<RentalRequestsPage />} />
-          <Route path="/owner/revenue" element={<RevenuePage />} />
-        </Route>
+        {/* <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}> */}
+        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+        <Route path="/owner/warehouses" element={<MyWarehousesPage />} />
+        <Route path="/owner/requests" element={<RentalRequestsPage />} />
+        <Route path="/owner/revenue" element={<RevenuePage />} />
+        {/* </Route> */}
 
         {/* Staff Routes */}
         <Route element={<RoleGuard allowedRoles={['ROLE_STAFF']} />}>
