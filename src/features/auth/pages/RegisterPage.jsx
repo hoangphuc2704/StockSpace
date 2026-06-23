@@ -5,12 +5,14 @@ import { Warehouse } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import { HiX, HiEye, HiEyeOff } from 'react-icons/hi'
+import { useDispatch, useSelector } from 'react-redux'
 import Loading from '../../../components/Loading'
-import { authApi } from '@/services/authApi'
+import { registerUser, clearError } from '@/store/authSlice'
 
 const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(false)
+  const dispatch = useDispatch()
+  const { isLoading, error: reduxError } = useSelector((state) => state.auth)
   const [roleDefault, setroleDefault] = useState('TENANT')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -21,44 +23,42 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [phone, setPhone] = useState('')
   const [agreeTerms, setAgreeTerms] = useState(false)
-  const [error, setError] = useState('')
+  const [localError, setLocalError] = useState('')
+
+  const error = localError || reduxError
 
   const handleRegister = async (e) => {
     e.preventDefault()
+    dispatch(clearError())
+    setLocalError('')
+
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setLocalError('Passwords do not match')
       return
     }
     if (!agreeTerms) {
-      setError('You must agree to the Terms of Service')
+      setLocalError('You must agree to the Terms of Service')
       return
     }
-    setIsLoading(true)
-    setError('')
     
     try {
-      const response = await authApi.register({
+      await dispatch(registerUser({
         fullName,
         email,
         password,
         phone,
         role: `ROLE_${roleDefault}`
-      })
-      if (response.success) {
-        alert('Đăng ký thành công, vui lòng đăng nhập.')
-        onClose()
-        if (onSwitchToLogin) {
-          onSwitchToLogin()
-        } else {
-          navigate('/login')
-        }
+      })).unwrap()
+      
+      alert('Đăng ký thành công, vui lòng đăng nhập.')
+      onClose()
+      if (onSwitchToLogin) {
+        onSwitchToLogin()
       } else {
-        setError(response.message || 'Registration failed')
+        navigate('/login')
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed')
-    } finally {
-      setIsLoading(false)
+      console.error('Registration failed:', err)
     }
   }
 
@@ -93,7 +93,10 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
             `}</style>
 
             <button
-              onClick={onClose}
+              onClick={() => {
+                dispatch(clearError())
+                onClose()
+              }}
               className="absolute top-4 right-4 text-slate-400 transition-colors hover:text-slate-600"
             >
               <HiX className="h-6 w-6" />
@@ -246,6 +249,7 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                 <button
                   type="button"
                   onClick={() => {
+                    dispatch(clearError())
                     if (onSwitchToLogin) onSwitchToLogin()
                     else onClose()
                   }}

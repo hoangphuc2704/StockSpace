@@ -4,7 +4,7 @@ import { useDispatch } from 'react-redux'
 import RoleGuard from './components/guards/RoleGuard'
 import PublicGuard from './components/guards/PublicGuard'
 import { authApi } from './services/authApi'
-import { login, logout } from './store/authSlice'
+import { loginUser, logout } from './store/authSlice'
 
 // Lazy load components
 // const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
@@ -58,9 +58,9 @@ const App = () => {
             const { accessToken, role, fullName } = response.data
             // The getMe endpoint might not return accessToken, so we use token from localStorage
             // Let's verify what it returns. If it doesn't return accessToken, we use the stored one.
-            dispatch(login({ 
-              user: { name: fullName || response.data.fullName, role: role || response.data.role }, 
-              token 
+            dispatch(login({
+              user: { name: fullName || response.data.fullName, role: role || response.data.role },
+              token
             }))
           } else {
             dispatch(logout())

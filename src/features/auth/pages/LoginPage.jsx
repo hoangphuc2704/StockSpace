@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { FcGoogle } from 'react-icons/fc'
 import { HiX, HiEye, HiEyeOff } from 'react-icons/hi'
 
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
-import { login } from '@/store/authSlice'
-import { authApi } from '@/services/authApi'
+import { loginUser, clearError } from '@/store/authSlice'
 import Loading from '../../../components/Loading'
 import RegisterModal from './RegisterPage'
 
@@ -23,52 +22,41 @@ const demoUsers = {
 const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const [isLoading, setIsLoading] = useState(false)
+  const { isLoading, error } = useSelector((state) => state.auth)
   const [showPassword, setShowPassword] = useState(false)
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
 
   if (!isOpen) return null
 
   const handleLogin = async (e) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError('')
+    dispatch(clearError())
 
     try {
-      const response = await authApi.login({ email, password })
-      if (response.success && response.data) {
-        alert('Đăng nhập thành công')
-        const { accessToken, role, fullName } = response.data
-        // dispatch to redux store
-        dispatch(login({ user: { name: fullName, role }, token: accessToken }))
-        // store token in localStorage for apiConfig interceptor
-        localStorage.setItem('token', accessToken)
-        
-        onClose()
-        if (role === 'ROLE_ADMIN') {
-          navigate('/admin/dashboard')
-        } else if (role === 'ROLE_OWNER') {
-          navigate('/owner/dashboard')
-        } else if (role === 'ROLE_TENANT') {
-          navigate('/')
-        } else if (role === 'ROLE_STAFF') {
-          navigate('/staff/dashboard')
-        } else if (role === 'ROLE_INSPECTOR') {
-          navigate('/inspector/dashboard')
-        } else {
-          navigate('/')
-        }
+      const actionResult = await dispatch(loginUser({ email, password })).unwrap()
+      alert('Đăng nhập thành công')
+      const { role } = actionResult
+      
+      onClose()
+      if (role === 'ROLE_ADMIN') {
+        navigate('/admin/dashboard')
+      } else if (role === 'ROLE_OWNER') {
+        navigate('/owner/dashboard')
+      } else if (role === 'ROLE_TENANT') {
+        navigate('/')
+      } else if (role === 'ROLE_STAFF') {
+        navigate('/staff/dashboard')
+      } else if (role === 'ROLE_INSPECTOR') {
+        navigate('/inspector/dashboard')
       } else {
-        setError(response.message || 'Login failed')
+        navigate('/')
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed')
-    } finally {
-      setIsLoading(false)
+      // Error is handled in Redux state, we can also do things here if needed
+      console.error('Login failed:', err)
     }
   }
 
@@ -91,7 +79,10 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
           className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white p-8 shadow-xl"
         >
           <button
-            onClick={onClose}
+            onClick={() => {
+              dispatch(clearError())
+              onClose()
+            }}
             className="absolute top-4 right-4 rounded-full p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
           >
             <HiX className="h-5 w-5" />
@@ -179,6 +170,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
             <button
               type="button"
               onClick={() => {
+                dispatch(clearError())
                 if (onSwitchToRegister) onSwitchToRegister()
                 else onClose()
               }}
