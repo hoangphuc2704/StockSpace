@@ -7,7 +7,6 @@ import { HiX, HiEye, HiEyeOff } from 'react-icons/hi'
 
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
-import { login } from '@/store/authSlice'
 import { authApi } from '@/services/authApi'
 import Loading from '../../../components/Loading'
 import RegisterModal from './RegisterPage'
@@ -26,7 +25,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
-  
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -47,7 +46,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
         dispatch(login({ user: { name: fullName, role }, token: accessToken }))
         // store token in localStorage for apiConfig interceptor
         localStorage.setItem('token', accessToken)
-        
+
         onClose()
         if (role === 'ROLE_ADMIN') {
           navigate('/admin/dashboard')
@@ -105,19 +104,19 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
           </div>
 
           {error && (
-            <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 border border-red-200">
+            <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600">
               {error}
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
-            <InputField 
-              label="Email" 
-              type="email" 
-              placeholder="name@gmail.com" 
+            <InputField
+              label="Email"
+              type="email"
+              placeholder="name@gmail.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required 
+              required
             />
 
             <div className="space-y-1">

@@ -4,7 +4,6 @@ import { useDispatch } from 'react-redux'
 import RoleGuard from './components/guards/RoleGuard'
 import PublicGuard from './components/guards/PublicGuard'
 import { authApi } from './services/authApi'
-import { login, logout } from './store/authSlice'
 
 // Lazy load components
 // const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
@@ -35,9 +34,7 @@ import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
 
 // Owner Pages
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
-import MyWarehousesPage from './features/owner/pages/MyWarehousesPage'
-import RentalRequestsPage from './features/owner/pages/RentalRequestsPage'
-import RevenuePage from './features/owner/pages/RevenuePage'
+import OwnerProfile from './features/owner/pages/OwnerProfile'
 
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
@@ -125,9 +122,7 @@ const App = () => {
         {/* Owner Routes */}
         {/* <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}> */}
         <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-        <Route path="/owner/warehouses" element={<MyWarehousesPage />} />
-        <Route path="/owner/requests" element={<RentalRequestsPage />} />
-        <Route path="/owner/revenue" element={<RevenuePage />} />
+        <Route path="/owner/profile" element={<OwnerProfile />} />
         {/* </Route> */}
 
         {/* Staff Routes */}

@@ -16,6 +16,8 @@ import {
 
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { useSelector, useDispatch } from 'react-redux'
+import { closeMobileSidebar } from '../store/uiSlide' // ✅ Đã sửa chính tả thành uiSlice
 import { HiOutlineArrowRightOnRectangle } from 'react-icons/hi2'
 
 const SIDEBAR_MENUS = {
@@ -38,10 +40,9 @@ const SIDEBAR_MENUS = {
     { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
   ],
   OWNER: [
-    { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
-    { text: 'My Warehouses', icon: HiOutlineHomeModern, path: '/owner/warehouses' },
-    { text: 'Rental Requests', icon: HiOutlineSquaresPlus, path: '/owner/requests' },
-    { text: 'Revenue', icon: HiOutlineCurrencyDollar, path: '/owner/revenue' },
+    { text: 'Đăng Tin', icon: HiOutlineHomeModern, path: '/owner/warehouses' },
+    { text: 'Tổng Quan', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
+    { text: 'Cài đặt', icon: HiOutlineCog6Tooth, path: '/owner/profile' },
   ],
   STAFF: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/staff/dashboard' },
@@ -50,26 +51,31 @@ const SIDEBAR_MENUS = {
   ],
 }
 
-const Sidebar = ({ isSidebarExpanded, isMobileOpen, setIsMobileOpen, currentRole = 'ADMIN' }) => {
+const Sidebar = ({ currentRole = 'ADMIN' }) => {
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useDispatch()
 
-  // Lấy menu tương ứng với role, nếu không có thì mặc định là mảng rỗng
+  // Lấy trạng thái đóng mở Sidebar từ Redux Global State
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const menuItems = SIDEBAR_MENUS[currentRole] || []
 
   const handleNavigation = (path) => {
     navigate(path)
-    if (setIsMobileOpen) setIsMobileOpen(false) // Đóng mobile sidebar nếu đang mở
+    dispatch(closeMobileSidebar()) // Đóng sidebar trên mobile sau khi click chọn menu
   }
 
   return (
     <aside
-      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'} ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'} `}
+      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${
+        isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'
+      } ${
+        isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
+      } `}
     >
-      {/* Danh sách Menu điều hướng động */}
+      {/* Danh sách Menu điều hướng */}
       <nav className="flex-1 space-y-1 py-3">
         {menuItems.map((item, idx) => {
-          // Check xem item này có đang active dựa trên URL hiện tại không
           const isActive = location.pathname === item.path
 
           return (
@@ -92,7 +98,6 @@ const Sidebar = ({ isSidebarExpanded, isMobileOpen, setIsMobileOpen, currentRole
                 } ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
               />
 
-              {/* Text Menu */}
               <span
                 className={`overflow-hidden text-ellipsis whitespace-nowrap ${
                   !isSidebarExpanded && 'tracking-tight'
@@ -109,7 +114,7 @@ const Sidebar = ({ isSidebarExpanded, isMobileOpen, setIsMobileOpen, currentRole
       <div className="border-t border-slate-100 py-3">
         <button
           onClick={() => {
-            // Xử lý logout tại đây (clear token, v.v...)
+            dispatch(closeMobileSidebar())
             navigate('/login')
           }}
           className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${
