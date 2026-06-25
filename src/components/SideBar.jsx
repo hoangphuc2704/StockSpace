@@ -13,13 +13,18 @@ import {
   HiOutlineArrowDownOnSquare,
   HiOutlineArrowUpOnSquare,
   HiOutlineUsers,
+  HiOutlineArrowRightOnRectangle,
+  HiOutlineUserGroup,
 } from 'react-icons/hi2'
 
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { HiOutlineArrowRightOnRectangle } from 'react-icons/hi2'
-import { useDispatch } from 'react-redux'
+import { useSelector, useDispatch } from 'react-redux'
+
+// ✅ [HEAD] Dùng logoutThunk từ authSlice để logout đúng cách
 import { logoutThunk } from '../store/authSlice'
+
+import { closeMobileSidebar } from '../store/uiSlide'
 
 const SIDEBAR_MENUS = {
   ADMIN: [
@@ -30,6 +35,10 @@ const SIDEBAR_MENUS = {
     { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },
     { text: 'Transactions', icon: HiOutlineExclamationCircle, path: '/admin/transactions' },
     { text: 'Payments', icon: HiOutlineCurrencyDollar, path: '/admin/payments' },
+    { text: 'Dispute Management', icon: HiOutlineExclamationCircle, path: '/admin/disputes' },
+    { text: 'Withdrawals', icon: HiOutlineCurrencyDollar, path: '/admin/withdrawals' },
+    { text: 'Permission', icon: HiOutlineUserGroup, path: '/admin/permissions' },
+    { text: 'Inspections', icon: HiOutlineClipboardDocumentList, path: '/admin/inspections' },
     { text: 'Platform Settings', icon: HiOutlineDocumentText, path: '/admin/settings' },
   ],
   TENANT: [
@@ -42,10 +51,9 @@ const SIDEBAR_MENUS = {
     { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
   ],
   OWNER: [
-    { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
-    { text: 'My Warehouses', icon: HiOutlineHomeModern, path: '/owner/warehouses' },
-    { text: 'Rental Requests', icon: HiOutlineSquaresPlus, path: '/owner/requests' },
-    { text: 'Revenue', icon: HiOutlineCurrencyDollar, path: '/owner/revenue' },
+    { text: 'Đăng Tin', icon: HiOutlineHomeModern, path: '/owner/warehouses' },
+    { text: 'Tổng Quan', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
+    { text: 'Cài đặt', icon: HiOutlineCog6Tooth, path: '/owner/profile' },
   ],
   STAFF: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/staff/dashboard' },
@@ -54,54 +62,51 @@ const SIDEBAR_MENUS = {
   ],
 }
 
-const Sidebar = ({ isSidebarExpanded, isMobileOpen, setIsMobileOpen, currentRole = 'ADMIN' }) => {
+const Sidebar = ({ currentRole = 'ADMIN' }) => {
   const navigate = useNavigate()
   const location = useLocation()
   const dispatch = useDispatch()
 
-  // Lấy menu tương ứng với role, nếu không có thì mặc định là mảng rỗng
+  // Lấy trạng thái đóng mở Sidebar từ Redux Global State
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const menuItems = SIDEBAR_MENUS[currentRole] || []
 
   const handleNavigation = (path) => {
     navigate(path)
-    if (setIsMobileOpen) setIsMobileOpen(false) // Đóng mobile sidebar nếu đang mở
+    dispatch(closeMobileSidebar())
   }
 
   return (
     <aside
-      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'} ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'} `}
+      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'
+        } ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
+        } `}
     >
-      {/* Danh sách Menu điều hướng động */}
+      {/* Danh sách Menu điều hướng */}
       <nav className="flex-1 space-y-1 py-3">
         {menuItems.map((item, idx) => {
-          // Check xem item này có đang active dựa trên URL hiện tại không
           const isActive = location.pathname === item.path
 
           return (
             <button
               key={idx}
               onClick={() => handleNavigation(item.path)}
-              className={`group flex w-full items-center rounded-xl transition-all ${
-                isSidebarExpanded
-                  ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-                  : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
-              } ${
-                isActive
+              className={`group flex w-full items-center rounded-xl transition-all ${isSidebarExpanded
+                ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
+                : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
+                } ${isActive
                   ? 'bg-slate-100 font-semibold text-slate-950'
                   : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
-              } `}
+                } `}
             >
               <item.icon
-                className={`shrink-0 transition-transform group-hover:scale-105 ${
-                  isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'
-                } ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
+                className={`shrink-0 transition-transform group-hover:scale-105 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'
+                  } ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
               />
 
-              {/* Text Menu */}
               <span
-                className={`overflow-hidden text-ellipsis whitespace-nowrap ${
-                  !isSidebarExpanded && 'tracking-tight'
-                }`}
+                className={`overflow-hidden text-ellipsis whitespace-nowrap ${!isSidebarExpanded && 'tracking-tight'
+                  }`}
               >
                 {item.text}
               </span>
@@ -113,15 +118,22 @@ const Sidebar = ({ isSidebarExpanded, isMobileOpen, setIsMobileOpen, currentRole
       {/* Nút Đăng xuất */}
       <div className="border-t border-slate-100 py-3">
         <button
+          // ✅ [HEAD] Gọi logoutThunk để logout đúng cách rồi navigate về '/'
           onClick={async () => {
             await dispatch(logoutThunk())
             navigate('/')
           }}
-          className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${
-            isSidebarExpanded
-              ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-              : 'flex-col justify-center gap-1 py-3 text-[10px]'
-          } `}
+
+          // ❌ [origin/owner] - Chỉ đóng sidebar và navigate '/login', không logout
+          // onClick={() => {
+          //   dispatch(closeMobileSidebar())
+          //   navigate('/login')
+          // }}
+
+          className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${isSidebarExpanded
+            ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
+            : 'flex-col justify-center gap-1 py-3 text-[10px]'
+            } `}
         >
           <HiOutlineArrowRightOnRectangle
             className={`shrink-0 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'}`}

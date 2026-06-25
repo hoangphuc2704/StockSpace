@@ -3,10 +3,16 @@ import adminApi from '../services/admin/adminApi'
 
 /**
  * BE response: ApiResponse<PagedTransactionResponse>
- * PagedTransactionResponse: { content, totalElements, totalPages, number, size }
- * (TransactionService.getAllTransactions → sort by createdAt DESC)
+ * PagedTransactionResponse:
+ *   { content: TransactionResponse[], page, size, totalElements, totalPages, last }
  *
- * Query params: page (default 0), size (default 10)
+ * TransactionResponse:
+ *   { id, amount, transactionType, paymentMethod, status,
+ *     paymentCode, referenceId, bookingId, subscriptionId, createdAt }
+ *
+ * TransactionType enum: TOP_UP | WITHDRAWAL | DEPOSIT_PAYMENT | DEPOSIT_REFUND | PACKAGE_PAYMENT | COMMISSION
+ * TransactionStatus enum: PENDING | SUCCESS | FAILED
+ * PaymentMethod enum: BANK_TRANSFER | VNPAY | MOMO | WALLET
  */
 
 export const fetchTransactions = createAsyncThunk(
@@ -25,17 +31,26 @@ export const fetchTransactions = createAsyncThunk(
 const adminTransactionSlice = createSlice({
   name: 'adminTransaction',
   initialState: {
-    data: [],           // content từ PagedTransactionResponse
+    data: [],          // content từ PagedTransactionResponse
     loading: false,
     error: null,
-    page: 0,            // BE dùng 0-indexed
+    page: 0,           // BE dùng 0-indexed, field tên là "page"
+    size: 10,
     totalPages: 0,
     totalElements: 0,
-    filters: {},
+    last: false,
+    filters: {
+      transactionType: '',  // TOP_UP | WITHDRAWAL | DEPOSIT_PAYMENT | DEPOSIT_REFUND | PACKAGE_PAYMENT | COMMISSION
+      status: '',           // PENDING | SUCCESS | FAILED
+    },
   },
   reducers: {
     setPage: (state, action) => {
       state.page = action.payload
+    },
+    setFilters: (state, action) => {
+      state.filters = { ...state.filters, ...action.payload }
+      state.page = 0 // reset về trang đầu khi đổi filter
     },
   },
   extraReducers: (builder) => {
@@ -46,11 +61,13 @@ const adminTransactionSlice = createSlice({
       })
       .addCase(fetchTransactions.fulfilled, (state, action) => {
         state.loading = false
-        const pagedResponse = action.payload
-        state.data = pagedResponse?.content || []
-        state.totalPages = pagedResponse?.totalPages || 0
-        state.totalElements = pagedResponse?.totalElements || 0
-        state.page = pagedResponse?.number || 0
+        const paged = action.payload
+        state.data = paged?.content || []
+        state.totalPages = paged?.totalPages || 0
+        state.totalElements = paged?.totalElements || 0
+        state.page = paged?.page ?? 0         // BE field: "page" (không phải "number")
+        state.size = paged?.size || 10
+        state.last = paged?.last ?? false
       })
       .addCase(fetchTransactions.rejected, (state, action) => {
         state.loading = false
@@ -59,5 +76,5 @@ const adminTransactionSlice = createSlice({
   },
 })
 
-export const { setPage } = adminTransactionSlice.actions
+export const { setPage, setFilters } = adminTransactionSlice.actions
 export default adminTransactionSlice.reducer

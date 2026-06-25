@@ -1,4 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
+
+// ✅ [HEAD] Dùng authApi service
 import { authApi } from '@/services/authApi'
 
 // ==================== Async Thunks ====================
@@ -169,36 +171,49 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    // Sync logout fallback (dùng khi không cần gọi API)
+    // ✅ [HEAD] Sync logout fallback (dùng khi không cần gọi API)
     logout: (state) => {
       state.user = null
       state.token = null
       state.isAuthenticated = false
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+
+      // ❌ [origin/owner] - Chỉ clear loading/error, không xóa localStorage
+      // state.loading = false
+      // state.error = null
     },
-    // Dùng khi F5: cập nhật user info mới nhất từ server (getMe)
+
+    // ✅ [HEAD] Dùng khi F5: cập nhật user info mới nhất từ server (getMe)
     setUser: (state, action) => {
       state.user = action.payload
       state.isAuthenticated = true
       // Cập nhật lại localStorage để đồng bộ
       localStorage.setItem('user', JSON.stringify(action.payload))
     },
+
     updateUser: (state, action) => {
-      state.user = { ...state.user, ...action.payload }
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload }
+      }
     },
-    // Cập nhật token mới (dùng bởi refresh interceptor)
+
+    // ✅ [HEAD] Cập nhật token mới (dùng bởi refresh interceptor)
     updateToken: (state, action) => {
       state.token = action.payload
       localStorage.setItem('token', action.payload)
     },
+
     clearError: (state) => {
       state.error = null
     },
+
     clearPasswordResetMessage: (state) => {
       state.passwordResetMessage = null
     },
   },
+
+  // ✅ [HEAD] extraReducers đầy đủ cho tất cả thunks
   extraReducers: (builder) => {
     builder
       // ==================== Login ====================
@@ -318,8 +333,30 @@ const authSlice = createSlice({
         state.isLoading = false
         state.error = action.payload
       })
+
+    // ❌ [origin/owner] - extraReducers dùng loginThunk (không tồn tại trong HEAD)
+    // builder
+    //   .addCase(loginThunk.pending, (state) => {
+    //     state.isLoading = true
+    //     state.error = null
+    //   })
+    //   .addCase(loginThunk.fulfilled, (state, action) => {
+    //     state.isLoading = false
+    //     state.isAuthenticated = true
+    //     state.user = action.payload.user
+    //     state.token = action.payload.token
+    //   })
+    //   .addCase(loginThunk.rejected, (state, action) => {
+    //     state.isLoading = false
+    //     state.error = action.payload
+    //   })
   },
 })
 
+// ✅ [HEAD] Export đầy đủ các actions
 export const { logout, setUser, updateUser, updateToken, clearError, clearPasswordResetMessage } = authSlice.actions
+
+// ❌ [origin/owner] - Chỉ export logout và updateUser
+// export const { logout, updateUser } = authSlice.actions
+
 export default authSlice.reducer

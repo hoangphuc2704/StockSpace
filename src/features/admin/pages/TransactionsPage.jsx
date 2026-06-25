@@ -1,17 +1,18 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchTransactions } from '../../../store/adminTransactionSlice'
+import { fetchTransactions, setPage, setFilters } from '../../../store/adminTransactionSlice'
 import { motion } from 'framer-motion'
 import {
   CreditCard,
   DollarSign,
-  Download,
+  Clock,
   Search,
   Filter,
   ArrowUpRight,
   ArrowDownRight,
   MoreVertical,
-  Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
 import DataTable from '../../../components/organisms/DataTable'
@@ -20,98 +21,167 @@ import Button from '../../../components/atoms/Button'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
+// ─── Enum maps từ BE ─────────────────────────────────────────────────────────
+const TRANSACTION_TYPE_LABELS = {
+  TOP_UP: 'Nạp tiền',
+  WITHDRAWAL: 'Rút tiền',
+  DEPOSIT_PAYMENT: 'Thanh toán cọc',
+  DEPOSIT_REFUND: 'Hoàn tiền cọc',
+  PACKAGE_PAYMENT: 'Mua gói dịch vụ',
+  COMMISSION: 'Phí hoa hồng',
+}
+
+// Loại giao dịch nào là "tiền vào" (từ góc nhìn người dùng nộp tiền)
+const CREDIT_TYPES = new Set(['TOP_UP', 'DEPOSIT_REFUND'])
+
+const STATUS_VARIANT = {
+  SUCCESS: 'success',
+  PENDING: 'warning',
+  FAILED: 'danger',
+}
+
+const PAYMENT_METHOD_LABELS = {
+  BANK_TRANSFER: 'Chuyển khoản',
+  VNPAY: 'VNPay',
+  MOMO: 'Momo',
+  WALLET: 'Ví nội bộ',
+}
+
+const ALL_TYPES = ['', 'TOP_UP', 'WITHDRAWAL', 'DEPOSIT_PAYMENT', 'DEPOSIT_REFUND', 'PACKAGE_PAYMENT', 'COMMISSION']
+const ALL_STATUSES = ['', 'SUCCESS', 'PENDING', 'FAILED']
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+const formatVND = (amount) =>
+  typeof amount === 'number'
+    ? amount.toLocaleString('vi-VN') + ' ₫'
+    : (amount ?? 0).toString() + ' ₫'
+
+const formatDate = (dt) =>
+  dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—'
+
+const shortId = (id) =>
+  id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—'
+
+// ─── Component ────────────────────────────────────────────────────────────────
 const TransactionsPage = () => {
   const dispatch = useDispatch()
-  const { data: transactions, loading } = useSelector((state) => state.adminTransaction)
+  const {
+    data: transactions,
+    loading,
+    error,
+    page,
+    totalPages,
+    totalElements,
+    size,
+    filters,
+  } = useSelector((state) => state.adminTransaction)
 
+  const [searchText, setSearchText] = useState('')
+  const [localType, setLocalType] = useState('')
+  const [localStatus, setLocalStatus] = useState('')
+
+  // Sidebar state (dùng Redux ui slice — giống các trang khác)
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+
+  // Fetch khi page hoặc size thay đổi
   useEffect(() => {
-    dispatch(fetchTransactions())
-  }, [dispatch])
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
+    dispatch(fetchTransactions({ page, size }))
+  }, [dispatch, page, size])
 
-  // Xử lý đóng/mở sidebar linh hoạt theo breakpoint thiết bị
-  const toggleSidebar = () => {
-    if (window.innerWidth < 768) {
-      setIsMobileOpen(!isMobileOpen)
-    } else {
-      setIsSidebarExpanded(!isSidebarExpanded)
-    }
-  }
+  // ── Computed summary từ DATA THỰC trên trang hiện tại ──
+  const summary = useMemo(() => {
+    const total = transactions.reduce((s, t) => s + Number(t.amount ?? 0), 0)
+    const success = transactions.filter((t) => t.status === 'SUCCESS').reduce((s, t) => s + Number(t.amount ?? 0), 0)
+    const pending = transactions.filter((t) => t.status === 'PENDING').reduce((s, t) => s + Number(t.amount ?? 0), 0)
+    return { total, success, pending }
+  }, [transactions])
 
+  // ── Filter phía client (search + type + status) ──
+  const filtered = useMemo(() => {
+    const q = searchText.toLowerCase()
+    return transactions.filter((t) => {
+      const matchSearch =
+        !q ||
+        (t.id && t.id.toLowerCase().includes(q)) ||
+        (t.transactionType && t.transactionType.toLowerCase().includes(q)) ||
+        (t.paymentCode && t.paymentCode.toLowerCase().includes(q))
+      const matchType = !localType || t.transactionType === localType
+      const matchStatus = !localStatus || t.status === localStatus
+      return matchSearch && matchType && matchStatus
+    })
+  }, [transactions, searchText, localType, localStatus])
+
+  // ── Columns ──
   const columns = [
     {
       header: 'Transaction ID',
-      // BE: transaction.id (UUID)
-      render: (row) => <span className="font-mono text-xs font-bold text-slate-500">{row.id}</span>,
+      render: (row) => (
+        <span className="font-mono text-xs font-bold text-slate-500" title={row.id}>
+          {shortId(row.id)}
+        </span>
+      ),
     },
     {
-      header: 'Type',
+      header: 'Loại giao dịch',
       render: (row) => {
-        // BE: transactionType (enum string) — dương là nhận vào, âm là trả ra
-        const isCredit = row.transactionType === 'DEPOSIT' || row.transactionType === 'REFUND' || row.amount > 0
+        const isCredit = CREDIT_TYPES.has(row.transactionType)
         return (
           <div className="flex items-center gap-2">
-            {isCredit ? (
-              <div className="bg-success/10 text-success flex h-7 w-7 items-center justify-center rounded-full">
-                <ArrowDownRight size={14} />
-              </div>
-            ) : (
-              <div className="bg-danger/10 text-danger flex h-7 w-7 items-center justify-center rounded-full">
-                <ArrowUpRight size={14} />
-              </div>
-            )}
+            <div
+              className={`flex h-7 w-7 items-center justify-center rounded-full ${isCredit ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'
+                }`}
+            >
+              {isCredit ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
+            </div>
             <span className="text-sm font-medium text-slate-700">
-              {/* BE: transactionType hoặc type */}
-              {row.transactionType || row.type || '—'}
+              {TRANSACTION_TYPE_LABELS[row.transactionType] || row.transactionType || '—'}
             </span>
           </div>
         )
       },
     },
     {
-      header: 'Amount',
+      header: 'Số tiền',
       render: (row) => {
-        // BE: amount là số (Long/BigDecimal), không có dấu + / -
-        const amt = row.amount ?? 0
-        const isCredit = amt >= 0
+        const amt = Number(row.amount ?? 0)
+        const isCredit = CREDIT_TYPES.has(row.transactionType)
         return (
-          <span className={`font-bold ${isCredit ? 'text-success' : 'text-slate-900'}`}>
-            {isCredit ? '+' : ''}{amt.toLocaleString('vi-VN')} đ
+          <span className={`font-bold ${isCredit ? 'text-emerald-600' : 'text-slate-800'}`}>
+            {isCredit ? '+' : '-'}{formatVND(amt)}
           </span>
         )
       },
     },
     {
-      header: 'Status',
-      render: (row) => {
-        const variants = {
-          COMPLETED: 'success',
-          SUCCESS: 'success',
-          PENDING: 'warning',
-          FAILED: 'danger',
-        }
-        const statusKey = row.status || row.transactionStatus
-        return (
-          <Badge variant={variants[statusKey] || 'slate'} size="sm" className="rounded-full">
-            {statusKey || '—'}
-          </Badge>
-        )
-      },
+      header: 'Trạng thái',
+      render: (row) => (
+        <Badge variant={STATUS_VARIANT[row.status] || 'slate'} size="sm" className="rounded-full">
+          {row.status || '—'}
+        </Badge>
+      ),
     },
     {
-      header: 'Method',
-      // BE: paymentMethod hoặc method
-      render: (row) => <span>{row.paymentMethod || row.method || '—'}</span>,
+      header: 'Phương thức',
+      render: (row) => (
+        <span className="text-sm text-slate-600">
+          {PAYMENT_METHOD_LABELS[row.paymentMethod] || row.paymentMethod || '—'}
+        </span>
+      ),
     },
     {
-      header: 'Date & Time',
-      render: (row) =>
-        // BE: createdAt (LocalDateTime ISO string)
-        row.createdAt ? new Date(row.createdAt).toLocaleString('vi-VN') : (row.date || '—'),
+      header: 'Mã thanh toán',
+      render: (row) => (
+        <span className="font-mono text-xs text-slate-400">{row.paymentCode || '—'}</span>
+      ),
     },
     {
-      header: 'Actions',
+      header: 'Ngày tạo',
+      render: (row) => (
+        <span className="whitespace-nowrap text-sm text-slate-500">{formatDate(row.createdAt)}</span>
+      ),
+    },
+    {
+      header: '',
       render: () => (
         <button className="p-1.5 text-slate-400 transition-colors hover:text-slate-600">
           <MoreVertical size={18} />
@@ -122,18 +192,14 @@ const TransactionsPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* 1. TOP HEADER */}
+      {/* TOP HEADER */}
       <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
         <div className="flex items-center gap-4">
-          <button
-            onClick={toggleSidebar}
-            className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
-          >
+          <button className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200">
             <HiBars3 className="h-6 w-6" />
           </button>
-
           <div className="flex cursor-pointer items-center gap-2">
-            <div className="shrink-0 rounded-lg bg-white p-1.5 text-white">
+            <div className="shrink-0 rounded-lg bg-white p-1.5">
               <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
@@ -143,122 +209,168 @@ const TransactionsPage = () => {
         </div>
       </header>
 
-      {/* MOBILE TRIGGER */}
-      <div className="md:hidden">
-        {isMobileOpen && (
-          <div
-            className="fixed inset-0 z-40 bg-slate-900/30"
-            onClick={() => setIsMobileOpen(false)}
-          />
-        )}
-      </div>
-
       <div className="flex pt-14">
-        {/* 2. SIDEBAR COMPONENT */}
-        <Sidebar
-          isSidebarExpanded={isSidebarExpanded}
-          isMobileOpen={isMobileOpen}
-          setIsMobileOpen={setIsMobileOpen}
-          currentRole="ADMIN"
-        />
+        {/* SIDEBAR */}
+        <Sidebar currentRole="ADMIN" />
 
-        {/* 3. MAIN CONTENT CONTAINER */}
+        {/* MAIN CONTENT */}
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
             }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
-            {/* Header */}
+            {/* Page header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">Transactions</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Full history of platform transactions and financial activities.
+                  Toàn bộ lịch sử giao dịch tài chính trên hệ thống.
+                  {totalElements > 0 && (
+                    <span className="ml-1 font-semibold text-slate-700">({totalElements.toLocaleString()} giao dịch)</span>
+                  )}
                 </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button variant="outline">
-                  <Calendar size={16} className="mr-2" /> This Week
-                </Button>
-                <Button>
-                  <Download size={16} className="mr-2" /> Export CSV
-                </Button>
               </div>
             </div>
 
-            {/* Financial Overview Cards */}
+            {/* Error banner */}
+            {error && (
+              <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                ⚠️ {error}
+              </div>
+            )}
+
+            {/* Summary cards — tính từ data thực */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
                 {
-                  label: 'Total Volume',
-                  value: '$45,280.00',
+                  label: 'Tổng',
+                  value: formatVND(summary.total),
                   icon: CreditCard,
-                  color: 'text-primary',
+                  color: 'text-blue-600',
+                  bg: 'bg-blue-50',
                 },
                 {
-                  label: 'Net Revenue',
-                  value: '$8,120.45',
+                  label: 'Thành công',
+                  value: formatVND(summary.success),
                   icon: DollarSign,
-                  color: 'text-success',
+                  color: 'text-emerald-600',
+                  bg: 'bg-emerald-50',
                 },
                 {
-                  label: 'Pending Payouts',
-                  value: '$12,400.00',
-                  icon: Calendar,
-                  color: 'text-warning',
+                  label: 'Đang chờ',
+                  value: formatVND(summary.pending),
+                  icon: Clock,
+                  color: 'text-amber-600',
+                  bg: 'bg-amber-50',
                 },
               ].map((item, i) => (
                 <div
                   key={i}
                   className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
                 >
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-xl bg-slate-50 ${item.color}`}
-                  >
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.bg} ${item.color}`}>
                     <item.icon size={24} />
                   </div>
                   <div>
-                    <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
-                      {item.label}
-                    </p>
-                    <p className="mt-0.5 text-2xl font-bold text-slate-900">{item.value}</p>
+                    <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">{item.label}</p>
+                    <p className="mt-0.5 text-xl font-bold text-slate-900">{item.value}</p>
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Filters Section */}
+            {/* Filters */}
             <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 md:flex-row">
+              {/* Search */}
               <div className="relative w-full md:w-96">
-                <Search
-                  className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
+                <Search className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" size={16} />
                 <input
                   type="text"
-                  placeholder="Search by Transaction ID or Type..."
-                  className="focus:ring-primary/20 w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-10 text-sm transition-all focus:ring-2 focus:outline-none"
+                  placeholder="Tìm theo ID, loại, mã thanh toán..."
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-200"
                 />
               </div>
+
               <div className="flex w-full items-center gap-2 md:w-auto">
-                <Button variant="outline" size="sm" className="h-10">
-                  <Filter size={16} className="mr-2" /> Type: All
-                </Button>
-                <Button variant="outline" size="sm" className="h-10">
-                  Status: All
-                </Button>
+                {/* Type filter */}
+                <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <Filter size={14} className="text-slate-400" />
+                  <select
+                    value={localType}
+                    onChange={(e) => setLocalType(e.target.value)}
+                    className="bg-transparent text-sm text-slate-700 focus:outline-none"
+                  >
+                    {ALL_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t ? TRANSACTION_TYPE_LABELS[t] || t : 'Tất cả loại'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Status filter */}
+                <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                  <select
+                    value={localStatus}
+                    onChange={(e) => setLocalStatus(e.target.value)}
+                    className="bg-transparent text-sm text-slate-700 focus:outline-none"
+                  >
+                    {ALL_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s || 'Tất cả trạng thái'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
-            {/* Table wrapper */}
+            {/* Table */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 {loading ? (
-                  <div className="p-4 text-center">Loading...</div>
+                  <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
+                    <span className="text-sm">Đang tải dữ liệu...</span>
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="py-16 text-center text-sm text-slate-400">
+                    Không có giao dịch nào phù hợp.
+                  </div>
                 ) : (
-                  <DataTable columns={columns} data={transactions} />
+                  <DataTable columns={columns} data={filtered} />
                 )}
               </motion.div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+                  <span className="text-sm text-slate-500">
+                    Trang {page + 1} / {totalPages}
+                    {' '}·{' '}
+                    {totalElements.toLocaleString()} giao dịch
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => dispatch(setPage(page - 1))}
+                      disabled={page === 0 || loading}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-sm font-semibold text-slate-700">{page + 1}</span>
+                    <button
+                      onClick={() => dispatch(setPage(page + 1))}
+                      disabled={page >= totalPages - 1 || loading}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </main>
         </div>

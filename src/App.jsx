@@ -26,6 +26,10 @@ import PaymentsPage from './features/admin/pages/PaymentsPage'
 import AnalyticsPage from './features/admin/pages/AnalyticsPage'
 import PlatformSettingsPage from './features/admin/pages/PlatformSettingsPage'
 import UserManagementPage from './features/admin/pages/UserManagementPage'
+import DisputeManagementPage from './features/admin/pages/DisputeManagementPage'
+import AdminWithdrawalsPage from './features/admin/pages/AdminWithdrawalsPage'
+import PermissionManagementPage from './features/admin/pages/PermissionManagementPage'
+import InspectionsManagementPage from './features/admin/pages/InspectionsManagementPage'
 
 // Tenant Pages
 import TenantDashboard from './features/tenant/pages/TenantDashboard'
@@ -38,10 +42,10 @@ import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
 
 // Owner Pages
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
-import MyWarehousesPage from './features/owner/pages/MyWarehousesPage'
-import RentalRequestsPage from './features/owner/pages/RentalRequestsPage'
-import RevenuePage from './features/owner/pages/RevenuePage'
-
+import OwnerProfile from './features/owner/pages/OwnerProfile'
+// import MyWarehousesPage from './features/owner/pages/MyWarehousesPage'
+// import RentalRequestsPage from './features/owner/pages/RentalRequestsPage'
+// import RevenuePage from './features/owner/pages/RevenuePage'
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
 import StaffTasksPage from './features/staff/pages/StaffTasksPage'
@@ -57,6 +61,24 @@ const App = () => {
       if (token) {
         try {
           await dispatch(fetchCurrentUserThunk()).unwrap()
+          const response = await authApi.getMe()
+          if (response.success && response.data) {
+            const { accessToken, role, fullName } = response.data
+            // The getMe endpoint might not return accessToken, so we use token from localStorage
+            // Let's verify what it returns. If it doesn't return accessToken, we use the stored one.
+            dispatch(
+              login({
+                user: {
+                  name: fullName || response.data.fullName,
+                  role: role || response.data.role,
+                },
+                token,
+              })
+            )
+          } else {
+            dispatch(logout())
+            localStorage.removeItem('token')
+          }
         } catch (error) {
           // Token hết hạn hoặc không hợp lệ → fetchCurrentUserThunk đã clear state
           console.warn('Auth init failed:', error)
@@ -99,6 +121,10 @@ const App = () => {
           <Route path="/admin/analytics" element={<AnalyticsPage />} />
           <Route path="/admin/settings" element={<PlatformSettingsPage />} />
           <Route path="/admin/users" element={<UserManagementPage />} />
+          <Route path="/admin/disputes" element={<DisputeManagementPage />} />
+          <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
+          <Route path="/admin/permissions" element={<PermissionManagementPage />} />
+          <Route path='admin/inspections' element={<InspectionsManagementPage />} />
         </Route>
 
         {/* Tenant Routes */}
@@ -115,9 +141,13 @@ const App = () => {
         {/* Owner Routes */}
         {/* <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}> */}
         <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-        <Route path="/owner/warehouses" element={<MyWarehousesPage />} />
-        <Route path="/owner/requests" element={<RentalRequestsPage />} />
-        <Route path="/owner/revenue" element={<RevenuePage />} />
+
+        {/* <Route path="/owner/warehouses" element={<MyWarehousesPage />} /> */}
+        {/* <Route path="/owner/requests" element={<RentalRequestsPage />} /> */}
+        {/* <Route path="/owner/revenue" element={<RevenuePage />} /> */}
+
+        <Route path="/owner/profile" element={<OwnerProfile />} />
+
         {/* </Route> */}
 
         {/* Staff Routes */}

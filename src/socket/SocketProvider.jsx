@@ -12,7 +12,7 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && token) {
-      const newSocket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
+      const newSocket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:8080', {
         auth: { token },
       })
 

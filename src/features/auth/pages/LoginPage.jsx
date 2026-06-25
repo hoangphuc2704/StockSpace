@@ -6,8 +6,23 @@ import { HiX, HiEye, HiEyeOff } from 'react-icons/hi'
 
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
+
+// ✅ [HEAD] Dùng Redux thunk loginUser + clearError
 import { loginUser, clearError } from '@/store/authSlice'
 import LoginGoogle from './LoginGoogle'
+
+// ❌ [origin/owner] - Đã comment lại, không dùng
+// import { authApi } from '@/services/authApi'
+// import Loading from '../../../components/Loading'
+// import RegisterModal from './RegisterPage'
+
+// ❌ [origin/owner] - Demo users không dùng trong HEAD
+// const demoUsers = {
+//   ADMIN: { name: 'Admin User', role: 'ADMIN', email: 'admin@gmail.com', password: '1' },
+//   TENANT: { name: 'Tenant User', role: 'TENANT', email: 'tenant@gmail.com', password: '1' },
+//   OWNER: { name: 'Owner User', role: 'OWNER', email: 'owner@gmail.com', password: '1' },
+//   STAFF: { name: 'Staff User', role: 'STAFF', email: 'staff@gmail.com', password: '1' },
+// }
 
 // ĐÃ THÊM: prop onSwitchToRegister nhận từ cha
 const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
@@ -15,6 +30,9 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
   const dispatch = useDispatch()
   const { isLoading, error } = useSelector((state) => state.auth)
   const [showPassword, setShowPassword] = useState(false)
+
+  // ❌ [origin/owner] - Không dùng state isRegisterOpen trong HEAD
+  // const [isRegisterOpen, setIsRegisterOpen] = useState(false)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,9 +59,38 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
     dispatch(clearError())
 
     try {
+      // ✅ [HEAD] Dùng Redux thunk loginUser
       const actionResult = await dispatch(loginUser({ email, password })).unwrap()
       const { role } = actionResult
       navigateByRole(role)
+
+      // ❌ [origin/owner] - Cách login trực tiếp qua authApi, không dùng
+      // const response = await authApi.login({ email, password })
+      // if (response.success && response.data) {
+      //   alert('Đăng nhập thành công')
+      //   const { accessToken, role, fullName } = response.data
+      //   // dispatch to redux store
+      //   dispatch(login({ user: { name: fullName, role }, token: accessToken }))
+      //   // store token in localStorage for apiConfig interceptor
+      //   localStorage.setItem('token', accessToken)
+      //
+      //   onClose()
+      //   if (role === 'ROLE_ADMIN') {
+      //     navigate('/admin/dashboard')
+      //   } else if (role === 'ROLE_OWNER') {
+      //     navigate('/owner/dashboard')
+      //   } else if (role === 'ROLE_TENANT') {
+      //     navigate('/')
+      //   } else if (role === 'ROLE_STAFF') {
+      //     navigate('/staff/dashboard')
+      //   } else if (role === 'ROLE_INSPECTOR') {
+      //     navigate('/inspector/dashboard')
+      //   } else {
+      //     navigate('/')
+      //   }
+      // } else {
+      //   setError(response.message || 'Login failed')
+      // }
     } catch (err) {
       console.error('Login failed:', err)
     }
@@ -68,6 +115,30 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
             transition={{ duration: 0.2 }}
             className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white p-8 shadow-xl"
           >
+            {/* ❌ [origin/owner] - Nút close không có dispatch clearError, không dùng */}
+            {/* <HiX className="h-5 w-5" />
+            </button>
+
+            <div className="mb-6">
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-xl font-bold text-slate-900">StockSpace</span>
+              </div>
+              <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
+            </div>
+
+            {error && (
+              <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              ...
+            </form>
+
+            ... (toàn bộ phần JSX của origin/owner bên dưới đây đã bị thay thế bởi HEAD) */}
+
+            {/* ✅ [HEAD] Nút close có dispatch clearError */}
             <button
               onClick={() => {
                 dispatch(clearError())
@@ -147,9 +218,18 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
               </div>
             </div>
 
+            {/* ✅ [HEAD] Dùng component LoginGoogle có callback navigateByRole */}
             <div className="flex justify-center">
               <LoginGoogle onLoginSuccess={({ role }) => navigateByRole(role)} />
             </div>
+
+            {/* ❌ [origin/owner] - Dùng FcGoogle button thủ công, không dùng */}
+            {/* <div className="flex justify-center">
+              <Button variant="outline" className="h-11 w-full rounded-lg text-sm font-medium">
+                <FcGoogle className="mr-2 h-5 w-5" />
+                Continue with Google
+              </Button>
+            </div> */}
 
             {/* ĐÃ SỬA: Chuyển Link sang nút bấm gọi event đóng login mở register */}
             <p className="mt-6 text-center text-sm text-slate-500">
