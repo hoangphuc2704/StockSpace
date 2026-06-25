@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSelector, useDispatch } from 'react-redux'
-import { logout } from '../../../store/authSlice'
+import { logoutThunk } from '../../../store/authSlice'
 import {
   Clock,
   Warehouse,
@@ -156,7 +156,10 @@ const LandingPageKhamkhao = () => {
                 {/* Dropdown Menu */}
                 <div className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 opacity-0 invisible transition-all group-hover:opacity-100 group-hover:visible z-50">
                   <div className="py-1">
-                    <button className="block w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-100">
+                    <button 
+                      onClick={() => navigate('/profile')}
+                      className="block w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-100"
+                    >
                       Hồ sơ cá nhân
                     </button>
                     {user?.role && (
@@ -172,8 +175,7 @@ const LandingPageKhamkhao = () => {
                     </button>
                     <button
                       onClick={() => {
-                        dispatch(logout())
-                        localStorage.removeItem('token')
+                        dispatch(logoutThunk())
                       }}
                       className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-stone-100"
                     >

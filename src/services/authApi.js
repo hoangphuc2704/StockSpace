@@ -24,5 +24,17 @@ export const authApi = {
     refresh: async () => {
         const response = await api.post('/auth/refresh')
         return response.data
-    }
+    },
+    forgotPassword: async (email) => {
+        const response = await api.post('/auth/forgot-password', { email })
+        return response.data
+    },
+    resetPassword: async ({ email, token, newPassword }) => {
+        const response = await api.post('/auth/reset-password', { email, token, newPassword })
+        return response.data
+    },
+    googleLogin: async (code) => {
+        const response = await api.post('/auth/google', { code })
+        return response.data
+    },
 }

@@ -3,8 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import RoleGuard from './components/guards/RoleGuard'
 import PublicGuard from './components/guards/PublicGuard'
-import { authApi } from './services/authApi'
-import { loginUser, logout } from './store/authSlice'
+import { fetchCurrentUserThunk, logout } from './store/authSlice'
 
 // Lazy load components
 // const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
@@ -14,6 +13,9 @@ import WarehouseDetailPage from './features/warehouse/pages/WarehouseDetailPage'
 import LoginPage from './features/auth/pages/LoginPage'
 import RegisterPage from './features/auth/pages/RegisterPage'
 import UnauthorizedPage from './features/auth/pages/UnauthorizedPage'
+import ForgotPasswordPage from './features/auth/pages/ForgotPasswordPage'
+import ResetPasswordPage from './features/auth/pages/ResetPasswordPage'
+import Profile from './features/auth/pages/Profile'
 
 // Admin Pages
 import AdminDashboard from './features/admin/pages/AdminDashboard'
@@ -23,6 +25,7 @@ import DepositApprovalPage from './features/admin/pages/DepositApprovalPage'
 import PaymentsPage from './features/admin/pages/PaymentsPage'
 import AnalyticsPage from './features/admin/pages/AnalyticsPage'
 import PlatformSettingsPage from './features/admin/pages/PlatformSettingsPage'
+import UserManagementPage from './features/admin/pages/UserManagementPage'
 
 // Tenant Pages
 import TenantDashboard from './features/tenant/pages/TenantDashboard'
@@ -53,22 +56,10 @@ const App = () => {
       const token = localStorage.getItem('token')
       if (token) {
         try {
-          const response = await authApi.getMe()
-          if (response.success && response.data) {
-            const { accessToken, role, fullName } = response.data
-            // The getMe endpoint might not return accessToken, so we use token from localStorage
-            // Let's verify what it returns. If it doesn't return accessToken, we use the stored one.
-            dispatch(login({
-              user: { name: fullName || response.data.fullName, role: role || response.data.role },
-              token
-            }))
-          } else {
-            dispatch(logout())
-            localStorage.removeItem('token')
-          }
+          await dispatch(fetchCurrentUserThunk()).unwrap()
         } catch (error) {
-          dispatch(logout())
-          localStorage.removeItem('token')
+          // Token hết hạn hoặc không hợp lệ → fetchCurrentUserThunk đã clear state
+          console.warn('Auth init failed:', error)
         }
       }
       setIsInitializing(false)
@@ -93,6 +84,9 @@ const App = () => {
         {/* <Route path="/login" element={<LoginPage />} /> */}
         {/* <Route path="/register" element={<RegisterPage />} /> */}
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/profile" element={<Profile />} />
 
         {/* Protected Routes Layout */}
         {/* Admin Routes */}
@@ -104,6 +98,7 @@ const App = () => {
           <Route path="/admin/payments" element={<PaymentsPage />} />
           <Route path="/admin/analytics" element={<AnalyticsPage />} />
           <Route path="/admin/settings" element={<PlatformSettingsPage />} />
+          <Route path="/admin/users" element={<UserManagementPage />} />
         </Route>
 
         {/* Tenant Routes */}
@@ -118,12 +113,12 @@ const App = () => {
         </Route>
 
         {/* Owner Routes */}
-        <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}>
-          <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-          <Route path="/owner/warehouses" element={<MyWarehousesPage />} />
-          <Route path="/owner/requests" element={<RentalRequestsPage />} />
-          <Route path="/owner/revenue" element={<RevenuePage />} />
-        </Route>
+        {/* <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}> */}
+        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+        <Route path="/owner/warehouses" element={<MyWarehousesPage />} />
+        <Route path="/owner/requests" element={<RentalRequestsPage />} />
+        <Route path="/owner/revenue" element={<RevenuePage />} />
+        {/* </Route> */}
 
         {/* Staff Routes */}
         <Route element={<RoleGuard allowedRoles={['ROLE_STAFF']} />}>

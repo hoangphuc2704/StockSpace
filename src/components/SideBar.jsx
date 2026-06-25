@@ -12,15 +12,19 @@ import {
   HiOutlineCircleStack,
   HiOutlineArrowDownOnSquare,
   HiOutlineArrowUpOnSquare,
+  HiOutlineUsers,
 } from 'react-icons/hi2'
 
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { HiOutlineArrowRightOnRectangle } from 'react-icons/hi2'
+import { useDispatch } from 'react-redux'
+import { logoutThunk } from '../store/authSlice'
 
 const SIDEBAR_MENUS = {
   ADMIN: [
     { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/admin/dashboard' },
+    { text: 'Users', icon: HiOutlineUsers, path: '/admin/users' },
     { text: 'Warehouses Approval', icon: HiOutlineHomeModern, path: '/admin/listings' },
     { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },
     { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },
@@ -53,6 +57,7 @@ const SIDEBAR_MENUS = {
 const Sidebar = ({ isSidebarExpanded, isMobileOpen, setIsMobileOpen, currentRole = 'ADMIN' }) => {
   const navigate = useNavigate()
   const location = useLocation()
+  const dispatch = useDispatch()
 
   // Lấy menu tương ứng với role, nếu không có thì mặc định là mảng rỗng
   const menuItems = SIDEBAR_MENUS[currentRole] || []
@@ -108,9 +113,9 @@ const Sidebar = ({ isSidebarExpanded, isMobileOpen, setIsMobileOpen, currentRole
       {/* Nút Đăng xuất */}
       <div className="border-t border-slate-100 py-3">
         <button
-          onClick={() => {
-            // Xử lý logout tại đây (clear token, v.v...)
-            navigate('/login')
+          onClick={async () => {
+            await dispatch(logoutThunk())
+            navigate('/')
           }}
           className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${
             isSidebarExpanded

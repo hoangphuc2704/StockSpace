@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchWarehouses, verifyWarehouse, rejectWarehouse } from '../../../store/adminWarehouseSlice'
 import { motion } from 'framer-motion'
 import {
   Warehouse,
@@ -18,43 +20,13 @@ import Avatar from '../../../components/atoms/Avatar'
 import Sidebar from '../../../components/SideBar' // <-- Tái sử dụng thanh điều hướng chung
 import logoDaidien from '../../../assets/logoDaidien.png'
 
-const MOCK_LISTINGS = [
-  {
-    id: 'W-001',
-    name: 'Main Logistics Hub',
-    owner: 'Sarah Chen',
-    location: 'District 7, HCMC',
-    size: '1,200 m²',
-    price: '$15,000/mo',
-    status: 'PENDING',
-    type: 'Cold Storage',
-    submittedAt: '2024-05-12',
-  },
-  {
-    id: 'W-002',
-    name: 'Industrial Park A',
-    owner: 'David Miller',
-    location: 'Binh Duong Province',
-    size: '5,000 m²',
-    price: '$45,000/mo',
-    status: 'PENDING',
-    type: 'General Warehouse',
-    submittedAt: '2024-05-11',
-  },
-  {
-    id: 'W-003',
-    name: 'Dockside Terminal',
-    owner: 'Robert King',
-    location: 'Cat Lai Port',
-    size: '3,500 m²',
-    price: '$28,000/mo',
-    status: 'PENDING',
-    type: 'Bonded Warehouse',
-    submittedAt: '2024-05-10',
-  },
-]
-
 const WarehouseApprovalPage = () => {
+  const dispatch = useDispatch()
+  const { data: warehouses, loading } = useSelector((state) => state.adminWarehouse)
+
+  useEffect(() => {
+    dispatch(fetchWarehouses())
+  }, [dispatch])
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -77,9 +49,11 @@ const WarehouseApprovalPage = () => {
             <Warehouse size={24} />
           </div>
           <div className="flex flex-col">
+            {/* BE: WarehouseResponse.name */}
             <span className="font-bold text-slate-900">{row.name}</span>
+            {/* BE: WarehouseResponse.address (object hoặc string tuỳ BE mapping) */}
             <div className="flex items-center gap-1 text-xs text-slate-500">
-              <MapPin size={12} /> {row.location}
+              <MapPin size={12} /> {row.address || row.location || '—'}
             </div>
           </div>
         </div>
@@ -89,8 +63,9 @@ const WarehouseApprovalPage = () => {
       header: 'Owner',
       render: (row) => (
         <div className="flex items-center gap-2">
-          <Avatar alt={row.owner} size="sm" />
-          <span className="text-sm font-medium text-slate-700">{row.owner}</span>
+          <Avatar alt={row.ownerName || row.owner} size="sm" />
+          {/* BE: WarehouseResponse.ownerName (tên chủ kho) */}
+          <span className="text-sm font-medium text-slate-700">{row.ownerName || row.owner || '—'}</span>
         </div>
       ),
     },
@@ -98,32 +73,67 @@ const WarehouseApprovalPage = () => {
       header: 'Specs',
       render: (row) => (
         <div className="flex flex-col gap-1 text-xs">
+          {/* BE: WarehouseResponse.area (số m²), warehouseType.name */}
           <span className="flex items-center gap-1 font-medium text-slate-700">
-            <Maximize size={12} /> {row.size}
+            <Maximize size={12} /> {row.area ? `${row.area} m²` : row.size || '—'}
           </span>
-          <span className="text-slate-500">{row.type}</span>
+          <span className="text-slate-500">{row.warehouseType?.name || row.type || '—'}</span>
         </div>
       ),
     },
     {
-      header: 'Price',
-      render: (row) => <span className="text-primary font-bold">{row.price}</span>,
+      header: 'Price / Month',
+      render: (row) => (
+        // BE: WarehouseResponse.pricePerMonth (số tiền, đơn vị VND)
+        <span className="text-primary font-bold">
+          {row.pricePerMonth != null
+            ? row.pricePerMonth.toLocaleString('vi-VN') + ' đ'
+            : row.price || '—'}
+        </span>
+      ),
+    },
+    {
+      header: 'Status',
+      render: (row) => {
+        const variantMap = {
+          ACTIVE: 'success',
+          INACTIVE: 'danger',
+          PENDING: 'warning',
+          UNDER_REVIEW: 'primary',
+        }
+        return (
+          <Badge variant={variantMap[row.status] || 'slate'} size="sm">
+            {/* BE: WarehouseResponse.status (WarehouseStatus enum) */}
+            {row.isVerified ? '✓ Verified' : row.status || '—'}
+          </Badge>
+        )
+      },
     },
     {
       header: 'Submitted',
-      accessor: 'submittedAt',
+      render: (row) =>
+        // BE: WarehouseResponse.createdAt (LocalDateTime)
+        row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—',
     },
     {
       header: 'Actions',
-      render: () => (
+      render: (row) => (
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="h-9 px-3">
             <Eye size={16} className="mr-2" /> Details
           </Button>
-          <button className="text-success hover:bg-success/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors">
+          <button
+            onClick={() => dispatch(verifyWarehouse(row.id))}
+            title="Duyệt kho"
+            className="text-success hover:bg-success/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors"
+          >
             <CheckCircle size={18} />
           </button>
-          <button className="text-danger hover:bg-danger/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors">
+          <button
+            onClick={() => dispatch(rejectWarehouse(row.id))}
+            title="Từ chối kho"
+            className="text-danger hover:bg-danger/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors"
+          >
             <XCircle size={18} />
           </button>
         </div>
@@ -175,9 +185,8 @@ const WarehouseApprovalPage = () => {
 
         {/* 3. MAIN CONTENT CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Header */}
@@ -249,7 +258,11 @@ const WarehouseApprovalPage = () => {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
               >
-                <DataTable columns={columns} data={MOCK_LISTINGS} />
+                {loading ? (
+                  <div className="p-4 text-center">Loading...</div>
+                ) : (
+                  <DataTable columns={columns} data={warehouses} />
+                )}
               </motion.div>
             </div>
           </main>

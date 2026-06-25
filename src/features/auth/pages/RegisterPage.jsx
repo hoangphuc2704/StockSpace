@@ -8,6 +8,7 @@ import { HiX, HiEye, HiEyeOff } from 'react-icons/hi'
 import { useDispatch, useSelector } from 'react-redux'
 import Loading from '../../../components/Loading'
 import { registerUser, clearError } from '@/store/authSlice'
+import LoginGoogle from './LoginGoogle'
 
 const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const navigate = useNavigate()
@@ -24,8 +25,19 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   const [phone, setPhone] = useState('')
   const [agreeTerms, setAgreeTerms] = useState(false)
   const [localError, setLocalError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
 
   const error = localError || reduxError
+
+  const navigateByRole = (role) => {
+    onClose()
+    if (role === 'ROLE_ADMIN') navigate('/admin/dashboard')
+    else if (role === 'ROLE_OWNER') navigate('/owner/dashboard')
+    else if (role === 'ROLE_TENANT') navigate('/')
+    else if (role === 'ROLE_STAFF') navigate('/staff/dashboard')
+    else if (role === 'ROLE_INSPECTOR') navigate('/inspector/dashboard')
+    else navigate('/')
+  }
 
   const handleRegister = async (e) => {
     e.preventDefault()
@@ -50,13 +62,16 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
         role: `ROLE_${roleDefault}`
       })).unwrap()
       
-      alert('Đăng ký thành công, vui lòng đăng nhập.')
-      onClose()
-      if (onSwitchToLogin) {
-        onSwitchToLogin()
-      } else {
-        navigate('/login')
-      }
+      setSuccessMessage('Đăng ký thành công. Vui lòng kiểm tra email và đăng nhập.')
+      setTimeout(() => {
+        setSuccessMessage('')
+        onClose()
+        if (onSwitchToLogin) {
+          onSwitchToLogin()
+        } else {
+          navigate('/login')
+        }
+      }, 2000)
     } catch (err) {
       console.error('Registration failed:', err)
     }
@@ -138,6 +153,12 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                   I'm an Owner
                 </button>
               </div>
+
+              {successMessage && (
+                <div className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700 border border-green-200">
+                  {successMessage}
+                </div>
+              )}
 
               {error && (
                 <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 border border-red-200">
@@ -242,6 +263,22 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                   Create Account
                 </Button>
               </form>
+
+              {/* Google OAuth Divider */}
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-200"></span>
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase">
+                  <span className="bg-white px-2 font-semibold tracking-widest text-slate-400">
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-center">
+                <LoginGoogle onLoginSuccess={({ role }) => navigateByRole(role)} />
+              </div>
 
               {/* KHU VỰC CHUYỂN ĐỔI: Nhấn Log in để chuyển lại Modal Login */}
               <p className="mt-6 text-center text-sm text-slate-500">

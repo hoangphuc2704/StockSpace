@@ -2,23 +2,15 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ShieldAlert, ArrowLeft } from 'lucide-react'
 import { useDispatch } from 'react-redux'
 import Button from '@/components/atoms/Button'
-import { logout } from '@/store/authSlice'
-import { authApi } from '@/services/authApi'
+import { logoutThunk } from '@/store/authSlice'
 
 const UnauthorizedPage = () => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
 
   const handleLogoutAndLogin = async () => {
-    try {
-      await authApi.logout()
-    } catch (err) {
-      console.error('Logout failed:', err)
-    } finally {
-      dispatch(logout())
-      localStorage.removeItem('token')
-      navigate('/login')
-    }
+    await dispatch(logoutThunk())
+    navigate('/')
   }
 
   return (
@@ -49,3 +41,4 @@ const UnauthorizedPage = () => {
 }
 
 export default UnauthorizedPage
+

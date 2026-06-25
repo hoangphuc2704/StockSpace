@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchTransactions } from '../../../store/adminTransactionSlice'
 import { motion } from 'framer-motion'
 import {
   CreditCard,
@@ -18,58 +20,13 @@ import Button from '../../../components/atoms/Button'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
-const MOCK_TRANSACTIONS = [
-  {
-    id: 'TX-8921',
-    type: 'Deposit',
-    amount: '+$5,000.00',
-    status: 'COMPLETED',
-    method: 'Bank Transfer',
-    date: '2024-05-12 14:30',
-  },
-  {
-    id: 'TX-8922',
-    type: 'Rental Payment',
-    amount: '-$2,400.00',
-    status: 'COMPLETED',
-    method: 'Wallet',
-    date: '2024-05-12 11:15',
-  },
-  {
-    id: 'TX-8923',
-    type: 'Service Fee',
-    amount: '+$120.00',
-    status: 'PENDING',
-    method: 'Stripe',
-    date: '2024-05-11 16:45',
-  },
-  {
-    id: 'TX-8924',
-    type: 'Refund',
-    amount: '+$450.00',
-    status: 'COMPLETED',
-    method: 'Wallet',
-    date: '2024-05-10 09:20',
-  },
-  {
-    id: 'TX-8925',
-    type: 'Deposit',
-    amount: '+$1,200.00',
-    status: 'FAILED',
-    method: 'PayPal',
-    date: '2024-05-10 08:00',
-  },
-  {
-    id: 'TX-8926',
-    type: 'Payout',
-    amount: '-$3,500.00',
-    status: 'COMPLETED',
-    method: 'Bank Transfer',
-    date: '2024-05-09 15:30',
-  },
-]
-
 const TransactionsPage = () => {
+  const dispatch = useDispatch()
+  const { data: transactions, loading } = useSelector((state) => state.adminTransaction)
+
+  useEffect(() => {
+    dispatch(fetchTransactions())
+  }, [dispatch])
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
@@ -85,57 +42,73 @@ const TransactionsPage = () => {
   const columns = [
     {
       header: 'Transaction ID',
+      // BE: transaction.id (UUID)
       render: (row) => <span className="font-mono text-xs font-bold text-slate-500">{row.id}</span>,
     },
     {
       header: 'Type',
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          {row.amount.startsWith('+') ? (
-            <div className="bg-success/10 text-success flex h-7 w-7 items-center justify-center rounded-full">
-              <ArrowDownRight size={14} />
-            </div>
-          ) : (
-            <div className="bg-danger/10 text-danger flex h-7 w-7 items-center justify-center rounded-full">
-              <ArrowUpRight size={14} />
-            </div>
-          )}
-          <span className="text-sm font-medium text-slate-700">{row.type}</span>
-        </div>
-      ),
+      render: (row) => {
+        // BE: transactionType (enum string) — dương là nhận vào, âm là trả ra
+        const isCredit = row.transactionType === 'DEPOSIT' || row.transactionType === 'REFUND' || row.amount > 0
+        return (
+          <div className="flex items-center gap-2">
+            {isCredit ? (
+              <div className="bg-success/10 text-success flex h-7 w-7 items-center justify-center rounded-full">
+                <ArrowDownRight size={14} />
+              </div>
+            ) : (
+              <div className="bg-danger/10 text-danger flex h-7 w-7 items-center justify-center rounded-full">
+                <ArrowUpRight size={14} />
+              </div>
+            )}
+            <span className="text-sm font-medium text-slate-700">
+              {/* BE: transactionType hoặc type */}
+              {row.transactionType || row.type || '—'}
+            </span>
+          </div>
+        )
+      },
     },
     {
       header: 'Amount',
-      render: (row) => (
-        <span
-          className={`font-bold ${row.amount.startsWith('+') ? 'text-success' : 'text-slate-900'}`}
-        >
-          {row.amount}
-        </span>
-      ),
+      render: (row) => {
+        // BE: amount là số (Long/BigDecimal), không có dấu + / -
+        const amt = row.amount ?? 0
+        const isCredit = amt >= 0
+        return (
+          <span className={`font-bold ${isCredit ? 'text-success' : 'text-slate-900'}`}>
+            {isCredit ? '+' : ''}{amt.toLocaleString('vi-VN')} đ
+          </span>
+        )
+      },
     },
     {
       header: 'Status',
       render: (row) => {
         const variants = {
           COMPLETED: 'success',
+          SUCCESS: 'success',
           PENDING: 'warning',
           FAILED: 'danger',
         }
+        const statusKey = row.status || row.transactionStatus
         return (
-          <Badge variant={variants[row.status]} size="sm" className="rounded-full">
-            {row.status}
+          <Badge variant={variants[statusKey] || 'slate'} size="sm" className="rounded-full">
+            {statusKey || '—'}
           </Badge>
         )
       },
     },
     {
       header: 'Method',
-      accessor: 'method',
+      // BE: paymentMethod hoặc method
+      render: (row) => <span>{row.paymentMethod || row.method || '—'}</span>,
     },
     {
       header: 'Date & Time',
-      accessor: 'date',
+      render: (row) =>
+        // BE: createdAt (LocalDateTime ISO string)
+        row.createdAt ? new Date(row.createdAt).toLocaleString('vi-VN') : (row.date || '—'),
     },
     {
       header: 'Actions',
@@ -191,9 +164,8 @@ const TransactionsPage = () => {
 
         {/* 3. MAIN CONTENT CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Header */}
@@ -281,7 +253,11 @@ const TransactionsPage = () => {
             {/* Table wrapper */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <DataTable columns={columns} data={MOCK_TRANSACTIONS} />
+                {loading ? (
+                  <div className="p-4 text-center">Loading...</div>
+                ) : (
+                  <DataTable columns={columns} data={transactions} />
+                )}
               </motion.div>
             </div>
           </main>

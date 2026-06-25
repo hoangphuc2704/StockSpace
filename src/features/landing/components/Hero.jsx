@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Search, Warehouse, Shield, BarChart, ChevronRight } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
-import { logout } from '@/store/authSlice'
+import { logoutThunk } from '@/store/authSlice'
 import Button from '@/components/atoms/Button'
 
 const LandingNavbar = () => {
@@ -61,8 +61,7 @@ const LandingNavbar = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  dispatch(logout())
-                  localStorage.removeItem('token')
+                  dispatch(logoutThunk())
                 }}
                 className="text-slate-300 hover:text-white"
               >

@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchSystemPolicies, createSystemPolicy } from '../../../store/adminSettingsSlice'
 import { motion } from 'framer-motion'
 import { Save, Globe, Shield, CreditCard, Lock, AlertCircle } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
@@ -7,9 +9,15 @@ import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 const PlatformSettingsPage = () => {
+  const dispatch = useDispatch()
+  const { data: policies, loading } = useSelector((state) => state.adminSettings)
   const [isSaving, setIsSaving] = useState(false)
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
+
+  useEffect(() => {
+    dispatch(fetchSystemPolicies())
+  }, [dispatch])
 
   // Đồng bộ logic đóng mở cho cả màn hình máy tính và thiết bị di động
   const toggleSidebar = () => {
@@ -20,9 +28,14 @@ const PlatformSettingsPage = () => {
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true)
-    setTimeout(() => setIsSaving(false), 1500)
+    try {
+      // Mock saving current form data as a new policy version
+      await dispatch(createSystemPolicy({ settings: 'updated' })).unwrap()
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const sections = [
@@ -104,9 +117,8 @@ const PlatformSettingsPage = () => {
 
         {/* 3. MAIN CONTENT CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Header cài đặt */}
