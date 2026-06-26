@@ -43,9 +43,9 @@ import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
 // Owner Pages
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
 import OwnerProfile from './features/owner/pages/OwnerProfile'
-// import MyWarehousesPage from './features/owner/pages/MyWarehousesPage'
-// import RentalRequestsPage from './features/owner/pages/RentalRequestsPage'
-// import RevenuePage from './features/owner/pages/RevenuePage'
+import PostWarehouse from './features/owner/pages/PostWarehouse'
+import ListWarehouse from './features/owner/pages/ListWarehouse'
+
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
 import StaffTasksPage from './features/staff/pages/StaffTasksPage'
@@ -124,7 +124,7 @@ const App = () => {
           <Route path="/admin/disputes" element={<DisputeManagementPage />} />
           <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
           <Route path="/admin/permissions" element={<PermissionManagementPage />} />
-          <Route path='admin/inspections' element={<InspectionsManagementPage />} />
+          <Route path="admin/inspections" element={<InspectionsManagementPage />} />
         </Route>
 
         {/* Tenant Routes */}
@@ -141,8 +141,8 @@ const App = () => {
         {/* Owner Routes */}
         {/* <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}> */}
         <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-
-        {/* <Route path="/owner/warehouses" element={<MyWarehousesPage />} /> */}
+        <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
+        <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
         {/* <Route path="/owner/requests" element={<RentalRequestsPage />} /> */}
         {/* <Route path="/owner/revenue" element={<RevenuePage />} /> */}
 
