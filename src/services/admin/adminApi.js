@@ -140,8 +140,23 @@ const adminApi = {
     api.post('/admin/system-policies', data),
 
   // =========================
+  // SYSTEM CONFIGURATIONS
+  //   GET /api/admin/configs
+  //   PUT /api/admin/configs/{key}
+  // =========================
+  getSystemConfigs: () =>
+    api.get('/admin/configs'),
+
+  updateSystemConfig: (key, data) =>
+    // data: UpdateSystemConfigRequest { configValue, description }
+    api.put(`/admin/configs/${key}`, data),
+
+  // =========================
   // PACKAGES & SUBSCRIPTIONS
   // =========================
+  getPackages: () =>
+    api.get('/packages'),
+
   createPackage: (data) =>
     // body: CreatePackageRequest
     // response: ApiResponse<ServicePackageResponse>

@@ -24,13 +24,15 @@ import TransactionsPage from './features/admin/pages/TransactionsPage'
 import DepositApprovalPage from './features/admin/pages/DepositApprovalPage'
 import PaymentsPage from './features/admin/pages/PaymentsPage'
 import AnalyticsPage from './features/admin/pages/AnalyticsPage'
-import PlatformSettingsPage from './features/admin/pages/PlatformSettingsPage'
+// import PlatformSettingsPage from './features/admin/pages/PlatformSettingsPage'
+import SystemPolicyPage from './features/admin/pages/SystemPolicyPage'
 import UserManagementPage from './features/admin/pages/UserManagementPage'
 import DisputeManagementPage from './features/admin/pages/DisputeManagementPage'
 import AdminWithdrawalsPage from './features/admin/pages/AdminWithdrawalsPage'
 import PermissionManagementPage from './features/admin/pages/PermissionManagementPage'
 import InspectionsManagementPage from './features/admin/pages/InspectionsManagementPage'
-
+import WareHouseManagementPage from './features/admin/pages/WareHouseManagementPage'
+import SystemConfigueManagementPage from './features/admin/pages/SystemConfigueManagementPage'
 // Tenant Pages
 import TenantDashboard from './features/tenant/pages/TenantDashboard'
 import InventoryPage from './features/inventory/pages/InventoryPage'
@@ -50,6 +52,10 @@ import OwnerProfile from './features/owner/pages/OwnerProfile'
 import StaffDashboard from './features/staff/pages/StaffDashboard'
 import StaffTasksPage from './features/staff/pages/StaffTasksPage'
 import StaffInventoryPage from './features/staff/pages/StaffInventoryPage'
+import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages_SubcriptionsManagementPage'
+
+// Inspector Pages
+import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
 
 const App = () => {
   const dispatch = useDispatch()
@@ -119,12 +125,15 @@ const App = () => {
           <Route path="/admin/deposits" element={<DepositApprovalPage />} />
           <Route path="/admin/payments" element={<PaymentsPage />} />
           <Route path="/admin/analytics" element={<AnalyticsPage />} />
-          <Route path="/admin/settings" element={<PlatformSettingsPage />} />
+          <Route path="/admin/system-policies" element={<SystemPolicyPage />} />
           <Route path="/admin/users" element={<UserManagementPage />} />
           <Route path="/admin/disputes" element={<DisputeManagementPage />} />
           <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
           <Route path="/admin/permissions" element={<PermissionManagementPage />} />
           <Route path='admin/inspections' element={<InspectionsManagementPage />} />
+          <Route path='admin/warehouses-management' element={<WareHouseManagementPage />} />
+          <Route path='admin/system-config' element={<SystemConfigueManagementPage />} />
+          <Route path='admin/package-subcription' element={<Packages_SubcriptionsManagementPage />} />
         </Route>
 
         {/* Tenant Routes */}
@@ -155,6 +164,11 @@ const App = () => {
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
           <Route path="/staff/inventory" element={<StaffInventoryPage />} />
+        </Route>
+
+        {/* Inspector Routes */}
+        <Route element={<RoleGuard allowedRoles={['ROLE_INSPECTOR']} />}>
+          <Route path="/inspector/inspections" element={<InspectorInspectionsPage />} />
         </Route>
 
         {/* Fallback */}

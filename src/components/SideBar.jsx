@@ -31,15 +31,18 @@ const SIDEBAR_MENUS = {
     { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/admin/dashboard' },
     { text: 'Users', icon: HiOutlineUsers, path: '/admin/users' },
     { text: 'Warehouses Approval', icon: HiOutlineHomeModern, path: '/admin/listings' },
-    { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },
-    { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },
+    // { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },
+    // { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },
     { text: 'Transactions', icon: HiOutlineExclamationCircle, path: '/admin/transactions' },
-    { text: 'Payments', icon: HiOutlineCurrencyDollar, path: '/admin/payments' },
+    // { text: 'Payments', icon: HiOutlineCurrencyDollar, path: '/admin/payments' },
+    { text: 'Warehouses Management', icon: HiOutlineHomeModern, path: '/admin/warehouses-management' },
     { text: 'Dispute Management', icon: HiOutlineExclamationCircle, path: '/admin/disputes' },
     { text: 'Withdrawals', icon: HiOutlineCurrencyDollar, path: '/admin/withdrawals' },
     { text: 'Permission', icon: HiOutlineUserGroup, path: '/admin/permissions' },
     { text: 'Inspections', icon: HiOutlineClipboardDocumentList, path: '/admin/inspections' },
-    { text: 'Platform Settings', icon: HiOutlineDocumentText, path: '/admin/settings' },
+    { text: 'System Policies', icon: HiOutlineDocumentText, path: '/admin/system-policies' },
+    { text: 'System Config', icon: HiOutlineCog6Tooth, path: '/admin/system-config' },
+    { text: 'Package Subcription', icon: HiOutlineCog6Tooth, path: '/admin/package-subcription' },
   ],
   TENANT: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/tenant/dashboard' },
@@ -60,6 +63,9 @@ const SIDEBAR_MENUS = {
     { text: 'Tasks', icon: HiOutlineClipboardDocumentList, path: '/staff/tasks' },
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/staff/inventory' },
   ],
+  INSPECTOR: [
+    { text: 'My Inspections', icon: HiOutlineClipboardDocumentList, path: '/inspector/inspections' },
+  ]
 }
 
 const Sidebar = ({ currentRole = 'ADMIN' }) => {
