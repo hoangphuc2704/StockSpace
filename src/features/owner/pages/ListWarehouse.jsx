@@ -4,7 +4,6 @@ import {
   Warehouse,
   MapPin,
   Layers,
-  DollarSign,
   Plus,
   Search,
   Filter,
@@ -19,43 +18,9 @@ import Button from '@/components/atoms/Button'
 // Import Sidebar và Logo từ hệ thống của bạn
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
-
-// Mock Data dữ liệu kho ban đầu
-const initialWarehouses = [
-  {
-    id: 'wh-01',
-    name: 'Kho Lạnh Cát Lái Hub A',
-    address: 'Đường Nguyễn Thị Định, Quận 2, TP. Hồ Chí Minh',
-    capacity: 1500,
-    pricePerMonth: 45000000,
-    status: 'AVAILABLE',
-    typeName: 'Kho Lạnh',
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'wh-02',
-    name: 'Kho Tổng Hợp Tân Bình Tân',
-    address: 'KCN Tân Bình, Quận Tân Phú, TP. Hồ Chí Minh',
-    capacity: 800,
-    pricePerMonth: 22000000,
-    status: 'FULL',
-    typeName: 'Kho Thường',
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=500&auto=format&fit=crop&q=60',
-  },
-  {
-    id: 'wh-03',
-    name: 'Kho Ngoại Quan Sóng Thần',
-    address: 'Đại lộ Thống Nhất, Dĩ An, Bình Dương',
-    capacity: 3000,
-    pricePerMonth: 90000000,
-    status: 'MAINTENANCE',
-    typeName: 'Kho Ngoại Quan',
-    coverImageUrl:
-      'https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=500&auto=format&fit=crop&q=60',
-  },
-]
+import { useEffect } from 'react'
+import { useDispatch } from 'react-redux'
+import warehouseApi from '../../../services/warehouse/warehouseApi'
 
 const WarehouseManagement = () => {
   const navigate = useNavigate()
@@ -64,10 +29,27 @@ const WarehouseManagement = () => {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
 
-  // 2. State quản lý bộ lọc và dữ liệu kho
-  const [warehouses, setWarehouses] = useState(initialWarehouses)
+  // 2. State quản lý bộ lọc và dữ liệu kho hàng (SỬA TẠI ĐÂY: Khởi tạo bằng [] thay vì '')
+  const [warehouses, setWarehouses] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+
+  useEffect(() => {
+    const fetchWarehouses = async () => {
+      try {
+        const response = await warehouseApi.getOwnerWarehouses()
+        if (response.success && response.data) {
+          // Đảm bảo dữ liệu set vào state bắt buộc phải là mảng
+          setWarehouses(Array.isArray(response.data) ? response.data : response.data.content || [])
+        } else {
+          console.error('Failed to fetch warehouses:', response.message)
+        }
+      } catch (error) {
+        console.error('Error fetching warehouses:', error)
+      }
+    }
+    fetchWarehouses() // SỬA TẠI ĐÂY: Kích hoạt gọi hàm trong useEffect
+  }, [])
 
   const toggleSidebar = () => {
     if (window.innerWidth < 768) {
@@ -79,6 +61,7 @@ const WarehouseManagement = () => {
 
   // Hàm xử lý cập nhật trạng thái kho trực tiếp tại bảng
   const handleStatusChange = (id, newStatus) => {
+    if (!Array.isArray(warehouses)) return
     setWarehouses((prevList) =>
       prevList.map((wh) => (wh.id === id ? { ...wh, status: newStatus } : wh))
     )
@@ -110,13 +93,18 @@ const WarehouseManagement = () => {
     }
   }
 
-  const filteredWarehouses = warehouses.filter((wh) => {
-    const matchesSearch =
-      wh.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      wh.address.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'ALL' || wh.status === statusFilter
-    return matchesSearch && matchesStatus
-  })
+  // SỬA TẠI ĐÂY: Thêm kiểm tra phòng ngừa Array.isArray bảo vệ bộ lọc client
+  const filteredWarehouses = Array.isArray(warehouses)
+    ? warehouses.filter((wh) => {
+        const name = wh?.name ? wh.name.toLowerCase() : ''
+        const address = wh?.address ? wh.address.toLowerCase() : ''
+
+        const matchesSearch =
+          name.includes(searchTerm.toLowerCase()) || address.includes(searchTerm.toLowerCase())
+        const matchesStatus = statusFilter === 'ALL' || wh.status === statusFilter
+        return matchesSearch && matchesStatus
+      })
+    : []
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -159,7 +147,7 @@ const WarehouseManagement = () => {
           currentRole="OWNER"
         />
 
-        {/* MAIN CONTAINER: Tự động co giãn lề trái theo Sidebar giống trang chính */}
+        {/* MAIN CONTAINER */}
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]'}`}
         >
@@ -265,14 +253,14 @@ const WarehouseManagement = () => {
                             <td className="px-6 py-4 font-mono font-semibold text-slate-900">
                               <div className="flex items-center gap-1">
                                 <Layers className="h-3.5 w-3.5 text-slate-400" />
-                                {wh.capacity.toLocaleString()} $m^2$
+                                {wh.capacity ? wh.capacity.toLocaleString() : 0} m²
                               </div>
                             </td>
 
                             {/* Cột 4: Giá thuê */}
                             <td className="px-6 py-4 font-bold text-slate-900">
                               <span className="text-emerald-600">
-                                {wh.pricePerMonth.toLocaleString()}
+                                {wh.pricePerMonth ? wh.pricePerMonth.toLocaleString() : 0}
                               </span>{' '}
                               <span className="text-xs font-normal text-slate-400">đ</span>
                             </td>

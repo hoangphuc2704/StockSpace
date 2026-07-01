@@ -1,7 +1,6 @@
 import api from './apiConfig'
 
 export const authApi = {
-
   login: async (credentials) => {
     const response = await api.post('/auth/login', credentials)
     return response.data
@@ -38,5 +37,4 @@ export const authApi = {
     const response = await api.post('/auth/google', { code })
     return response.data
   },
-
 }

@@ -139,16 +139,15 @@ const App = () => {
         </Route>
 
         {/* Owner Routes */}
-        {/* <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}> */}
-        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-        <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
-        <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
-        {/* <Route path="/owner/requests" element={<RentalRequestsPage />} /> */}
-        {/* <Route path="/owner/revenue" element={<RevenuePage />} /> */}
+        <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}>
+          <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+          <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
+          <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
+          {/* <Route path="/owner/requests" element={<RentalRequestsPage />} /> */}
+          {/* <Route path="/owner/revenue" element={<RevenuePage />} /> */}
 
-        <Route path="/owner/profile" element={<OwnerProfile />} />
-
-        {/* </Route> */}
+          <Route path="/owner/profile" element={<OwnerProfile />} />
+        </Route>
 
         {/* Staff Routes */}
         <Route element={<RoleGuard allowedRoles={['ROLE_STAFF']} />}>

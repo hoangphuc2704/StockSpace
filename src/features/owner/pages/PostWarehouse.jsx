@@ -12,31 +12,29 @@ import {
   X,
   ArrowLeft,
   Save,
+  Image as ImageIcon,
 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import warehouseApi from '../../../services/warehouse/warehouseApi'
 
 const CreateWarehouse = () => {
   const navigate = useNavigate()
+  const [isLoading, setIsLoading] = useState(false)
 
   // State lưu trữ dữ liệu form
   const [formData, setFormData] = useState({
+    typeId: '',
     name: '',
     address: '',
     description: '',
     capacity: '',
     pricePerMonth: '',
-    status: 'AVAILABLE',
-    typeId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
-    typeName: '',
-    ownerId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
-    ownerName: '',
-    ownerPhone: '',
+    imageUrls: [],
   })
 
-  // State quản lý files local (Ảnh bìa và Các ảnh phụ)
-  const [coverFile, setCoverFile] = useState(null)
-  const [subFiles, setSubFiles] = useState([])
+  //state upload file
+  const [uploadedFiles, setUploadedFiles] = useState([])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -48,62 +46,47 @@ const CreateWarehouse = () => {
     }))
   }
 
-  // Xử lý upload ảnh bìa
-  const handleCoverChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      setCoverFile(e.target.files[0])
-    }
-  }
-
-  // Xử lý chọn nhiều ảnh phụ
-  const handleSubFilesChange = (e) => {
-    if (e.target.files) {
-      const filesArray = Array.from(e.target.files)
-      setSubFiles((prev) => [...prev, ...filesArray])
-    }
-  }
-
-  // Xóa ảnh phụ khỏi danh sách chuẩn bị upload
-  const removeSubFile = (indexToRemove) => {
-    setSubFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove))
-  }
-
   // Kiểm tra xem toàn bộ các trường bắt buộc đã được điền đầy đủ chưa
   const isFormValid =
     formData.name.trim() !== '' &&
     formData.address.trim() !== '' &&
     formData.description.trim() !== '' &&
-    formData.capacity > 0 &&
-    formData.pricePerMonth > 0 &&
-    formData.typeName !== '' &&
-    formData.ownerName.trim() !== '' &&
-    formData.ownerPhone.trim() !== '' &&
+    Number(formData.capacity) > 0 &&
+    Number(formData.pricePerMonth) > 0 &&
     coverFile !== null
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!isFormValid) return
+    if (!isFormValid || isLoading) return
 
+    setIsLoading(true)
     const submissionData = new FormData()
+
+    // Append các trường text
+    submissionData.append('typeId', formData.typeId)
     submissionData.append('name', formData.name)
     submissionData.append('address', formData.address)
     submissionData.append('description', formData.description)
     submissionData.append('capacity', formData.capacity)
     submissionData.append('pricePerMonth', formData.pricePerMonth)
-    submissionData.append('status', formData.status)
-    submissionData.append('typeId', formData.typeId)
-    submissionData.append('typeName', formData.typeName)
-    submissionData.append('ownerId', formData.ownerId)
-    submissionData.append('ownerName', formData.ownerName)
-    submissionData.append('ownerPhone', formData.ownerPhone)
+    submissionData.append('imageUrls', JSON.stringify(formData.imageUrls) || '[]')
 
-    if (coverFile) submissionData.append('coverImage', coverFile)
-    subFiles.forEach((file) => {
-      submissionData.append('images', file)
-    })
+    try {
+      // Gọi API createWarehouse từ file service hệ thống của bạn
+      const response = await warehouseApi.createWarehouse(submissionData)
 
-    console.log('FormData đã sẵn sàng để gửi API!')
-    alert('Đăng tin thành công!')
+      if (response && (response.success || response.status === 200 || response.status === 21)) {
+        alert('Đăng tin kho vận thành công!')
+        navigate('/owner/warehouses') // Chuyển hướng về trang danh sách kho
+      } else {
+        alert(response?.message || 'Đăng tin thất bại, vui lòng kiểm tra lại dữ liệu.')
+      }
+    } catch (error) {
+      console.error('Error creating warehouse:', error)
+      alert('Đã xảy ra lỗi hệ thống khi kết nối API!')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -135,14 +118,14 @@ const CreateWarehouse = () => {
             </button>
           </div>
         </div>
-        <main className="mx-auto w-full max-w-[1000px] space-y-6 p-6 md:p-10">
+        <main className="mx-auto w-full max-w-250 space-y-6 p-6 md:p-10">
           {/* TIÊU ĐỀ TRANG */}
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Đăng tin kho vận mới</h1>
             <p className="text-sm text-slate-500">
               Vui lòng điền đầy đủ tất cả các trường thông tin có dấu{' '}
-              <span className="text-rose-500">*</span> và upload hình ảnh để mở khóa nút đăng tin ở
-              cuối trang.
+              <span className="text-rose-500">*</span> và upload hình ảnh ảnh bìa để mở khóa nút
+              đăng tin ở cuối trang.
             </p>
           </div>
 
@@ -195,7 +178,7 @@ const CreateWarehouse = () => {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-slate-700">
-                        Sức chứa ($m^2$) <span className="text-rose-500">*</span>
+                        Sức chứa (m²) <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative">
                         <Layers className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -206,6 +189,7 @@ const CreateWarehouse = () => {
                           onChange={handleInputChange}
                           className="w-full rounded-xl border border-slate-200 py-2.5 pr-4 pl-10 text-sm font-medium focus:border-blue-500 focus:outline-none"
                           placeholder="VD: 500"
+                          min="1"
                           required
                         />
                       </div>
@@ -224,6 +208,7 @@ const CreateWarehouse = () => {
                           onChange={handleInputChange}
                           className="w-full rounded-xl border border-slate-200 py-2.5 pr-4 pl-10 text-sm font-medium focus:border-blue-500 focus:outline-none"
                           placeholder="VD: 15000000"
+                          min="1"
                           required
                         />
                       </div>
@@ -255,46 +240,62 @@ const CreateWarehouse = () => {
                     2. Hình ảnh thực tế
                   </h3>
 
-                  {/* Ảnh bìa */}
+                  {/* Ảnh bìa chính (Bắt buộc để mở nút Submit) */}
                   <div className="space-y-2">
                     <label className="text-xs font-semibold text-slate-700">
                       Ảnh bìa đại diện kho <span className="text-rose-500">*</span>
                     </label>
-                    <div className="flex w-full items-center justify-center">
-                      <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 transition-colors hover:bg-slate-50">
-                        <div className="flex flex-col items-center justify-center px-4 pt-5 pb-6 text-center">
-                          <UploadCloud className="mb-1 h-6 w-6 text-slate-400" />
-                          <p className="text-xs font-medium text-slate-600">
-                            {coverFile
-                              ? `Đã chọn: ${coverFile.name}`
-                              : 'Bấm để tải lên ảnh bìa đại diện'}
-                          </p>
+
+                    {!coverPreview ? (
+                      <div className="flex w-full items-center justify-center">
+                        <label className="flex h-32 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/20 transition-colors hover:bg-blue-50/50">
+                          <div className="flex flex-col items-center justify-center p-4 text-center">
+                            <UploadCloud className="mb-2 h-6 w-6 text-blue-500" />
+                            <p className="text-xs font-medium text-slate-700">
+                              Tải lên ảnh bìa chính
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-slate-400">
+                              Hỗ trợ JPG, PNG (Bắt buộc)
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleCoverChange}
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <div className="relative h-40 w-full max-w-xs overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                        <img
+                          src={coverPreview}
+                          alt="Cover Preview"
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeCoverFile}
+                          className="absolute top-2 right-2 rounded-full bg-slate-900/60 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-rose-600"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                        <div className="absolute bottom-2 left-2 rounded-md bg-blue-600 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white uppercase">
+                          Ảnh bìa chính
                         </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={coverFile || (() => {})}
-                        />
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={handleCoverChange}
-                        />
-                      </label>
-                    </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Ảnh phụ */}
-                  <div className="space-y-2">
+                  <div className="space-y-2 border-t border-slate-100 pt-4">
                     <label className="text-xs font-semibold text-slate-700">
-                      Các ảnh chi tiết bổ sung
+                      Các ảnh chi tiết bổ sung (Tùy chọn)
                     </label>
                     <div className="flex w-full items-center justify-center">
                       <label className="flex h-24 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 transition-colors hover:bg-slate-50">
                         <div className="flex flex-col items-center justify-center text-center">
-                          <UploadCloud className="mb-1 h-5 w-5 text-slate-400" />
+                          <ImageIcon className="mb-1 h-5 w-5 text-slate-400" />
                           <p className="text-xs text-slate-500">
                             Tải lên nhiều hình ảnh góc cạnh nhà kho
                           </p>
@@ -316,7 +317,7 @@ const CreateWarehouse = () => {
                             key={idx}
                             className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 py-1 pr-1.5 pl-3 text-xs font-medium text-slate-700"
                           >
-                            <span className="max-w-[120px] overflow-hidden text-ellipsis whitespace-nowrap">
+                            <span className="max-w-30 overflow-hidden text-ellipsis whitespace-nowrap">
                               {file.name}
                             </span>
                             <button
@@ -406,19 +407,20 @@ const CreateWarehouse = () => {
               </div>
             </div>
 
-            {/* NÚT SUBMIT ĐƯỢC CHUYỂN XUỐNG DƯỚI CÙNG VÀ TRẢI DÀI TOÀN BỘ CHIỀU RỘNG */}
+            {/* NÚT SUBMIT */}
             <div className="pt-4">
               <Button
                 type="submit"
                 size="sm"
-                disabled={!isFormValid}
+                disabled={!isFormValid || isLoading}
                 className={`w-full justify-center rounded-xl py-4 text-base font-semibold shadow-md transition-all ${
-                  !isFormValid
-                    ? 'cursor-not-allowed bg-slate-300 text-slate-500 opacity-40 hover:bg-slate-300'
+                  !isFormValid || isLoading
+                    ? 'cursor-not-allowed bg-slate-300 text-slate-500 opacity-40'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
-                <Save className="mr-2 h-5 w-5" /> Đăng tin kho vận ngay
+                <Save className="mr-2 h-5 w-5" />
+                {isLoading ? 'Đang xử lý đăng tin...' : 'Đăng tin kho vận ngay'}
               </Button>
             </div>
           </form>

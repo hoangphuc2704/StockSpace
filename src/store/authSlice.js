@@ -14,12 +14,15 @@ export const loginUser = createAsyncThunk(
         // Store token for apiConfig interceptor
         localStorage.setItem('token', response.data.accessToken)
         // Store user info for rehydration after page refresh
-        localStorage.setItem('user', JSON.stringify({
-          name: response.data.fullName,
-          role: response.data.role,
-          userId: response.data.userId,
-          email: response.data.email,
-        }))
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            name: response.data.fullName,
+            role: response.data.role,
+            userId: response.data.userId,
+            email: response.data.email,
+          })
+        )
         return response.data
       }
       return rejectWithValue(response.message || 'Login failed')
@@ -44,20 +47,17 @@ export const registerUser = createAsyncThunk(
   }
 )
 
-export const logoutThunk = createAsyncThunk(
-  'auth/logoutThunk',
-  async (_, { rejectWithValue }) => {
-    try {
-      await authApi.logout()
-    } catch (err) {
-      console.error('Logout API error:', err)
-      // Vẫn clear state dù API fail
-    } finally {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-    }
+export const logoutThunk = createAsyncThunk('auth/logoutThunk', async (_, { rejectWithValue }) => {
+  try {
+    await authApi.logout()
+  } catch (err) {
+    console.error('Logout API error:', err)
+    // Vẫn clear state dù API fail
+  } finally {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
   }
-)
+})
 
 export const logoutAllThunk = createAsyncThunk(
   'auth/logoutAllThunk',
@@ -136,12 +136,15 @@ export const googleLoginThunk = createAsyncThunk(
       const response = await authApi.googleLogin(code)
       if (response.success && response.data) {
         localStorage.setItem('token', response.data.accessToken)
-        localStorage.setItem('user', JSON.stringify({
-          name: response.data.fullName,
-          role: response.data.role,
-          userId: response.data.userId,
-          email: response.data.email,
-        }))
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            name: response.data.fullName,
+            role: response.data.role,
+            userId: response.data.userId,
+            email: response.data.email,
+          })
+        )
         return response.data
       }
       return rejectWithValue(response.message || 'Google login failed')
@@ -354,7 +357,8 @@ const authSlice = createSlice({
 })
 
 // ✅ [HEAD] Export đầy đủ các actions
-export const { logout, setUser, updateUser, updateToken, clearError, clearPasswordResetMessage } = authSlice.actions
+export const { logout, setUser, updateUser, updateToken, clearError, clearPasswordResetMessage } =
+  authSlice.actions
 
 // ❌ [origin/owner] - Chỉ export logout và updateUser
 // export const { logout, updateUser } = authSlice.actions

@@ -1,6 +1,6 @@
 import api from '../apiConfig'
 
-export const onwerwarehouseApi = {
+const onwerwarehouseApi = {
   //cập nhật thông tin kho
   updateWarehouseInfo: (warehouseId, data) => {
     return api.put(`/owner/warehouses/${warehouseId}`, data)
@@ -36,3 +36,5 @@ export const onwerwarehouseApi = {
     return api.put(`/owner/warehouses/${warehouseId}/status`, { status })
   },
 }
+
+export default onwerwarehouseApi
