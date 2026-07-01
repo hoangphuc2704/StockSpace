@@ -36,6 +36,7 @@ const SIDEBAR_MENUS = {
     { text: 'Transactions', icon: HiOutlineExclamationCircle, path: '/admin/transactions' },
     // { text: 'Payments', icon: HiOutlineCurrencyDollar, path: '/admin/payments' },
     { text: 'Warehouses Management', icon: HiOutlineHomeModern, path: '/admin/warehouses-management' },
+    { text: 'Warehouse Types', icon: HiOutlineSquaresPlus, path: '/admin/warehouse-types' },
     { text: 'Dispute Management', icon: HiOutlineExclamationCircle, path: '/admin/disputes' },
     { text: 'Withdrawals', icon: HiOutlineCurrencyDollar, path: '/admin/withdrawals' },
     { text: 'Permission', icon: HiOutlineUserGroup, path: '/admin/permissions' },

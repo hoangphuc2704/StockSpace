@@ -14,7 +14,8 @@ import adminWarehouseManageReducer from './adminWarehouseManagement'
 import adminSystemPolicyReducer from './adminSystemPolicysSlice'
 import adminPackagesSubcriptionReducer from './adminPackagesSubcription'
 import inspectorManagementReducer from './inspectorManagement'
-
+import adminWarehouseTypeReducer from './adminWarehouseType'
+import adminSystemConfigReducer from './adminSystemConfigueManagement'
 import uiReducer from './uiSlide'
 
 const store = configureStore({
@@ -34,7 +35,8 @@ const store = configureStore({
     adminSystemPolicy: adminSystemPolicyReducer,
     adminPackagesSubcription: adminPackagesSubcriptionReducer,
     inspectorManagement: inspectorManagementReducer,
-
+    adminWarehouseType: adminWarehouseTypeReducer,
+    adminSystemConfig: adminSystemConfigReducer,
     ui: uiReducer,
   },
 })
