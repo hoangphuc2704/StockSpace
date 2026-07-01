@@ -32,6 +32,7 @@ import AdminWithdrawalsPage from './features/admin/pages/AdminWithdrawalsPage'
 import PermissionManagementPage from './features/admin/pages/PermissionManagementPage'
 import InspectionsManagementPage from './features/admin/pages/InspectionsManagementPage'
 import WareHouseManagementPage from './features/admin/pages/WareHouseManagementPage'
+import WarehousesTypePage from './features/admin/pages/WarehousesTypePage'
 import SystemConfigueManagementPage from './features/admin/pages/SystemConfigueManagementPage'
 // Tenant Pages
 import TenantDashboard from './features/tenant/pages/TenantDashboard'
@@ -132,6 +133,7 @@ const App = () => {
           <Route path="/admin/permissions" element={<PermissionManagementPage />} />
           <Route path="admin/inspections" element={<InspectionsManagementPage />} />
           <Route path="admin/warehouses-management" element={<WareHouseManagementPage />} />
+          <Route path="admin/warehouse-types" element={<WarehousesTypePage />} />
           <Route path="admin/system-config" element={<SystemConfigueManagementPage />} />
           <Route
             path="admin/package-subcription"
