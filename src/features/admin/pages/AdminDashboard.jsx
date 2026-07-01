@@ -1,4 +1,7 @@
-import React, { useState } from 'react'
+import React from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+// Import các action từ uiSlice (Điều chỉnh lại đường dẫn cho đúng với dự án của bạn nếu cần)
+import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 import {
   HiOutlineUsers,
   HiOutlineHomeModern,
@@ -36,17 +39,10 @@ const growthData = [
 ]
 
 const AdminDashboard = () => {
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const dispatch = useDispatch()
 
-  const toggleSidebar = () => {
-    // Trên màn hình lớn: Đóng/Mở thu gọn sidebar. Trên mobile: Bật menu bay vào
-    if (window.innerWidth < 768) {
-      setIsMobileOpen(!isMobileOpen)
-    } else {
-      setIsSidebarExpanded(!isSidebarExpanded)
-    }
-  }
+  // ✅ Đã đồng bộ trạng thái Sidebar từ Redux Store chung giống y hệt Owner
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
 
   const stats = [
     {
@@ -125,7 +121,8 @@ const AdminDashboard = () => {
       <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={toggleSidebar}
+            // ✅ Đổi sang kích hoạt action từ Redux thay vì hàm handle local
+            onClick={() => dispatch(toggleSidebar())}
             className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
           >
             <HiBars3 className="h-6 w-6" />
@@ -147,24 +144,20 @@ const AdminDashboard = () => {
         {isMobileOpen && (
           <div
             className="fixed inset-0 z-40 bg-slate-900/30"
-            onClick={() => setIsMobileOpen(false)}
+            // ✅ Đồng bộ hành vi đóng bằng Redux action
+            onClick={() => dispatch(closeMobileSidebar())}
           />
         )}
       </div>
 
       <div className="flex pt-14">
-        {/* 2. SIDEBAR (Đã áp dụng component dùng chung) */}
-        <Sidebar
-          isSidebarExpanded={isSidebarExpanded}
-          isMobileOpen={isMobileOpen}
-          setIsMobileOpen={setIsMobileOpen}
-          currentRole="ADMIN" // Chỉ định quyền để hiển thị đúng menu mong muốn
-        />
+        {/* 2. SIDEBAR */}
+        <Sidebar currentRole="ADMIN" />
 
-        {/* 3. MAIN CONTENT CONTAINER */}
+        {/* 3. MAIN CONTENT CONTAINER - Tự động co giãn đồng nhất */}
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // Thống nhất khoảng cách pl-[72px] giống owner
           }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">

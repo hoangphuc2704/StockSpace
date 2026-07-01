@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Warehouse,
@@ -14,15 +14,16 @@ import {
 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import warehouseApi from '../../../services/warehouse/warehouseApi'
-
+import warehouseApi from '../../../services/admin/adminApi'
+import ownerApi from '../../../services/warehouse/warehouseApi'
 const CreateWarehouse = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
+  const [warehouseTypes, setWarehouseTypes] = useState([]) // Tạm thời để trống vì đã cmt API
 
   // State thông tin form text
   const [formData, setFormData] = useState({
-    typeId: '',
+    typeId: '', // Sẽ được gán tự động bằng useEffect phía dưới
     name: '',
     address: '',
     description: '',
@@ -36,6 +37,28 @@ const CreateWarehouse = () => {
 
   // State các ảnh liên quan (Tùy chọn)
   const [relatedImages, setRelatedImages] = useState([])
+
+  // 1. Gán giá trị mặc định cho typeId và tạm comment phần gọi API
+  useEffect(() => {
+    // Tự động set ID mặc định để form hợp lệ (isFormValid = true)
+    setFormData((prev) => ({ ...prev, typeId: '2c0157a2-6fa4-4b7e-8338-a9587cb59940' }))
+
+    /* --- TẠM THỜI COMMENT ĐOẠN API LẤY LOẠI KHO ---
+    const fetchWarehouseTypes = async () => {
+      try {
+        const response = await warehouseApi.getWarehouseTypes()
+        if (response && response.data) {
+          setWarehouseTypes(response.data)
+        } else if (Array.isArray(response)) {
+          setWarehouseTypes(response)
+        }
+      } catch (error) {
+        console.error('Error fetching warehouse types:', error)
+      }
+    }
+    fetchWarehouseTypes()
+    ------------------------------------------------ */
+  }, [])
 
   // Hàm chuyển đổi File sang Chuỗi Base64 (Xử lý bất đồng bộ)
   const convertFileToBase64 = (file) => {
@@ -127,7 +150,7 @@ const CreateWarehouse = () => {
       }
 
       // Gọi API truyền trực tiếp payload JSON object
-      const response = await warehouseApi.createWarehouse(payload)
+      const response = await ownerApi.createWarehouse(payload)
 
       if (response && (response.success || response.status === 200 || response.status === 21)) {
         alert('Đăng tin kho vận thành công!')
@@ -274,19 +297,12 @@ const CreateWarehouse = () => {
                   <h3 className="text-sm font-bold tracking-wider text-slate-400 uppercase">
                     2. Phân loại
                   </h3>
-                  <select
-                    name="typeId"
-                    value={formData.typeId}
-                    onChange={handleInputChange}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:border-blue-500 focus:outline-none"
-                    required
-                  >
-                    <option value="">-- Chọn loại kho --</option>
-                    <option value="Kho Thường">Kho tổng hợp (Kho thường)</option>
-                    <option value="Kho Lạnh">Kho mát / Kho đông lạnh</option>
-                    <option value="Kho Ngoại Quan">Kho ngoại quan</option>
-                    <option value="Kho Mini">Kho tự quản mini</option>
-                  </select>
+                  {/* Hiển thị thông báo loại kho cố định cho người dùng xem thay vì thẻ select dropdown */}
+                  <div className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 select-none">
+                    Mặc định (Hệ thống tự chọn)
+                  </div>
+                  {/* Input ẩn để giữ giá trị typeId mặc định phục vụ gửi đi và validate */}
+                  <input type="hidden" name="typeId" value={formData.typeId} />
                 </div>
 
                 <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

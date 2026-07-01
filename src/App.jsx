@@ -119,27 +119,24 @@ const App = () => {
 
         {/* Protected Routes Layout */}
         {/* Admin Routes */}
-        <Route element={<RoleGuard allowedRoles={['ROLE_ADMIN']} />}>
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/listings" element={<WarehouseApprovalPage />} />
-          <Route path="/admin/transactions" element={<TransactionsPage />} />
-          <Route path="/admin/deposits" element={<DepositApprovalPage />} />
-          <Route path="/admin/payments" element={<PaymentsPage />} />
-          <Route path="/admin/analytics" element={<AnalyticsPage />} />
-          <Route path="/admin/system-policies" element={<SystemPolicyPage />} />
-          <Route path="/admin/users" element={<UserManagementPage />} />
-          <Route path="/admin/disputes" element={<DisputeManagementPage />} />
-          <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
-          <Route path="/admin/permissions" element={<PermissionManagementPage />} />
-          <Route path="admin/inspections" element={<InspectionsManagementPage />} />
-          <Route path="admin/warehouses-management" element={<WareHouseManagementPage />} />
-          <Route path="admin/warehouse-types" element={<WarehousesTypePage />} />
-          <Route path="admin/system-config" element={<SystemConfigueManagementPage />} />
-          <Route
-            path="admin/package-subcription"
-            element={<Packages_SubcriptionsManagementPage />}
-          />
-        </Route>
+        {/* <Route element={<RoleGuard allowedRoles={['ROLE_ADMIN']} />}> */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/listings" element={<WarehouseApprovalPage />} />
+        <Route path="/admin/transactions" element={<TransactionsPage />} />
+        <Route path="/admin/deposits" element={<DepositApprovalPage />} />
+        <Route path="/admin/payments" element={<PaymentsPage />} />
+        <Route path="/admin/analytics" element={<AnalyticsPage />} />
+        <Route path="/admin/system-policies" element={<SystemPolicyPage />} />
+        <Route path="/admin/users" element={<UserManagementPage />} />
+        <Route path="/admin/disputes" element={<DisputeManagementPage />} />
+        <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
+        <Route path="/admin/permissions" element={<PermissionManagementPage />} />
+        <Route path="admin/inspections" element={<InspectionsManagementPage />} />
+        <Route path="admin/warehouses-management" element={<WareHouseManagementPage />} />
+        <Route path="admin/warehouse-types" element={<WarehousesTypePage />} />
+        <Route path="admin/system-config" element={<SystemConfigueManagementPage />} />
+        <Route path="admin/package-subcription" element={<Packages_SubcriptionsManagementPage />} />
+        {/* </Route> */}
 
         {/* Tenant Routes */}
         <Route element={<RoleGuard allowedRoles={['ROLE_TENANT']} />}>

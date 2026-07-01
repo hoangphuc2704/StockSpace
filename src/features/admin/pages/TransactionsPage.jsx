@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchTransactions, setPage, setFilters } from '../../../store/adminTransactionSlice'
+import { fetchTransactions, setPage } from '../../../store/adminTransactionSlice'
+// Import các actions điều khiển Sidebar toàn hệ thống từ uiSlice
+import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 import { motion } from 'framer-motion'
 import {
   CreditCard,
@@ -17,7 +19,6 @@ import {
 import { HiBars3 } from 'react-icons/hi2'
 import DataTable from '../../../components/organisms/DataTable'
 import Badge from '../../../components/atoms/Badge'
-import Button from '../../../components/atoms/Button'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
@@ -31,7 +32,6 @@ const TRANSACTION_TYPE_LABELS = {
   COMMISSION: 'Phí hoa hồng',
 }
 
-// Loại giao dịch nào là "tiền vào" (từ góc nhìn người dùng nộp tiền)
 const CREDIT_TYPES = new Set(['TOP_UP', 'DEPOSIT_REFUND'])
 
 const STATUS_VARIANT = {
@@ -47,20 +47,26 @@ const PAYMENT_METHOD_LABELS = {
   WALLET: 'Ví nội bộ',
 }
 
-const ALL_TYPES = ['', 'TOP_UP', 'WITHDRAWAL', 'DEPOSIT_PAYMENT', 'DEPOSIT_REFUND', 'PACKAGE_PAYMENT', 'COMMISSION']
+const ALL_TYPES = [
+  '',
+  'TOP_UP',
+  'WITHDRAWAL',
+  'DEPOSIT_PAYMENT',
+  'DEPOSIT_REFUND',
+  'PACKAGE_PAYMENT',
+  'COMMISSION',
+]
 const ALL_STATUSES = ['', 'SUCCESS', 'PENDING', 'FAILED']
 
-// ─── Helper ───────────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 const formatVND = (amount) =>
   typeof amount === 'number'
     ? amount.toLocaleString('vi-VN') + ' ₫'
     : (amount ?? 0).toString() + ' ₫'
 
-const formatDate = (dt) =>
-  dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—'
+const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—')
 
-const shortId = (id) =>
-  id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—'
+const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const TransactionsPage = () => {
@@ -73,14 +79,13 @@ const TransactionsPage = () => {
     totalPages,
     totalElements,
     size,
-    filters,
   } = useSelector((state) => state.adminTransaction)
 
   const [searchText, setSearchText] = useState('')
   const [localType, setLocalType] = useState('')
   const [localStatus, setLocalStatus] = useState('')
 
-  // Sidebar state (dùng Redux ui slice — giống các trang khác)
+  // ✅ Trạng thái Sidebar đồng bộ qua Redux Store toàn hệ thống
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
 
   // Fetch khi page hoặc size thay đổi
@@ -91,8 +96,12 @@ const TransactionsPage = () => {
   // ── Computed summary từ DATA THỰC trên trang hiện tại ──
   const summary = useMemo(() => {
     const total = transactions.reduce((s, t) => s + Number(t.amount ?? 0), 0)
-    const success = transactions.filter((t) => t.status === 'SUCCESS').reduce((s, t) => s + Number(t.amount ?? 0), 0)
-    const pending = transactions.filter((t) => t.status === 'PENDING').reduce((s, t) => s + Number(t.amount ?? 0), 0)
+    const success = transactions
+      .filter((t) => t.status === 'SUCCESS')
+      .reduce((s, t) => s + Number(t.amount ?? 0), 0)
+    const pending = transactions
+      .filter((t) => t.status === 'PENDING')
+      .reduce((s, t) => s + Number(t.amount ?? 0), 0)
     return { total, success, pending }
   }, [transactions])
 
@@ -128,8 +137,9 @@ const TransactionsPage = () => {
         return (
           <div className="flex items-center gap-2">
             <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full ${isCredit ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'
-                }`}
+              className={`flex h-7 w-7 items-center justify-center rounded-full ${
+                isCredit ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-500'
+              }`}
             >
               {isCredit ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
             </div>
@@ -147,7 +157,8 @@ const TransactionsPage = () => {
         const isCredit = CREDIT_TYPES.has(row.transactionType)
         return (
           <span className={`font-bold ${isCredit ? 'text-emerald-600' : 'text-slate-800'}`}>
-            {isCredit ? '+' : '-'}{formatVND(amt)}
+            {isCredit ? '+' : '-'}
+            {formatVND(amt)}
           </span>
         )
       },
@@ -177,7 +188,9 @@ const TransactionsPage = () => {
     {
       header: 'Ngày tạo',
       render: (row) => (
-        <span className="whitespace-nowrap text-sm text-slate-500">{formatDate(row.createdAt)}</span>
+        <span className="text-sm whitespace-nowrap text-slate-500">
+          {formatDate(row.createdAt)}
+        </span>
       ),
     },
     {
@@ -195,7 +208,11 @@ const TransactionsPage = () => {
       {/* TOP HEADER */}
       <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
         <div className="flex items-center gap-4">
-          <button className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200">
+          <button
+            // ✅ Gọi action toggleSidebar từ UI Slice
+            onClick={() => dispatch(toggleSidebar())}
+            className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
+          >
             <HiBars3 className="h-6 w-6" />
           </button>
           <div className="flex cursor-pointer items-center gap-2">
@@ -209,14 +226,27 @@ const TransactionsPage = () => {
         </div>
       </header>
 
+      {/* MOBILE TRIGGER OVERLAY */}
+      {/* ✅ Lớp phủ mờ đóng menu khi click ra ngoài ở màn hình Mobile */}
+      <div className="md:hidden">
+        {isMobileOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-slate-900/30"
+            onClick={() => dispatch(closeMobileSidebar())}
+          />
+        )}
+      </div>
+
       <div className="flex pt-14">
         {/* SIDEBAR */}
+        {/* ✅ Lược bớt việc truyền các props local thủ công, giao quyền lấy state cho Sidebar */}
         <Sidebar currentRole="ADMIN" />
 
         {/* MAIN CONTENT */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-            }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // ✅ Thay thế md:pl-18 bằng md:pl-[72px] để khớp UI layout
+          }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Page header */}
@@ -226,7 +256,9 @@ const TransactionsPage = () => {
                 <p className="mt-1 text-sm text-slate-500">
                   Toàn bộ lịch sử giao dịch tài chính trên hệ thống.
                   {totalElements > 0 && (
-                    <span className="ml-1 font-semibold text-slate-700">({totalElements.toLocaleString()} giao dịch)</span>
+                    <span className="ml-1 font-semibold text-slate-700">
+                      ({totalElements.toLocaleString()} giao dịch)
+                    </span>
                   )}
                 </p>
               </div>
@@ -268,11 +300,15 @@ const TransactionsPage = () => {
                   key={i}
                   className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
                 >
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.bg} ${item.color}`}>
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.bg} ${item.color}`}
+                  >
                     <item.icon size={24} />
                   </div>
                   <div>
-                    <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">{item.label}</p>
+                    <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
+                      {item.label}
+                    </p>
                     <p className="mt-0.5 text-xl font-bold text-slate-900">{item.value}</p>
                   </div>
                 </div>
@@ -283,13 +319,16 @@ const TransactionsPage = () => {
             <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 md:flex-row">
               {/* Search */}
               <div className="relative w-full md:w-96">
-                <Search className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" size={16} />
+                <Search
+                  className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+                  size={16}
+                />
                 <input
                   type="text"
                   placeholder="Tìm theo ID, loại, mã thanh toán..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm transition-all focus:ring-2 focus:ring-blue-200 focus:outline-none"
                 />
               </div>
 
@@ -348,9 +387,7 @@ const TransactionsPage = () => {
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
                   <span className="text-sm text-slate-500">
-                    Trang {page + 1} / {totalPages}
-                    {' '}·{' '}
-                    {totalElements.toLocaleString()} giao dịch
+                    Trang {page + 1} / {totalPages} · {totalElements.toLocaleString()} giao dịch
                   </span>
                   <div className="flex items-center gap-2">
                     <button

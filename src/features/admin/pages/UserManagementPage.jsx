@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchUsers,
@@ -12,6 +12,8 @@ import {
   setPage,
   clearError,
 } from '../../../store/adminUserSlice'
+// Import các action từ uiSlice để đồng bộ đóng mở sidebar toàn hệ thống
+import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Users,
@@ -85,7 +87,7 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
         fullName: form.fullName,
         phone: form.phone,
         password: form.password,
-        roleIds: [], // Admin có thể để trống; BE validate NotEmpty — nếu cần UI chọn role, extend sau
+        roleIds: [],
       })
     }
   }
@@ -99,7 +101,6 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
         transition={{ duration: 0.15 }}
         className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
-        {/* Header modal */}
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <h3 className="text-lg font-bold text-slate-900">
             {isEdit ? 'Chỉnh sửa người dùng' : 'Tạo người dùng mới'}
@@ -113,14 +114,16 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-          {/* Email — chỉ hiện khi tạo mới */}
           {!isEdit && (
             <div>
               <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
                 Email *
               </label>
               <div className="relative">
-                <Mail size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" />
+                <Mail
+                  size={15}
+                  className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+                />
                 <input
                   type="email"
                   value={form.email}
@@ -133,7 +136,6 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
             </div>
           )}
 
-          {/* Họ tên */}
           <div>
             <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
               Họ & Tên *
@@ -148,13 +150,15 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
             {errors.fullName && <p className="mt-1 text-xs text-red-500">{errors.fullName}</p>}
           </div>
 
-          {/* Số điện thoại */}
           <div>
             <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
               Số điện thoại
             </label>
             <div className="relative">
-              <Phone size={15} className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" />
+              <Phone
+                size={15}
+                className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
+              />
               <input
                 type="tel"
                 value={form.phone}
@@ -165,7 +169,6 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
             </div>
           </div>
 
-          {/* Mật khẩu — chỉ hiện khi tạo mới */}
           {!isEdit && (
             <div>
               <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
@@ -182,7 +185,6 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Hủy
@@ -206,7 +208,8 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
     const e = {}
     if (!form.newPassword) e.newPassword = 'Mật khẩu không được trống'
     else if (form.newPassword.length < 8) e.newPassword = 'Tối thiểu 8 ký tự'
-    if (form.newPassword !== form.confirmPassword) e.confirmPassword = 'Mật khẩu xác nhận không khớp'
+    if (form.newPassword !== form.confirmPassword)
+      e.confirmPassword = 'Mật khẩu xác nhận không khớp'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -228,13 +231,17 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <h3 className="text-lg font-bold text-slate-900">Đặt lại mật khẩu</h3>
-          <button onClick={onClose} className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100">
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100"
+          >
             <X size={18} />
           </button>
         </div>
         <div className="px-6 py-4">
           <p className="mb-4 text-sm text-slate-500">
-            Đặt lại mật khẩu cho: <strong className="text-slate-800">{user?.fullName}</strong> ({user?.email})
+            Đặt lại mật khẩu cho: <strong className="text-slate-800">{user?.fullName}</strong> (
+            {user?.email})
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -248,7 +255,9 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
                 placeholder="Tối thiểu 8 ký tự, có chữ hoa, số"
                 className={`focus:ring-primary/20 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none ${errors.newPassword ? 'border-red-400' : 'border-slate-200'}`}
               />
-              {errors.newPassword && <p className="mt-1 text-xs text-red-500">{errors.newPassword}</p>}
+              {errors.newPassword && (
+                <p className="mt-1 text-xs text-red-500">{errors.newPassword}</p>
+              )}
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
@@ -296,7 +305,8 @@ const DeleteConfirmModal = ({ user, onClose, onConfirm, loading }) => (
         <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa người dùng</h3>
         <p className="mt-2 text-sm text-slate-500">
           Bạn sắp xóa vĩnh viễn tài khoản của{' '}
-          <strong className="text-slate-800">{user?.fullName}</strong>. Hành động này không thể hoàn tác.
+          <strong className="text-slate-800">{user?.fullName}</strong>. Hành động này không thể hoàn
+          tác.
         </p>
         <div className="mt-6 flex gap-3">
           <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
@@ -318,22 +328,25 @@ const DeleteConfirmModal = ({ user, onClose, onConfirm, loading }) => (
 // ==================== TRANG CHÍNH ====================
 const UserManagementPage = () => {
   const dispatch = useDispatch()
-  const { data: users, loading, actionLoading, error, page, totalPages, totalElements, filters } =
-    useSelector((state) => state.adminUser)
+  const {
+    data: users,
+    loading,
+    actionLoading,
+    error,
+    page,
+    totalPages,
+    totalElements,
+    filters,
+  } = useSelector((state) => state.adminUser)
 
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  // ✅ Đã chuyển sang sử dụng Redux Store chung cho Sidebar thay vì tạo useState local
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const [searchInput, setSearchInput] = useState('')
 
   // Modals
-  const [formModal, setFormModal] = useState(null)       // null | 'create' | UserResponse (edit)
-  const [resetModal, setResetModal] = useState(null)     // null | UserResponse
-  const [deleteModal, setDeleteModal] = useState(null)   // null | UserResponse
-
-  const toggleSidebar = () => {
-    if (window.innerWidth < 768) setIsMobileOpen(!isMobileOpen)
-    else setIsSidebarExpanded(!isSidebarExpanded)
-  }
+  const [formModal, setFormModal] = useState(null) // null | 'create' | UserResponse (edit)
+  const [resetModal, setResetModal] = useState(null) // null | UserResponse
+  const [deleteModal, setDeleteModal] = useState(null) // null | UserResponse
 
   // Fetch khi filter / page thay đổi
   useEffect(() => {
@@ -354,18 +367,26 @@ const UserManagementPage = () => {
 
   const handleSaveForm = (data) => {
     if (formModal === 'create') {
-      dispatch(createUser(data)).unwrap().then(() => setFormModal(null))
+      dispatch(createUser(data))
+        .unwrap()
+        .then(() => setFormModal(null))
     } else {
-      dispatch(updateUser({ id: formModal.id, data })).unwrap().then(() => setFormModal(null))
+      dispatch(updateUser({ id: formModal.id, data }))
+        .unwrap()
+        .then(() => setFormModal(null))
     }
   }
 
   const handleResetPassword = (data) => {
-    dispatch(resetUserPassword({ id: resetModal.id, data })).unwrap().then(() => setResetModal(null))
+    dispatch(resetUserPassword({ id: resetModal.id, data }))
+      .unwrap()
+      .then(() => setResetModal(null))
   }
 
   const handleDeleteConfirm = () => {
-    dispatch(deleteUser(deleteModal.id)).unwrap().then(() => setDeleteModal(null))
+    dispatch(deleteUser(deleteModal.id))
+      .unwrap()
+      .then(() => setDeleteModal(null))
   }
 
   // ==================== COLUMNS ====================
@@ -384,9 +405,7 @@ const UserManagementPage = () => {
     },
     {
       header: 'Số điện thoại',
-      render: (row) => (
-        <span className="text-sm text-slate-600">{row.phone || '—'}</span>
-      ),
+      render: (row) => <span className="text-sm text-slate-600">{row.phone || '—'}</span>,
     },
     {
       header: 'Vai trò',
@@ -415,14 +434,12 @@ const UserManagementPage = () => {
     },
     {
       header: 'Ngày tạo',
-      render: (row) =>
-        row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—',
+      render: (row) => (row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—'),
     },
     {
       header: 'Thao tác',
       render: (row) => (
         <div className="flex items-center gap-1.5">
-          {/* Chỉnh sửa */}
           <button
             title="Chỉnh sửa"
             onClick={() => setFormModal(row)}
@@ -431,7 +448,6 @@ const UserManagementPage = () => {
             <Edit2 size={15} />
           </button>
 
-          {/* Kích hoạt / Khóa */}
           {row.isActive ? (
             <button
               title="Khóa tài khoản"
@@ -450,7 +466,6 @@ const UserManagementPage = () => {
             </button>
           )}
 
-          {/* Đặt lại mật khẩu */}
           <button
             title="Đặt lại mật khẩu"
             onClick={() => setResetModal(row)}
@@ -459,7 +474,6 @@ const UserManagementPage = () => {
             <KeyRound size={15} />
           </button>
 
-          {/* Xóa */}
           <button
             title="Xóa người dùng"
             onClick={() => setDeleteModal(row)}
@@ -478,7 +492,8 @@ const UserManagementPage = () => {
       <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={toggleSidebar}
+            // ✅ Đã đổi nút bấm sang kích hoạt Action Redux
+            onClick={() => dispatch(toggleSidebar())}
             className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
           >
             <HiBars3 className="h-6 w-6" />
@@ -499,22 +514,20 @@ const UserManagementPage = () => {
         {isMobileOpen && (
           <div
             className="fixed inset-0 z-40 bg-slate-900/30"
-            onClick={() => setIsMobileOpen(false)}
+            // ✅ Đồng bộ hành vi đóng overlay
+            onClick={() => dispatch(closeMobileSidebar())}
           />
         )}
       </div>
 
       <div className="flex pt-14">
-        <Sidebar
-          isSidebarExpanded={isSidebarExpanded}
-          isMobileOpen={isMobileOpen}
-          setIsMobileOpen={setIsMobileOpen}
-          currentRole="ADMIN"
-        />
+        {/* ✅ Bỏ truyền state local cũ, để Sidebar tự lắng nghe store */}
+        <Sidebar currentRole="ADMIN" />
 
+        {/* MAIN CONTENT CONTAINER */}
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // ✅ Đồng bộ pl-[72px] thống nhất với Owner
           }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
@@ -523,9 +536,8 @@ const UserManagementPage = () => {
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">Quản lý người dùng</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Tổng cộng{' '}
-                  <span className="font-semibold text-slate-700">{totalElements}</span> người dùng
-                  trong hệ thống.
+                  Tổng cộng <span className="font-semibold text-slate-700">{totalElements}</span>{' '}
+                  người dùng trong hệ thống.
                 </p>
               </div>
               <Button onClick={() => setFormModal('create')}>
@@ -563,7 +575,7 @@ const UserManagementPage = () => {
               <div className="flex w-full items-center gap-2 md:w-auto">
                 <button
                   onClick={() => dispatch(setFilters({ isActive: undefined }))}
-                  className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                  className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors ${
                     filters.isActive === undefined
                       ? 'bg-slate-800 text-white'
                       : 'text-slate-600 hover:bg-slate-100'
@@ -573,7 +585,7 @@ const UserManagementPage = () => {
                 </button>
                 <button
                   onClick={() => handleFilterStatus(true)}
-                  className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                  className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors ${
                     filters.isActive === true
                       ? 'bg-emerald-600 text-white'
                       : 'text-slate-600 hover:bg-slate-100'
@@ -583,7 +595,7 @@ const UserManagementPage = () => {
                 </button>
                 <button
                   onClick={() => handleFilterStatus(false)}
-                  className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+                  className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors ${
                     filters.isActive === false
                       ? 'bg-red-500 text-white'
                       : 'text-slate-600 hover:bg-slate-100'
