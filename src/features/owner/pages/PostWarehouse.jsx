@@ -12,18 +12,19 @@ import {
   Save,
   Image as ImageIcon,
 } from 'lucide-react'
-import Button from '@/components/atoms/Button'
+import Button from '../../../components/atoms/Button'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import warehouseApi from '../../../services/admin/adminApi'
 import ownerApi from '../../../services/warehouse/warehouseApi'
+
 const CreateWarehouse = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
-  const [warehouseTypes, setWarehouseTypes] = useState([]) // Tạm thời để trống vì đã cmt API
+  const [warehouseTypes, setWarehouseTypes] = useState([]) // Danh sách loại kho lấy từ API
 
-  // State thông tin form text
+  // State thông tin form text theo đúng cấu trúc JSON yêu cầu
   const [formData, setFormData] = useState({
-    typeId: '', // Sẽ được gán tự động bằng useEffect phía dưới
+    typeId: '', // Sẽ lưu trữ UUID của loại kho được chọn (VD: "2c0157a2-6fa4...")
     name: '',
     address: '',
     description: '',
@@ -38,40 +39,35 @@ const CreateWarehouse = () => {
   // State các ảnh liên quan (Tùy chọn)
   const [relatedImages, setRelatedImages] = useState([])
 
-  // 1. Gán giá trị mặc định cho typeId và tạm comment phần gọi API
+  // Gọi API lấy danh sách loại kho thực tế
   useEffect(() => {
-    // Tự động set ID mặc định để form hợp lệ (isFormValid = true)
-    setFormData((prev) => ({ ...prev, typeId: '2c0157a2-6fa4-4b7e-8338-a9587cb59940' }))
-
-    /* --- TẠM THỜI COMMENT ĐOẠN API LẤY LOẠI KHO ---
     const fetchWarehouseTypes = async () => {
       try {
-        const response = await warehouseApi.getWarehouseTypes()
+        const response = await ownerApi.getWarehouseTypesByOwner()
+
+        // 1. IN THỬ RA ĐỂ KIỂM TRA (Hãy bật F12 xem dòng này hiện ra cái gì)
+        console.log('=== PHẢN HỒI THỰC TẾ TỪ API ===', response)
+
+        // 2. Ép cấu trúc bóc tách dữ liệu chuẩn xác
         if (response && response.data) {
-          setWarehouseTypes(response.data)
+          if (Array.isArray(response.data)) {
+            setWarehouseTypes(response.data)
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            setWarehouseTypes(response.data.data)
+          }
         } else if (Array.isArray(response)) {
           setWarehouseTypes(response)
         }
       } catch (error) {
-        console.error('Error fetching warehouse types:', error)
+        console.error('Lỗi khi gọi API lấy loại kho:', error)
       }
     }
     fetchWarehouseTypes()
-    ------------------------------------------------ */
   }, [])
-
-  // Hàm chuyển đổi File sang Chuỗi Base64 (Xử lý bất đồng bộ)
-  const convertFileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => resolve(reader.result) // Trả về chuỗi Base64
-      reader.onerror = (error) => reject(error)
-    })
-  }
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
+    // Ép kiểu float/int cho capacity và pricePerMonth đúng như format JSON yêu cầu
     const processedValue = name === 'capacity' || name === 'pricePerMonth' ? Number(value) : value
     setFormData((prev) => ({ ...prev, [name]: processedValue }))
   }
@@ -111,7 +107,7 @@ const CreateWarehouse = () => {
     formData.name.trim() !== '' &&
     formData.address.trim() !== '' &&
     formData.description.trim() !== '' &&
-    formData.typeId !== '' &&
+    formData.typeId !== '' && // Đảm bảo người dùng đã bấm chọn loại kho hợp lệ
     Number(formData.capacity) > 0 &&
     Number(formData.pricePerMonth) > 0 &&
     coverFile !== null
@@ -123,34 +119,38 @@ const CreateWarehouse = () => {
     setIsLoading(true)
 
     try {
-      // 1. Tiến hành chuyển đổi các file ảnh thành chuỗi Base64
-      const imageStringArray = []
+      const formPayload = new FormData()
 
-      // Chuyển đổi ảnh bìa trước để đảm bảo nó luôn đứng ĐẦU TIÊN (index 0)
-      if (coverFile) {
-        const coverBase64 = await convertFileToBase64(coverFile)
-        imageStringArray.push(coverBase64)
-      }
-
-      // Lần lượt chuyển đổi các ảnh liên quan và đẩy vào mảng chuỗi phía sau
-      for (const imgObj of relatedImages) {
-        const relatedBase64 = await convertFileToBase64(imgObj.file)
-        imageStringArray.push(relatedBase64)
-      }
-
-      // 2. Tạo dữ liệu để gửi lên API (Dạng JSON Object thông thường vì tất cả đã là chuỗi)
-      const payload = {
+      // 1. Tạo object chứa thông tin kho theo đúng format JSON của bạn
+      const warehouseInfo = {
         typeId: formData.typeId,
         name: formData.name,
         address: formData.address,
         description: formData.description,
-        capacity: formData.capacity,
-        pricePerMonth: formData.pricePerMonth,
-        imageUrls: imageStringArray, // Mảng chứa toàn bộ chuỗi ảnh, ảnh bìa ở đầu
+        capacity: Number(formData.capacity),
+        pricePerMonth: Number(formData.pricePerMonth),
       }
 
-      // Gọi API truyền trực tiếp payload JSON object
-      const response = await ownerApi.createWarehouse(payload)
+      // 2. Chuyển object trên thành chuỗi JSON gán vào key 'request' dạng Blob theo đúng Swagger yêu cầu
+      formPayload.append(
+        'request',
+        new Blob([JSON.stringify(warehouseInfo)], { type: 'application/json' })
+      )
+
+      // 3. Đẩy ảnh bìa vào mảng 'files'
+      if (coverFile) {
+        formPayload.append('files', coverFile)
+      }
+
+      // 4. Đẩy tiếp các ảnh liên quan vào mảng 'files'
+      relatedImages.forEach((imgObj) => {
+        if (imgObj.file) {
+          formPayload.append('files', imgObj.file)
+        }
+      })
+
+      // 5. Gọi API gửi đi
+      const response = await ownerApi.createWarehouse(formPayload)
 
       if (response && (response.success || response.status === 200 || response.status === 21)) {
         alert('Đăng tin kho vận thành công!')
@@ -160,7 +160,7 @@ const CreateWarehouse = () => {
       }
     } catch (error) {
       console.error('Error creating warehouse:', error)
-      alert('Đã xảy ra lỗi hệ thống khi kết nối hoặc mã hóa hình ảnh!')
+      alert('Đã xảy ra lỗi hệ thống khi kết nối!')
     } finally {
       setIsLoading(false)
     }
@@ -246,6 +246,7 @@ const CreateWarehouse = () => {
                         <input
                           type="number"
                           name="capacity"
+                          step="any"
                           value={formData.capacity}
                           onChange={handleInputChange}
                           className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
@@ -293,16 +294,29 @@ const CreateWarehouse = () => {
 
               {/* PHÂN LOẠI & GIAO DIỆN HÌNH ẢNH */}
               <div className="space-y-6">
+                {/* ĐÃ CẬP NHẬT: PHẦN CHỌN LOẠI KHO DẠNG SELECT DROPDOWN */}
                 <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <h3 className="text-sm font-bold tracking-wider text-slate-400 uppercase">
-                    2. Phân loại
+                    2. Phân loại kho *
                   </h3>
-                  {/* Hiển thị thông báo loại kho cố định cho người dùng xem thay vì thẻ select dropdown */}
-                  <div className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-500 select-none">
-                    Mặc định (Hệ thống tự chọn)
+                  <div className="relative">
+                    <select
+                      name="typeId"
+                      value={formData.typeId}
+                      onChange={handleInputChange}
+                      className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
+                      required
+                    >
+                      <option value="" disabled>
+                        -- Chọn loại kho --
+                      </option>
+                      {warehouseTypes.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  {/* Input ẩn để giữ giá trị typeId mặc định phục vụ gửi đi và validate */}
-                  <input type="hidden" name="typeId" value={formData.typeId} />
                 </div>
 
                 <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

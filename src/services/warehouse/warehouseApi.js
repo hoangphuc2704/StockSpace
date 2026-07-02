@@ -26,9 +26,17 @@ const onwerwarehouseApi = {
     return api.get('/owner/warehouses', { params: { page, size, sortBy, sortDir } })
   },
 
-  //tạo warehouse mới
+  // Tạo warehouse mới (Hỗ trợ upload ảnh/file)
   createWarehouse: (data) => {
-    return api.post('/owner/warehouses', data)
+    return api.post('/owner/warehouses', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+  },
+
+  getWarehouseTypesByOwner: () => {
+    return api.get('/warehouses/types')
   },
 
   //cập nhật trạng thái kho (active/inactive)
