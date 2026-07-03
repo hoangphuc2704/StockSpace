@@ -48,6 +48,7 @@ import OwnerDashboard from './features/owner/pages/OwnerDashboard'
 import OwnerProfile from './features/owner/pages/OwnerProfile'
 import PostWarehouse from './features/owner/pages/PostWarehouse'
 import ListWarehouse from './features/owner/pages/ListWarehouse'
+import OwnerWalletWithdrawsPage from './features/owner/pages/WithdrawsHistory'
 
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
@@ -57,6 +58,7 @@ import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages
 
 // Inspector Pages
 import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
+import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
 
 const App = () => {
   const dispatch = useDispatch()
@@ -154,9 +156,7 @@ const App = () => {
           <Route path="/owner/dashboard" element={<OwnerDashboard />} />
           <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
           <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
-          {/* <Route path="/owner/requests" element={<RentalRequestsPage />} /> */}
-          {/* <Route path="/owner/revenue" element={<RevenuePage />} /> */}
-
+          <Route path="/owner/wallet/withdraws" element={<WithdrawsHistory />} />
           <Route path="/owner/profile" element={<OwnerProfile />} />
         </Route>
 

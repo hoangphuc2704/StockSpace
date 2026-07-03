@@ -157,7 +157,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
             </div>
 
             {error && (
-              <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-600 border border-red-200">
+              <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600">
                 {error}
               </div>
             )}
@@ -187,7 +187,11 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute top-9.5 right-3 text-slate-400 transition-colors hover:text-slate-600"
                   >
-                    {showPassword ? <HiEyeOff className="h-5 w-5" /> : <HiEye className="h-5 w-5" />}
+                    {showPassword ? (
+                      <HiEyeOff className="h-5 w-5" />
+                    ) : (
+                      <HiEye className="h-5 w-5" />
+                    )}
                   </button>
                 </div>
 

@@ -23,6 +23,7 @@ export const loginUser = createAsyncThunk(
             email: response.data.email,
           })
         )
+        console.log('Login success:', response.data.accessToken)
         return response.data
       }
       return rejectWithValue(response.message || 'Login failed')

@@ -35,7 +35,11 @@ const SIDEBAR_MENUS = {
     // { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },
     { text: 'Transactions', icon: HiOutlineExclamationCircle, path: '/admin/transactions' },
     // { text: 'Payments', icon: HiOutlineCurrencyDollar, path: '/admin/payments' },
-    { text: 'Warehouses Management', icon: HiOutlineHomeModern, path: '/admin/warehouses-management' },
+    {
+      text: 'Warehouses Management',
+      icon: HiOutlineHomeModern,
+      path: '/admin/warehouses-management',
+    },
     { text: 'Warehouse Types', icon: HiOutlineSquaresPlus, path: '/admin/warehouse-types' },
     { text: 'Dispute Management', icon: HiOutlineExclamationCircle, path: '/admin/disputes' },
     { text: 'Withdrawals', icon: HiOutlineCurrencyDollar, path: '/admin/withdrawals' },
@@ -59,6 +63,11 @@ const SIDEBAR_MENUS = {
     { text: 'Tổng Quan', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
     { text: 'Cài đặt', icon: HiOutlineCog6Tooth, path: '/owner/profile' },
     { text: 'Danh sách kho', icon: HiOutlineHomeModern, path: '/owner/listwarehouse' },
+    {
+      text: 'Lịch sử giao dịch',
+      icon: HiOutlineCurrencyDollar,
+      path: '/owner/wallet/withdraws',
+    },
   ],
   STAFF: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/staff/dashboard' },
@@ -66,8 +75,12 @@ const SIDEBAR_MENUS = {
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/staff/inventory' },
   ],
   INSPECTOR: [
-    { text: 'My Inspections', icon: HiOutlineClipboardDocumentList, path: '/inspector/inspections' },
-  ]
+    {
+      text: 'My Inspections',
+      icon: HiOutlineClipboardDocumentList,
+      path: '/inspector/inspections',
+    },
+  ],
 }
 
 const Sidebar = ({ currentRole = 'ADMIN' }) => {
