@@ -1,6 +1,16 @@
 import api from '../apiConfig'
 
 const onwerwarehouseApi = {
+  getPublicWarehouses: ({ page, size, keyword, status, isVerified, sortBy, sortDir } = {}) => {
+    return api.get('/warehouses', {
+      params: { page, size, keyword, status, isVerified, sortBy, sortDir },
+    })
+  },
+
+  getPublicWarehouseById: (warehouseId) => {
+    return api.get(`/warehouses/${warehouseId}`)
+  },
+
   //cập nhật thông tin kho
   updateWarehouseInfo: (warehouseId, data) => {
     return api.put(`/owner/warehouses/${warehouseId}`, data)
