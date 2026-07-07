@@ -68,6 +68,7 @@ const SIDEBAR_MENUS = {
       icon: HiOutlineCurrencyDollar,
       path: '/owner/wallet/withdraws',
     },
+    { text: 'Gói dịch vụ', icon: HiOutlineCog6Tooth, path: '/owner/packageSubcription' },
   ],
   STAFF: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/staff/dashboard' },

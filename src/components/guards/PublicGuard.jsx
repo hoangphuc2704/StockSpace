@@ -10,7 +10,7 @@ const PublicGuard = () => {
     if (role === 'ROLE_ADMIN') return <Navigate to="/admin/dashboard" replace />
     if (role === 'ROLE_OWNER') return <Navigate to="/owner/dashboard" replace />
     if (role === 'ROLE_STAFF') return <Navigate to="/staff/dashboard" replace />
-    if (role === 'ROLE_INSPECTOR') return <Navigate to="/inspector/dashboard" replace />
+    if (role === 'ROLE_INSPECTOR') return <Navigate to="/inspector/inspections" replace />
     
     // Fallback if role doesn't match predefined back-office roles
     return <Navigate to="/unauthorized" replace />

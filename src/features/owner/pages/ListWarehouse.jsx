@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
 import {
   Warehouse,
   MapPin,
@@ -15,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Loader2, // Import thêm icon Loading để làm UI xoay xoay đẹp mắt
 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 
@@ -22,26 +24,50 @@ import Button from '@/components/atoms/Button'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
+import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 
 const WarehouseManagement = () => {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
 
-  // 1. Quản lý trạng thái đóng/mở Sidebar đồng bộ hệ thống
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-
-  // 2. State quản lý dữ liệu kho hàng & bộ lọc tìm kiếm nhanh tại Client
+  // State quản lý dữ liệu kho hàng & bộ lọc tìm kiếm nhanh tại Client
   const [warehouses, setWarehouses] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
 
-  // 3. State quản lý phân trang đồng bộ từ API thực tế
+  // State quản lý phân trang đồng bộ từ API thực tế
   const [currentPage, setCurrentPage] = useState(0) // API trả về "page": 0 ở trang đầu tiên
   const [pageSize, setPageSize] = useState(5) // API trả về "size": 5
   const [totalPages, setTotalPages] = useState(0) // API trả về "totalPages": 1
   const [totalElements, setTotalElements] = useState(0) // API trả về "totalElements": 2
 
-  // Gọi API lấy dữ liệu mỗi khi số trang (currentPage) hoặc kích thước trang (pageSize) thay đổi
+  // Các trạng thái phục vụ tính năng yêu cầu kiểm duyệt & tải lại dữ liệu
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [requestingIds, setRequestingIds] = useState([])
+
+  // Xử lý gửi yêu cầu kiểm định kho qua API
+  const handleRequestInspection = async (warehouseId) => {
+    try {
+      setRequestingIds((prev) => [...prev, warehouseId])
+
+      // TRUYỀN THẲNG BIẾN: Không viết { warehouseId }, chỉ viết warehouseId thôi
+      const res = await warehouseApi.requestInspection(warehouseId)
+
+      if (res?.data?.success || res?.success || res?.status === 200 || res?.status === 201) {
+        alert('Gửi yêu cầu kiểm định thành công!')
+        setRefreshTrigger((prev) => prev + 1)
+      } else {
+        alert(res?.data?.message || res?.message || 'Yêu cầu kiểm định thất bại.')
+      }
+    } catch (error) {
+      console.error('Lỗi khi gửi yêu cầu kiểm định:', error)
+    } finally {
+      setRequestingIds((prev) => prev.filter((id) => id !== warehouseId))
+    }
+  }
+
+  // Gọi API lấy dữ liệu mỗi khi số trang, kích thước trang hoặc refreshTrigger thay đổi
   useEffect(() => {
     const fetchWarehouses = async () => {
       try {
@@ -52,10 +78,6 @@ const WarehouseManagement = () => {
           sortDir: 'desc',
         })
 
-        // IN RA ĐỂ KIỂM TRA TRỰC TIẾP TẦNG DỮ LIỆU
-        console.log('1. Toàn bộ Response nhận được từ hàm API:', response)
-
-        // Thử kiểm tra cả 2 trường hợp: có bóc tách data.data hoặc chỉ data
         let apiResult = null
         if (response?.success && response?.data) {
           apiResult = response.data
@@ -63,34 +85,21 @@ const WarehouseManagement = () => {
           apiResult = response.data.data
         }
 
-        console.log('2. Dữ liệu sau khi bóc tách tầng vỏ:', apiResult)
-
         if (apiResult) {
           const contentList = apiResult.content || []
-          console.log('3. Mảng danh sách kho (content) tìm thấy:', contentList)
-
           setWarehouses(Array.isArray(contentList) ? contentList : [])
           setTotalPages(apiResult.totalPages || 0)
           setTotalElements(apiResult.totalElements || 0)
         } else {
-          console.error('Không tìm thấy cấu trúc .data hợp lệ từ API')
           setWarehouses([])
         }
       } catch (error) {
-        console.error('Lỗi khi xử lý useEffect:', error)
+        console.error('Lỗi lấy danh sách kho:', error)
         setWarehouses([])
       }
     }
     fetchWarehouses()
-  }, [currentPage, pageSize])
-
-  const toggleSidebar = () => {
-    if (window.innerWidth < 768) {
-      setIsMobileOpen(!isMobileOpen)
-    } else {
-      setIsSidebarExpanded(!isSidebarExpanded)
-    }
-  }
+  }, [currentPage, pageSize, refreshTrigger]) // Đã thêm chính xác refreshTrigger vào đây!
 
   // Hàm xử lý cập nhật trạng thái kho trực tiếp tại bảng
   const handleStatusChange = (id, newStatus) => {
@@ -101,7 +110,7 @@ const WarehouseManagement = () => {
     alert(`Đã chuyển trạng thái kho sang: ${newStatus}`)
   }
 
-  // CẬP NHẬT: Thêm định dạng Badge hiển thị cho PENDING_APPROVAL
+  // Định dạng Badge hiển thị cho Trạng thái kho
   const getStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
       case 'PENDING_APPROVAL':
@@ -156,7 +165,7 @@ const WarehouseManagement = () => {
       <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={toggleSidebar}
+            onClick={() => dispatch(toggleSidebar())}
             className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
           >
             <Menu className="h-6 w-6" />
@@ -177,19 +186,14 @@ const WarehouseManagement = () => {
         {isMobileOpen && (
           <div
             className="fixed inset-0 z-40 bg-slate-900/30"
-            onClick={() => setIsMobileOpen(false)}
+            onClick={() => dispatch(closeMobileSidebar())}
           />
         )}
       </div>
 
       <div className="flex pt-14">
         {/* TÍCH HỢP APP SIDEBAR */}
-        <Sidebar
-          isSidebarExpanded={isSidebarExpanded}
-          isMobileOpen={isMobileOpen}
-          setIsMobileOpen={setIsMobileOpen}
-          currentRole="OWNER"
-        />
+        <Sidebar currentRole="OWNER" />
 
         {/* MAIN CONTAINER */}
         <div
@@ -215,7 +219,6 @@ const WarehouseManagement = () => {
 
             {/* THANH BỘ LỌC VÀ TÌM KIẾM */}
             <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
-              {/* Ô Tìm kiếm */}
               <div className="relative max-w-md flex-1">
                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
@@ -227,7 +230,6 @@ const WarehouseManagement = () => {
                 />
               </div>
 
-              {/* Lọc Trạng thái */}
               <div className="flex items-center gap-2">
                 <Filter className="h-4 w-4 shrink-0 text-slate-400" />
                 <select
@@ -255,6 +257,7 @@ const WarehouseManagement = () => {
                       <th className="px-6 py-4">Sức chứa</th>
                       <th className="px-6 py-4">Giá thuê / Tháng</th>
                       <th className="px-6 py-4 text-center">Trạng thái</th>
+                      <th className="px-6 py-4 text-center">Kiểm định</th>
                       <th className="px-6 py-4 text-right">Cập nhật nhanh</th>
                     </tr>
                   </thead>
@@ -262,6 +265,8 @@ const WarehouseManagement = () => {
                     {filteredWarehouses.length > 0 ? (
                       filteredWarehouses.map((wh) => {
                         const badge = getStatusBadge(wh.status)
+                        const isCurrentlyRequesting = requestingIds.includes(wh.id)
+
                         return (
                           <tr key={wh.id} className="transition-colors hover:bg-slate-50/60">
                             {/* Cột 1: Ảnh & Tên kho */}
@@ -310,7 +315,7 @@ const WarehouseManagement = () => {
                               <span className="text-xs font-normal text-slate-400">đ</span>
                             </td>
 
-                            {/* Cột 5: Trạng thái hiện tại */}
+                            {/* Cột 5: Trạng thái */}
                             <td className="px-6 py-4 text-center">
                               <span
                                 className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.bg}`}
@@ -320,7 +325,40 @@ const WarehouseManagement = () => {
                               </span>
                             </td>
 
-                            {/* Cột 6: NÚT CẬP NHẬT TRẠNG THÁI NHANH TẠI CHỖ */}
+                            {/* Cột 6: Kiểm định */}
+                            <td className="px-6 py-4 text-center">
+                              <div className="flex flex-col items-center justify-center gap-1.5">
+                                {wh.verified ? (
+                                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                                    Đã kiểm định
+                                  </span>
+                                ) : (
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                                      <AlertTriangle className="mr-1 h-3.5 w-3.5 text-amber-500" />
+                                      Chưa kiểm định
+                                    </span>
+                                    <button
+                                      onClick={() => handleRequestInspection(wh.id)}
+                                      disabled={isCurrentlyRequesting}
+                                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400"
+                                    >
+                                      {isCurrentlyRequesting ? (
+                                        <>
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                          Đang gửi...
+                                        </>
+                                      ) : (
+                                        'Yêu cầu kiểm duyệt'
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* Cột 7: Cập nhật trạng thái */}
                             <td className="px-6 py-4 text-right">
                               <select
                                 value={wh.status}
@@ -337,7 +375,7 @@ const WarehouseManagement = () => {
                       })
                     ) : (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-sm text-slate-400">
+                        <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-400">
                           <Warehouse className="mx-auto mb-2 h-8 w-8 text-slate-300" />
                           Không tìm thấy nhà kho nào phù hợp với dữ liệu hiện tại.
                         </td>
@@ -347,7 +385,7 @@ const WarehouseManagement = () => {
                 </table>
               </div>
 
-              {/* BỘ ĐIỀU HƯỚNG PHÂN TRANG (PAGINATION BAR UI) */}
+              {/* BỘ ĐIỀU HƯỚNG PHÂN TRANG */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4">
                   <div className="text-xs text-slate-500">
@@ -357,7 +395,6 @@ const WarehouseManagement = () => {
                     ({totalElements} nhà kho)
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {/* Nút lùi về trang trước */}
                     <button
                       onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
                       disabled={currentPage === 0}
@@ -366,7 +403,6 @@ const WarehouseManagement = () => {
                       <ChevronLeft className="h-4 w-4" />
                     </button>
 
-                    {/* Vòng lặp hiển thị danh sách số trang */}
                     {[...Array(totalPages)].map((_, index) => (
                       <button
                         key={index}
@@ -381,7 +417,6 @@ const WarehouseManagement = () => {
                       </button>
                     ))}
 
-                    {/* Nút tiến tới trang sau */}
                     <button
                       onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
                       disabled={currentPage === totalPages - 1}

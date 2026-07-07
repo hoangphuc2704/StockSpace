@@ -10,8 +10,6 @@ import { fetchCurrentUserThunk, logout } from './store/authSlice'
 import LandingpageKhamkhao from './features/landing/pages/Landingpage_khamkhao'
 import WarehouseListingPage from './features/warehouse/pages/WarehouseListingPage'
 import WarehouseDetailPage from './features/warehouse/pages/WarehouseDetailPage'
-import LoginPage from './features/auth/pages/LoginPage'
-import RegisterPage from './features/auth/pages/RegisterPage'
 import UnauthorizedPage from './features/auth/pages/UnauthorizedPage'
 import ForgotPasswordPage from './features/auth/pages/ForgotPasswordPage'
 import ResetPasswordPage from './features/auth/pages/ResetPasswordPage'
@@ -48,7 +46,6 @@ import OwnerDashboard from './features/owner/pages/OwnerDashboard'
 import OwnerProfile from './features/owner/pages/OwnerProfile'
 import PostWarehouse from './features/owner/pages/PostWarehouse'
 import ListWarehouse from './features/owner/pages/ListWarehouse'
-import OwnerWalletWithdrawsPage from './features/owner/pages/WithdrawsHistory'
 
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
@@ -70,25 +67,8 @@ const App = () => {
       if (token) {
         try {
           await dispatch(fetchCurrentUserThunk()).unwrap()
-          const response = await authApi.getMe()
-          if (response.success && response.data) {
-            const { accessToken, role, fullName } = response.data
-            // The getMe endpoint might not return accessToken, so we use token from localStorage
-            // Let's verify what it returns. If it doesn't return accessToken, we use the stored one.
-            dispatch(
-              login({
-                user: {
-                  name: fullName || response.data.fullName,
-                  role: role || response.data.role,
-                },
-                token,
-              })
-            )
-          } else {
-            dispatch(logout())
-            localStorage.removeItem('token')
-          }
         } catch (error) {
+          dispatch(logout())
           // Token hết hạn hoặc không hợp lệ → fetchCurrentUserThunk đã clear state
           console.warn('Auth init failed:', error)
         }

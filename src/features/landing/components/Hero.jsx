@@ -14,7 +14,7 @@ const LandingNavbar = () => {
       case 'ROLE_TENANT': return { url: '/tenant/dashboard', label: 'Tenant Dashboard' }
       case 'ROLE_OWNER': return { url: '/owner/dashboard', label: 'Owner Dashboard' }
       case 'ROLE_STAFF': return { url: '/staff/dashboard', label: 'Staff Dashboard' }
-      case 'ROLE_INSPECTOR': return { url: '/inspector/dashboard', label: 'Inspector Dashboard' }
+      case 'ROLE_INSPECTOR': return { url: '/inspector/inspections', label: 'Inspector Dashboard' }
       case 'ROLE_ADMIN': return { url: '/admin/dashboard', label: 'Admin Dashboard' }
       default: return { url: '/', label: 'Dashboard' }
     }

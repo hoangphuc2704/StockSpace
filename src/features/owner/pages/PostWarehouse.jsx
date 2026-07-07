@@ -11,20 +11,35 @@ import {
   ArrowLeft,
   Save,
   Image as ImageIcon,
+  Wallet,
+  PlusCircle,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react'
 import Button from '../../../components/atoms/Button'
-import logoDaidien from '../../../assets/logoDaidien.png'
-import warehouseApi from '../../../services/admin/adminApi'
 import ownerApi from '../../../services/warehouse/warehouseApi'
+import walletApi from '../../../services/wallet/walletApi'
+
+// Phí tạo bài đăng (VND) - chỉnh lại theo quy định thực tế của hệ thống
+const POSTING_FEE = 50000
 
 const CreateWarehouse = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
-  const [warehouseTypes, setWarehouseTypes] = useState([]) // Danh sách loại kho lấy từ API
+  const [warehouseTypes, setWarehouseTypes] = useState([])
 
-  // State thông tin form text theo đúng cấu trúc JSON yêu cầu
+  // --- State ví ---
+  const [wallet, setWallet] = useState(null)
+  const [walletLoading, setWalletLoading] = useState(true)
+
+  // --- State modal nạp tiền ---
+  const [showDepositModal, setShowDepositModal] = useState(false)
+  const [depositAmount, setDepositAmount] = useState('')
+  const [depositLoading, setDepositLoading] = useState(false)
+
+  // Form text
   const [formData, setFormData] = useState({
-    typeId: '', // Sẽ lưu trữ UUID của loại kho được chọn (VD: "2c0157a2-6fa4...")
+    typeId: '',
     name: '',
     address: '',
     description: '',
@@ -32,23 +47,18 @@ const CreateWarehouse = () => {
     pricePerMonth: '',
   })
 
-  // State ảnh bìa chính (Bắt buộc)
+  // Ảnh bìa (bắt buộc)
   const [coverFile, setCoverFile] = useState(null)
   const [coverPreview, setCoverPreview] = useState(null)
 
-  // State các ảnh liên quan (Tùy chọn)
+  // Ảnh liên quan (tuỳ chọn)
   const [relatedImages, setRelatedImages] = useState([])
 
-  // Gọi API lấy danh sách loại kho thực tế
+  // --- Lấy danh sách loại kho ---
   useEffect(() => {
     const fetchWarehouseTypes = async () => {
       try {
         const response = await ownerApi.getWarehouseTypesByOwner()
-
-        // 1. IN THỬ RA ĐỂ KIỂM TRA (Hãy bật F12 xem dòng này hiện ra cái gì)
-        console.log('=== PHẢN HỒI THỰC TẾ TỪ API ===', response)
-
-        // 2. Ép cấu trúc bóc tách dữ liệu chuẩn xác
         if (response && response.data) {
           if (Array.isArray(response.data)) {
             setWarehouseTypes(response.data)
@@ -58,16 +68,41 @@ const CreateWarehouse = () => {
         } else if (Array.isArray(response)) {
           setWarehouseTypes(response)
         }
-      } catch (error) {
-        console.error('Lỗi khi gọi API lấy loại kho:', error)
-      }
+      } catch (error) {}
     }
     fetchWarehouseTypes()
   }, [])
 
+  // --- Lấy thông tin ví ---
+  useEffect(() => {
+    const fetchWallet = async () => {
+      try {
+        setWalletLoading(true)
+        const res = await walletApi.getWallet()
+        if (res?.data?.success) {
+          setWallet(res.data.data)
+        } else {
+          setWallet(res?.data || res)
+        }
+      } catch (error) {
+        console.error('Lỗi lấy dữ liệu ví:', error)
+      } finally {
+        setWalletLoading(false)
+      }
+    }
+    fetchWallet()
+  }, [])
+
+  const formatVND = (value) => {
+    if (value === undefined || value === null) return '0 ₫'
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+  }
+
+  const walletBalance = wallet?.balance ?? 0
+  const hasEnoughBalance = walletBalance >= POSTING_FEE
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    // Ép kiểu float/int cho capacity và pricePerMonth đúng như format JSON yêu cầu
     const processedValue = name === 'capacity' || name === 'pricePerMonth' ? Number(value) : value
     setFormData((prev) => ({ ...prev, [name]: processedValue }))
   }
@@ -107,21 +142,30 @@ const CreateWarehouse = () => {
     formData.name.trim() !== '' &&
     formData.address.trim() !== '' &&
     formData.description.trim() !== '' &&
-    formData.typeId !== '' && // Đảm bảo người dùng đã bấm chọn loại kho hợp lệ
+    formData.typeId !== '' &&
     Number(formData.capacity) > 0 &&
     Number(formData.pricePerMonth) > 0 &&
     coverFile !== null
 
+  // --- Submit: kiểm tra ví trước ---
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!isFormValid || isLoading) return
 
-    setIsLoading(true)
+    // Kiểm tra số dư ví
+    if (!hasEnoughBalance) {
+      setDepositAmount('')
+      setShowDepositModal(true)
+      return
+    }
 
+    await doCreateWarehouse()
+  }
+
+  const doCreateWarehouse = async () => {
+    setIsLoading(true)
     try {
       const formPayload = new FormData()
-
-      // 1. Tạo object chứa thông tin kho theo đúng format JSON của bạn
       const warehouseInfo = {
         typeId: formData.typeId,
         name: formData.name,
@@ -130,29 +174,21 @@ const CreateWarehouse = () => {
         capacity: Number(formData.capacity),
         pricePerMonth: Number(formData.pricePerMonth),
       }
-
-      // 2. Chuyển object trên thành chuỗi JSON gán vào key 'request' dạng Blob theo đúng Swagger yêu cầu
       formPayload.append(
         'request',
         new Blob([JSON.stringify(warehouseInfo)], { type: 'application/json' })
       )
-
-      // 3. Đẩy ảnh bìa vào mảng 'files'
       if (coverFile) {
         formPayload.append('files', coverFile)
       }
-
-      // 4. Đẩy tiếp các ảnh liên quan vào mảng 'files'
       relatedImages.forEach((imgObj) => {
         if (imgObj.file) {
           formPayload.append('files', imgObj.file)
         }
       })
 
-      // 5. Gọi API gửi đi
       const response = await ownerApi.createWarehouse(formPayload)
-
-      if (response && (response.success || response.status === 200 || response.status === 21)) {
+      if (response && (response.success || response.status === 200 || response.status === 201)) {
         alert('Đăng tin kho vận thành công!')
         navigate('/owner/warehouses')
       } else {
@@ -163,6 +199,31 @@ const CreateWarehouse = () => {
       alert('Đã xảy ra lỗi hệ thống khi kết nối!')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // --- Xử lý nạp tiền VNPay ---
+  const handleDepositSubmit = async (e) => {
+    e.preventDefault()
+    const amountNumber = Number(depositAmount)
+    if (isNaN(amountNumber) || amountNumber <= 0) {
+      alert('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
+      return
+    }
+    try {
+      setDepositLoading(true)
+      const payload = { amount: amountNumber, paymentMethod: 'VNPAY' }
+      const res = await walletApi.requestDeposit(payload)
+      if (res?.data?.success && res?.data?.data?.paymentUrl) {
+        window.location.href = res.data.data.paymentUrl
+      } else {
+        alert(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
+      }
+    } catch (error) {
+      console.error('Lỗi nạp tiền:', error)
+      alert('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
+    } finally {
+      setDepositLoading(false)
     }
   }
 
@@ -193,6 +254,68 @@ const CreateWarehouse = () => {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Đăng tin kho vận mới</h1>
             <p className="text-sm text-slate-500">Điền đầy đủ thông tin để mở khóa nút đăng tin.</p>
+          </div>
+
+          {/* THÔNG TIN SỐ DƯ VÍ */}
+          <div
+            className={`flex items-center justify-between rounded-2xl border p-4 ${
+              walletLoading
+                ? 'border-slate-200 bg-white'
+                : hasEnoughBalance
+                  ? 'border-emerald-200 bg-emerald-50'
+                  : 'border-amber-200 bg-amber-50'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-xl ${
+                  walletLoading
+                    ? 'bg-slate-100'
+                    : hasEnoughBalance
+                      ? 'bg-emerald-100'
+                      : 'bg-amber-100'
+                }`}
+              >
+                {walletLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                ) : hasEnoughBalance ? (
+                  <Wallet className="h-5 w-5 text-emerald-600" />
+                ) : (
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase">Số dư ví của bạn</p>
+                <p
+                  className={`text-lg font-bold ${
+                    walletLoading
+                      ? 'text-slate-400'
+                      : hasEnoughBalance
+                        ? 'text-emerald-700'
+                        : 'text-amber-700'
+                  }`}
+                >
+                  {walletLoading ? 'Đang tải...' : formatVND(walletBalance)}
+                </p>
+                {!walletLoading && !hasEnoughBalance && (
+                  <p className="text-xs text-amber-600">
+                    Ví chưa có tiền — vui lòng nạp tiền trước khi đăng tin.
+                  </p>
+                )}
+              </div>
+            </div>
+            {!walletLoading && !hasEnoughBalance && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDepositAmount('')
+                  setShowDepositModal(true)
+                }}
+                className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-amber-600"
+              >
+                <PlusCircle className="h-4 w-4" /> Nạp tiền ngay
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -292,9 +415,8 @@ const CreateWarehouse = () => {
                 </div>
               </div>
 
-              {/* PHÂN LOẠI & GIAO DIỆN HÌNH ẢNH */}
+              {/* PHÂN LOẠI & HÌNH ẢNH */}
               <div className="space-y-6">
-                {/* ĐÃ CẬP NHẬT: PHẦN CHỌN LOẠI KHO DẠNG SELECT DROPDOWN */}
                 <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <h3 className="text-sm font-bold tracking-wider text-slate-400 uppercase">
                     2. Phân loại kho *
@@ -408,20 +530,114 @@ const CreateWarehouse = () => {
               <Button
                 type="submit"
                 size="sm"
-                disabled={!isFormValid || isLoading}
+                disabled={!isFormValid || isLoading || walletLoading}
                 className={`w-full justify-center rounded-xl py-4 text-base font-semibold transition-all ${
-                  !isFormValid || isLoading
+                  !isFormValid || isLoading || walletLoading
                     ? 'cursor-not-allowed bg-slate-300 text-slate-500 opacity-40'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    : !hasEnoughBalance
+                      ? 'bg-amber-500 text-white hover:bg-amber-600'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
-                <Save className="mr-2 h-5 w-5" />
-                {isLoading ? 'Đang xử lý đăng tin...' : 'Đăng tin kho vận ngay'}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang xử lý đăng tin...
+                  </>
+                ) : !hasEnoughBalance && !walletLoading ? (
+                  <>
+                    <AlertTriangle className="mr-2 h-5 w-5" /> Nạp tiền để đăng tin
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-5 w-5" /> Đăng tin kho vận ngay
+                  </>
+                )}
               </Button>
             </div>
           </form>
         </main>
       </div>
+
+      {/* MODAL NẠP TIỀN */}
+      {showDepositModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+            <div className="mb-1 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                <Wallet className="h-5 w-5 text-blue-600" /> Nạp tiền vào ví
+              </h3>
+              <button
+                onClick={() => setShowDepositModal(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Cảnh báo số dư không đủ */}
+            <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Số dư ví không đủ</p>
+                <p className="text-xs text-amber-700">
+                  Số dư hiện tại: <span className="font-bold">{formatVND(walletBalance)}</span>. Vui
+                  lòng nạp thêm tiền để tiếp tục đăng tin kho.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleDepositSubmit} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-bold text-slate-500 uppercase">
+                  Nhập số tiền cần nạp (VND)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    autoFocus
+                    required
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    placeholder="Ví dụ: 2000000"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
+                  />
+                  <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    ₫
+                  </span>
+                </div>
+                {depositAmount && !isNaN(Number(depositAmount)) && (
+                  <p className="mt-2 text-xs font-medium text-emerald-600">
+                    Xem trước: {formatVND(Number(depositAmount))}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDepositModal(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={depositLoading || !depositAmount}
+                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-blue-700 disabled:bg-slate-300"
+                >
+                  {depositLoading ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Đang kết nối...
+                    </>
+                  ) : (
+                    <>Thanh toán qua VNPay</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -48,7 +48,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
     } else if (role === 'ROLE_STAFF') {
       navigate('/staff/dashboard')
     } else if (role === 'ROLE_INSPECTOR') {
-      navigate('/inspector/dashboard')
+      navigate('/inspector/inspections')
     } else {
       navigate('/')
     }
@@ -84,7 +84,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
       //   } else if (role === 'ROLE_STAFF') {
       //     navigate('/staff/dashboard')
       //   } else if (role === 'ROLE_INSPECTOR') {
-      //     navigate('/inspector/dashboard')
+      //     navigate('/inspector/inspections')
       //   } else {
       //     navigate('/')
       //   }

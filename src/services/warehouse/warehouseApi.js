@@ -43,6 +43,16 @@ const onwerwarehouseApi = {
   updateWarehouseStatus: (warehouseId, status) => {
     return api.put(`/owner/warehouses/${warehouseId}/status`, { status })
   },
+
+  // //yêu cầu kiểm định kho
+  // requestInspection: ({ warehouseId } = {}) => {
+  //   return api.post(`/owner/inspections`, { params: { warehouseId } })
+  // },
+
+  requestInspection: (warehouseId) => {
+    // Tham số thứ 2 là body (để trống hoặc {}), tham số thứ 3 mới là config chứa params
+    return api.post(`/owner/inspections`, {}, { params: { warehouseId } })
+  },
 }
 
 export default onwerwarehouseApi
