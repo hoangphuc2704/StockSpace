@@ -34,8 +34,8 @@ export const authApi = {
     const response = await api.post('/auth/reset-password', { email, token, newPassword })
     return response.data
   },
-  googleLogin: async (code) => {
-    const response = await api.post('/auth/google', { code })
+  googleLogin: async ({ code, role }) => {
+    const response = await api.post('/auth/google', { code, role })
     return response.data
   },
 

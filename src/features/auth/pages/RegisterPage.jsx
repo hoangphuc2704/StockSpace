@@ -277,7 +277,7 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
               </div>
 
               <div className="flex justify-center">
-                <LoginGoogle onLoginSuccess={({ role }) => navigateByRole(role)} />
+                <LoginGoogle onLoginSuccess={({ role }) => navigateByRole(role)} role={`ROLE_${roleDefault}`} />
               </div>
 
               {/* KHU VỰC CHUYỂN ĐỔI: Nhấn Log in để chuyển lại Modal Login */}

@@ -131,9 +131,9 @@ export const resetPasswordThunk = createAsyncThunk(
 
 export const googleLoginThunk = createAsyncThunk(
   'auth/googleLogin',
-  async (code, { rejectWithValue }) => {
+  async ({ code, role }, { rejectWithValue }) => {
     try {
-      const response = await authApi.googleLogin(code)
+      const response = await authApi.googleLogin({ code, role })
       if (response.success && response.data) {
         localStorage.setItem('token', response.data.accessToken)
         localStorage.setItem('user', JSON.stringify({

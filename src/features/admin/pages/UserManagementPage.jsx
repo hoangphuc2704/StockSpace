@@ -303,7 +303,7 @@ const DeleteConfirmModal = ({ user, onClose, onConfirm, loading }) => (
             Hủy
           </Button>
           <Button
-            className="bg-danger hover:bg-danger/90 flex-1 border-0 text-white"
+            className="bg-danger hover:bg-danger/90 flex-1 border-0 text-black"
             onClick={onConfirm}
             isLoading={loading}
           >
@@ -513,9 +513,8 @@ const UserManagementPage = () => {
         />
 
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Page Header */}
@@ -563,31 +562,28 @@ const UserManagementPage = () => {
               <div className="flex w-full items-center gap-2 md:w-auto">
                 <button
                   onClick={() => dispatch(setFilters({ isActive: undefined }))}
-                  className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-                    filters.isActive === undefined
+                  className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${filters.isActive === undefined
                       ? 'bg-slate-800 text-white'
                       : 'text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   Tất cả
                 </button>
                 <button
                   onClick={() => handleFilterStatus(true)}
-                  className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-                    filters.isActive === true
+                  className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${filters.isActive === true
                       ? 'bg-emerald-600 text-white'
                       : 'text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   Hoạt động
                 </button>
                 <button
                   onClick={() => handleFilterStatus(false)}
-                  className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-                    filters.isActive === false
+                  className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${filters.isActive === false
                       ? 'bg-red-500 text-white'
                       : 'text-slate-600 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   Bị khóa
                 </button>

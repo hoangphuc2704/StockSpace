@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import Button from '@/components/atoms/Button'
 import { clearError, googleLoginThunk } from '@/store/authSlice'
 
-const LoginGoogle = ({ onLoginSuccess, className = '' }) => {
+const LoginGoogle = ({ onLoginSuccess, className = '', role }) => {
   const dispatch = useDispatch()
   const { isLoading } = useSelector((state) => state.auth)
 
@@ -14,7 +14,7 @@ const LoginGoogle = ({ onLoginSuccess, className = '' }) => {
     onSuccess: async (codeResponse) => {
       dispatch(clearError())
       try {
-        const result = await dispatch(googleLoginThunk(codeResponse.code)).unwrap()
+        const result = await dispatch(googleLoginThunk({ code: codeResponse.code, role })).unwrap()
         onLoginSuccess?.(result)
       } catch (err) {
         console.error('Google login failed:', err)
