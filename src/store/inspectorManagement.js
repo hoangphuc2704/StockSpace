@@ -5,12 +5,50 @@ import inspectorApi from '../services/inspector/inspectorApi'
  * BE APIs for Inspector
  */
 
+const normalizeInspection = (item = {}) => {
+  const rawChecklist = item.checklistData
+  let checklistData = rawChecklist
+
+  if (typeof rawChecklist === 'string') {
+    try {
+      checklistData = JSON.parse(rawChecklist)
+    } catch {
+      checklistData = rawChecklist
+    }
+  }
+
+  return {
+    ...item,
+    id: item.id || '',
+    status: item.status || 'PENDING',
+    notes: item.notes || item.reportNotes || '',
+    reportNotes: item.reportNotes || item.notes || '',
+    checklistData,
+    images: Array.isArray(item.images) ? item.images : [],
+    inspectedAt: item.inspectedAt || null,
+    warehouseId: item.warehouseId || null,
+    warehouseName: item.warehouseName || '',
+    warehouseAddress: item.warehouseAddress || '',
+    inspectorId: item.inspectorId || null,
+    inspectorName: item.inspectorName || '',
+    ownerId: item.ownerId || null,
+    ownerName: item.ownerName || '',
+    createdAt: item.createdAt || null,
+    updatedAt: item.updatedAt || null,
+  }
+}
+
+const normalizePagedResponse = (paged = {}) => ({
+  ...paged,
+  content: Array.isArray(paged?.content) ? paged.content.map(normalizeInspection) : [],
+})
+
 export const fetchAssignedInspections = createAsyncThunk(
   'inspectorManagement/fetchAssignedInspections',
   async ({ page = 0, size = 10 }, { rejectWithValue }) => {
     try {
       const res = await inspectorApi.getAssignedInspections({ page, size })
-      return res.data.data // PagedResponse<InspectionReportResponse>
+      return normalizePagedResponse(res.data.data) // PagedResponse<InspectionReportResponse>
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }
@@ -19,10 +57,13 @@ export const fetchAssignedInspections = createAsyncThunk(
 
 export const submitReport = createAsyncThunk(
   'inspectorManagement/submitReport',
-  async ({ id, payload }, { rejectWithValue }) => {
+  async ({ id, payload }, { dispatch, getState, rejectWithValue }) => {
     try {
       const res = await inspectorApi.submitReport(id, payload)
-      return res.data.data // InspectionReportResponse
+      const updatedInspection = normalizeInspection(res.data.data)
+      const { page, size } = getState().inspectorManagement
+      dispatch(fetchAssignedInspections({ page, size }))
+      return updatedInspection // InspectionReportResponse
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }
@@ -82,7 +123,7 @@ const inspectorManagementSlice = createSlice({
       .addCase(submitReport.fulfilled, (state, action) => {
         state.actionLoading = false
         const updated = action.payload
-        state.inspections = state.inspections.map(i => i.id === updated.id ? updated : i)
+        state.inspections = state.inspections.map((item) => (item.id === updated.id ? updated : item))
       })
       .addCase(submitReport.rejected, (state, action) => {
         state.actionLoading = false

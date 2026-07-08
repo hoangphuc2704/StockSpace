@@ -10,8 +10,6 @@ import { fetchCurrentUserThunk, logout } from './store/authSlice'
 import LandingpageKhamkhao from './features/landing/pages/Landingpage_khamkhao'
 import WarehouseListingPage from './features/warehouse/pages/WarehouseListingPage'
 import WarehouseDetailPage from './features/warehouse/pages/WarehouseDetailPage'
-import LoginPage from './features/auth/pages/LoginPage'
-import RegisterPage from './features/auth/pages/RegisterPage'
 import UnauthorizedPage from './features/auth/pages/UnauthorizedPage'
 import ForgotPasswordPage from './features/auth/pages/ForgotPasswordPage'
 import ResetPasswordPage from './features/auth/pages/ResetPasswordPage'
@@ -46,9 +44,9 @@ import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
 // Owner Pages
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
 import OwnerProfile from './features/owner/pages/OwnerProfile'
-// import MyWarehousesPage from './features/owner/pages/MyWarehousesPage'
-// import RentalRequestsPage from './features/owner/pages/RentalRequestsPage'
-// import RevenuePage from './features/owner/pages/RevenuePage'
+import PostWarehouse from './features/owner/pages/PostWarehouse'
+import ListWarehouse from './features/owner/pages/ListWarehouse'
+
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
 import StaffTasksPage from './features/staff/pages/StaffTasksPage'
@@ -57,6 +55,7 @@ import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages
 
 // Inspector Pages
 import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
+import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
 
 const App = () => {
   const dispatch = useDispatch()
@@ -68,25 +67,8 @@ const App = () => {
       if (token) {
         try {
           await dispatch(fetchCurrentUserThunk()).unwrap()
-          const response = await authApi.getMe()
-          if (response.success && response.data) {
-            const { accessToken, role, fullName } = response.data
-            // The getMe endpoint might not return accessToken, so we use token from localStorage
-            // Let's verify what it returns. If it doesn't return accessToken, we use the stored one.
-            dispatch(
-              login({
-                user: {
-                  name: fullName || response.data.fullName,
-                  role: role || response.data.role,
-                },
-                token,
-              })
-            )
-          } else {
-            dispatch(logout())
-            localStorage.removeItem('token')
-          }
         } catch (error) {
+          dispatch(logout())
           // Token hết hạn hoặc không hợp lệ → fetchCurrentUserThunk đã clear state
           console.warn('Auth init failed:', error)
         }
@@ -119,24 +101,24 @@ const App = () => {
 
         {/* Protected Routes Layout */}
         {/* Admin Routes */}
-        <Route element={<RoleGuard allowedRoles={['ROLE_ADMIN']} />}>
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/listings" element={<WarehouseApprovalPage />} />
-          <Route path="/admin/transactions" element={<TransactionsPage />} />
-          <Route path="/admin/deposits" element={<DepositApprovalPage />} />
-          <Route path="/admin/payments" element={<PaymentsPage />} />
-          <Route path="/admin/analytics" element={<AnalyticsPage />} />
-          <Route path="/admin/system-policies" element={<SystemPolicyPage />} />
-          <Route path="/admin/users" element={<UserManagementPage />} />
-          <Route path="/admin/disputes" element={<DisputeManagementPage />} />
-          <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
-          <Route path="/admin/permissions" element={<PermissionManagementPage />} />
-          <Route path='admin/inspections' element={<InspectionsManagementPage />} />
-          <Route path='admin/warehouses-management' element={<WareHouseManagementPage />} />
-          <Route path='admin/warehouse-types' element={<WarehousesTypePage />} />
-          <Route path='admin/system-config' element={<SystemConfigueManagementPage />} />
-          <Route path='admin/package-subcription' element={<Packages_SubcriptionsManagementPage />} />
-        </Route>
+        {/* <Route element={<RoleGuard allowedRoles={['ROLE_ADMIN']} />}> */}
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/listings" element={<WarehouseApprovalPage />} />
+        <Route path="/admin/transactions" element={<TransactionsPage />} />
+        <Route path="/admin/deposits" element={<DepositApprovalPage />} />
+        <Route path="/admin/payments" element={<PaymentsPage />} />
+        <Route path="/admin/analytics" element={<AnalyticsPage />} />
+        <Route path="/admin/system-policies" element={<SystemPolicyPage />} />
+        <Route path="/admin/users" element={<UserManagementPage />} />
+        <Route path="/admin/disputes" element={<DisputeManagementPage />} />
+        <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
+        <Route path="/admin/permissions" element={<PermissionManagementPage />} />
+        <Route path="admin/inspections" element={<InspectionsManagementPage />} />
+        <Route path="admin/warehouses-management" element={<WareHouseManagementPage />} />
+        <Route path="admin/warehouse-types" element={<WarehousesTypePage />} />
+        <Route path="admin/system-config" element={<SystemConfigueManagementPage />} />
+        <Route path="admin/package-subcription" element={<Packages_SubcriptionsManagementPage />} />
+        {/* </Route> */}
 
         {/* Tenant Routes */}
         <Route element={<RoleGuard allowedRoles={['ROLE_TENANT']} />}>
@@ -150,16 +132,13 @@ const App = () => {
         </Route>
 
         {/* Owner Routes */}
-        {/* <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}> */}
-        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-
-        {/* <Route path="/owner/warehouses" element={<MyWarehousesPage />} /> */}
-        {/* <Route path="/owner/requests" element={<RentalRequestsPage />} /> */}
-        {/* <Route path="/owner/revenue" element={<RevenuePage />} /> */}
-
-        <Route path="/owner/profile" element={<OwnerProfile />} />
-
-        {/* </Route> */}
+        <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}>
+          <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+          <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
+          <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
+          <Route path="/owner/wallet/withdraws" element={<WithdrawsHistory />} />
+          <Route path="/owner/profile" element={<OwnerProfile />} />
+        </Route>
 
         {/* Staff Routes */}
         <Route element={<RoleGuard allowedRoles={['ROLE_STAFF']} />}>

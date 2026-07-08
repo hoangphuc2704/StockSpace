@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { fetchWarehouses, verifyWarehouse, rejectWarehouse } from '../../../store/adminWarehouseSlice'
+import {
+  fetchWarehouses,
+  verifyWarehouse,
+  rejectWarehouse,
+} from '../../../store/adminWarehouseSlice'
+// Import các action từ uiSlice để đồng bộ trạng thái đóng/mở sidebar toàn hệ thống
+import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 import { motion } from 'framer-motion'
 import {
   Warehouse,
@@ -17,28 +23,20 @@ import DataTable from '../../../components/organisms/DataTable'
 import Badge from '../../../components/atoms/Badge'
 import Button from '../../../components/atoms/Button'
 import Avatar from '../../../components/atoms/Avatar'
-import Sidebar from '../../../components/SideBar' // <-- Tái sử dụng thanh điều hướng chung
+import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 const WarehouseApprovalPage = () => {
   const dispatch = useDispatch()
   const { data: warehouses, loading } = useSelector((state) => state.adminWarehouse)
 
+  // ✅ Lấy trạng thái Sidebar từ Redux thay vì sử dụng useState cục bộ
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  const [searchTerm, setSearchTerm] = useState('')
+
   useEffect(() => {
     dispatch(fetchWarehouses())
   }, [dispatch])
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
-
-  // Đồng bộ logic đóng mở cho cả màn hình Desktop và Mobile
-  const toggleSidebar = () => {
-    if (window.innerWidth < 768) {
-      setIsMobileOpen(!isMobileOpen)
-    } else {
-      setIsSidebarExpanded(!isSidebarExpanded)
-    }
-  }
 
   const columns = [
     {
@@ -49,9 +47,7 @@ const WarehouseApprovalPage = () => {
             <Warehouse size={24} />
           </div>
           <div className="flex flex-col">
-            {/* BE: WarehouseResponse.name */}
             <span className="font-bold text-slate-900">{row.name}</span>
-            {/* BE: WarehouseResponse.address (object hoặc string tuỳ BE mapping) */}
             <div className="flex items-center gap-1 text-xs text-slate-500">
               <MapPin size={12} /> {row.address || row.location || '—'}
             </div>
@@ -64,8 +60,9 @@ const WarehouseApprovalPage = () => {
       render: (row) => (
         <div className="flex items-center gap-2">
           <Avatar alt={row.ownerName || row.owner} size="sm" />
-          {/* BE: WarehouseResponse.ownerName (tên chủ kho) */}
-          <span className="text-sm font-medium text-slate-700">{row.ownerName || row.owner || '—'}</span>
+          <span className="text-sm font-medium text-slate-700">
+            {row.ownerName || row.owner || '—'}
+          </span>
         </div>
       ),
     },
@@ -73,7 +70,6 @@ const WarehouseApprovalPage = () => {
       header: 'Specs',
       render: (row) => (
         <div className="flex flex-col gap-1 text-xs">
-          {/* BE: WarehouseResponse.area (số m²), warehouseType.name */}
           <span className="flex items-center gap-1 font-medium text-slate-700">
             <Maximize size={12} /> {row.area ? `${row.area} m²` : row.size || '—'}
           </span>
@@ -84,7 +80,6 @@ const WarehouseApprovalPage = () => {
     {
       header: 'Price / Month',
       render: (row) => (
-        // BE: WarehouseResponse.pricePerMonth (số tiền, đơn vị VND)
         <span className="text-primary font-bold">
           {row.pricePerMonth != null
             ? row.pricePerMonth.toLocaleString('vi-VN') + ' đ'
@@ -103,7 +98,6 @@ const WarehouseApprovalPage = () => {
         }
         return (
           <Badge variant={variantMap[row.status] || 'slate'} size="sm">
-            {/* BE: WarehouseResponse.status (WarehouseStatus enum) */}
             {row.isVerified ? '✓ Verified' : row.status || '—'}
           </Badge>
         )
@@ -111,9 +105,7 @@ const WarehouseApprovalPage = () => {
     },
     {
       header: 'Submitted',
-      render: (row) =>
-        // BE: WarehouseResponse.createdAt (LocalDateTime)
-        row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—',
+      render: (row) => (row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—'),
     },
     {
       header: 'Actions',
@@ -147,7 +139,8 @@ const WarehouseApprovalPage = () => {
       <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={toggleSidebar}
+            // ✅ Kích hoạt action toggleSidebar từ Redux Store
+            onClick={() => dispatch(toggleSidebar())}
             className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
           >
             <HiBars3 className="h-6 w-6" />
@@ -169,24 +162,22 @@ const WarehouseApprovalPage = () => {
         {isMobileOpen && (
           <div
             className="fixed inset-0 z-40 bg-slate-900/30"
-            onClick={() => setIsMobileOpen(false)}
+            // ✅ Kích hoạt action closeMobileSidebar khi nhấn lớp nền mờ mobile
+            onClick={() => dispatch(closeMobileSidebar())}
           />
         )}
       </div>
 
       <div className="flex pt-14">
         {/* 2. SIDEBAR COMPONENT */}
-        <Sidebar
-          isSidebarExpanded={isSidebarExpanded}
-          isMobileOpen={isMobileOpen}
-          setIsMobileOpen={setIsMobileOpen}
-          currentRole="ADMIN"
-        />
+        {/* ✅ Lược bỏ việc truyền state cục bộ, để Sidebar tự động lấy dữ liệu từ Store */}
+        <Sidebar currentRole="ADMIN" />
 
         {/* 3. MAIN CONTENT CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-            }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // ✅ Đồng bộ pl-[72px] chuẩn xác của toàn bộ dự án
+          }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Header */}

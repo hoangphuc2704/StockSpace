@@ -35,7 +35,7 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     else if (role === 'ROLE_OWNER') navigate('/owner/dashboard')
     else if (role === 'ROLE_TENANT') navigate('/')
     else if (role === 'ROLE_STAFF') navigate('/staff/dashboard')
-    else if (role === 'ROLE_INSPECTOR') navigate('/inspector/dashboard')
+    else if (role === 'ROLE_INSPECTOR') navigate('/inspector/inspections')
     else navigate('/')
   }
 

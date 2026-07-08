@@ -1,15 +1,18 @@
+import React, { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-import { closeMobileSidebar } from '../../../store/uiSlide' // ✅ Đã sửa chính tả thành uiSlice
+import { closeMobileSidebar } from '../../../store/uiSlide'
 import {
   Warehouse,
   FileCheck,
-  DollarSign,
   PieChart,
   Check,
   X,
   Eye,
   ArrowUpRight,
   Clock,
+  Wallet,
+  PlusCircle,
+  Loader2,
 } from 'lucide-react'
 import {
   BarChart,
@@ -32,7 +35,10 @@ import StatCard from '@/components/molecules/StatCard'
 import Sidebar from '../../../components/SideBar'
 import Header from '../../../components/HeaderDashboard'
 
-// Mock Data
+// Import API config của bạn
+import walletApi from '../../../services/wallet/walletApi'
+
+// Mock Data giữ nguyên
 const revenueData = [
   { name: 'Jan', value: 4500 },
   { name: 'Feb', value: 5200 },
@@ -48,17 +54,94 @@ const occupancyData = [
 
 const OwnerDashboard = () => {
   const dispatch = useDispatch()
-
-  // Lấy dữ liệu Sidebar đồng bộ từ Redux Store chung
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
 
+  // --- STATE CHO VÍ & NẠP TIỀN ---
+  const [wallet, setWallet] = useState(null)
+  const [loadingWallet, setLoadingWallet] = useState(true)
+  const [depositLoading, setDepositLoading] = useState(false)
+
+  // State điều khiển Modal nhập tiền
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [inputAmount, setInputAmount] = useState('')
+
+  // --- LẤY DỮ LIỆU VÍ TỪ API ---
+  const fetchWallet = async () => {
+    try {
+      setLoadingWallet(true)
+      const res = await walletApi.getWallet()
+      if (res?.data?.success) {
+        setWallet(res.data.data)
+      } else {
+        setWallet(res?.data || res)
+      }
+    } catch (error) {
+      console.error('Lỗi lấy dữ liệu ví:', error)
+    } finally {
+      setLoadingWallet(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchWallet()
+  }, [])
+
+  // --- XỬ LÝ GỬI YÊU CẦU NẠP TIỀN LÊN BE ---
+  const handleDepositSubmit = async (e) => {
+    e.preventDefault()
+
+    const amountNumber = Number(inputAmount)
+    if (isNaN(amountNumber) || amountNumber <= 0) {
+      alert('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
+      return
+    }
+
+    try {
+      setDepositLoading(true)
+
+      // Truyền payload đúng cấu trúc BE của bạn yêu cầu
+      const payload = {
+        amount: amountNumber,
+        paymentMethod: 'BANK_TRANSFER',
+      }
+
+      const res = await walletApi.requestDeposit(payload)
+
+      // Đọc chính xác res.data.data.paymentUrl từ BE response của bạn
+      if (res?.data?.success && res?.data?.data?.paymentUrl) {
+        window.location.href = res.data.data.paymentUrl // Chuyển hướng sang VNPay
+      } else {
+        alert(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
+      }
+    } catch (error) {
+      console.error('Lỗi nạp tiền:', error)
+      alert('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
+    } finally {
+      setDepositLoading(false)
+    }
+  }
+
+  // Hàm định dạng tiền VND
+  const formatVND = (value) => {
+    if (value === undefined || value === null) return '0 ₫'
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+  }
+
+  // Khối Thẻ Thống kê hiển thị số dư thực tế
   const stats = [
     { title: 'My Warehouses', value: '12', icon: Warehouse, trend: 'stable', trendValue: 0 },
-    { title: 'Monthly Revenue', value: '$24,500', icon: DollarSign, trend: 'up', trendValue: 8 },
+    {
+      title: 'Wallet Balance',
+      value: loadingWallet ? 'Đang tải...' : formatVND(wallet?.balance),
+      icon: Wallet,
+      trend: 'stable',
+      trendValue: 0,
+    },
     { title: 'Avg. Occupancy', value: '82%', icon: PieChart, trend: 'up', trendValue: 3 },
     { title: 'Pending Requests', value: '5', icon: FileCheck, trend: 'down', trendValue: 2 },
   ]
 
+  // Mock Data bảng (Giữ nguyên)
   const rentalRequests = [
     {
       id: 'REQ-001',
@@ -130,7 +213,6 @@ const OwnerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Header gọn gàng, tự điều phối hành vi */}
       <Header />
 
       {/* MOBILE OVERLAY */}
@@ -146,13 +228,14 @@ const OwnerDashboard = () => {
       <div className="flex pt-14">
         <Sidebar currentRole="OWNER" />
 
-        {/* CONTAINER CHÍNH - Tự động co giãn theo Redux State */}
+        {/* CONTAINER CHÍNH */}
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]'
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1600px] space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-4000 space-y-6 p-6 md:p-8">
+            {/* Tiêu đề & Cụm nút bấm phía trên góc phải */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">Owner Dashboard</h1>
@@ -160,9 +243,26 @@ const OwnerDashboard = () => {
                   Overview of your warehouse portfolio and rental activities.
                 </p>
               </div>
-              <Button size="sm">
-                <Warehouse className="mr-2 h-4 w-4" /> List New Warehouse
-              </Button>
+
+              {/* CỤM NÚT HÀNH ĐỘNG GÓC PHẢI */}
+              <div className="flex items-center gap-3">
+                {/* NÚT MỞ MODAL NẠP TIỀN */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setInputAmount('')
+                    setIsModalOpen(true)
+                  }}
+                  className="hover:bg-blue-5 border-blue-200 text-blue-600 hover:text-blue-700"
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" /> Nạp tiền vào ví
+                </Button>
+
+                <Button size="sm">
+                  <Warehouse className="mr-2 h-4 w-4" /> List New Warehouse
+                </Button>
+              </div>
             </div>
 
             {/* Thẻ thống kê */}
@@ -172,7 +272,7 @@ const OwnerDashboard = () => {
               ))}
             </div>
 
-            {/* Biểu đồ */}
+            {/* Biểu đồ (Giữ nguyên) */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
                 <div className="mb-8 flex items-center justify-between">
@@ -245,7 +345,7 @@ const OwnerDashboard = () => {
               </div>
             </div>
 
-            {/* Bảng dữ liệu */}
+            {/* Bảng dữ liệu & Kiểm định (Giữ nguyên) */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
                 <div className="mb-6 flex items-center justify-between">
@@ -288,6 +388,76 @@ const OwnerDashboard = () => {
           </main>
         </div>
       </div>
+
+      {/* --- POPUP MODAL NHẬP SỐ TIỀN NẠP --- */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+                <Wallet className="h-5 w-5 text-blue-600" /> Nạp tiền qua VNPay
+              </h3>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleDepositSubmit} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-xs font-bold text-slate-500 uppercase">
+                  Nhập số tiền cần nạp (VND)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    autoFocus
+                    required
+                    value={inputAmount}
+                    onChange={(e) => setInputAmount(e.target.value)}
+                    placeholder="Ví dụ: 2000000"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
+                  />
+                  <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    ₫
+                  </span>
+                </div>
+                {inputAmount && !isNaN(Number(inputAmount)) && (
+                  <p className="mt-2 text-xs font-medium text-emerald-600">
+                    Xem trước: {formatVND(Number(inputAmount))}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={depositLoading || !inputAmount}
+                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-blue-700 disabled:bg-slate-300"
+                >
+                  {depositLoading ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Đang kết nối...
+                    </>
+                  ) : (
+                    <>Thanh toán ngay</>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
