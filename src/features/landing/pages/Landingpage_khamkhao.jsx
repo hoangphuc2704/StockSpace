@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSelector, useDispatch } from 'react-redux'
 import { logoutThunk } from '../../../store/authSlice'
@@ -15,13 +15,16 @@ import {
   Facebook,
   Youtube,
   Instagram,
+  MapPin,
+  ArrowUpRight,
 } from 'lucide-react'
 
 import logoDaidien from '../../../assets/logoDaidien.png'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import BackToTop from '../../../components/BackToTop.jsx'
 import LoginModal from '../../auth/pages/LoginPage.jsx'
 import RegisterModal from '../../auth/pages/RegisterPage.jsx'
+import warehouseApi from '../../../services/warehouse/warehouseApi'
 
 const SERVICES = [
   {
@@ -73,10 +76,54 @@ const LandingPageKhamkhao = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
   const [isRegisterOpen, setIsRegisterOpen] = useState(false)
-  
+  const [approvedWarehouses, setApprovedWarehouses] = useState([])
+  const [isLoadingWarehouses, setIsLoadingWarehouses] = useState(true)
+
   const { user, isAuthenticated } = useSelector((state) => state.auth)
   const dispatch = useDispatch()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const fetchApprovedWarehouses = async () => {
+      try {
+        setIsLoadingWarehouses(true)
+        const response = await warehouseApi.getPublicWarehouses({
+          page: 0,
+          size: 6,
+          isVerified: true,
+          sortBy: 'createdAt',
+          sortDir: 'desc',
+        })
+
+        const payload = response?.data?.data
+        const content = Array.isArray(payload?.content)
+          ? payload.content
+          : Array.isArray(payload)
+            ? payload
+            : []
+
+        const normalized = content
+          .filter((item) => item?.isVerified === true || item?.verified === true)
+          .map((item) => ({
+            id: item.id,
+            name: item.name || 'Warehouse',
+            address: item.address || item.location || 'Đang cập nhật địa chỉ',
+            area: Number(item.area ?? item.capacity ?? 0),
+            pricePerMonth: Number(item.pricePerMonth ?? item.price ?? 0),
+            type: item.warehouseType?.name || item.typeName || item.type || 'General',
+            image: item.coverImageUrl || item.thumbnail || item.imageUrls?.[0] || '',
+          }))
+
+        setApprovedWarehouses(normalized)
+      } catch (error) {
+        setApprovedWarehouses([])
+      } finally {
+        setIsLoadingWarehouses(false)
+      }
+    }
+
+    fetchApprovedWarehouses()
+  }, [])
 
   const getDashboardInfo = (role) => {
     switch (role) {
@@ -188,7 +235,7 @@ const LandingPageKhamkhao = () => {
 
             <div>
               <a
-                href="#get-started"
+                href="#approved-warehouses"
                 className="inline-flex items-center justify-center rounded-md bg-[#FF5A1F] px-5 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#e04e19]"
               >
                 Xem Kho <ArrowRight size={14} className="ml-1" />
@@ -269,6 +316,124 @@ const LandingPageKhamkhao = () => {
               )
             })}
           </div>
+        </div>
+      </section>
+
+      <section id="approved-warehouses" className="bg-[#faf7f4] py-20 lg:py-24">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mb-12 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="max-w-2xl space-y-3">
+              <p className="text-xs font-bold tracking-[0.25em] text-[#FF5A1F] uppercase">
+                Kho đã được duyệt
+              </p>
+              <h2 className="text-4xl font-extrabold tracking-tight text-stone-900 uppercase sm:text-5xl">
+                Xem các kho đã được admin phê duyệt
+              </h2>
+              <p className="text-sm font-medium leading-relaxed text-stone-500">
+                Danh sách này chỉ hiển thị những kho đã qua bước xác minh và duyệt từ hệ thống
+                quản trị.
+              </p>
+            </div>
+
+            <Link
+              to="/warehouses"
+              className="inline-flex items-center gap-2 self-start rounded-md border border-stone-300 bg-white px-5 py-3 text-xs font-bold tracking-wider text-stone-900 uppercase transition-all hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
+            >
+              Xem tất cả kho
+              <ArrowUpRight size={14} />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {isLoadingWarehouses
+              ? Array.from({ length: 3 }).map((_, idx) => (
+                  <div key={idx} className="overflow-hidden rounded-3xl border border-stone-200 bg-white">
+                    <div className="h-56 animate-pulse bg-stone-100" />
+                    <div className="space-y-4 p-6">
+                      <div className="h-6 w-2/3 animate-pulse rounded bg-stone-100" />
+                      <div className="h-4 w-1/2 animate-pulse rounded bg-stone-100" />
+                      <div className="h-10 animate-pulse rounded bg-stone-100" />
+                    </div>
+                  </div>
+                ))
+              : approvedWarehouses.map((warehouse) => (
+                  <article
+                    key={warehouse.id}
+                    className="overflow-hidden rounded-3xl border border-stone-200 bg-white transition-all hover:-translate-y-1 hover:shadow-xl"
+                  >
+                    <div className="relative h-56 overflow-hidden bg-stone-100">
+                      {warehouse.image ? (
+                        <img
+                          src={warehouse.image}
+                          alt={warehouse.name}
+                          className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-stone-400">
+                          <Warehouse size={42} />
+                        </div>
+                      )}
+                      <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#0f084b]">
+                        Approved
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 p-6">
+                      <div className="space-y-2">
+                        <h3 className="text-xl font-bold tracking-tight text-stone-900">
+                          {warehouse.name}
+                        </h3>
+                        <p className="flex items-center gap-2 text-sm text-stone-500">
+                            <MapPin size={15} className="text-[#FF5A1F]" />
+                          {warehouse.address}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 rounded-2xl bg-stone-50 p-4 text-sm">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                            Diện tích
+                          </p>
+                          <p className="mt-1 font-bold text-stone-900">
+                            {warehouse.area.toLocaleString('vi-VN')} m²
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                            Loại kho
+                          </p>
+                          <p className="mt-1 font-bold text-stone-900">{warehouse.type}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-end justify-between gap-4 border-t border-stone-100 pt-4">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                            Giá / tháng
+                          </p>
+                          <p className="mt-1 text-xl font-extrabold text-[#FF5A1F]">
+                            {warehouse.pricePerMonth.toLocaleString('vi-VN')} đ
+                          </p>
+                        </div>
+
+                        <Link
+                          to={`/warehouse/${warehouse.id}`}
+                          className="inline-flex items-center gap-2 rounded-md bg-stone-900 px-4 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#FF5A1F]"
+                        >
+                          Xem chi tiết
+                          <ArrowRight size={14} />
+                        </Link>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+          </div>
+
+          {!isLoadingWarehouses && approvedWarehouses.length === 0 ? (
+            <div className="mt-8 rounded-3xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center text-sm text-stone-500">
+              Hiện chưa có kho nào được admin phê duyệt để hiển thị trên landing page.
+            </div>
+          ) : null}
         </div>
       </section>
 
