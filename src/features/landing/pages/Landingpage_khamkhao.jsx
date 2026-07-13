@@ -1,29 +1,23 @@
 import React, { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useSelector, useDispatch } from 'react-redux'
-import { logoutThunk } from '../../../store/authSlice'
 import {
   Clock,
   Warehouse,
   Boxes,
   Truck,
-  Menu,
-  X,
+  MapPin,
+  ArrowUpRight,
   ArrowRight,
   Phone,
   Mail,
   Facebook,
   Youtube,
   Instagram,
-  MapPin,
-  ArrowUpRight,
 } from 'lucide-react'
 
-import logoDaidien from '../../../assets/logoDaidien.png'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import PublicHeader from '../../../components/PublicHeader'
 import BackToTop from '../../../components/BackToTop.jsx'
-import LoginModal from '../../auth/pages/LoginPage.jsx'
-import RegisterModal from '../../auth/pages/RegisterPage.jsx'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 
 const SERVICES = [
@@ -73,15 +67,8 @@ function ProjectManagementIcon() {
 }
 
 const LandingPageKhamkhao = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isLoginOpen, setIsLoginOpen] = useState(false)
-  const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   const [approvedWarehouses, setApprovedWarehouses] = useState([])
   const [isLoadingWarehouses, setIsLoadingWarehouses] = useState(true)
-
-  const { user, isAuthenticated } = useSelector((state) => state.auth)
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchApprovedWarehouses = async () => {
@@ -90,7 +77,7 @@ const LandingPageKhamkhao = () => {
         const response = await warehouseApi.getPublicWarehouses({
           page: 0,
           size: 6,
-          isVerified: true,
+          // Bỏ isVerified: true để lấy cả kho chưa kiểm định
           sortBy: 'createdAt',
           sortDir: 'desc',
         })
@@ -103,7 +90,6 @@ const LandingPageKhamkhao = () => {
             : []
 
         const normalized = content
-          .filter((item) => item?.isVerified === true || item?.verified === true)
           .map((item) => ({
             id: item.id,
             name: item.name || 'Warehouse',
@@ -112,6 +98,7 @@ const LandingPageKhamkhao = () => {
             pricePerMonth: Number(item.pricePerMonth ?? item.price ?? 0),
             type: item.warehouseType?.name || item.typeName || item.type || 'General',
             image: item.coverImageUrl || item.thumbnail || item.imageUrls?.[0] || '',
+            isVerified: item.isVerified ?? item.verified ?? false,
           }))
 
         setApprovedWarehouses(normalized)
@@ -125,133 +112,9 @@ const LandingPageKhamkhao = () => {
     fetchApprovedWarehouses()
   }, [])
 
-  const getDashboardInfo = (role) => {
-    switch (role) {
-      case 'ROLE_TENANT': return { url: '/tenant/dashboard', label: 'Tenant Dashboard' }
-      case 'ROLE_OWNER': return { url: '/owner/dashboard', label: 'Owner Dashboard' }
-      case 'ROLE_STAFF': return { url: '/staff/dashboard', label: 'Staff Dashboard' }
-      case 'ROLE_INSPECTOR': return { url: '/inspector/inspections', label: 'Inspector Dashboard' }
-      case 'ROLE_ADMIN': return { url: '/admin/dashboard', label: 'Admin Dashboard' }
-      default: return { url: '/', label: 'Dashboard' }
-    }
-  }
-
-  // ĐÃ THÊM: Hàm chuyển nhanh từ Login sang Register
-  const switchToRegister = () => {
-    setIsLoginOpen(false)
-    setIsRegisterOpen(true)
-  }
-
-  // ĐÃ THÊM: Hàm chuyển nhanh từ Register sang Login
-  const switchToLogin = () => {
-    setIsRegisterOpen(false)
-    setIsLoginOpen(true)
-  }
-
   return (
     <div className="min-h-screen bg-white font-sans text-stone-900 antialiased selection:bg-[#FF5A1F] selection:text-white">
-      {/* --- HEADER --- */}
-      <header className="sticky top-0 z-50 border-b border-stone-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <img src={logoDaidien} alt="Logo" className="h-9 w-auto object-contain" />
-            <span className="text-xl font-black tracking-tight text-stone-900 uppercase">
-              <span className="text-[#0f084b]">Stock</span>{' '}
-              <span className="text-[#FF5A1F]">Space</span>
-            </span>
-          </div>
-
-          {/* Desktop Nav */}
-          <nav className="hidden items-center gap-8 md:flex">
-            {['Home', 'About', 'Services', 'Solutions', 'Contact'].map((item) => (
-              <a
-                key={item}
-                href={`#${item.toLowerCase()}`}
-                className="text-sm font-medium text-stone-600 transition-colors hover:text-[#FF5A1F]"
-              >
-                {item}
-              </a>
-            ))}
-          </nav>
-
-          <div className="hidden items-center gap-4 md:flex">
-            {!isAuthenticated ? (
-              <>
-                <button
-                  onClick={() => setIsLoginOpen(true)}
-                  className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-2.5 text-xs font-bold text-stone-700 uppercase transition-all hover:bg-stone-50"
-                >
-                  Đăng nhập
-                </button>
-
-                <button
-                  onClick={() => setIsRegisterOpen(true)}
-                  className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-2.5 text-xs font-bold text-stone-700 uppercase transition-all hover:bg-stone-50"
-                >
-                  Đăng ký
-                </button>
-              </>
-            ) : (
-              <div className="group relative">
-                <button className="flex items-center gap-2 text-sm font-bold text-stone-700 hover:text-[#FF5A1F]">
-                  <div className="h-8 w-8 rounded-full bg-stone-200 flex items-center justify-center text-stone-600">
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                  <span>{user?.name || 'User'}</span>
-                </button>
-                
-                {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 opacity-0 invisible transition-all group-hover:opacity-100 group-hover:visible z-50">
-                  <div className="py-1">
-                    <button 
-                      onClick={() => navigate('/profile')}
-                      className="block w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-100"
-                    >
-                      Hồ sơ cá nhân
-                    </button>
-                    {user?.role && (
-                      <button 
-                        onClick={() => navigate(getDashboardInfo(user.role).url)}
-                        className="block w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-100 font-medium text-[#FF5A1F]"
-                      >
-                        {getDashboardInfo(user.role).label}
-                      </button>
-                    )}
-                    <button className="block w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-100">
-                      Cài đặt
-                    </button>
-                    <button
-                      onClick={() => {
-                        dispatch(logoutThunk())
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-stone-100"
-                    >
-                      Đăng xuất
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <a
-                href="#approved-warehouses"
-                className="inline-flex items-center justify-center rounded-md bg-[#FF5A1F] px-5 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#e04e19]"
-              >
-                Xem Kho <ArrowRight size={14} className="ml-1" />
-              </a>
-            </div>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-2 text-stone-600 hover:text-[#FF5A1F] md:hidden"
-          >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* --- SERVICES SECTION --- */}
       <section id="services" className="bg-white py-20 lg:py-28">
@@ -373,9 +236,15 @@ const LandingPageKhamkhao = () => {
                           <Warehouse size={42} />
                         </div>
                       )}
-                      <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#0f084b]">
-                        Approved
-                      </div>
+                      {warehouse.isVerified ? (
+                        <div className="absolute left-4 top-4 rounded-full bg-emerald-500/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
+                          Verified
+                        </div>
+                      ) : (
+                        <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#0f084b]">
+                          Approved
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-4 p-6">
@@ -578,20 +447,6 @@ const LandingPageKhamkhao = () => {
       </footer>
 
       <BackToTop />
-
-      {/* ĐÃ CẬP NHẬT: Quản lý và chuyển giao prop cho LoginModal */}
-      <LoginModal
-        isOpen={isLoginOpen}
-        onClose={() => setIsLoginOpen(false)}
-        onSwitchToRegister={switchToRegister}
-      />
-
-      {/* ĐÃ CẬP NHẬT: Quản lý và chuyển giao prop cho RegisterModal */}
-      <RegisterModal
-        isOpen={isRegisterOpen}
-        onClose={() => setIsRegisterOpen(false)}
-        onSwitchToLogin={switchToLogin}
-      />
     </div>
   )
 }

@@ -63,6 +63,24 @@ const onwerwarehouseApi = {
     // Tham số thứ 2 là body (để trống hoặc {}), tham số thứ 3 mới là config chứa params
     return api.post(`/owner/inspections`, {}, { params: { warehouseId } })
   },
+
+  // --- API Xét duyệt Booking của Owner ---
+  
+  // Lấy danh sách yêu cầu thuê kho gửi đến (phân trang)
+  getIncomingRequests: ({ page, size } = {}) => {
+    return api.get('/owner/bookings', { params: { page, size } })
+  },
+
+  // Chấp nhận yêu cầu thuê
+  approveBooking: (bookingId) => {
+    return api.patch(`/owner/bookings/${bookingId}/approve`)
+  },
+
+  // Từ chối yêu cầu thuê
+  rejectBooking: (bookingId, data) => {
+    // data = { reason: "..." }
+    return api.patch(`/owner/bookings/${bookingId}/reject`, data)
+  }
 }
 
 export default onwerwarehouseApi

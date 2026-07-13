@@ -1,24 +1,19 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
-import {
-  MapPin,
-  Maximize2,
-  Shield,
-  Clock,
-  Star,
-  CheckCircle2,
-  ChevronRight,
-  Share2,
-  Heart,
-  Truck,
-  ShieldCheck,
-  ArrowLeft,
-} from 'lucide-react'
-import { motion } from 'framer-motion'
+import { useParams, useNavigate } from 'react-router-dom'
 import Button from '@/components/atoms/Button'
-import Badge from '@/components/atoms/Badge'
-import Avatar from '@/components/atoms/Avatar'
 import warehouseApi from '@/services/warehouse/warehouseApi'
+import systemConfigApi from '@/services/systemConfigApi'
+import tenantApi from '@/services/tenant/tenantApi'
+import walletApi from '@/services/wallet/walletApi'
+import { useSelector, useDispatch } from 'react-redux'
+import { addBookedWarehouse } from '@/store/tenantBookingSlice'
+
+// Sub-components
+import WarehouseHeader from '../components/WarehouseHeader'
+import WarehouseGallery from '../components/WarehouseGallery'
+import WarehouseInfo from '../components/WarehouseInfo'
+import WarehouseBookingCard from '../components/WarehouseBookingCard'
+import ConfirmDepositModal from '../components/ConfirmDepositModal'
 
 const normalizeWarehouse = (warehouse) => ({
   id: warehouse.id,
@@ -62,10 +57,20 @@ const buildGallery = (warehouse) => {
 const WarehouseDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const bookedWarehouseIds = useSelector(state => state.tenantBooking.bookedWarehouseIds)
+  const hasBooked = bookedWarehouseIds.includes(id)
+  
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [warehouse, setWarehouse] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
+  const [depositPercentage, setDepositPercentage] = useState(10)
+  const [durationMonths, setDurationMonths] = useState(3)
+  const [isBooking, setIsBooking] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [isCheckingWallet, setIsCheckingWallet] = useState(false)
 
   useEffect(() => {
     const fetchWarehouse = async () => {
@@ -77,9 +82,9 @@ const WarehouseDetailPage = () => {
         const payload = response?.data?.data || response?.data
         const normalized = normalizeWarehouse(payload || {})
 
-        if (!normalized.id || normalized.isVerified !== true) {
+        if (!normalized.id) {
           setWarehouse(null)
-          setError('Warehouse not found or has not been approved yet.')
+          setError('Warehouse not found.')
           return
         }
 
@@ -93,6 +98,12 @@ const WarehouseDetailPage = () => {
     }
 
     fetchWarehouse()
+
+    const fetchConfig = async () => {
+      const percentage = await systemConfigApi.getDepositPercentage()
+      setDepositPercentage(percentage)
+    }
+    fetchConfig()
   }, [id])
 
   const gallery = useMemo(() => buildGallery(warehouse || {}), [warehouse])
@@ -101,7 +112,7 @@ const WarehouseDetailPage = () => {
     if (!warehouse) return null
 
     return {
-      deposit: warehouse.price * 2,
+      deposit: (warehouse.price * durationMonths * depositPercentage) / 100,
       images: gallery,
       features: [
         `${warehouse.type} storage`,
@@ -120,7 +131,38 @@ const WarehouseDetailPage = () => {
       },
       reviews: Math.max(12, Math.round(warehouse.rating * 20)),
     }
-  }, [gallery, warehouse])
+  }, [gallery, warehouse, depositPercentage, durationMonths])
+
+  const handleDepositClick = async () => {
+    setIsCheckingWallet(true)
+    try {
+      const res = await walletApi.getWallet()
+      const balance = res?.data?.data?.balance ?? res?.data?.balance ?? 0
+      setWalletBalance(balance)
+      setShowConfirmModal(true)
+    } catch (err) {
+      alert('Failed to check wallet balance')
+    } finally {
+      setIsCheckingWallet(false)
+    }
+  }
+
+  const handleConfirmDeposit = async () => {
+    try {
+      setIsBooking(true)
+      await tenantApi.createBooking({
+        warehouseId: warehouse.id,
+        depositAmount: extendedData.deposit
+      })
+      dispatch(addBookedWarehouse(warehouse.id))
+      alert('Booking request sent successfully! Deposit deducted from wallet.')
+      setShowConfirmModal(false)
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to send booking request')
+    } finally {
+      setIsBooking(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -149,258 +191,43 @@ const WarehouseDetailPage = () => {
     <div className="min-h-screen bg-white">
       <main className="pb-20 pt-24">
         <div className="container mx-auto px-4">
-          <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Link to="/warehouses" className="flex items-center gap-1 transition-colors hover:text-primary">
-                <ArrowLeft size={14} /> Back to Search
-              </Link>
-              <span className="text-slate-300">|</span>
-              <span className="font-medium text-slate-900">{warehouse.name}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-50">
-                <Share2 size={16} /> Share
-              </button>
-              <button
-                onClick={() => setIsBookmarked(!isBookmarked)}
-                className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-bold transition-colors ${
-                  isBookmarked
-                    ? 'border-danger bg-danger/5 text-danger'
-                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <Heart size={16} fill={isBookmarked ? 'currentColor' : 'none'} />{' '}
-                {isBookmarked ? 'Saved' : 'Save'}
-              </button>
-            </div>
-          </div>
+          <WarehouseHeader 
+            warehouseName={warehouse.name}
+            isBookmarked={isBookmarked}
+            onBookmarkToggle={() => setIsBookmarked(!isBookmarked)}
+          />
 
-          <div className="mb-10 grid h-[500px] grid-cols-1 gap-3 md:grid-cols-4 md:grid-rows-2">
-            <div className="group cursor-pointer overflow-hidden rounded-2xl border border-slate-100 md:col-span-2 md:row-span-2">
-              <img
-                src={extendedData.images[0]}
-                alt="Main"
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-            </div>
-            <div className="group cursor-pointer overflow-hidden rounded-2xl border border-slate-100">
-              <img
-                src={extendedData.images[1]}
-                alt="Interior 1"
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-            </div>
-            <div className="group cursor-pointer overflow-hidden rounded-2xl border border-slate-100">
-              <img
-                src={extendedData.images[2]}
-                alt="Interior 2"
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-            </div>
-            <div className="group cursor-pointer overflow-hidden rounded-2xl border border-slate-100">
-              <img
-                src={extendedData.images[3]}
-                alt="Exterior"
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-            </div>
-            <div className="group relative cursor-pointer overflow-hidden rounded-2xl border border-slate-100">
-              <img
-                src={extendedData.images[4]}
-                alt="Loading"
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                <span className="flex items-center gap-2 font-bold text-white">
-                  View All Photos <ChevronRight size={18} />
-                </span>
-              </div>
-            </div>
-          </div>
+          <WarehouseGallery images={extendedData.images} />
 
           <div className="flex flex-col gap-12 lg:flex-row">
-            <div className="flex-1 space-y-12">
-              <section>
-                <div className="mb-4 flex items-center gap-2">
-                  <Badge variant="success">Verified Listing</Badge>
-                  <Badge variant="primary" className="border-none bg-primary/10 text-primary">
-                    {warehouse.type}
-                  </Badge>
-                </div>
-                <h1 className="mb-4 text-4xl font-black tracking-tight text-slate-900">
-                  {warehouse.name}
-                </h1>
-                <div className="flex items-center gap-6 text-slate-500">
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <MapPin size={18} className="text-primary" />
-                    <span>{warehouse.location}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 rounded-full bg-warning/5 px-3 py-1 font-bold text-warning">
-                    <Star size={16} className="fill-current" />
-                    <span>
-                      {warehouse.rating} ({extendedData.reviews} reviews)
-                    </span>
-                  </div>
-                </div>
+            <WarehouseInfo 
+              warehouse={warehouse} 
+              extendedData={extendedData} 
+            />
 
-                <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
-                  {[
-                    { icon: Maximize2, label: 'Area', value: `${warehouse.area.toLocaleString()} m²` },
-                    { icon: Shield, label: 'Security', value: '24/7 Monitoring' },
-                    { icon: Clock, label: 'Access', value: 'Anytime' },
-                    { icon: Truck, label: 'Loading', value: 'Supported' },
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex flex-col gap-2">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-primary">
-                        <item.icon size={20} />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          {item.label}
-                        </p>
-                        <p className="text-sm font-bold text-slate-900">{item.value}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <hr className="border-slate-100" />
-
-              <section>
-                <h3 className="mb-6 text-xl font-bold text-slate-900">Hosted by</h3>
-                <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-6">
-                  <div className="flex items-center gap-4">
-                    <Avatar
-                      alt={extendedData.owner.name}
-                      size="lg"
-                      className="border-2 border-white shadow-sm"
-                    />
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-lg font-bold text-slate-900">{extendedData.owner.name}</p>
-                        {extendedData.owner.verified && (
-                          <CheckCircle2 size={16} className="text-success" />
-                        )}
-                      </div>
-                      <p className="text-sm text-slate-500">
-                        {extendedData.owner.company} • Member since {extendedData.owner.since}
-                      </p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" className="bg-white">
-                    Contact Owner
-                  </Button>
-                </div>
-              </section>
-
-              <section className="space-y-6">
-                <h3 className="text-xl font-bold text-slate-900">About this space</h3>
-                <p className="text-lg leading-relaxed text-slate-600">{warehouse.description}</p>
-
-                <div className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2">
-                  {extendedData.features.map((feature) => (
-                    <div key={feature} className="flex items-center gap-3 font-medium text-slate-700">
-                      <CheckCircle2 size={18} className="shrink-0 text-primary" />
-                      <span>{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-
-            <aside className="w-full lg:w-[400px]">
-              <div className="sticky top-28 space-y-6">
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl shadow-slate-200/50"
-                >
-                  <div className="absolute -mr-16 -mt-16 h-32 w-32 rounded-full bg-primary/5" />
-
-                  <div className="relative z-10 mb-8 flex items-end justify-between">
-                    <div>
-                      <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">
-                        Rental Price
-                      </p>
-                      <span className="text-3xl font-black text-primary">
-                        ${warehouse.price.toLocaleString()}
-                      </span>
-                      <span className="font-medium text-slate-500"> / mo</span>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1 font-bold text-warning">
-                        <Star size={14} className="fill-current" />
-                        <span>{warehouse.rating}</span>
-                      </div>
-                      <p className="text-[10px] font-bold uppercase text-slate-400">
-                        {extendedData.reviews} reviews
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="relative z-10 mb-8 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Start Date</label>
-                        <input type="date" className="h-11 w-full rounded-md border border-slate-200 px-3 text-sm" />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">Duration</label>
-                        <select className="h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm">
-                          <option>3 months</option>
-                          <option>6 months</option>
-                          <option>12 months</option>
-                          <option>24 months</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">Required Area (m²)</label>
-                      <input
-                        type="number"
-                        defaultValue={warehouse.area}
-                        className="h-11 w-full rounded-md border border-slate-200 px-3 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="relative z-10 mb-8 rounded-2xl border border-slate-100 bg-slate-50 p-5">
-                    <div className="mb-3 flex items-center gap-2 font-bold text-slate-900">
-                      <ShieldCheck size={18} className="text-success" />
-                      <h4 className="text-sm">Deposit Information</h4>
-                    </div>
-                    <div className="space-y-2.5 text-sm">
-                      <div className="flex justify-between text-slate-600">
-                        <span>Monthly Rental</span>
-                        <span className="font-semibold">${warehouse.price.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Security Deposit (2 mo)</span>
-                        <span className="font-semibold">${extendedData.deposit.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-600">
-                        <span>Service Fee</span>
-                        <span className="font-semibold">$99.00</span>
-                      </div>
-                      <div className="flex justify-between border-t border-slate-200 pt-3 text-lg font-black text-slate-900">
-                        <span>Total to Book</span>
-                        <span className="text-primary">
-                          ${(warehouse.price + extendedData.deposit + 99).toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button className="group h-14 w-full rounded-2xl text-lg font-bold shadow-xl shadow-primary/30">
-                    Instant Deposit
-                  </Button>
-                </motion.div>
-              </div>
-            </aside>
+            <WarehouseBookingCard 
+              warehouse={warehouse}
+              extendedData={extendedData}
+              durationMonths={durationMonths}
+              onDurationChange={setDurationMonths}
+              depositPercentage={depositPercentage}
+              hasBooked={hasBooked}
+              isCheckingWallet={isCheckingWallet}
+              onDepositClick={handleDepositClick}
+            />
           </div>
         </div>
       </main>
+
+      <ConfirmDepositModal 
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        walletBalance={walletBalance}
+        depositAmount={extendedData.deposit}
+        depositPercentage={depositPercentage}
+        isBooking={isBooking}
+        onConfirm={handleConfirmDeposit}
+      />
     </div>
   )
 }

@@ -37,6 +37,7 @@ import Header from '../../../components/HeaderDashboard'
 
 // Import API config của bạn
 import walletApi from '../../../services/wallet/walletApi'
+import warehouseApi from '../../../services/warehouse/warehouseApi'
 
 // Mock Data giữ nguyên
 const revenueData = [
@@ -61,6 +62,10 @@ const OwnerDashboard = () => {
   const [loadingWallet, setLoadingWallet] = useState(true)
   const [depositLoading, setDepositLoading] = useState(false)
 
+  // --- STATE YÊU CẦU THUÊ KHO ---
+  const [incomingRequests, setIncomingRequests] = useState([])
+  const [loadingRequests, setLoadingRequests] = useState(true)
+
   // State điều khiển Modal nhập tiền
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [inputAmount, setInputAmount] = useState('')
@@ -82,8 +87,23 @@ const OwnerDashboard = () => {
     }
   }
 
+  const fetchRequests = async () => {
+    try {
+      setLoadingRequests(true)
+      const res = await warehouseApi.getIncomingRequests({ page: 0, size: 10 })
+      if (res?.data?.success) {
+        setIncomingRequests(res.data.data.content || [])
+      }
+    } catch (error) {
+      console.error('Lỗi lấy danh sách yêu cầu thuê:', error)
+    } finally {
+      setLoadingRequests(false)
+    }
+  }
+
   useEffect(() => {
     fetchWallet()
+    fetchRequests()
   }, [])
 
   // --- XỬ LÝ GỬI YÊU CẦU NẠP TIỀN LÊN BE ---
@@ -141,63 +161,72 @@ const OwnerDashboard = () => {
     { title: 'Pending Requests', value: '5', icon: FileCheck, trend: 'down', trendValue: 2 },
   ]
 
-  // Mock Data bảng (Giữ nguyên)
-  const rentalRequests = [
-    {
-      id: 'REQ-001',
-      tenant: 'TechBuild Ltd.',
-      warehouse: 'Saigon Hub A',
-      area: '1,500 sqft',
-      status: 'PENDING',
-      date: '2026-05-12',
-    },
-    {
-      id: 'REQ-002',
-      tenant: 'GreenSource Inc.',
-      warehouse: 'Tan Binh Cold',
-      area: '500 sqft',
-      status: 'PENDING',
-      date: '2026-05-12',
-    },
-    {
-      id: 'REQ-003',
-      tenant: 'LogiFlow Co.',
-      warehouse: 'Saigon Hub B',
-      area: '3,000 sqft',
-      status: 'APPROVED',
-      date: '2026-05-10',
-    },
-  ]
+  const handleApprove = async (id) => {
+    try {
+      await warehouseApi.approveBooking(id)
+      alert('Đã chấp nhận yêu cầu thuê kho thành công!')
+      fetchRequests() // Refresh data
+    } catch (error) {
+      alert(error.response?.data?.message || 'Chấp nhận yêu cầu thất bại')
+    }
+  }
+
+  const handleReject = async (id) => {
+    const reason = prompt('Nhập lý do từ chối:')
+    if (!reason) return
+    
+    try {
+      await warehouseApi.rejectBooking(id, { reason })
+      alert('Đã từ chối yêu cầu thuê kho!')
+      fetchRequests() // Refresh data
+    } catch (error) {
+      alert(error.response?.data?.message || 'Từ chối yêu cầu thất bại')
+    }
+  }
 
   const columns = [
     {
       header: 'Tenant',
       render: (row) => (
         <div>
-          <p className="font-bold text-slate-900">{row.tenant}</p>
-          <p className="text-[10px] text-slate-400">{row.id}</p>
+          <p className="font-bold text-slate-900">{row.tenantName}</p>
+          <p className="text-[10px] text-slate-400">{row.id.substring(0, 8)}...</p>
         </div>
       ),
     },
-    { header: 'Warehouse', accessor: 'warehouse' },
-    { header: 'Area Req.', accessor: 'area' },
+    { header: 'Warehouse', accessor: 'warehouseName' },
+    { 
+      header: 'Deposit', 
+      render: (row) => <span className="font-semibold text-primary">{formatVND(row.depositAmount)}</span> 
+    },
     {
       header: 'Status',
       render: (row) => (
-        <Badge variant={row.status === 'APPROVED' ? 'success' : 'warning'}>{row.status}</Badge>
+        <Badge variant={row.status === 'APPROVED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'warning'}>{row.status}</Badge>
       ),
     },
-    { header: 'Date', accessor: 'date' },
+    { 
+      header: 'Date', 
+      render: (row) => <span>{new Date(row.createdAt).toLocaleDateString('vi-VN')}</span>
+    },
     {
       header: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-2">
           {row.status === 'PENDING' ? (
             <>
-              <button className="rounded-lg bg-emerald-50 p-1.5 text-emerald-600 transition-colors hover:bg-emerald-100">
+              <button 
+                onClick={() => handleApprove(row.id)}
+                className="rounded-lg bg-emerald-50 p-1.5 text-emerald-600 transition-colors hover:bg-emerald-100"
+                title="Approve"
+              >
                 <Check className="h-4 w-4" />
               </button>
-              <button className="rounded-lg bg-rose-50 p-1.5 text-rose-600 transition-colors hover:bg-rose-100">
+              <button 
+                onClick={() => handleReject(row.id)}
+                className="rounded-lg bg-rose-50 p-1.5 text-rose-600 transition-colors hover:bg-rose-100"
+                title="Reject"
+              >
                 <X className="h-4 w-4" />
               </button>
             </>
@@ -354,7 +383,7 @@ const OwnerDashboard = () => {
                     Manage All
                   </Button>
                 </div>
-                <DataTable columns={columns} data={rentalRequests} />
+                <DataTable columns={columns} data={incomingRequests} isLoading={loadingRequests} />
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

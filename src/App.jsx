@@ -14,6 +14,8 @@ import UnauthorizedPage from './features/auth/pages/UnauthorizedPage'
 import ForgotPasswordPage from './features/auth/pages/ForgotPasswordPage'
 import ResetPasswordPage from './features/auth/pages/ResetPasswordPage'
 import Profile from './features/auth/pages/Profile'
+import PackageList from './features/package/pages/PackageList'
+import PackageDetail from './features/package/pages/PackageDetail'
 
 // Admin Pages
 import AdminDashboard from './features/admin/pages/AdminDashboard'
@@ -40,12 +42,16 @@ import OutboundPage from './features/outbound/pages/OutboundPage'
 import MyBookingsPage from './features/tenant/pages/MyBookingsPage'
 import BillingPage from './features/tenant/pages/BillingPage'
 import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
+import WalletTenant from './features/tenant/pages/WalletTenant'
+import TenantContractsPage from './features/tenant/pages/TenantContractsPage'
+import MyDisputesPage from './features/dispute/pages/MyDisputesPage'
 
 // Owner Pages
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
 import OwnerProfile from './features/owner/pages/OwnerProfile'
 import PostWarehouse from './features/owner/pages/PostWarehouse'
 import ListWarehouse from './features/owner/pages/ListWarehouse'
+import OwnerContractsPage from './features/owner/pages/OwnerContractsPage'
 
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
@@ -91,6 +97,8 @@ const App = () => {
           <Route path="/" element={<LandingpageKhamkhao />} />
           <Route path="/warehouses" element={<WarehouseListingPage />} />
           <Route path="/warehouse/:id" element={<WarehouseDetailPage />} />
+          <Route path="/packages" element={<PackageList />} />
+          <Route path="/packages/:id" element={<PackageDetail />} />
         </Route>
         {/* <Route path="/login" element={<LoginPage />} /> */}
         {/* <Route path="/register" element={<RegisterPage />} /> */}
@@ -129,6 +137,9 @@ const App = () => {
           <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
           <Route path="/tenant/payments" element={<BillingPage />} />
           <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse />} />
+          <Route path="/tenant/wallet" element={<WalletTenant />} />
+          <Route path="/tenant/contracts" element={<TenantContractsPage />} />
+          <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
         </Route>
 
         {/* Owner Routes */}
@@ -138,6 +149,8 @@ const App = () => {
           <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
           <Route path="/owner/wallet/withdraws" element={<WithdrawsHistory />} />
           <Route path="/owner/profile" element={<OwnerProfile />} />
+          <Route path="/owner/contracts" element={<OwnerContractsPage />} />
+          <Route path="/owner/disputes" element={<MyDisputesPage currentRole="OWNER" />} />
         </Route>
 
         {/* Staff Routes */}

@@ -15,6 +15,7 @@ import WarehouseCard from '../components/WarehouseCard'
 import WarehouseFilters from '../components/WarehouseFilters'
 import Button from '@/components/atoms/Button'
 import warehouseApi from '@/services/warehouse/warehouseApi'
+import PublicHeader from '@/components/PublicHeader'
 
 const CATEGORIES = [
   { id: 'all', label: 'All Spaces', icon: WarehouseIcon },
@@ -59,7 +60,7 @@ const normalizeWarehouse = (warehouse) => ({
   isVerified: warehouse.isVerified ?? warehouse.verified ?? false,
 })
 
-const isVisibleWarehouse = (warehouse) => warehouse.isVerified === true
+const isVisibleWarehouse = (warehouse) => true
 
 const matchesCategory = (warehouse, category) => {
   if (category === 'all') return true
@@ -90,7 +91,6 @@ const WarehouseListingPage = () => {
         const response = await warehouseApi.getPublicWarehouses({
           page: 0,
           size: 24,
-          isVerified: true,
           sortBy: 'createdAt',
           sortDir: 'desc',
         })
@@ -130,9 +130,10 @@ const WarehouseListingPage = () => {
   }, [activeCategory, searchTerm, warehouses])
 
   return (
-    <div className="min-h-screen bg-white">
-      <main className="pb-20 pt-24">
-        <div className="sticky top-0 z-40 border-b border-slate-100 bg-white/90 backdrop-blur-md">
+    <div className="min-h-screen bg-white flex flex-col">
+      <PublicHeader />
+      <main className="pb-20 flex-1 pt-4">
+        <div className="sticky top-20 z-40 border-b border-slate-100 bg-white/90 backdrop-blur-md">
           <div className="container mx-auto px-4 py-4">
             <div className="flex flex-col items-center gap-6 lg:flex-row">
               <div className="flex flex-1 items-center gap-8 overflow-x-auto pb-1 no-scrollbar">
@@ -140,19 +141,17 @@ const WarehouseListingPage = () => {
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
-                    className={`group relative flex min-w-max flex-col items-center gap-2 pb-2 transition-all ${
-                      activeCategory === cat.id
+                    className={`group relative flex min-w-max flex-col items-center gap-2 pb-2 transition-all ${activeCategory === cat.id
                         ? 'text-primary'
                         : 'text-slate-500 hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <cat.icon size={24} strokeWidth={activeCategory === cat.id ? 2.5 : 2} />
                     <span
-                      className={`text-xs font-bold tracking-tight ${
-                        activeCategory === cat.id
+                      className={`text-xs font-bold tracking-tight ${activeCategory === cat.id
                           ? 'opacity-100'
                           : 'opacity-70 group-hover:opacity-100'
-                      }`}
+                        }`}
                     >
                       {cat.label}
                     </span>
@@ -183,21 +182,19 @@ const WarehouseListingPage = () => {
                 <div className="hidden items-center rounded-2xl border border-slate-200 bg-white p-1 sm:flex">
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`rounded-xl p-1.5 transition-all ${
-                      viewMode === 'grid'
+                    className={`rounded-xl p-1.5 transition-all ${viewMode === 'grid'
                         ? 'bg-slate-900 text-white shadow-lg'
                         : 'text-slate-400 hover:text-slate-600'
-                    }`}
+                      }`}
                   >
                     <LayoutGrid size={20} />
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`rounded-xl p-1.5 transition-all ${
-                      viewMode === 'list'
+                    className={`rounded-xl p-1.5 transition-all ${viewMode === 'list'
                         ? 'bg-slate-900 text-white shadow-lg'
                         : 'text-slate-400 hover:text-slate-600'
-                    }`}
+                      }`}
                   >
                     <List size={20} />
                   </button>
@@ -210,7 +207,7 @@ const WarehouseListingPage = () => {
         <div className="container mx-auto mt-10 px-4">
           <div className="flex flex-col gap-10 lg:flex-row">
             <aside className="hidden w-72 shrink-0 lg:block">
-              <div className="sticky top-32">
+              <div className="sticky top-52">
                 <div className="mb-6 flex items-center justify-between">
                   <h3 className="text-xl font-black text-slate-900">Filters</h3>
                   <button
@@ -233,11 +230,11 @@ const WarehouseListingPage = () => {
                   <h2 className="text-2xl font-black tracking-tight text-slate-900">
                     Approved Warehouses
                   </h2>
-                  <p className="mt-1 text-sm font-medium text-slate-500">
+                  {/* <p className="mt-1 text-sm font-medium text-slate-500">
                     Found{' '}
                     <span className="font-bold text-slate-900">{filteredWarehouses.length}</span>{' '}
                     warehouses approved by admin
-                  </p>
+                  </p> */}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold uppercase tracking-widest text-slate-400">

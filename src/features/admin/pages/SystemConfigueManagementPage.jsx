@@ -5,6 +5,7 @@ import {
     updateSystemConfig,
     clearActionError,
 } from '../../../store/adminSystemConfigueManagement'
+import { fetchPackages } from '../../../store/adminPackagesSubcription'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
     Settings,
@@ -29,19 +30,23 @@ const CONFIG_KEY_LABELS = {
     'deposit_percentage': 'Tỷ lệ cọc thuê kho (%)',
     'contract_expiry_days': 'Hạn ký hợp đồng (Ngày)',
     'inspection_fee': 'Phí yêu cầu kiểm định (VNĐ)',
-    'warehouse_publish_package_id': 'ID Gói dịch vụ đăng kho',
+    'warehouse_publish_package_id': 'Phí đăng kho',
 }
 
-const formatConfigValue = (key, val) => {
+const formatConfigValue = (key, val, packages = []) => {
     if (!val) return '—'
     if (key === 'inspection_fee') return Number(val).toLocaleString('vi-VN') + ' ₫'
     if (key === 'deposit_percentage') return val + '%'
     if (key === 'contract_expiry_days') return val + ' ngày'
+    if (key === 'warehouse_publish_package_id') {
+        const pkg = packages.find(p => p.id === val)
+        if (pkg) return `${pkg.name} - ${Number(pkg.price).toLocaleString('vi-VN')} ₫`
+    }
     return val
 }
 
 // ─── Edit Modal ───────────────────────────────────────────────────────────────
-const EditConfigModal = ({ configItem, onClose }) => {
+const EditConfigModal = ({ configItem, packages, onClose }) => {
     const dispatch = useDispatch()
     const { actionLoading, actionError } = useSelector((s) => s.adminSystemConfig)
     const [configValue, setConfigValue] = useState(configItem.configValue || '')
@@ -85,12 +90,25 @@ const EditConfigModal = ({ configItem, onClose }) => {
 
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-slate-700">Giá trị cấu hình <span className="text-rose-500">*</span></label>
-                        <input value={configValue} onChange={(e) => setConfigValue(e.target.value)}
-                            placeholder="Nhập giá trị cấu hình mới..."
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                        {configItem.configKey === 'warehouse_publish_package_id' ? (
+                            <select
+                                value={configValue} onChange={(e) => setConfigValue(e.target.value)}
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="">-- Chọn Gói Dịch Vụ --</option>
+                                {packages.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name} - {Number(p.price).toLocaleString('vi-VN')} ₫</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <input value={configValue} onChange={(e) => setConfigValue(e.target.value)}
+                                placeholder="Nhập giá trị cấu hình mới..."
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
+                        )}
                         <p className="mt-1 text-xs text-slate-400">
                             {configItem.configKey === 'deposit_percentage' && 'Ví dụ: 10 (đại diện cho 10%)'}
                             {configItem.configKey === 'inspection_fee' && 'Nhập số tiền VNĐ (không chứa dấu phẩy)'}
+                            {configItem.configKey === 'warehouse_publish_package_id' && 'Chọn gói đăng tin kho mặc định'}
                         </p>
                     </div>
 
@@ -123,11 +141,13 @@ const SystemConfigueManagementPage = () => {
     const dispatch = useDispatch()
     const { isSidebarExpanded } = useSelector((s) => s.ui)
     const { data: configs, loading, error } = useSelector((s) => s.adminSystemConfig)
+    const { packages } = useSelector((s) => s.adminPackagesSubcription)
 
     const [selectedItem, setSelectedItem] = useState(null)
 
     useEffect(() => {
         dispatch(fetchSystemConfigs())
+        dispatch(fetchPackages())
     }, [dispatch])
 
     return (
@@ -198,7 +218,7 @@ const SystemConfigueManagementPage = () => {
                                                         </td>
                                                         <td className="px-5 py-4">
                                                             <span className="font-bold text-slate-800 text-base bg-blue-50 px-2 py-1 rounded-md text-blue-700 border border-blue-100 whitespace-nowrap">
-                                                                {formatConfigValue(cfg.configKey, cfg.configValue)}
+                                                                {formatConfigValue(cfg.configKey, cfg.configValue, packages)}
                                                             </span>
                                                         </td>
                                                         <td className="px-5 py-4 text-slate-600 max-w-sm">
@@ -227,7 +247,7 @@ const SystemConfigueManagementPage = () => {
 
             {/* Modal */}
             <AnimatePresence>
-                {selectedItem && <EditConfigModal key="edit-modal" configItem={selectedItem} onClose={() => setSelectedItem(null)} />}
+                {selectedItem && <EditConfigModal key="edit-modal" configItem={selectedItem} packages={packages} onClose={() => setSelectedItem(null)} />}
             </AnimatePresence>
         </div>
     )

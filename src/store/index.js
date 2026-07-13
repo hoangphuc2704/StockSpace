@@ -17,6 +17,7 @@ import inspectorManagementReducer from './inspectorManagement'
 import adminWarehouseTypeReducer from './adminWarehouseType'
 import adminSystemConfigReducer from './adminSystemConfigueManagement'
 import uiReducer from './uiSlide'
+import tenantBookingReducer from './tenantBookingSlice'
 
 const store = configureStore({
   reducer: {
@@ -38,6 +39,7 @@ const store = configureStore({
     adminWarehouseType: adminWarehouseTypeReducer,
     adminSystemConfig: adminSystemConfigReducer,
     ui: uiReducer,
+    tenantBooking: tenantBookingReducer,
   },
 })
 

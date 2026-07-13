@@ -31,6 +31,7 @@ import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import adminApi from '../../../services/admin/adminApi'
 
 // ─── Enum / Constants từ BE ─────────────────────────────────────────────────
 // InspectionStatus: PENDING | IN_PROGRESS | PASSED | FAILED
@@ -54,12 +55,31 @@ const AssignModal = ({ inspection, onClose }) => {
 
     const [inspectorId, setInspectorId] = useState('')
     const [localError, setLocalError] = useState(null)
+    const [inspectors, setInspectors] = useState([])
+    const [loadingInspectors, setLoadingInspectors] = useState(false)
 
     useEffect(() => { dispatch(clearAssignError()) }, [dispatch])
 
+    useEffect(() => {
+        const fetchInspectors = async () => {
+            setLoadingInspectors(true)
+            try {
+                const res = await adminApi.getUsers({ roleName: 'ROLE_INSPECTOR', size: 100 })
+                if (res.data?.success) {
+                    setInspectors(res.data.data.content || [])
+                }
+            } catch (err) {
+                console.error('Failed to fetch inspectors', err)
+            } finally {
+                setLoadingInspectors(false)
+            }
+        }
+        fetchInspectors()
+    }, [])
+
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!inspectorId.trim()) { setLocalError('Vui lòng nhập Inspector ID.'); return }
+        if (!inspectorId.trim()) { setLocalError('Vui lòng chọn Inspector.'); return }
         setLocalError(null)
         const result = await dispatch(assignInspector({ id: inspection.id, inspectorId: inspectorId.trim() }))
         if (assignInspector.fulfilled.match(result)) onClose()
@@ -93,14 +113,21 @@ const AssignModal = ({ inspection, onClose }) => {
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                            Inspector ID (UUID) <span className="text-rose-500">*</span>
+                            Inspector <span className="text-rose-500">*</span>
                         </label>
-                        <input
+                        <select
                             value={inspectorId} onChange={(e) => setInspectorId(e.target.value)}
-                            placeholder="Nhập UUID của Inspector..."
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
-                        />
-                        <p className="mt-1 text-xs text-slate-400">UUID của user có role Inspector trong hệ thống</p>
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            disabled={loadingInspectors}
+                        >
+                            <option value="">-- Chọn Inspector --</option>
+                            {inspectors.map(insp => (
+                                <option key={insp.id} value={insp.id}>
+                                    {insp.fullName} ({insp.email})
+                                </option>
+                            ))}
+                        </select>
+                        <p className="mt-1 text-xs text-slate-400">Chọn user có role Inspector trong hệ thống để phân công</p>
                     </div>
 
                     {(localError || assignError) && (
