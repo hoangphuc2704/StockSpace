@@ -136,7 +136,7 @@ const App = () => {
           <Route path="/tenant/outbound" element={<OutboundPage />} />
           <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
           <Route path="/tenant/payments" element={<BillingPage />} />
-          <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse />} />
+          <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse currentRole="TENANT" />} />
           <Route path="/tenant/wallet" element={<WalletTenant />} />
           <Route path="/tenant/contracts" element={<TenantContractsPage />} />
           <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
@@ -147,6 +147,7 @@ const App = () => {
           <Route path="/owner/dashboard" element={<OwnerDashboard />} />
           <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
           <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
+          <Route path="/owner/layoutwarehouses" element={<LayoutWarehouse currentRole="OWNER" />} />
           <Route path="/owner/wallet/withdraws" element={<WithdrawsHistory />} />
           <Route path="/owner/profile" element={<OwnerProfile />} />
           <Route path="/owner/contracts" element={<OwnerContractsPage />} />

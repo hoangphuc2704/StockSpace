@@ -2,8 +2,6 @@ import {
   HiOutlineRectangleGroup,
   HiOutlineHomeModern,
   HiOutlineCog6Tooth,
-  HiOutlineChartBar,
-  HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineCurrencyDollar,
   HiOutlineDocumentText,
@@ -16,8 +14,6 @@ import {
   HiOutlineArrowRightOnRectangle,
   HiOutlineUserGroup,
 } from 'react-icons/hi2'
-
-import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 
@@ -66,6 +62,7 @@ const SIDEBAR_MENUS = {
     { text: 'Tổng Quan', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
     { text: 'Cài đặt', icon: HiOutlineCog6Tooth, path: '/owner/profile' },
     { text: 'Danh sách kho', icon: HiOutlineHomeModern, path: '/owner/listwarehouse' },
+    { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/owner/layoutwarehouses' },
     { text: 'Hợp đồng', icon: HiOutlineDocumentText, path: '/owner/contracts' },
     { text: 'Tranh chấp', icon: HiOutlineExclamationCircle, path: '/owner/disputes' },
     {

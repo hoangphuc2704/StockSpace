@@ -1,648 +1,286 @@
-# STOCKSPACE — COMPLETE FRONTEND ARCHITECTURE MASTER PROMPT
-## Enterprise ReactJS + TailwindCSS + SaaS Dashboard Architecture
+# STOCKSPACE UI RULES
+## Anti-Slop Interface Generation Guide For This Project
 
-# ROLE & CONTEXT
-
-You are a **Senior Principal Frontend Architect** with 10+ years of experience in:
-- ReactJS Ecosystem
-- Enterprise SaaS Platforms
-- Large-scale Frontend Architectures
-- Design Systems
-- RBAC Authentication Systems
-- Realtime Applications
-- Warehouse Management Systems
-
-Your mission is to design and generate a **COMPLETE, PRODUCTION-READY FRONTEND ARCHITECTURE** for my Capstone Project:
-
-# StockSpace
-A centralized warehouse marketplace and warehouse management platform.
-
-The platform allows:
-- Posting warehouse listings
-- Searching and filtering warehouses
-- Warehouse booking/rental workflows
-- Inventory management after rental
-- Staff & attendance management
-- Realtime warehouse operations
-- Admin management system
-- Role-based dashboards
-- AI-powered warehouse search engine
+This file defines the mandatory UI generation rules for StockSpace. Apply these rules before creating or redesigning any interface in this repository.
 
 ---
 
-# PROJECT CONTEXT
+## 1. Product Context
 
-The rapid growth of e-commerce and logistics has significantly increased demand for flexible warehouse spaces.
+### What StockSpace Is
+StockSpace is a warehouse marketplace and warehouse operations platform.
 
-Current problems:
-- Fragmented warehouse information
-- Poor booking workflows
-- Manual inventory management
-- Weak stock tracking
-- No centralized warehouse operation system
+The product combines two interface worlds:
+- Public marketplace experiences for discovering and booking warehouses
+- Operational dashboards for tenants, owners, staff, inspectors, and admins
 
-StockSpace solves this by:
-- Connecting warehouse owners with tenants
-- Providing warehouse booking systems
-- Providing post-rental warehouse management tools
-- Supporting realtime warehouse operations
+### Who Uses It
+- Guests searching for warehouse space
+- Tenants renting and managing warehouse operations
+- Warehouse owners posting listings and handling requests
+- Staff performing inventory and attendance tasks
+- Inspectors reviewing warehouse activity
+- Admins supervising the whole platform
+
+### What The UI Must Communicate
+- Trust for transactions and warehouse data
+- Operational clarity for daily logistics work
+- Enterprise structure without looking generic
+- Modern product quality with strong visual hierarchy
 
 ---
 
-# STRICT TECH STACK REQUIREMENTS
+## 2. Stack And System Boundaries
 
-## Core
-- React 18+
-- Vite
-- JavaScript (or TypeScript if recommended)
-
-## Styling
+### Real Project Stack
+When generating UI for this repository, follow the stack that already exists here:
+- React + Vite
+- JavaScript
 - TailwindCSS v4
 - Framer Motion
+- Redux Toolkit
+- React Router
+- TanStack Query
+- Lucide React
 
-## Routing
-- React Router DOM v6+
-
-## State Management
-### Server State
-- TanStack Query (React Query)
-
-### Client/Global State
-- Zustand
-
-## Forms & Validation
-- React Hook Form
-- Zod Validation
-
-## UI Ecosystem
-- Lucide React Icons
-- Recharts
-- clsx
-- tailwind-merge
-
-## Networking
-- Axios
-- Axios Interceptors
-
-## Authentication
-- JWT Authentication
-- Refresh Token Flow
-- RBAC (Role-Based Access Control)
-
-## Realtime
-- Socket.io Client
-
-## Architecture
-- Feature-Sliced Design (FSD)
-OR
-- Strict Feature-Based Architecture
+### Design System Rule
+- Do not randomly mix Material UI, Ant Design, Shadcn, Chakra, Bootstrap, or other UI systems into the same screen.
+- Prefer custom Tailwind-based components built from the existing local component system in `src/components`.
+- Reuse existing primitives such as `Button`, `Badge`, `InputField`, `Modal`, `Drawer`, `DataTable`, and helper `cn()`.
+- If a new component is needed, make it look native to this repo instead of imported-from-elsewhere.
 
 ---
 
-# UI/UX & DESIGN STANDARDS
+## 3. Anti-Slop Principles
 
-The application MUST follow:
-- Enterprise SaaS Design principles
-- Clean dashboard UI
-- Modern responsive layouts
-- Reusable UI system
-- Accessibility best practices
-- Atomic Design methodology
+### Forbidden Output
+- Do not produce a generic SaaS dashboard that could belong to any startup.
+- Do not rely on empty hero sections, stock cards, weak spacing, or placeholder blocks.
+- Do not generate UI that is visually disconnected from warehouse, logistics, mapping, inventory, or booking workflows.
+- Do not leave unfinished states, empty labels, dead buttons, or fake filters.
+- Do not use Lorem Ipsum, placeholder metrics, or meaningless repeated content.
 
-## Usability Heuristics
-1. Visibility of system status
-   - Skeleton loading
-   - Spinners
-   - Toast notifications
-   - Optimistic updates
-
-2. Error prevention
-   - Zod validation
-   - Form validation
-   - Error boundaries
-
-3. Consistency & standards
-   - Naming conventions
-   - Component consistency
-   - Shared design system
+### Required Output Quality
+- Every generated screen must feel intentionally designed for logistics and warehouse operations.
+- Every page must have a clear information hierarchy, a usable task flow, and meaningful data labels.
+- Layout structure must differ based on page purpose:
+  - Marketplace pages should feel more visual, persuasive, and browseable
+  - Dashboard pages should feel denser, clearer, and action-oriented
+- Add one or two memorable details per screen so it does not look templated:
+  - spatial/warehouse cues
+  - operational status ribbons
+  - booking timeline fragments
+  - availability signals
+  - inventory density visuals
+  - map/location emphasis
 
 ---
 
-# MULTI-ROLE RBAC SYSTEM
+## 4. Context Analysis Before Writing Code
 
-The system MUST support:
+Before generating UI, analyze these points first:
 
-## 1. GUEST
-Features:
-- Search warehouse
-- Filter warehouse
-- View warehouse details
-- Register/Login
+### A. Business Goal
+Identify the page purpose:
+- Discover warehouses
+- Compare listings
+- Submit booking or request actions
+- Manage rented warehouse operations
+- Monitor staff or attendance
+- Review inspections
+- Approve admin workflows
 
-Routes:
-- /
-- /warehouses
-- /warehouse/:id
-- /login
-- /register
+### B. User Role
+The UI must reflect the role using it:
+- Guest: simple, confidence-building, conversion-focused
+- Tenant: operational, data-rich, fast to scan
+- Owner: asset-focused, approval-oriented
+- Staff: task-first, mobile-friendly, minimal friction
+- Inspector: evidence and status clarity
+- Admin: overview, controls, audit visibility
 
----
+### C. Mood And Tone
+Use mood intentionally instead of defaulting to generic modern:
+- Marketplace: credible, polished, spatial, aspirational
+- Operations dashboard: efficient, structured, calm under pressure
+- Admin: precise, authoritative, high signal
 
-## 2. TENANT
-Features:
-- Search warehouse
-- Booking management
-- Rental request
-- Deposit payment
-- Inventory management
-- Human resource management
-- Attendance management
-- Inbound operations
-- Outbound operations
-- Inventory tracking dashboard
-- Buy service package
-
-Routes:
-- /tenant/dashboard
-- /tenant/inventory
-- /tenant/hr
-- /tenant/attendance
-- /tenant/inbound
-- /tenant/outbound
-- /tenant/bookings
-- /tenant/payments
-
----
-
-## 3. STAFF
-Features:
-- Inventory CRUD
-- Attendance check-in/out
-
-Conditions:
-- Activated only if Tenant purchases service package
-
-Routes:
-- /staff/dashboard
-- /staff/inventory
-- /staff/attendance
-
----
-
-## 4. WAREHOUSE OWNER
-Features:
-- Warehouse listing management
-- Warehouse status management
-- Rental request approval/rejection
-- Inspection requests
-- Checkout confirmation
-
-Routes:
-- /owner/dashboard
-- /owner/warehouses
-- /owner/requests
-- /owner/inspections
-
----
-
-## 5. ADMIN
-Features:
-- User management
-- Listing approval
-- Package management
-- Transaction management
-- Deposit approvals
-- Inspection management
+### D. Screen Type
+Classify the screen before designing:
+- Landing
+- Listing/search
+- Detail page
+- Form/workflow
 - Analytics dashboard
-
-Routes:
-- /admin/dashboard
-- /admin/users
-- /admin/transactions
-- /admin/packages
-- /admin/listings
-- /admin/analytics
+- Data table management
+- Realtime monitoring
 
 ---
 
-# NON-FUNCTIONAL REQUIREMENTS
+## 5. Visual Direction For StockSpace
 
-## Performance
-- Search results under 2 seconds
-- Efficient rendering
-- Lazy loading
-- Code splitting
-- Query caching
+### General Style
+- Clean enterprise foundation with stronger character than a default admin template
+- Use depth, contrast, and whitespace with intention
+- Favor strong section framing, layered surfaces, and visible grouping
+- Avoid flat white-page layouts unless the page truly benefits from maximum density
 
-## Security
-- JWT authentication
-- RBAC authorization
-- Secure API handling
-- Protected routes
-- Secure storage strategies
+### Color Strategy
+- Keep colors disciplined and semantic
+- Primary color should feel trustworthy and product-defining
+- Use success, warning, and danger clearly for operations and status
+- Neutral surfaces must support long dashboard sessions without visual fatigue
+- Avoid random accent colors that do not map to system meaning
 
-## Reliability
-- Database transaction-safe frontend flow
-- Optimistic UI handling
-- Realtime synchronization
+### Typography
+- Build a clear hierarchy for:
+  - page title
+  - section title
+  - card title
+  - metric value
+  - support text
+  - table/meta labels
+- Avoid oversized headings on dense dashboard screens
+- Use compact, readable typography for tables and operational summaries
 
-## Realtime Features
-- Rental request notifications
-- Approval/rejection notifications
-- Inventory updates
-- Attendance events
+### Spacing
+- Use consistent spacing rhythm across sections, cards, forms, and tables
+- Whitespace should create clarity, not emptiness
+- Dense screens still need grouping gaps to reduce cognitive load
 
----
-
-# EXECUTION STRATEGY
-
-DO NOT generate everything at once.
-
-You MUST generate responses in PHASES.
-
-Wait for confirmation before continuing to the next phase.
-
----
-
-# PHASE 1 — FOUNDATION & ARCHITECTURE SETUP
-
-Generate:
-
-## 1. package.json
-Include:
-- All dependencies
-- All devDependencies
-- Modern npm scripts
-
-Also provide:
-- npm install commands
+### Motion
+- Use Framer Motion sparingly and purposefully
+- Good uses:
+  - page entrance
+  - filter/result transitions
+  - drawer/modal reveal
+  - status change emphasis
+- Avoid decorative motion that slows down warehouse workflows
 
 ---
 
-## 2. Configuration Files
+## 6. Layout Rules
 
-Generate:
-- vite.config.js
-- tailwind.config.js
-- jsconfig.json or tsconfig.json
-- eslint.config.js
-- prettier.config.js
+### Marketplace Pages
+- Prioritize browsing, comparison, trust, and conversion
+- Use richer imagery, clearer pricing, location emphasis, and availability signals
+- Filters must feel useful and complete, not ornamental
+- Search and browse actions should be visible early in the page
 
-Requirements:
-- Path alias setup
-- Tailwind v4 setup
-- Modern SaaS color palette:
-  - Primary
-  - Secondary
-  - Success
-  - Warning
-  - Danger
-  - Surface
+### Dashboard Pages
+- Prioritize task completion and scan speed
+- Lead with operational summary, then active tasks, then detail tables
+- Cards must communicate real meaning, not just show 4 random KPIs
+- Tables need strong header contrast, row states, empty states, and action clarity
 
----
+### Forms And Workflow Screens
+- Break complex actions into understandable sections
+- Group fields by intent: identity, location, pricing, capacity, operations, confirmation
+- Help text must reduce mistakes instead of repeating field labels
+- Primary and secondary actions must be obvious
 
-## 3. Complete Folder Structure
-
-Generate:
-```txt
-src/
-├── app/
-├── assets/
-├── components/
-├── features/
-├── layouts/
-├── routes/
-├── services/
-├── store/
-├── hooks/
-├── contexts/
-├── socket/
-├── constants/
-├── utils/
-├── validations/
-├── styles/
-└── ...
-```
-
-Explain clearly:
-- src/features
-- src/components/ui
-- src/store
-- src/services
-- src/layouts
-- src/hooks
-- src/socket
-
-Use Feature-Based Architecture + Atomic Design.
+### Responsive Behavior
+- Mobile is required, especially for staff/task-oriented screens
+- Tables should degrade intentionally:
+  - stacked cards
+  - priority columns
+  - horizontal scroll only when unavoidable
+- Sidebar and dense controls must remain usable on tablet and mobile
 
 ---
 
-# PHASE 2 — REUSABLE UI COMPONENT LIBRARY
+## 7. Dark Mode Protocol
 
-Generate reusable enterprise components:
+Every newly generated UI must be checked for both light and dark mode readiness, even if only one mode is implemented immediately.
 
-## Atoms
-- Button
-- InputField
-- SelectField
-- Badge
-- Spinner
-- Skeleton
-- Avatar
+Required:
+- Maintain readable contrast for text, borders, and surfaces
+- Preserve hierarchy between page background, cards, elevated surfaces, and overlays
+- Ensure status colors remain distinguishable in dark surfaces
+- Avoid washed-out gray-on-gray combinations
 
-## Molecules
-- SearchFilter
-- Pagination
-- EmptyState
-- ConfirmDialog
-- NotificationBell
-
-## Organisms
-- DataTable
-- Modal
-- Drawer
-- Sidebar
-- Navbar
-
-Requirements:
-- TailwindCSS v4
-- Framer Motion animations
-- Variants
-- Sizes
-- className support
-- Loading states
-- Error states
-- Accessibility
+If a component is not yet dark-mode ready, structure its classes and tokens so dark mode can be added cleanly later.
 
 ---
 
-# PHASE 3 — AUTHENTICATION & RBAC
+## 8. Reuse And Modernization Rules
 
-Generate:
+### If This Is A Redesign
+- Audit the existing screen first
+- Identify what is already working before replacing structure
+- Preserve domain logic, route expectations, and existing component contracts unless the task explicitly changes them
 
-## API Layer
-- Axios instance
-- Interceptors
-- Refresh token logic
-- Error handling
-
-## Zustand Auth Store
-- user
-- token
-- login
-- logout
-- refreshSession
-
-## Route Protection
-- PublicRoute
-- ProtectedRoute
-- RoleGuard
-
-## Lazy Route Architecture
-Support:
-- Admin routes
-- Tenant routes
-- Staff routes
-- Owner routes
+### When Extending Existing UI
+- Match established spacing and component behavior
+- Improve weak hierarchy, not just add decoration
+- Do not introduce a brand new visual language into one isolated page unless the user asks for a broader redesign
 
 ---
 
-# PHASE 4 — DASHBOARD LAYOUT SYSTEM
+## 9. Content Rules
 
-Generate:
+### No Placeholder Policy
+- No Lorem Ipsum
+- No empty charts
+- No fake labels like "Item 1" or "Card Title"
+- No unexplained percentages or metrics
 
-## MainLayout
-For guests/public pages:
-- Navbar
-- Footer
-- Responsive layout
+### Content Must Be Domain-Specific
+Use labels and content that belong to StockSpace, such as:
+- occupancy
+- available capacity
+- warehouse type
+- booking request
+- inspection status
+- inbound/outbound volume
+- monthly rental
+- fulfillment readiness
+- staff attendance
+- inventory movement
 
-## DashboardLayout
-Requirements:
-- Responsive sidebar
-- Mobile drawer sidebar
-- Desktop fixed sidebar
-- Dynamic menu rendering based on role
-
-Generate:
-- Sidebar architecture
-- Navbar
-- Dashboard cards
-- Analytics widgets
-- Notification system
-
----
-
-# PHASE 5 — REALTIME & STATE MANAGEMENT
-
-Generate:
-
-## Socket.io Architecture
-Handle:
-- Rental request notifications
-- Approval/rejection notifications
-- Inventory activities
-- Attendance updates
-
-Generate:
-- SocketProvider
-- Socket hooks
-- Notification state integration
+If mock content is necessary, it must still look like believable warehouse/logistics data.
 
 ---
 
-## TanStack Query Architecture
+## 10. Pre-Flight Checklist Before Output
 
-Generate:
-- Query client setup
-- Query keys
-- API hooks
+Before finishing any UI generation task, verify:
 
-Example:
-- useGetWarehouses
-- useGetInventory
-- useCreateBooking
-
-Show:
-- loading state
-- error state
-- optimistic update
-
----
-
-# COMPLETE ROUTING STRUCTURE
-
-Generate:
-```txt
-/
-/login
-/register
-/warehouses
-/warehouse/:id
-
-/admin/*
-/tenant/*
-/staff/*
-/owner/*
-```
-
-Must include:
-- Nested routes
-- Lazy loading
-- RBAC protection
-- Route guards
+- The screen clearly matches a StockSpace role and workflow
+- The layout does not look like a generic admin template
+- Components follow one coherent design system
+- Light and dark contrast are both considered
+- Spacing rhythm is consistent
+- Typography hierarchy is obvious
+- Status colors have semantic meaning
+- Empty, loading, and error states exist where needed
+- Motion is helpful, not decorative noise
+- No placeholder copy or unfinished sections remain
+- The output is runnable and complete
 
 ---
 
-# COMPLETE FEATURE MODULES
+## 11. Execution Rules For Future UI Tasks
 
-Generate architecture for:
+For any future UI generation in this repo, the AI must:
 
-```txt
-features/
-├── auth/
-├── warehouse/
-├── booking/
-├── inventory/
-├── hr-management/
-├── attendance/
-├── inbound/
-├── outbound/
-├── notifications/
-├── analytics/
-├── payments/
-└── admin/
-```
-
-Each feature should contain:
-- api/
-- hooks/
-- components/
-- pages/
-- store/
-- validations/
-- constants/
+1. Read the target page and surrounding components first
+2. Identify the role, business goal, and screen type
+3. Reuse existing local components where possible
+4. Create complete, integrated UI code instead of fragments
+5. Preserve the current repo stack and architecture
+6. Add polish only after hierarchy and usability are correct
 
 ---
 
-# API SERVICE STRUCTURE
+## 12. Definition Of Good StockSpace UI
 
-Generate:
-```txt
-services/
-├── api.js
-├── auth.service.js
-├── warehouse.service.js
-├── booking.service.js
-├── inventory.service.js
-├── notification.service.js
-├── payment.service.js
-└── attendance.service.js
-```
+A good StockSpace interface should feel:
+- operationally credible
+- visually intentional
+- easy to scan
+- specific to warehouses and logistics
+- scalable across roles
+- polished without being overdesigned
 
----
-
-# UI/UX DESIGN SYSTEM
-
-Generate:
-- Color palette
-- Typography scale
-- Spacing system
-- Border radius system
-- Shadow system
-- Responsive breakpoints
-
-Need:
-- Modern SaaS dashboard style
-- Enterprise aesthetic
-- Minimal clean UI
-
----
-
-# RESPONSIVE STRATEGY
-
-Explain:
-- Desktop behavior
-- Tablet behavior
-- Mobile sidebar
-- Responsive tables
-- Mobile navigation
-
----
-
-# BEST PRACTICES
-
-Explain:
-- Naming conventions
-- File naming
-- Component organization
-- Feature isolation
-- Lazy loading
-- Error boundaries
-- Loading handling
-- Security best practices
-- Environment variable handling
-- Code splitting
-- Performance optimization
-
----
-
-# REUSABLE COMPONENTS LIST
-
-Generate architecture for:
-- DataTable
-- Modal
-- Drawer
-- ConfirmDialog
-- SearchFilter
-- Pagination
-- DashboardCard
-- EmptyState
-- FileUpload
-- NotificationBell
-- RoleGuard
-- ProtectedRoute
-- Sidebar
-- Navbar
-- AnalyticsChart
-- StatCard
-
----
-
-# OUTPUT REQUIREMENTS
-
-The output MUST:
-- Be production-ready
-- Use enterprise architecture
-- Be scalable
-- Be maintainable
-- Be modern
-- Include explanations
-- Include folder trees
-- Include code examples
-- Include best practices
-
----
-
-# IMPORTANT RULES
-
-- Use latest React ecosystem best practices
-- Use TailwindCSS v4
-- Use Vite
-- Prioritize scalability
-- Prioritize maintainability
-- Prioritize clean architecture
-- Optimize for large future expansion
-- Follow Feature-Based Architecture
-- Follow Atomic Design
-- Use reusable UI systems
-- Use enterprise coding standards
-
----
-
-# ACTION REQUIRED
-
-1. Read the entire specification carefully.
-2. Understand the StockSpace business domain completely.
-3. Start ONLY with PHASE 1.
-4. Wait for confirmation before proceeding to PHASE 2.
+If the result could be pasted into any random SaaS product with no changes, it is not good enough.
