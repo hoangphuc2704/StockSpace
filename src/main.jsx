@@ -6,6 +6,8 @@ import { Provider } from 'react-redux'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import store from './store/index.js'
 
+import { Toaster } from 'react-hot-toast'
+
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 
 createRoot(document.getElementById('root')).render(
@@ -13,6 +15,7 @@ createRoot(document.getElementById('root')).render(
     <GoogleOAuthProvider clientId={googleClientId}>
       <SocketProvider>
         <App />
+        <Toaster position="top-right" />
       </SocketProvider>
     </GoogleOAuthProvider>
   </Provider>

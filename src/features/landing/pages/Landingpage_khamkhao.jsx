@@ -77,7 +77,7 @@ const LandingPageKhamkhao = () => {
         const response = await warehouseApi.getPublicWarehouses({
           page: 0,
           size: 6,
-          // Bỏ isVerified: true để lấy cả kho chưa kiểm định
+          status: 'AVAILABLE',
           sortBy: 'createdAt',
           sortDir: 'desc',
         })

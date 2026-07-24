@@ -91,6 +91,7 @@ const WarehouseListingPage = () => {
         const response = await warehouseApi.getPublicWarehouses({
           page: 0,
           size: 24,
+          status: 'AVAILABLE',
           sortBy: 'createdAt',
           sortDir: 'desc',
         })

@@ -112,7 +112,7 @@ const WarehouseDetailPage = () => {
     if (!warehouse) return null
 
     return {
-      deposit: (warehouse.price * durationMonths * depositPercentage) / 100,
+      deposit: (warehouse.price * depositPercentage) / 100,
       images: gallery,
       features: [
         `${warehouse.type} storage`,

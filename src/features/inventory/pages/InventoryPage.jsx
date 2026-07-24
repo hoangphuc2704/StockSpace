@@ -11,6 +11,13 @@ import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Drawer from '@/components/organisms/Drawer'
 import Modal from '@/components/organisms/Modal'
+import Header from '@/components/HeaderDashboard'
+import Sidebar from '@/components/SideBar'
+import { useSelector, useDispatch } from 'react-redux'
+import { closeMobileSidebar } from '@/store/uiSlide'
+import productApi from '../../../services/wms/productApi'
+import stockApi from '../../../services/wms/stockApi'
+import { toast } from 'react-hot-toast'
 
 // Mock Data
 const MOCK_PRODUCTS = [
@@ -23,16 +30,108 @@ const MOCK_PRODUCTS = [
 ]
 
 const InventoryPage = () => {
-  const [products, setProducts] = useState(MOCK_PRODUCTS)
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
+  const [uoms, setUoms] = useState([])
+  
+  // Form states
+  const [formName, setFormName] = useState('')
+  const [formSkuCode, setFormSkuCode] = useState('')
+  const [formCategoryId, setFormCategoryId] = useState('')
+  const [formUomId, setFormUomId] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  const dispatch = useDispatch()
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  const { user } = useSelector((state) => state.auth)
+  const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
+
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1000)
-    return () => clearTimeout(timer)
+    fetchInventoryData()
   }, [])
+
+  const fetchInventoryData = async () => {
+    try {
+      setIsLoading(true)
+      const [skuRes, catRes, uomRes] = await Promise.all([
+        productApi.getSKUs({ page: 0, size: 50 }),
+        productApi.getCategories(),
+        productApi.getUOMs()
+      ])
+      
+      setCategories(catRes.data?.data || [])
+      setUoms(uomRes.data?.data || [])
+      
+      const skuList = skuRes.data?.data?.content || []
+      
+      // Fetch stock summary cho từng SKU (N+1 queries vì BE không có API tổng hợp)
+      const productsWithStock = await Promise.all(
+        skuList.map(async (sku) => {
+          try {
+            const stockRes = await stockApi.getStockSummary(sku.id)
+            const totalQty = stockRes.data?.data?.totalQuantity || 0
+            let status = 'OUT_OF_STOCK'
+            if (totalQty > 20) status = 'IN_STOCK'
+            else if (totalQty > 0) status = 'LOW_STOCK'
+            
+            return {
+              ...sku,
+              qty: totalQty,
+              status
+            }
+          } catch (error) {
+            return { ...sku, qty: 0, status: 'OUT_OF_STOCK' }
+          }
+        })
+      )
+      
+      setProducts(productsWithStock)
+    } catch (error) {
+      console.error('Error fetching inventory:', error)
+      toast.error('Failed to load inventory data')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreateProduct = async (e) => {
+    e.preventDefault()
+    if (!formName || !formSkuCode || !formUomId) {
+      toast.error('Vui lòng điền đủ Tên sản phẩm, Mã SKU và Đơn vị tính!')
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      await productApi.createSKU({
+        name: formName,
+        skuCode: formSkuCode,
+        categoryId: formCategoryId || null,
+        uomId: formUomId
+      })
+      toast.success('Thêm sản phẩm thành công!')
+      setIsModalOpen(false)
+      
+      // Reset form
+      setFormName('')
+      setFormSkuCode('')
+      setFormCategoryId('')
+      setFormUomId('')
+      
+      // Reload data
+      fetchInventoryData()
+    } catch (error) {
+      console.error('Error creating product:', error)
+      toast.error(error.response?.data?.message || 'Lỗi khi tạo sản phẩm')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const handleViewDetails = (product) => {
     setSelectedProduct(product)
@@ -54,7 +153,10 @@ const InventoryPage = () => {
         </div>
       )
     },
-    { header: 'Category', accessor: 'category' },
+    { 
+      header: 'Category', 
+      render: (row) => row.categoryName || 'Uncategorized' 
+    },
     { 
       header: 'Quantity', 
       render: (row) => (
@@ -65,11 +167,11 @@ const InventoryPage = () => {
       header: 'Status', 
       render: (row) => (
         <Badge variant={row.status === 'IN_STOCK' ? 'success' : row.status === 'LOW_STOCK' ? 'warning' : 'danger'}>
-          {row.status.replace('_', ' ')}
+          {row.status?.replace('_', ' ')}
         </Badge>
       )
     },
-    { header: 'Last Updated', accessor: 'lastUpdated' },
+    { header: 'UOM', render: (row) => row.uomName || 'N/A' },
     {
       header: 'Actions',
       render: (row) => (
@@ -89,7 +191,25 @@ const InventoryPage = () => {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      <Header />
+      <div className="md:hidden">
+        {isMobileOpen && (
+          <button
+            className="fixed inset-0 z-40 bg-slate-900/30"
+            onClick={() => dispatch(closeMobileSidebar())}
+          />
+        )}
+      </div>
+      <div className="flex pt-14">
+        <Sidebar currentRole={currentRole} />
+        <div
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
+        >
+          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+            <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -109,13 +229,13 @@ const InventoryPage = () => {
         </div>
       </div>
 
-      {/* Stats Quick View */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Items', value: '450', color: 'bg-primary' },
-          { label: 'Low Stock', value: '12', color: 'bg-warning' },
-          { label: 'Out of Stock', value: '3', color: 'bg-danger' },
-          { label: 'Categories', value: '8', color: 'bg-slate-900' },
+          { label: 'Total Items', value: products.length, color: 'bg-primary' },
+          { label: 'Low Stock', value: products.filter(p => p.status === 'LOW_STOCK').length, color: 'bg-warning' },
+          { label: 'Out of Stock', value: products.filter(p => p.status === 'OUT_OF_STOCK').length, color: 'bg-danger' },
+          { label: 'Categories', value: new Set(products.map(p => p.categoryId)).size, color: 'bg-slate-900' },
         ].map((stat, idx) => (
           <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-4">
             <div className={`h-2 w-2 rounded-full ${stat.color}`} />
@@ -231,22 +351,69 @@ const InventoryPage = () => {
         onClose={() => setIsModalOpen(false)}
         title="Add New Product"
       >
-        <div className="space-y-4">
-          <InputField label="Product Name" placeholder="e.g. Industrial Motor X1" />
-          <div className="grid grid-cols-2 gap-4">
-            <InputField label="SKU" placeholder="SKU-000" />
-            <InputField label="Category" placeholder="Select category" />
+        <form onSubmit={handleCreateProduct} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Product Name *</label>
+            <InputField 
+              placeholder="e.g. Industrial Motor X1" 
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              required
+            />
           </div>
+          
           <div className="grid grid-cols-2 gap-4">
-            <InputField label="Initial Quantity" type="number" defaultValue="0" />
-            <InputField label="Min. Stock Level" type="number" defaultValue="5" />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">SKU Code *</label>
+              <InputField 
+                placeholder="SKU-000" 
+                value={formSkuCode}
+                onChange={(e) => setFormSkuCode(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Category</label>
+              <select 
+                className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                value={formCategoryId}
+                onChange={(e) => setFormCategoryId(e.target.value)}
+              >
+                <option value="">-- Chọn danh mục --</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
+          
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Unit of Measurement (UOM) *</label>
+            <select 
+              required
+              className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+              value={formUomId}
+              onChange={(e) => setFormUomId(e.target.value)}
+            >
+              <option value="">-- Chọn Đơn vị --</option>
+              {uoms.map(uom => (
+                <option key={uom.id} value={uom.id}>{uom.name} ({uom.code})</option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">Lưu ý: Số lượng tồn kho ban đầu sẽ là 0. Bạn cần tạo phiếu Inbound để nhập hàng thực tế.</p>
+          </div>
+          
           <div className="pt-6 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button>Save Product</Button>
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="submit" isLoading={isSubmitting}>Save Product</Button>
           </div>
-        </div>
+        </form>
       </Modal>
+            </div>
+          </main>
+        </div>
+      </div>
     </div>
   )
 }

@@ -43,8 +43,11 @@ import MyBookingsPage from './features/tenant/pages/MyBookingsPage'
 import BillingPage from './features/tenant/pages/BillingPage'
 import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
 import WalletTenant from './features/tenant/pages/WalletTenant'
+import WalletCallback from './features/tenant/pages/WalletCallback'
 import TenantContractsPage from './features/tenant/pages/TenantContractsPage'
 import MyDisputesPage from './features/dispute/pages/MyDisputesPage'
+import TenantStaffManagementPage from './features/tenant/pages/TenantStaffManagementPage'
+import StaffAcceptInvitationPage from './features/auth/pages/StaffAcceptInvitationPage'
 
 // Owner Pages
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
@@ -56,7 +59,6 @@ import OwnerContractsPage from './features/owner/pages/OwnerContractsPage'
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
 import StaffTasksPage from './features/staff/pages/StaffTasksPage'
-import StaffInventoryPage from './features/staff/pages/StaffInventoryPage'
 import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages_SubcriptionsManagementPage'
 
 // Inspector Pages
@@ -106,6 +108,8 @@ const App = () => {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/staff/accept" element={<StaffAcceptInvitationPage />} />
+        <Route path="/wallet/callback" element={<WalletCallback />} />
 
         {/* Protected Routes Layout */}
         {/* Admin Routes */}
@@ -140,6 +144,7 @@ const App = () => {
           <Route path="/tenant/wallet" element={<WalletTenant />} />
           <Route path="/tenant/contracts" element={<TenantContractsPage />} />
           <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
+          <Route path="/tenant/staff" element={<TenantStaffManagementPage />} />
         </Route>
 
         {/* Owner Routes */}
@@ -158,7 +163,9 @@ const App = () => {
         <Route element={<RoleGuard allowedRoles={['ROLE_STAFF']} />}>
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
-          <Route path="/staff/inventory" element={<StaffInventoryPage />} />
+          <Route path="/staff/inventory" element={<InventoryPage />} />
+          <Route path="/staff/inbound" element={<InboundPage />} />
+          <Route path="/staff/outbound" element={<OutboundPage />} />
         </Route>
 
         {/* Inspector Routes */}

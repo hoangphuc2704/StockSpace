@@ -21,6 +21,7 @@ export const loginUser = createAsyncThunk(
             role: response.data.role,
             userId: response.data.userId,
             email: response.data.email,
+            tenantId: response.data.tenantId || null,
           })
         )
         console.log('Login success:', response.data.accessToken)
@@ -91,6 +92,7 @@ export const fetchCurrentUserThunk = createAsyncThunk(
           provider: response.data.provider,
           isActive: response.data.isActive,
           createdAt: response.data.createdAt,
+          tenantId: response.data.tenantId || null,
         }
         // Đồng bộ lại localStorage
         localStorage.setItem('user', JSON.stringify(userData))
@@ -228,8 +230,8 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false
         state.isAuthenticated = true
-        const { accessToken, role, fullName, userId, email } = action.payload
-        state.user = { name: fullName, role, userId, email }
+        const { accessToken, role, fullName, userId, email, tenantId } = action.payload
+        state.user = { name: fullName, role, userId, email, tenantId: tenantId || null }
         state.token = accessToken
       })
       .addCase(loginUser.rejected, (state, action) => {

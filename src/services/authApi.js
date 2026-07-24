@@ -37,4 +37,15 @@ export const authApi = {
     const response = await api.post('/auth/google', { code, role })
     return response.data
   },
+
+  // Staff invitation (Public — không cần JWT)
+  validateStaffInviteToken: async (token) => {
+    const response = await api.get('/auth/staff/invite', { params: { token } })
+    return response.data
+  },
+  acceptStaffInvitation: async (data) => {
+    // data: { token, password, confirmPassword }
+    const response = await api.post('/auth/staff/accept', data)
+    return response.data
+  },
 }

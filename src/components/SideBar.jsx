@@ -56,6 +56,7 @@ const SIDEBAR_MENUS = {
     { text: 'Billing', icon: HiOutlineCurrencyDollar, path: '/tenant/payments' },
     { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
     { text: 'Wallet', icon: HiOutlineCurrencyDollar, path: '/tenant/wallet' },
+    { text: 'Nhân Viên', icon: HiOutlineUserGroup, path: '/tenant/staff' },
   ],
   OWNER: [
     { text: 'Đăng Tin', icon: HiOutlineHomeModern, path: '/owner/postwarehouse' },

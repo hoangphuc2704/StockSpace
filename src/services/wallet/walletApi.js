@@ -50,6 +50,11 @@ const walletApi = {
   getAllWithdrawRequests: ({ page, size, sortBy, sortDir } = {}) => {
     return api.get('/wallet/withdraws/all', { params: { status, page, size } })
   },
+
+  //kiểm tra trạng thái giao dịch
+  getTransactionStatus: (paymentCode) => {
+    return api.get(`/wallet/transactions/${paymentCode}/status`)
+  },
 }
 
 export default walletApi

@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import { ArrowLeft, Check } from 'lucide-react'
 import PublicHeader from '../../../components/PublicHeader'
 import packageApi from '../../../services/packageApi'
+import subscriptionApi from '../../../services/tenant/subscriptionApi'
 
 const PackageDetail = () => {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const { user, isAuthenticated } = useSelector((state) => state.auth)
+  
   const [pkg, setPkg] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isPurchasing, setIsPurchasing] = useState(false)
 
   useEffect(() => {
     const fetchPackageDetail = async () => {
@@ -22,6 +28,41 @@ const PackageDetail = () => {
     }
     fetchPackageDetail()
   }, [id])
+
+  const handlePurchase = async () => {
+    if (!isAuthenticated) {
+      alert("Vui lòng đăng nhập để mua gói dịch vụ.")
+      return
+    }
+    if (user?.role !== 'ROLE_TENANT') {
+      alert("Chỉ tài khoản Người Thuê Kho (Tenant) mới có thể mua gói dịch vụ này.")
+      return
+    }
+    
+    const confirmBuy = window.confirm(`Bạn có chắc chắn muốn mua gói ${pkg.name} với giá ${Number(pkg.price || 0).toLocaleString('vi-VN')} VNĐ không?`)
+    if (!confirmBuy) return
+
+    try {
+      setIsPurchasing(true)
+      await subscriptionApi.purchasePackage({ packageId: id })
+      alert("Đăng ký gói dịch vụ thành công! Hệ thống WMS của bạn đã được mở khóa.")
+      navigate('/tenant/dashboard')
+    } catch (error) {
+      const errorCode = error.response?.data?.errorCode
+      if (errorCode === 'WALLET_INSUFFICIENT_BALANCE') {
+        const toWallet = window.confirm("Số dư ví của bạn không đủ để thanh toán. Bạn có muốn đi đến Ví của tôi để nạp thêm tiền không?")
+        if (toWallet) {
+          navigate('/tenant/wallet')
+        }
+      } else if (errorCode === 'SUBSCRIPTION_ALREADY_ACTIVE') {
+        alert("Bạn đã có một gói dịch vụ đang hoạt động. Không thể đăng ký thêm.")
+      } else {
+        alert(error.response?.data?.message || "Đăng ký gói dịch vụ thất bại.")
+      }
+    } finally {
+      setIsPurchasing(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -123,8 +164,11 @@ const PackageDetail = () => {
               </div>
               
               <div className="mt-16 text-center">
-                <button className="inline-flex items-center justify-center rounded-md bg-[#FF5A1F] px-10 py-4 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#e04e19] shadow-[0_10px_30px_rgba(255,90,31,0.2)] hover:shadow-[0_15px_40px_rgba(255,90,31,0.3)] hover:-translate-y-1">
-                  Đăng ký gói dịch vụ ngay
+                <button 
+                  onClick={handlePurchase}
+                  disabled={isPurchasing}
+                  className="inline-flex items-center justify-center rounded-md bg-[#FF5A1F] px-10 py-4 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#e04e19] shadow-[0_10px_30px_rgba(255,90,31,0.2)] hover:shadow-[0_15px_40px_rgba(255,90,31,0.3)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed">
+                  {isPurchasing ? 'Đang xử lý...' : 'Đăng ký gói dịch vụ ngay'}
                 </button>
               </div>
             </div>

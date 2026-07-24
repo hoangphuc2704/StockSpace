@@ -2,32 +2,56 @@ import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Check } from 'lucide-react'
+import { useSelector } from 'react-redux'
 import PublicHeader from '../../../components/PublicHeader'
 import packageApi from '../../../services/packageApi'
+import subscriptionApi from '../../../services/subscriptionApi'
 
 const PackageList = () => {
   const [packages, setPackages] = useState([])
+  const [activeSub, setActiveSub] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
+  
+  const { user, isAuthenticated } = useSelector((state) => state.auth)
 
   useEffect(() => {
-    const fetchPackages = async () => {
+    const fetchData = async () => {
       try {
-        const response = await packageApi.getPackages()
-        const payload = response?.data?.data || response?.data
+        setIsLoading(true)
+        const [pkgRes] = await Promise.all([
+          packageApi.getPackages()
+        ])
+        
+        const payload = pkgRes?.data?.data || pkgRes?.data
         const content = Array.isArray(payload?.content)
           ? payload.content
           : Array.isArray(payload)
             ? payload
             : []
-        setPackages(content)
+            
+        // Filter out warehouse posting fees, keep only SaaS subscriptions for Tenant
+        const subscriptionPackages = content.filter(
+          pkg => !pkg.name.toLowerCase().includes('đăng bài')
+        )
+        setPackages(subscriptionPackages)
+
+        // Fetch active subscription if user is a TENANT
+        if (isAuthenticated && user?.role === 'ROLE_TENANT') {
+          try {
+            const subRes = await subscriptionApi.getActiveSubscription()
+            setActiveSub(subRes?.data?.data)
+          } catch (err) {
+            // Ignore 404 or errors if tenant doesn't have an active sub
+          }
+        }
       } catch (error) {
-        console.error('Failed to fetch packages', error)
+        console.error('Failed to fetch data', error)
       } finally {
         setIsLoading(false)
       }
     }
-    fetchPackages()
-  }, [])
+    fetchData()
+  }, [isAuthenticated, user])
 
   return (
     <div className="min-h-screen bg-[#faf7f4] font-sans text-stone-900 antialiased">
@@ -71,12 +95,18 @@ const PackageList = () => {
                       </span>
                       <span className="ml-1 text-sm font-medium text-stone-500">VNĐ</span>
                     </div>
-                    <Link
-                      to={`/packages/${pkg.id}`}
-                      className="block w-full rounded-md bg-[#FF5A1F] py-3 text-center text-xs font-bold tracking-wider text-white uppercase transition-colors hover:bg-[#e04e19]"
-                    >
-                      Xem chi tiết
-                    </Link>
+                    {activeSub?.servicePackage?.id === pkg.id ? (
+                      <div className="block w-full rounded-md bg-emerald-500 py-3 text-center text-xs font-bold tracking-wider text-white uppercase cursor-default">
+                        Đang sử dụng
+                      </div>
+                    ) : (
+                      <Link
+                        to={`/packages/${pkg.id}`}
+                        className="block w-full rounded-md bg-[#FF5A1F] py-3 text-center text-xs font-bold tracking-wider text-white uppercase transition-colors hover:bg-[#e04e19]"
+                      >
+                        Xem chi tiết
+                      </Link>
+                    )}
                   </div>
                   <div className="flex-1 bg-stone-50 p-8">
                     <p className="mb-4 text-xs font-bold tracking-wider text-stone-900 uppercase">
