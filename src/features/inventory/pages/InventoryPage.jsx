@@ -39,12 +39,20 @@ const InventoryPage = () => {
   const [formSkuCode, setFormSkuCode] = useState('')
   const [formCategoryId, setFormCategoryId] = useState('')
   const [formUomId, setFormUomId] = useState('')
+  const [formSpecs, setFormSpecs] = useState([]) // [{key: '', value: ''}]
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingProductId, setEditingProductId] = useState(null)
 
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
 
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -65,7 +73,10 @@ const InventoryPage = () => {
       ])
       
       setCategories(catRes.data?.data || [])
-      setUoms(uomRes.data?.data || [])
+      
+      // Handle uomRes which is now a PagedResponse from BE
+      const uomData = uomRes.data?.data
+      setUoms(uomData?.content || (Array.isArray(uomData) ? uomData : []))
       
       const skuList = skuRes.data?.data?.content || []
       
@@ -75,6 +86,7 @@ const InventoryPage = () => {
           try {
             const stockRes = await stockApi.getStockSummary(sku.id)
             const totalQty = stockRes.data?.data?.totalQuantity || 0
+            const locations = stockRes.data?.data?.locations || []
             let status = 'OUT_OF_STOCK'
             if (totalQty > 20) status = 'IN_STOCK'
             else if (totalQty > 0) status = 'LOW_STOCK'
@@ -82,10 +94,11 @@ const InventoryPage = () => {
             return {
               ...sku,
               qty: totalQty,
+              locations,
               status
             }
           } catch (error) {
-            return { ...sku, qty: 0, status: 'OUT_OF_STOCK' }
+            return { ...sku, qty: 0, locations: [], status: 'OUT_OF_STOCK' }
           }
         })
       )
@@ -99,6 +112,91 @@ const InventoryPage = () => {
     }
   }
 
+  const handleCreateCategory = async (e) => {
+    e.preventDefault()
+    if (!newCategoryName || !newCategoryName.trim()) return
+    
+    try {
+      setIsCreatingCategory(true)
+      const res = await productApi.createCategory({ name: newCategoryName.trim() })
+      toast.success('Thêm danh mục thành công')
+      
+      const catRes = await productApi.getCategories()
+      setCategories(catRes.data?.data || [])
+      
+      if (res.data?.data?.id) {
+        setFormCategoryId(res.data.data.id)
+      }
+      setIsCategoryModalOpen(false)
+      setNewCategoryName('')
+    } catch (error) {
+      console.error('Error creating category:', error)
+      toast.error('Lỗi khi tạo danh mục')
+    } finally {
+      setIsCreatingCategory(false)
+    }
+  }
+
+  const handleAddSpec = () => setFormSpecs([...formSpecs, { key: '', value: '' }])
+  const handleUpdateSpec = (index, field, val) => {
+    const newSpecs = [...formSpecs]
+    newSpecs[index][field] = val
+    setFormSpecs(newSpecs)
+  }
+  const handleRemoveSpec = (index) => {
+    const newSpecs = [...formSpecs]
+    newSpecs.splice(index, 1)
+    setFormSpecs(newSpecs)
+  }
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return
+    try {
+      await productApi.deleteCategory(id)
+      toast.success('Xóa danh mục thành công!')
+      const catRes = await productApi.getCategories()
+      setCategories(catRes.data?.data || [])
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      toast.error(error.response?.data?.message || 'Lỗi khi xóa danh mục')
+    }
+  }
+
+  const handleEditProductClick = (product) => {
+    setIsEditing(true)
+    setEditingProductId(product.id)
+    setFormName(product.name)
+    setFormSkuCode(product.skuCode || product.sku) // sku from productsWithStock mapping
+    setFormCategoryId(product.categoryId || '')
+    setFormUomId(product.uomId || '')
+    
+    if (product.specifications) {
+      const specArray = Object.keys(product.specifications).map(key => ({
+        key,
+        value: product.specifications[key]
+      }))
+      setFormSpecs(specArray)
+    } else {
+      setFormSpecs([])
+    }
+    
+    setIsDrawerOpen(false)
+    setIsModalOpen(true)
+  }
+
+  const handleDeleteProduct = async (id) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return
+    try {
+      await productApi.deleteSKU(id)
+      toast.success('Xóa sản phẩm thành công!')
+      setIsDrawerOpen(false)
+      fetchInventoryData()
+    } catch (error) {
+      console.error('Error deleting product:', error)
+      toast.error('Lỗi khi xóa sản phẩm')
+    }
+  }
+
   const handleCreateProduct = async (e) => {
     e.preventDefault()
     if (!formName || !formSkuCode || !formUomId) {
@@ -108,13 +206,30 @@ const InventoryPage = () => {
 
     try {
       setIsSubmitting(true)
-      await productApi.createSKU({
+      
+      const specsObject = formSpecs.reduce((acc, curr) => {
+        if (curr.key.trim() && curr.value.trim()) {
+          acc[curr.key.trim()] = curr.value.trim()
+        }
+        return acc
+      }, {})
+
+      const payload = {
         name: formName,
         skuCode: formSkuCode,
         categoryId: formCategoryId || null,
-        uomId: formUomId
-      })
-      toast.success('Thêm sản phẩm thành công!')
+        uomId: formUomId,
+        specifications: Object.keys(specsObject).length > 0 ? specsObject : null
+      }
+
+      if (isEditing) {
+        await productApi.updateSKU(editingProductId, payload)
+        toast.success('Cập nhật sản phẩm thành công!')
+      } else {
+        await productApi.createSKU(payload)
+        toast.success('Thêm sản phẩm thành công!')
+      }
+      
       setIsModalOpen(false)
       
       // Reset form
@@ -122,12 +237,15 @@ const InventoryPage = () => {
       setFormSkuCode('')
       setFormCategoryId('')
       setFormUomId('')
+      setFormSpecs([])
+      setIsEditing(false)
+      setEditingProductId(null)
       
       // Reload data
       fetchInventoryData()
     } catch (error) {
-      console.error('Error creating product:', error)
-      toast.error(error.response?.data?.message || 'Lỗi khi tạo sản phẩm')
+      console.error('Error saving product:', error)
+      toast.error(error.response?.data?.message || 'Lỗi khi lưu sản phẩm')
     } finally {
       setIsSubmitting(false)
     }
@@ -179,10 +297,10 @@ const InventoryPage = () => {
           <button onClick={() => handleViewDetails(row)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500">
             <Eye className="h-4 w-4" />
           </button>
-          <button className="p-1.5 rounded hover:bg-slate-100 text-slate-500">
+          <button onClick={() => handleEditProductClick(row)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500">
             <Edit className="h-4 w-4" />
           </button>
-          <button className="p-1.5 rounded hover:bg-slate-100 text-danger/10 text-danger">
+          <button onClick={() => handleDeleteProduct(row.id)} className="p-1.5 rounded hover:bg-slate-100 text-danger/10 text-danger">
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
@@ -223,7 +341,16 @@ const InventoryPage = () => {
           <Button variant="outline" size="sm" className="hidden sm:flex">
             <Download className="h-4 w-4 mr-2" /> Export
           </Button>
-          <Button size="sm" onClick={() => setIsModalOpen(true)}>
+          <Button size="sm" onClick={() => {
+            setIsEditing(false)
+            setEditingProductId(null)
+            setFormName('')
+            setFormSkuCode('')
+            setFormCategoryId('')
+            setFormUomId('')
+            setFormSpecs([])
+            setIsModalOpen(true)
+          }}>
             <Plus className="h-4 w-4 mr-2" /> Add Product
           </Button>
         </div>
@@ -317,29 +444,31 @@ const InventoryPage = () => {
             </div>
 
             <div>
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Inventory Log</h4>
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Vị trí lưu kho (Stock Locations)</h4>
               <div className="space-y-3">
-                {[
-                  { event: 'Stock Inbound', qty: '+20', date: '2026-05-10 09:30' },
-                  { event: 'Stock Outbound', qty: '-5', date: '2026-05-08 14:20' },
-                  { event: 'Initial Entry', qty: '30', date: '2026-05-01 10:00' },
-                ].map((log, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">{log.event}</p>
-                      <p className="text-[10px] text-slate-400">{log.date}</p>
+                {selectedProduct.locations && selectedProduct.locations.length > 0 ? (
+                  selectedProduct.locations.map((loc, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Zone {loc.zoneName} - Rack {loc.rackName}</p>
+                        <p className="text-[10px] text-slate-400">Bin: {loc.binName} | Batch ID: {loc.batchId?.substring(0,8)}...</p>
+                      </div>
+                      <span className="text-sm font-bold text-success">
+                        +{loc.quantity} {selectedProduct.uomName}
+                      </span>
                     </div>
-                    <span className={`text-sm font-bold ${log.qty.startsWith('+') ? 'text-success' : 'text-danger'}`}>
-                      {log.qty}
-                    </span>
+                  ))
+                ) : (
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-center text-sm text-slate-400">
+                    Sản phẩm này chưa có trong kho.
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
             <div className="pt-6 flex gap-3">
-              <Button className="flex-1">Edit Product</Button>
-              <Button variant="outline" className="flex-1 text-danger border-danger hover:bg-danger/5">Delete</Button>
+              <Button onClick={() => handleEditProductClick(selectedProduct)} className="flex-1">Edit Product</Button>
+              <Button onClick={() => handleDeleteProduct(selectedProduct.id)} variant="outline" className="flex-1 text-danger border-danger hover:bg-danger/5">Delete</Button>
             </div>
           </div>
         )}
@@ -349,7 +478,7 @@ const InventoryPage = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Add New Product"
+        title={isEditing ? "Cập Nhật Sản Phẩm" : "Add New Product"}
       >
         <form onSubmit={handleCreateProduct} className="space-y-4">
           <div className="space-y-1.5">
@@ -374,7 +503,17 @@ const InventoryPage = () => {
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">Category</label>
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-medium text-slate-700">Category</label>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setIsCategoryManagerOpen(true)} className="text-xs text-slate-500 hover:text-primary hover:underline">
+                    Quản lý
+                  </button>
+                  <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="text-xs text-primary hover:underline flex items-center gap-1">
+                    <Plus className="h-3 w-3" /> Thêm mới
+                  </button>
+                </div>
+              </div>
               <select 
                 className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
                 value={formCategoryId}
@@ -401,15 +540,115 @@ const InventoryPage = () => {
                 <option key={uom.id} value={uom.id}>{uom.name} ({uom.code})</option>
               ))}
             </select>
-            <p className="text-xs text-slate-500 mt-1">Lưu ý: Số lượng tồn kho ban đầu sẽ là 0. Bạn cần tạo phiếu Inbound để nhập hàng thực tế.</p>
+          </div>
+          
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-medium text-slate-700">Specifications (Tùy chọn)</label>
+              <button type="button" onClick={handleAddSpec} className="text-xs text-primary hover:underline flex items-center gap-1">
+                <Plus className="h-3 w-3" /> Thêm thuộc tính
+              </button>
+            </div>
+            {formSpecs.length > 0 && (
+              <div className="space-y-2">
+                {formSpecs.map((spec, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input 
+                      type="text"
+                      placeholder="Tên (VD: Màu sắc)"
+                      className="flex-1 rounded-md border border-slate-200 p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                      value={spec.key}
+                      onChange={(e) => handleUpdateSpec(idx, 'key', e.target.value)}
+                    />
+                    <input 
+                      type="text"
+                      placeholder="Giá trị (VD: Đỏ)"
+                      className="flex-1 rounded-md border border-slate-200 p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                      value={spec.value}
+                      onChange={(e) => handleUpdateSpec(idx, 'value', e.target.value)}
+                    />
+                    <button type="button" onClick={() => handleRemoveSpec(idx)} className="p-2 text-slate-400 hover:text-danger rounded-md hover:bg-red-50">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-slate-500 mt-2">Lưu ý: Số lượng tồn kho ban đầu sẽ là 0. Bạn cần tạo phiếu Inbound để nhập hàng thực tế.</p>
           </div>
           
           <div className="pt-6 flex justify-end gap-3">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit" isLoading={isSubmitting}>Save Product</Button>
+            <Button type="submit" isLoading={isSubmitting}>{isEditing ? "Lưu Thay Đổi" : "Save Product"}</Button>
           </div>
         </form>
       </Modal>
+
+      {/* Add Category Modal */}
+      <Modal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        title="Thêm Danh Mục Mới"
+      >
+        <form onSubmit={handleCreateCategory} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Tên danh mục *</label>
+            <InputField 
+              placeholder="e.g. Đồ gia dụng" 
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="pt-6 flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => setIsCategoryModalOpen(false)}>Hủy</Button>
+            <Button type="submit" isLoading={isCreatingCategory}>Lưu</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Category Manager Modal */}
+      <Modal
+        isOpen={isCategoryManagerOpen}
+        onClose={() => setIsCategoryManagerOpen(false)}
+        title="Quản Lý Danh Mục"
+      >
+        <div className="space-y-4">
+          {categories.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-4">Chưa có danh mục nào.</p>
+          ) : (
+            <div className="border border-slate-200 rounded-lg overflow-hidden max-h-[300px] overflow-y-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 font-medium text-slate-700">Tên Danh Mục</th>
+                    <th className="px-4 py-2 font-medium text-slate-700 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {categories.map((cat) => (
+                    <tr key={cat.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-2 text-slate-900">{cat.name}</td>
+                      <td className="px-4 py-2 text-right">
+                        <button 
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="p-1.5 rounded text-slate-400 hover:text-danger hover:bg-danger/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="pt-4 flex justify-end">
+            <Button onClick={() => setIsCategoryManagerOpen(false)}>Đóng</Button>
+          </div>
+        </div>
+      </Modal>
+
             </div>
           </main>
         </div>
