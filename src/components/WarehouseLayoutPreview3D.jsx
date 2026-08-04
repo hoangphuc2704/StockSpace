@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber'
 import { Grid, OrbitControls, PivotControls } from '@react-three/drei'
 
 const WORLD_SIZE = 18
+const FOOTPRINT_GRID_SIZE = 10
 
 const colorByType = {
   zone: '#10b981',
@@ -58,33 +59,33 @@ function WarehouseShell() {
 
       <mesh position={[0, 4.8, -(WORLD_SIZE + 4) / 2]} receiveShadow>
         <boxGeometry args={[WORLD_SIZE + 6, 9.6, 0.35]} />
-        <meshStandardMaterial color="#cbd5e1" />
+        <meshStandardMaterial color="#cbd5e1" transparent opacity={0.26} />
       </mesh>
 
       <mesh position={[-(WORLD_SIZE + 4) / 2, 4.8, 0]} receiveShadow>
         <boxGeometry args={[0.35, 9.6, WORLD_SIZE + 6]} />
-        <meshStandardMaterial color="#e2e8f0" />
+        <meshStandardMaterial color="#e2e8f0" transparent opacity={0.18} />
       </mesh>
 
       <mesh position={[(WORLD_SIZE + 4) / 2, 4.8, 0]} receiveShadow>
         <boxGeometry args={[0.35, 9.6, WORLD_SIZE + 6]} />
-        <meshStandardMaterial color="#e2e8f0" />
+        <meshStandardMaterial color="#e2e8f0" transparent opacity={0.18} />
       </mesh>
 
       {/* Front wall split into segments so the entrance stays open */}
       <mesh position={[-6.2, 4.8, (WORLD_SIZE + 4) / 2]} receiveShadow>
         <boxGeometry args={[6.8, 9.6, 0.35]} />
-        <meshStandardMaterial color="#e5e7eb" />
+        <meshStandardMaterial color="#e5e7eb" transparent opacity={0.14} />
       </mesh>
 
       <mesh position={[6.2, 4.8, (WORLD_SIZE + 4) / 2]} receiveShadow>
         <boxGeometry args={[6.8, 9.6, 0.35]} />
-        <meshStandardMaterial color="#e5e7eb" />
+        <meshStandardMaterial color="#e5e7eb" transparent opacity={0.14} />
       </mesh>
 
       <mesh position={[0, 8.2, (WORLD_SIZE + 4) / 2]} receiveShadow>
         <boxGeometry args={[6.2, 2.8, 0.35]} />
-        <meshStandardMaterial color="#dbe4ee" />
+        <meshStandardMaterial color="#dbe4ee" transparent opacity={0.18} />
       </mesh>
 
       {/* Entrance frame */}
@@ -112,12 +113,12 @@ function WarehouseShell() {
       {/* Side openings near the front so rotating camera still reveals the inside */}
       <mesh position={[-(WORLD_SIZE + 4) / 2, 7.6, 6.8]} receiveShadow>
         <boxGeometry args={[0.35, 4.0, 6.4]} />
-        <meshStandardMaterial color="#e2e8f0" opacity={0.96} transparent />
+        <meshStandardMaterial color="#e2e8f0" opacity={0.1} transparent />
       </mesh>
 
       <mesh position={[(WORLD_SIZE + 4) / 2, 7.6, 6.8]} receiveShadow>
         <boxGeometry args={[0.35, 4.0, 6.4]} />
-        <meshStandardMaterial color="#e2e8f0" opacity={0.96} transparent />
+        <meshStandardMaterial color="#e2e8f0" opacity={0.1} transparent />
       </mesh>
 
       <mesh position={[0, 9.65, 0]} receiveShadow>
@@ -139,6 +140,44 @@ function WarehouseShell() {
   )
 }
 
+function FootprintFloor({ layout }) {
+  const cells = Array.isArray(layout?.footprintCells) ? layout.footprintCells : []
+  const activeCellSet = new Set(cells.map((cell) => String(cell)))
+  const tileSize = WORLD_SIZE / FOOTPRINT_GRID_SIZE
+
+  return (
+    <group>
+      {Array.from({ length: FOOTPRINT_GRID_SIZE }).map((_, row) =>
+        Array.from({ length: FOOTPRINT_GRID_SIZE }).map((__, col) => {
+          const cellKey = `${row}:${col}`
+          const isActive = activeCellSet.has(cellKey)
+          const x = -WORLD_SIZE / 2 + col * tileSize + tileSize / 2
+          const z = -WORLD_SIZE / 2 + row * tileSize + tileSize / 2
+
+          return (
+            <group key={cellKey} position={[x, isActive ? 0.06 : 0.01, z]}>
+              <mesh receiveShadow>
+                <boxGeometry args={[tileSize * 0.94, isActive ? 0.12 : 0.02, tileSize * 0.94]} />
+                <meshStandardMaterial
+                  color={isActive ? '#bfdbfe' : '#e5e7eb'}
+                  transparent
+                  opacity={isActive ? 0.92 : 0.42}
+                />
+              </mesh>
+              {isActive ? (
+                <mesh position={[0, 0.08, 0]} receiveShadow>
+                  <boxGeometry args={[tileSize * 0.88, 0.02, tileSize * 0.88]} />
+                  <meshStandardMaterial color="#60a5fa" transparent opacity={0.85} />
+                </mesh>
+              ) : null}
+            </group>
+          )
+        })
+      )}
+    </group>
+  )
+}
+
 function BinMesh({
   bin,
   rack,
@@ -146,6 +185,7 @@ function BinMesh({
   rackWorldDepth,
   rackHeight,
   isSelected,
+  editable,
   onSelect,
   onMoveEntity,
 }) {
@@ -158,8 +198,8 @@ function BinMesh({
 
   return (
     <PivotControls
-      visible={isSelected}
-      enabled={isSelected}
+      visible={editable && isSelected}
+      enabled={editable && isSelected}
       activeAxes={[true, true, false]}
       disableRotations
       disableScaling
@@ -202,6 +242,7 @@ function RackMesh({
   zoneWorldWidth,
   zoneWorldDepth,
   selection,
+  editable,
   onSelect,
   onMoveEntity,
 }) {
@@ -215,8 +256,8 @@ function RackMesh({
 
   return (
     <PivotControls
-      visible={isSelected}
-      enabled={isSelected}
+      visible={editable && isSelected}
+      enabled={editable && isSelected}
       activeAxes={[true, false, true]}
       disableRotations
       disableScaling
@@ -243,7 +284,7 @@ function RackMesh({
           <boxGeometry args={[width, rackHeight, depth]} />
           <meshStandardMaterial
             color={colorByType.rack}
-            opacity={0.2}
+            opacity={isSelected ? 0.35 : 0.2}
             transparent
             emissive={isSelected ? '#fdba74' : '#000000'}
             emissiveIntensity={isSelected ? 0.35 : 0}
@@ -272,6 +313,7 @@ function RackMesh({
             rackWorldDepth={depth}
             rackHeight={rackHeight}
             isSelected={selection?.type === 'bin' && selection.clientKey === bin.clientKey}
+            editable={editable}
             onSelect={onSelect}
             onMoveEntity={onMoveEntity}
           />
@@ -281,7 +323,7 @@ function RackMesh({
   )
 }
 
-function ZoneMesh({ zone, layout, selection, onSelect, onMoveEntity }) {
+function ZoneMesh({ zone, layout, selection, editable, onSelect, onMoveEntity }) {
   const width = getWorldSize(zone.width, layout.width, WORLD_SIZE)
   const depth = getWorldSize(zone.height, layout.height, WORLD_SIZE)
   const x = getWorldCenter(zone.coordinateX, width, layout.width, WORLD_SIZE)
@@ -290,8 +332,8 @@ function ZoneMesh({ zone, layout, selection, onSelect, onMoveEntity }) {
 
   return (
     <PivotControls
-      visible={isSelected}
-      enabled={isSelected}
+      visible={editable && isSelected}
+      enabled={editable && isSelected}
       activeAxes={[true, false, true]}
       disableRotations
       disableScaling
@@ -337,6 +379,7 @@ function ZoneMesh({ zone, layout, selection, onSelect, onMoveEntity }) {
             zoneWorldWidth={width}
             zoneWorldDepth={depth}
             selection={selection}
+            editable={editable}
             onSelect={onSelect}
             onMoveEntity={onMoveEntity}
           />
@@ -350,7 +393,8 @@ export default function WarehouseLayoutPreview3D({
   layout,
   selection,
   onSelect,
-  onMoveEntity,
+  onMoveEntity = () => {},
+  editable = true,
 }) {
   return (
     <Canvas
@@ -371,6 +415,7 @@ export default function WarehouseLayoutPreview3D({
       <pointLight position={[-8, 8, -6]} intensity={0.35} />
 
       <WarehouseShell />
+      <FootprintFloor layout={layout} />
 
       {layout.zones.map((zone) => (
         <ZoneMesh
@@ -378,6 +423,7 @@ export default function WarehouseLayoutPreview3D({
           zone={zone}
           layout={layout}
           selection={selection}
+          editable={editable}
           onSelect={onSelect}
           onMoveEntity={onMoveEntity}
         />

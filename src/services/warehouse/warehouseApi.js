@@ -11,6 +11,10 @@ const onwerwarehouseApi = {
     return api.get(`/warehouses/${warehouseId}`)
   },
 
+  getPublicWarehouseLayout: (warehouseId) => {
+    return api.get(`/warehouses/${warehouseId}/layout`)
+  },
+
   //cập nhật thông tin kho
   updateWarehouseInfo: (warehouseId, data) => {
     return api.put(`/owner/warehouses/${warehouseId}`, data)

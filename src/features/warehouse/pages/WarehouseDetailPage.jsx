@@ -14,12 +14,15 @@ import WarehouseGallery from '../components/WarehouseGallery'
 import WarehouseInfo from '../components/WarehouseInfo'
 import WarehouseBookingCard from '../components/WarehouseBookingCard'
 import ConfirmDepositModal from '../components/ConfirmDepositModal'
+import WarehouseLayoutShowcase from '../components/WarehouseLayoutShowcase'
 
 const normalizeWarehouse = (warehouse) => ({
   id: warehouse.id,
   name: warehouse.name || 'Warehouse',
   location: warehouse.address || warehouse.location || 'Updating address',
   area: Number(warehouse.area ?? warehouse.capacity ?? 0),
+  width: Number(warehouse.width ?? warehouse.warehouseWidth ?? 0),
+  height: Number(warehouse.height ?? warehouse.warehouseHeight ?? 0),
   price: Number(warehouse.pricePerMonth ?? warehouse.price ?? 0),
   status: warehouse.status || 'UNKNOWN',
   rating: Number(warehouse.rating ?? 4.8),
@@ -29,6 +32,56 @@ const normalizeWarehouse = (warehouse) => ({
   isVerified: warehouse.isVerified ?? warehouse.verified ?? false,
   imageUrls: warehouse.imageUrls || [],
   ownerName: warehouse.ownerName || 'Warehouse Owner',
+})
+
+const createClientKey = (prefix) =>
+  `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+const ensureNumber = (value, fallback = 0) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const normalizePublicLayout = (payload = {}) => ({
+  width: Math.max(ensureNumber(payload.width, 100), 20),
+  height: Math.max(ensureNumber(payload.height, 100), 20),
+  zones: Array.isArray(payload.zones)
+    ? payload.zones.map((zone) => ({
+        clientKey: createClientKey('zone'),
+        id: zone.id != null ? String(zone.id) : null,
+        name: zone.name ?? 'Zone',
+        coordinateX: ensureNumber(zone.coordinateX, 0),
+        coordinateY: ensureNumber(zone.coordinateY, 0),
+        width: Math.max(ensureNumber(zone.width, 20), 10),
+        height: Math.max(ensureNumber(zone.height, 20), 10),
+        racks: Array.isArray(zone.racks)
+          ? zone.racks.map((rack) => ({
+              clientKey: createClientKey('rack'),
+              id: rack.id != null ? String(rack.id) : null,
+              name: rack.name ?? 'Rack',
+              code: rack.code != null ? String(rack.code) : '',
+              coordinateX: ensureNumber(rack.coordinateX, 0),
+              coordinateY: ensureNumber(rack.coordinateY, 0),
+              width: Math.max(ensureNumber(rack.width, 12), 8),
+              height: Math.max(ensureNumber(rack.height, 12), 8),
+              bins: Array.isArray(rack.bins)
+                ? rack.bins.map((bin) => ({
+                    clientKey: createClientKey('bin'),
+                    id: bin.id != null ? String(bin.id) : null,
+                    name: bin.name ?? 'Bin',
+                    code: bin.code != null ? String(bin.code) : '',
+                    coordinateX: ensureNumber(bin.coordinateX, 0),
+                    coordinateY: ensureNumber(bin.coordinateY, 0),
+                    width: Math.max(ensureNumber(bin.width, 4), 4),
+                    height: Math.max(ensureNumber(bin.height, 4), 4),
+                    maxWeight: ensureNumber(bin.maxWeight, 0),
+                    maxVolume: ensureNumber(bin.maxVolume, 0),
+                  }))
+                : [],
+            }))
+          : [],
+      }))
+    : [],
 })
 
 const buildGallery = (warehouse) => {
@@ -71,6 +124,7 @@ const WarehouseDetailPage = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
   const [isCheckingWallet, setIsCheckingWallet] = useState(false)
+  const [layout, setLayout] = useState(null)
 
   useEffect(() => {
     const fetchWarehouse = async () => {
@@ -97,7 +151,18 @@ const WarehouseDetailPage = () => {
       }
     }
 
+    const fetchLayout = async () => {
+      try {
+        const response = await warehouseApi.getPublicWarehouseLayout(id)
+        const payload = response?.data?.data || response?.data
+        setLayout(normalizePublicLayout(payload || {}))
+      } catch {
+        setLayout(null)
+      }
+    }
+
     fetchWarehouse()
+    fetchLayout()
 
     const fetchConfig = async () => {
       const percentage = await systemConfigApi.getDepositPercentage()
@@ -131,7 +196,7 @@ const WarehouseDetailPage = () => {
       },
       reviews: Math.max(12, Math.round(warehouse.rating * 20)),
     }
-  }, [gallery, warehouse, depositPercentage, durationMonths])
+  }, [gallery, warehouse, depositPercentage])
 
   const handleDepositClick = async () => {
     setIsCheckingWallet(true)
@@ -140,7 +205,7 @@ const WarehouseDetailPage = () => {
       const balance = res?.data?.data?.balance ?? res?.data?.balance ?? 0
       setWalletBalance(balance)
       setShowConfirmModal(true)
-    } catch (err) {
+    } catch {
       alert('Failed to check wallet balance')
     } finally {
       setIsCheckingWallet(false)
@@ -198,6 +263,8 @@ const WarehouseDetailPage = () => {
           />
 
           <WarehouseGallery images={extendedData.images} />
+
+          <WarehouseLayoutShowcase layout={layout} />
 
           <div className="flex flex-col gap-12 lg:flex-row">
             <WarehouseInfo 
