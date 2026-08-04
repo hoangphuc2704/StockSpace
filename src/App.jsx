@@ -1,14 +1,21 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useDispatch } from 'react-redux'
 import RoleGuard from './components/guards/RoleGuard'
+import PublicGuard from './components/guards/PublicGuard'
+import { fetchCurrentUserThunk, logout } from './store/authSlice'
 
 // Lazy load components
 // const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 import LandingpageKhamkhao from './features/landing/pages/Landingpage_khamkhao'
 import WarehouseListingPage from './features/warehouse/pages/WarehouseListingPage'
 import WarehouseDetailPage from './features/warehouse/pages/WarehouseDetailPage'
-import LoginPage from './features/auth/pages/LoginPage'
-import RegisterPage from './features/auth/pages/RegisterPage'
 import UnauthorizedPage from './features/auth/pages/UnauthorizedPage'
+import ForgotPasswordPage from './features/auth/pages/ForgotPasswordPage'
+import ResetPasswordPage from './features/auth/pages/ResetPasswordPage'
+import Profile from './features/auth/pages/Profile'
+import PackageList from './features/package/pages/PackageList'
+import PackageDetail from './features/package/pages/PackageDetail'
 
 // Admin Pages
 import AdminDashboard from './features/admin/pages/AdminDashboard'
@@ -17,8 +24,16 @@ import TransactionsPage from './features/admin/pages/TransactionsPage'
 import DepositApprovalPage from './features/admin/pages/DepositApprovalPage'
 import PaymentsPage from './features/admin/pages/PaymentsPage'
 import AnalyticsPage from './features/admin/pages/AnalyticsPage'
-import PlatformSettingsPage from './features/admin/pages/PlatformSettingsPage'
-
+// import PlatformSettingsPage from './features/admin/pages/PlatformSettingsPage'
+import SystemPolicyPage from './features/admin/pages/SystemPolicyPage'
+import UserManagementPage from './features/admin/pages/UserManagementPage'
+import DisputeManagementPage from './features/admin/pages/DisputeManagementPage'
+import AdminWithdrawalsPage from './features/admin/pages/AdminWithdrawalsPage'
+import PermissionManagementPage from './features/admin/pages/PermissionManagementPage'
+import InspectionsManagementPage from './features/admin/pages/InspectionsManagementPage'
+import WareHouseManagementPage from './features/admin/pages/WareHouseManagementPage'
+import WarehousesTypePage from './features/admin/pages/WarehousesTypePage'
+import SystemConfigueManagementPage from './features/admin/pages/SystemConfigueManagementPage'
 // Tenant Pages
 import TenantDashboard from './features/tenant/pages/TenantDashboard'
 import InventoryPage from './features/inventory/pages/InventoryPage'
@@ -27,67 +42,135 @@ import OutboundPage from './features/outbound/pages/OutboundPage'
 import MyBookingsPage from './features/tenant/pages/MyBookingsPage'
 import BillingPage from './features/tenant/pages/BillingPage'
 import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
+import WalletTenant from './features/tenant/pages/WalletTenant'
+import WalletCallback from './features/tenant/pages/WalletCallback'
+import TenantContractsPage from './features/tenant/pages/TenantContractsPage'
+import MyDisputesPage from './features/dispute/pages/MyDisputesPage'
+import TenantStaffManagementPage from './features/tenant/pages/TenantStaffManagementPage'
+import StaffAcceptInvitationPage from './features/auth/pages/StaffAcceptInvitationPage'
 
 // Owner Pages
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
-import MyWarehousesPage from './features/owner/pages/MyWarehousesPage'
-import RentalRequestsPage from './features/owner/pages/RentalRequestsPage'
-import RevenuePage from './features/owner/pages/RevenuePage'
+import OwnerProfile from './features/owner/pages/OwnerProfile'
+import PostWarehouse from './features/owner/pages/PostWarehouse'
+import ListWarehouse from './features/owner/pages/ListWarehouse'
+import OwnerContractsPage from './features/owner/pages/OwnerContractsPage'
 
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
 import StaffTasksPage from './features/staff/pages/StaffTasksPage'
-import StaffInventoryPage from './features/staff/pages/StaffInventoryPage'
+import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages_SubcriptionsManagementPage'
+
+// Inspector Pages
+import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
+import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
 
 const App = () => {
+  const dispatch = useDispatch()
+  const [isInitializing, setIsInitializing] = useState(true)
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token')
+      if (token) {
+        try {
+          await dispatch(fetchCurrentUserThunk()).unwrap()
+        } catch (error) {
+          dispatch(logout())
+          // Token hết hạn hoặc không hợp lệ → fetchCurrentUserThunk đã clear state
+          console.warn('Auth init failed:', error)
+        }
+      }
+      setIsInitializing(false)
+    }
+
+    initializeAuth()
+  }, [dispatch])
+
+  if (isInitializing) {
+    return <div className="flex min-h-screen items-center justify-center">Loading...</div>
+  }
+
   return (
     <BrowserRouter>
       <Routes>
         {/* Public Routes */}
-        {/* <Route path="/" element={<LandingPage />} /> */}
-        <Route path="/" element={<LandingpageKhamkhao />} />
-        <Route path="/warehouses" element={<WarehouseListingPage />} />
-        <Route path="/warehouse/:id" element={<WarehouseDetailPage />} />
+        <Route element={<PublicGuard />}>
+          <Route path="/" element={<LandingpageKhamkhao />} />
+          <Route path="/warehouses" element={<WarehouseListingPage />} />
+          <Route path="/warehouse/:id" element={<WarehouseDetailPage />} />
+          <Route path="/packages" element={<PackageList />} />
+          <Route path="/packages/:id" element={<PackageDetail />} />
+        </Route>
         {/* <Route path="/login" element={<LoginPage />} /> */}
         {/* <Route path="/register" element={<RegisterPage />} /> */}
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/staff/accept" element={<StaffAcceptInvitationPage />} />
+        <Route path="/wallet/callback" element={<WalletCallback />} />
 
         {/* Protected Routes Layout */}
         {/* Admin Routes */}
-        {/* <Route element={<RoleGuard allowedRoles={['ADMIN']} />}> */}
+        {/* <Route element={<RoleGuard allowedRoles={['ROLE_ADMIN']} />}> */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/listings" element={<WarehouseApprovalPage />} />
         <Route path="/admin/transactions" element={<TransactionsPage />} />
         <Route path="/admin/deposits" element={<DepositApprovalPage />} />
         <Route path="/admin/payments" element={<PaymentsPage />} />
         <Route path="/admin/analytics" element={<AnalyticsPage />} />
-        <Route path="/admin/settings" element={<PlatformSettingsPage />} />
+        <Route path="/admin/system-policies" element={<SystemPolicyPage />} />
+        <Route path="/admin/users" element={<UserManagementPage />} />
+        <Route path="/admin/disputes" element={<DisputeManagementPage />} />
+        <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
+        <Route path="/admin/permissions" element={<PermissionManagementPage />} />
+        <Route path="admin/inspections" element={<InspectionsManagementPage />} />
+        <Route path="admin/warehouses-management" element={<WareHouseManagementPage />} />
+        <Route path="admin/warehouse-types" element={<WarehousesTypePage />} />
+        <Route path="admin/system-config" element={<SystemConfigueManagementPage />} />
+        <Route path="admin/package-subcription" element={<Packages_SubcriptionsManagementPage />} />
         {/* </Route> */}
 
         {/* Tenant Routes */}
-        {/* <Route element={<RoleGuard allowedRoles={['TENANT']} />}> */}
-        <Route path="/tenant/dashboard" element={<TenantDashboard />} />
-        <Route path="/tenant/inventory" element={<InventoryPage />} />
-        <Route path="/tenant/inbound" element={<InboundPage />} />
-        <Route path="/tenant/outbound" element={<OutboundPage />} />
-        <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
-        <Route path="/tenant/payments" element={<BillingPage />} />
-        <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse />} />
-        {/* </Route> */}
+        <Route element={<RoleGuard allowedRoles={['ROLE_TENANT']} />}>
+          <Route path="/tenant/dashboard" element={<TenantDashboard />} />
+          <Route path="/tenant/inventory" element={<InventoryPage />} />
+          <Route path="/tenant/inbound" element={<InboundPage />} />
+          <Route path="/tenant/outbound" element={<OutboundPage />} />
+          <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
+          <Route path="/tenant/payments" element={<BillingPage />} />
+          <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse currentRole="TENANT" />} />
+          <Route path="/tenant/wallet" element={<WalletTenant />} />
+          <Route path="/tenant/contracts" element={<TenantContractsPage />} />
+          <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
+          <Route path="/tenant/staff" element={<TenantStaffManagementPage />} />
+        </Route>
 
         {/* Owner Routes */}
-        {/* <Route element={<RoleGuard allowedRoles={['OWNER']} />}> */}
-        <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-        <Route path="/owner/warehouses" element={<MyWarehousesPage />} />
-        <Route path="/owner/requests" element={<RentalRequestsPage />} />
-        <Route path="/owner/revenue" element={<RevenuePage />} />
-        {/* </Route> */}
+        <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}>
+          <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+          <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
+          <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
+          <Route path="/owner/layoutwarehouses" element={<LayoutWarehouse currentRole="OWNER" />} />
+          <Route path="/owner/wallet/withdraws" element={<WithdrawsHistory />} />
+          <Route path="/owner/profile" element={<OwnerProfile />} />
+          <Route path="/owner/contracts" element={<OwnerContractsPage />} />
+          <Route path="/owner/disputes" element={<MyDisputesPage currentRole="OWNER" />} />
+        </Route>
 
         {/* Staff Routes */}
-        <Route element={<RoleGuard allowedRoles={['STAFF']} />}>
+        <Route element={<RoleGuard allowedRoles={['ROLE_STAFF']} />}>
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
-          <Route path="/staff/inventory" element={<StaffInventoryPage />} />
+          <Route path="/staff/inventory" element={<InventoryPage />} />
+          <Route path="/staff/inbound" element={<InboundPage />} />
+          <Route path="/staff/outbound" element={<OutboundPage />} />
+        </Route>
+
+        {/* Inspector Routes */}
+        <Route element={<RoleGuard allowedRoles={['ROLE_INSPECTOR']} />}>
+          <Route path="/inspector/inspections" element={<InspectorInspectionsPage />} />
         </Route>
 
         {/* Fallback */}

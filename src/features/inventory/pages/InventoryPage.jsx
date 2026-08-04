@@ -11,6 +11,13 @@ import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Drawer from '@/components/organisms/Drawer'
 import Modal from '@/components/organisms/Modal'
+import Header from '@/components/HeaderDashboard'
+import Sidebar from '@/components/SideBar'
+import { useSelector, useDispatch } from 'react-redux'
+import { closeMobileSidebar } from '@/store/uiSlide'
+import productApi from '../../../services/wms/productApi'
+import stockApi from '../../../services/wms/stockApi'
+import { toast } from 'react-hot-toast'
 
 // Mock Data
 const MOCK_PRODUCTS = [
@@ -23,16 +30,226 @@ const MOCK_PRODUCTS = [
 ]
 
 const InventoryPage = () => {
-  const [products, setProducts] = useState(MOCK_PRODUCTS)
+  const [products, setProducts] = useState([])
+  const [categories, setCategories] = useState([])
+  const [uoms, setUoms] = useState([])
+  
+  // Form states
+  const [formName, setFormName] = useState('')
+  const [formSkuCode, setFormSkuCode] = useState('')
+  const [formCategoryId, setFormCategoryId] = useState('')
+  const [formUomId, setFormUomId] = useState('')
+  const [formSpecs, setFormSpecs] = useState([]) // [{key: '', value: ''}]
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingProductId, setEditingProductId] = useState(null)
+
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
+  const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+
+  const dispatch = useDispatch()
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  const { user } = useSelector((state) => state.auth)
+  const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
+
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1000)
-    return () => clearTimeout(timer)
+    fetchInventoryData()
   }, [])
+
+  const fetchInventoryData = async () => {
+    try {
+      setIsLoading(true)
+      const [skuRes, catRes, uomRes] = await Promise.all([
+        productApi.getSKUs({ page: 0, size: 50 }),
+        productApi.getCategories(),
+        productApi.getUOMs()
+      ])
+      
+      setCategories(catRes.data?.data || [])
+      
+      // Handle uomRes which is now a PagedResponse from BE
+      const uomData = uomRes.data?.data
+      setUoms(uomData?.content || (Array.isArray(uomData) ? uomData : []))
+      
+      const skuList = skuRes.data?.data?.content || []
+      
+      // Fetch stock summary cho từng SKU (N+1 queries vì BE không có API tổng hợp)
+      const productsWithStock = await Promise.all(
+        skuList.map(async (sku) => {
+          try {
+            const stockRes = await stockApi.getStockSummary(sku.id)
+            const totalQty = stockRes.data?.data?.totalQuantity || 0
+            const locations = stockRes.data?.data?.locations || []
+            let status = 'OUT_OF_STOCK'
+            if (totalQty > 20) status = 'IN_STOCK'
+            else if (totalQty > 0) status = 'LOW_STOCK'
+            
+            return {
+              ...sku,
+              qty: totalQty,
+              locations,
+              status
+            }
+          } catch (error) {
+            return { ...sku, qty: 0, locations: [], status: 'OUT_OF_STOCK' }
+          }
+        })
+      )
+      
+      setProducts(productsWithStock)
+    } catch (error) {
+      console.error('Error fetching inventory:', error)
+      toast.error('Failed to load inventory data')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreateCategory = async (e) => {
+    e.preventDefault()
+    if (!newCategoryName || !newCategoryName.trim()) return
+    
+    try {
+      setIsCreatingCategory(true)
+      const res = await productApi.createCategory({ name: newCategoryName.trim() })
+      toast.success('Thêm danh mục thành công')
+      
+      const catRes = await productApi.getCategories()
+      setCategories(catRes.data?.data || [])
+      
+      if (res.data?.data?.id) {
+        setFormCategoryId(res.data.data.id)
+      }
+      setIsCategoryModalOpen(false)
+      setNewCategoryName('')
+    } catch (error) {
+      console.error('Error creating category:', error)
+      toast.error('Lỗi khi tạo danh mục')
+    } finally {
+      setIsCreatingCategory(false)
+    }
+  }
+
+  const handleAddSpec = () => setFormSpecs([...formSpecs, { key: '', value: '' }])
+  const handleUpdateSpec = (index, field, val) => {
+    const newSpecs = [...formSpecs]
+    newSpecs[index][field] = val
+    setFormSpecs(newSpecs)
+  }
+  const handleRemoveSpec = (index) => {
+    const newSpecs = [...formSpecs]
+    newSpecs.splice(index, 1)
+    setFormSpecs(newSpecs)
+  }
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa danh mục này?')) return
+    try {
+      await productApi.deleteCategory(id)
+      toast.success('Xóa danh mục thành công!')
+      const catRes = await productApi.getCategories()
+      setCategories(catRes.data?.data || [])
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      toast.error(error.response?.data?.message || 'Lỗi khi xóa danh mục')
+    }
+  }
+
+  const handleEditProductClick = (product) => {
+    setIsEditing(true)
+    setEditingProductId(product.id)
+    setFormName(product.name)
+    setFormSkuCode(product.skuCode || product.sku) // sku from productsWithStock mapping
+    setFormCategoryId(product.categoryId || '')
+    setFormUomId(product.uomId || '')
+    
+    if (product.specifications) {
+      const specArray = Object.keys(product.specifications).map(key => ({
+        key,
+        value: product.specifications[key]
+      }))
+      setFormSpecs(specArray)
+    } else {
+      setFormSpecs([])
+    }
+    
+    setIsDrawerOpen(false)
+    setIsModalOpen(true)
+  }
+
+  const handleDeleteProduct = async (id) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) return
+    try {
+      await productApi.deleteSKU(id)
+      toast.success('Xóa sản phẩm thành công!')
+      setIsDrawerOpen(false)
+      fetchInventoryData()
+    } catch (error) {
+      console.error('Error deleting product:', error)
+      toast.error('Lỗi khi xóa sản phẩm')
+    }
+  }
+
+  const handleCreateProduct = async (e) => {
+    e.preventDefault()
+    if (!formName || !formSkuCode || !formUomId) {
+      toast.error('Vui lòng điền đủ Tên sản phẩm, Mã SKU và Đơn vị tính!')
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      
+      const specsObject = formSpecs.reduce((acc, curr) => {
+        if (curr.key.trim() && curr.value.trim()) {
+          acc[curr.key.trim()] = curr.value.trim()
+        }
+        return acc
+      }, {})
+
+      const payload = {
+        name: formName,
+        skuCode: formSkuCode,
+        categoryId: formCategoryId || null,
+        uomId: formUomId,
+        specifications: Object.keys(specsObject).length > 0 ? specsObject : null
+      }
+
+      if (isEditing) {
+        await productApi.updateSKU(editingProductId, payload)
+        toast.success('Cập nhật sản phẩm thành công!')
+      } else {
+        await productApi.createSKU(payload)
+        toast.success('Thêm sản phẩm thành công!')
+      }
+      
+      setIsModalOpen(false)
+      
+      // Reset form
+      setFormName('')
+      setFormSkuCode('')
+      setFormCategoryId('')
+      setFormUomId('')
+      setFormSpecs([])
+      setIsEditing(false)
+      setEditingProductId(null)
+      
+      // Reload data
+      fetchInventoryData()
+    } catch (error) {
+      console.error('Error saving product:', error)
+      toast.error(error.response?.data?.message || 'Lỗi khi lưu sản phẩm')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   const handleViewDetails = (product) => {
     setSelectedProduct(product)
@@ -54,7 +271,10 @@ const InventoryPage = () => {
         </div>
       )
     },
-    { header: 'Category', accessor: 'category' },
+    { 
+      header: 'Category', 
+      render: (row) => row.categoryName || 'Uncategorized' 
+    },
     { 
       header: 'Quantity', 
       render: (row) => (
@@ -65,11 +285,11 @@ const InventoryPage = () => {
       header: 'Status', 
       render: (row) => (
         <Badge variant={row.status === 'IN_STOCK' ? 'success' : row.status === 'LOW_STOCK' ? 'warning' : 'danger'}>
-          {row.status.replace('_', ' ')}
+          {row.status?.replace('_', ' ')}
         </Badge>
       )
     },
-    { header: 'Last Updated', accessor: 'lastUpdated' },
+    { header: 'UOM', render: (row) => row.uomName || 'N/A' },
     {
       header: 'Actions',
       render: (row) => (
@@ -77,10 +297,10 @@ const InventoryPage = () => {
           <button onClick={() => handleViewDetails(row)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500">
             <Eye className="h-4 w-4" />
           </button>
-          <button className="p-1.5 rounded hover:bg-slate-100 text-slate-500">
+          <button onClick={() => handleEditProductClick(row)} className="p-1.5 rounded hover:bg-slate-100 text-slate-500">
             <Edit className="h-4 w-4" />
           </button>
-          <button className="p-1.5 rounded hover:bg-slate-100 text-danger/10 text-danger">
+          <button onClick={() => handleDeleteProduct(row.id)} className="p-1.5 rounded hover:bg-slate-100 text-danger/10 text-danger">
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
@@ -89,7 +309,25 @@ const InventoryPage = () => {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      <Header />
+      <div className="md:hidden">
+        {isMobileOpen && (
+          <button
+            className="fixed inset-0 z-40 bg-slate-900/30"
+            onClick={() => dispatch(closeMobileSidebar())}
+          />
+        )}
+      </div>
+      <div className="flex pt-14">
+        <Sidebar currentRole={currentRole} />
+        <div
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
+        >
+          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+            <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -103,19 +341,28 @@ const InventoryPage = () => {
           <Button variant="outline" size="sm" className="hidden sm:flex">
             <Download className="h-4 w-4 mr-2" /> Export
           </Button>
-          <Button size="sm" onClick={() => setIsModalOpen(true)}>
+          <Button size="sm" onClick={() => {
+            setIsEditing(false)
+            setEditingProductId(null)
+            setFormName('')
+            setFormSkuCode('')
+            setFormCategoryId('')
+            setFormUomId('')
+            setFormSpecs([])
+            setIsModalOpen(true)
+          }}>
             <Plus className="h-4 w-4 mr-2" /> Add Product
           </Button>
         </div>
       </div>
 
-      {/* Stats Quick View */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Items', value: '450', color: 'bg-primary' },
-          { label: 'Low Stock', value: '12', color: 'bg-warning' },
-          { label: 'Out of Stock', value: '3', color: 'bg-danger' },
-          { label: 'Categories', value: '8', color: 'bg-slate-900' },
+          { label: 'Total Items', value: products.length, color: 'bg-primary' },
+          { label: 'Low Stock', value: products.filter(p => p.status === 'LOW_STOCK').length, color: 'bg-warning' },
+          { label: 'Out of Stock', value: products.filter(p => p.status === 'OUT_OF_STOCK').length, color: 'bg-danger' },
+          { label: 'Categories', value: new Set(products.map(p => p.categoryId)).size, color: 'bg-slate-900' },
         ].map((stat, idx) => (
           <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 flex items-center gap-4">
             <div className={`h-2 w-2 rounded-full ${stat.color}`} />
@@ -197,29 +444,31 @@ const InventoryPage = () => {
             </div>
 
             <div>
-              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Inventory Log</h4>
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Vị trí lưu kho (Stock Locations)</h4>
               <div className="space-y-3">
-                {[
-                  { event: 'Stock Inbound', qty: '+20', date: '2026-05-10 09:30' },
-                  { event: 'Stock Outbound', qty: '-5', date: '2026-05-08 14:20' },
-                  { event: 'Initial Entry', qty: '30', date: '2026-05-01 10:00' },
-                ].map((log, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900">{log.event}</p>
-                      <p className="text-[10px] text-slate-400">{log.date}</p>
+                {selectedProduct.locations && selectedProduct.locations.length > 0 ? (
+                  selectedProduct.locations.map((loc, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">Zone {loc.zoneName} - Rack {loc.rackName}</p>
+                        <p className="text-[10px] text-slate-400">Bin: {loc.binName} | Batch ID: {loc.batchId?.substring(0,8)}...</p>
+                      </div>
+                      <span className="text-sm font-bold text-success">
+                        +{loc.quantity} {selectedProduct.uomName}
+                      </span>
                     </div>
-                    <span className={`text-sm font-bold ${log.qty.startsWith('+') ? 'text-success' : 'text-danger'}`}>
-                      {log.qty}
-                    </span>
+                  ))
+                ) : (
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-center text-sm text-slate-400">
+                    Sản phẩm này chưa có trong kho.
                   </div>
-                ))}
+                )}
               </div>
             </div>
 
             <div className="pt-6 flex gap-3">
-              <Button className="flex-1">Edit Product</Button>
-              <Button variant="outline" className="flex-1 text-danger border-danger hover:bg-danger/5">Delete</Button>
+              <Button onClick={() => handleEditProductClick(selectedProduct)} className="flex-1">Edit Product</Button>
+              <Button onClick={() => handleDeleteProduct(selectedProduct.id)} variant="outline" className="flex-1 text-danger border-danger hover:bg-danger/5">Delete</Button>
             </div>
           </div>
         )}
@@ -229,24 +478,181 @@ const InventoryPage = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title="Add New Product"
+        title={isEditing ? "Cập Nhật Sản Phẩm" : "Add New Product"}
       >
-        <div className="space-y-4">
-          <InputField label="Product Name" placeholder="e.g. Industrial Motor X1" />
-          <div className="grid grid-cols-2 gap-4">
-            <InputField label="SKU" placeholder="SKU-000" />
-            <InputField label="Category" placeholder="Select category" />
+        <form onSubmit={handleCreateProduct} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Product Name *</label>
+            <InputField 
+              placeholder="e.g. Industrial Motor X1" 
+              value={formName}
+              onChange={(e) => setFormName(e.target.value)}
+              required
+            />
           </div>
+          
           <div className="grid grid-cols-2 gap-4">
-            <InputField label="Initial Quantity" type="number" defaultValue="0" />
-            <InputField label="Min. Stock Level" type="number" defaultValue="5" />
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">SKU Code *</label>
+              <InputField 
+                placeholder="SKU-000" 
+                value={formSkuCode}
+                onChange={(e) => setFormSkuCode(e.target.value)}
+                required
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="text-sm font-medium text-slate-700">Category</label>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setIsCategoryManagerOpen(true)} className="text-xs text-slate-500 hover:text-primary hover:underline">
+                    Quản lý
+                  </button>
+                  <button type="button" onClick={() => setIsCategoryModalOpen(true)} className="text-xs text-primary hover:underline flex items-center gap-1">
+                    <Plus className="h-3 w-3" /> Thêm mới
+                  </button>
+                </div>
+              </div>
+              <select 
+                className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                value={formCategoryId}
+                onChange={(e) => setFormCategoryId(e.target.value)}
+              >
+                <option value="">-- Chọn danh mục --</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Unit of Measurement (UOM) *</label>
+            <select 
+              required
+              className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+              value={formUomId}
+              onChange={(e) => setFormUomId(e.target.value)}
+            >
+              <option value="">-- Chọn Đơn vị --</option>
+              {uoms.map(uom => (
+                <option key={uom.id} value={uom.id}>{uom.name} ({uom.code})</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-medium text-slate-700">Specifications (Tùy chọn)</label>
+              <button type="button" onClick={handleAddSpec} className="text-xs text-primary hover:underline flex items-center gap-1">
+                <Plus className="h-3 w-3" /> Thêm thuộc tính
+              </button>
+            </div>
+            {formSpecs.length > 0 && (
+              <div className="space-y-2">
+                {formSpecs.map((spec, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input 
+                      type="text"
+                      placeholder="Tên (VD: Màu sắc)"
+                      className="flex-1 rounded-md border border-slate-200 p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                      value={spec.key}
+                      onChange={(e) => handleUpdateSpec(idx, 'key', e.target.value)}
+                    />
+                    <input 
+                      type="text"
+                      placeholder="Giá trị (VD: Đỏ)"
+                      className="flex-1 rounded-md border border-slate-200 p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                      value={spec.value}
+                      onChange={(e) => handleUpdateSpec(idx, 'value', e.target.value)}
+                    />
+                    <button type="button" onClick={() => handleRemoveSpec(idx)} className="p-2 text-slate-400 hover:text-danger rounded-md hover:bg-red-50">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-slate-500 mt-2">Lưu ý: Số lượng tồn kho ban đầu sẽ là 0. Bạn cần tạo phiếu Inbound để nhập hàng thực tế.</p>
+          </div>
+          
+          <div className="pt-6 flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="submit" isLoading={isSubmitting}>{isEditing ? "Lưu Thay Đổi" : "Save Product"}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Add Category Modal */}
+      <Modal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        title="Thêm Danh Mục Mới"
+      >
+        <form onSubmit={handleCreateCategory} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Tên danh mục *</label>
+            <InputField 
+              placeholder="e.g. Đồ gia dụng" 
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              required
+            />
           </div>
           <div className="pt-6 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button>Save Product</Button>
+            <Button type="button" variant="outline" onClick={() => setIsCategoryModalOpen(false)}>Hủy</Button>
+            <Button type="submit" isLoading={isCreatingCategory}>Lưu</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Category Manager Modal */}
+      <Modal
+        isOpen={isCategoryManagerOpen}
+        onClose={() => setIsCategoryManagerOpen(false)}
+        title="Quản Lý Danh Mục"
+      >
+        <div className="space-y-4">
+          {categories.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-4">Chưa có danh mục nào.</p>
+          ) : (
+            <div className="border border-slate-200 rounded-lg overflow-hidden max-h-[300px] overflow-y-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2 font-medium text-slate-700">Tên Danh Mục</th>
+                    <th className="px-4 py-2 font-medium text-slate-700 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {categories.map((cat) => (
+                    <tr key={cat.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-2 text-slate-900">{cat.name}</td>
+                      <td className="px-4 py-2 text-right">
+                        <button 
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="p-1.5 rounded text-slate-400 hover:text-danger hover:bg-danger/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="pt-4 flex justify-end">
+            <Button onClick={() => setIsCategoryManagerOpen(false)}>Đóng</Button>
           </div>
         </div>
       </Modal>
+
+            </div>
+          </main>
+        </div>
+      </div>
     </div>
   )
 }

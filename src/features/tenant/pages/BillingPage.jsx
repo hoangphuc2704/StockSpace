@@ -1,13 +1,20 @@
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Wallet, Plus, ArrowUpRight, 
   ArrowDownRight, Download, 
   FileText, CreditCard, Clock,
-  ChevronRight, AlertCircle
+  ChevronRight, AlertCircle,
+  Package
 } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
+import Header from '@/components/HeaderDashboard'
+import Sidebar from '@/components/SideBar'
+import { useSelector, useDispatch } from 'react-redux'
+import { closeMobileSidebar } from '@/store/uiSlide'
+import subscriptionApi from '../../../services/subscriptionApi'
 
 const MOCK_TRANSACTIONS = [
   { id: 'INV-4421', desc: 'Monthly Rent - Industrial Park A', amount: '-$2,400.00', date: '2024-05-01', status: 'PAID' },
@@ -17,6 +24,26 @@ const MOCK_TRANSACTIONS = [
 ]
 
 const BillingPage = () => {
+  const [activeSub, setActiveSub] = useState(null)
+  const [isLoadingSub, setIsLoadingSub] = useState(true)
+  
+  const dispatch = useDispatch()
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      try {
+        const res = await subscriptionApi.getActiveSubscription()
+        setActiveSub(res?.data?.data)
+      } catch (err) {
+        // user might not have a sub, ignore
+      } finally {
+        setIsLoadingSub(false)
+      }
+    }
+    fetchSubscription()
+  }, [])
+
   const columns = [
     {
       header: 'Description',
@@ -63,7 +90,25 @@ const BillingPage = () => {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      <Header />
+      <div className="md:hidden">
+        {isMobileOpen && (
+          <button
+            className="fixed inset-0 z-40 bg-slate-900/30"
+            onClick={() => dispatch(closeMobileSidebar())}
+          />
+        )}
+      </div>
+      <div className="flex pt-14">
+        <Sidebar currentRole="TENANT" />
+        <div
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
+        >
+          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+            <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -105,9 +150,51 @@ const BillingPage = () => {
           <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-2xl flex items-start gap-3">
              <AlertCircle size={20} className="text-primary shrink-0" />
              <p className="text-xs text-slate-600 leading-relaxed">
-               Next rental payment of <span className="font-bold">$2,400.00</span> is due on <span className="font-bold">June 1st, 2024</span>. 
-               Ensure your wallet has sufficient funds for automatic renewal.
+               Ensure your wallet has sufficient funds for automatic renewal of your services.
              </p>
+          </div>
+
+          {/* Current Subscription Card */}
+          <div className="mt-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <Package size={18} className="text-primary" />
+              Current Subscription
+            </h3>
+            
+            {isLoadingSub ? (
+               <div className="animate-pulse space-y-3">
+                 <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+                 <div className="h-4 bg-slate-200 rounded w-3/4"></div>
+               </div>
+            ) : activeSub ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-slate-900">{activeSub.servicePackage?.name}</span>
+                  <Badge variant="success" size="sm">{activeSub.status}</Badge>
+                </div>
+                <div className="text-xs text-slate-500 space-y-2">
+                  <p className="flex justify-between">
+                    <span>Valid from:</span>
+                    <span className="font-medium text-slate-900">{activeSub.startDate}</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>Valid to:</span>
+                    <span className="font-medium text-slate-900">{activeSub.endDate}</span>
+                  </p>
+                  <p className="flex justify-between">
+                    <span>Price:</span>
+                    <span className="font-medium text-slate-900">{Number(activeSub.servicePackage?.price || 0).toLocaleString('vi-VN')} VNĐ / {activeSub.servicePackage?.durationMonths} tháng</span>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-sm text-slate-500 mb-4">Bạn chưa đăng ký gói dịch vụ nào.</p>
+                <Button onClick={() => window.location.href = '/packages'} variant="outline" size="sm" className="w-full">
+                  Xem Bảng Giá
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -150,6 +237,10 @@ const BillingPage = () => {
               <ChevronRight size={18} className="text-slate-300 group-hover:text-primary transition-colors" />
             </div>
           </div>
+        </div>
+      </div>
+            </div>
+          </main>
         </div>
       </div>
     </div>

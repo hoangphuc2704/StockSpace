@@ -10,17 +10,17 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null)
   const { token, isAuthenticated } = useSelector((state) => state.auth)
 
-  useEffect(() => {
-    if (isAuthenticated && token) {
-      const newSocket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
-        auth: { token },
-      })
+  // useEffect(() => {
+  //   if (isAuthenticated && token) {
+  //     const newSocket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:8080', {
+  //       auth: { token },
+  //     })
 
-      setSocket(newSocket)
+  //     setSocket(newSocket)
 
-      return () => newSocket.close()
-    }
-  }, [isAuthenticated, token])
+  //     return () => newSocket.close()
+  //   }
+  // }, [isAuthenticated, token])
 
   return <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>
 }

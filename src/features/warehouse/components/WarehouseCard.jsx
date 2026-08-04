@@ -21,7 +21,7 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
       )}
     >
       <Link to={`/warehouse/${warehouse.id}`} className="absolute inset-0 z-10" />
-      
+
       {/* Thumbnail */}
       <div className={cn('relative bg-slate-100 overflow-hidden', isGrid ? 'aspect-[4/3]' : 'w-80 shrink-0')}>
         <img
@@ -29,15 +29,21 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
           alt={warehouse.name}
           className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
-        <div className="absolute top-4 left-4 z-20">
-          <Badge variant={warehouse.status === 'AVAILABLE' ? 'success' : 'warning'} className="backdrop-blur-md bg-white/90 border-none shadow-sm">
-            {warehouse.status}
-          </Badge>
+        <div className="absolute top-4 left-4 z-20 flex gap-2">
+          {warehouse.isVerified ? (
+            <div className="rounded-full bg-emerald-500/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm backdrop-blur-md">
+              Verified
+            </div>
+          ) : (
+            <div className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#0f084b] shadow-sm backdrop-blur-md">
+              Approved
+            </div>
+          )}
         </div>
         <div className="absolute bottom-4 left-4 z-20 hidden group-hover:block transition-all animate-in fade-in slide-in-from-bottom-2">
-           <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-bold text-slate-900 flex items-center gap-1.5 shadow-lg">
-             <Clock size={14} className="text-primary" /> Instant Booking
-           </div>
+          <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-bold text-slate-900 flex items-center gap-1.5 shadow-lg">
+            <Clock size={14} className="text-primary" /> Instant Booking
+          </div>
         </div>
       </div>
 
@@ -77,9 +83,9 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
               <span className="text-sm text-slate-400 font-medium">/mo</span>
             </p>
           </div>
-          <div className="relative z-20">
-            <Button size="sm" className="rounded-xl px-5 h-10 shadow-lg shadow-primary/20">
-              Details <ArrowRight size={14} className="ml-2" />
+          <div className="relative z-20 text-black">
+            <Button size="sm" className="rounded-xl px-5 h-10 shadow-lg shadow-primary/20 text-black">
+              Details <ArrowRight size={14} className="ml-2 " />
             </Button>
           </div>
         </div>

@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { closeMobileSidebar } from '@/store/uiSlide'
+import Sidebar from '@/components/SideBar'
+import Header from '@/components/HeaderDashboard'
 import { 
   ArrowUpRight, Package, Truck, Search, 
   Minus, History, PieChart, ShieldAlert,
-  FileText, Share2
+  FileText, Share2, Loader2
 } from 'lucide-react'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -13,6 +17,11 @@ import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
+import receiptApi from '../../../services/wms/receiptApi'
+import contractApi from '@/services/contractApi'
+import productApi from '../../../services/wms/productApi'
+import layoutApi from '../../../services/layoutApi'
+import { toast } from 'react-hot-toast'
 
 const shipmentData = [
   { name: 'Mon', value: 12 },
@@ -25,43 +34,205 @@ const shipmentData = [
 const OutboundPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const recentOutbound = [
-    { id: 'OUT-4401', product: 'Industrial Motor X1', qty: 12, customer: 'TechBuild Ltd.', status: 'SHIPPED', date: '2026-05-12 14:00' },
-    { id: 'OUT-4402', product: 'Solar Panel 250W', qty: 5, customer: 'SolarCity Project', status: 'PACKING', date: '2026-05-12 15:30' },
-    { id: 'OUT-4403', product: 'Steel Rail 2m', qty: 50, customer: 'RailWay VN', status: 'PENDING', date: '2026-05-12 16:45' },
-    { id: 'OUT-4404', product: 'Li-ion Battery 10Ah', qty: 20, customer: 'EV Solutions', status: 'SHIPPED', date: '2026-05-11 11:20' },
-  ]
+  // Data states
+  const [receipts, setReceipts] = useState([])
+  const [warehouses, setWarehouses] = useState([])
+  const [skus, setSkus] = useState([])
+  const [layout, setLayout] = useState(null)
+  
+  // Selection states
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Form states
+  const [formSkuId, setFormSkuId] = useState('')
+  const [formQuantity, setFormQuantity] = useState(1)
+  const [formZoneId, setFormZoneId] = useState('')
+  const [formRackId, setFormRackId] = useState('')
+  const [formBinId, setFormBinId] = useState('')
+  const [formNote, setFormNote] = useState('')
+
+  useEffect(() => {
+    fetchInitialData()
+  }, [])
+
+  useEffect(() => {
+    if (selectedWarehouseId) {
+      fetchReceipts()
+      fetchLayout()
+    }
+  }, [selectedWarehouseId])
+
+  const fetchInitialData = async () => {
+    try {
+      const [contractRes, skuRes] = await Promise.all([
+        contractApi.getMyContracts({ page: 0, size: 50 }),
+        productApi.getSKUs({ page: 0, size: 50 })
+      ])
+      
+      const activeContracts = contractRes.data?.data?.content?.filter(c => c.status === 'ACTIVE') || []
+      const allWhList = activeContracts.map(c => ({ id: c.warehouseId, name: c.warehouseName }))
+      const whList = Array.from(new Map(allWhList.map(item => [item.id, item])).values())
+      setWarehouses(whList)
+      if (whList.length > 0) {
+        setSelectedWarehouseId(whList[0].id)
+      }
+      
+      setSkus(skuRes.data?.data?.content || [])
+    } catch (error) {
+      console.error('Error fetching initial data:', error)
+      toast.error('Failed to load initial data')
+    }
+  }
+
+  const fetchLayout = async () => {
+    try {
+      const res = await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
+      setLayout(res.data?.data)
+    } catch (error) {
+      setLayout(null)
+      if (error.response?.status !== 404) {
+        console.error('Error fetching layout:', error)
+      }
+    }
+  }
+
+  const fetchReceipts = async () => {
+    setIsLoading(true)
+    try {
+      const res = await receiptApi.getReceipts(selectedWarehouseId, { type: 'OUTBOUND', page: 0, size: 20 })
+      setReceipts(res.data?.data?.content || [])
+    } catch (error) {
+      console.error('Error fetching receipts:', error)
+      toast.error('Failed to load receipts')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreateReceipt = async (e) => {
+    e.preventDefault()
+    if (!formSkuId || !formZoneId || !formRackId || !formBinId) {
+      toast.error('Vui lòng chọn đầy đủ sản phẩm và vị trí lấy hàng')
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const payload = {
+        warehouseId: selectedWarehouseId,
+        type: 'OUTBOUND',
+        items: [
+          {
+            skuId: formSkuId,
+            quantity: Number(formQuantity),
+            zoneId: formZoneId,
+            rackId: formRackId,
+            binId: formBinId,
+            note: formNote
+          }
+        ]
+      }
+      await receiptApi.createReceipt(payload)
+      toast.success('Tạo phiếu xuất thành công')
+      setIsModalOpen(false)
+      fetchReceipts()
+      
+      // Reset form
+      setFormSkuId('')
+      setFormQuantity(1)
+      setFormZoneId('')
+      setFormRackId('')
+      setFormBinId('')
+      setFormNote('')
+    } catch (error) {
+      console.error('Error creating receipt:', error)
+      toast.error(error.response?.data?.message || 'Lỗi khi tạo phiếu')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleApprove = async (id) => {
+    try {
+      await receiptApi.approveReceipt(id)
+      toast.success('Duyệt phiếu xuất thành công')
+      fetchReceipts()
+    } catch (error) {
+      console.error('Error approving receipt:', error)
+      toast.error(error.response?.data?.message || 'Lỗi khi duyệt phiếu')
+    }
+  }
 
   const columns = [
-    { header: 'Order ID', accessor: 'id' },
+    { header: 'Receipt ID', render: (row) => row.id.substring(0,8) },
     { 
-      header: 'Product', 
+      header: 'Warehouse', 
+      render: () => {
+        const wh = warehouses.find(w => w.id === selectedWarehouseId)
+        return wh ? wh.name : 'Unknown'
+      }
+    },
+    { 
+      header: 'Items', 
       render: (row) => (
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-slate-400" />
-          <span className="font-medium text-slate-900">{row.product}</span>
+          <span className="font-medium text-slate-900">{row.items?.length || 0} items</span>
         </div>
       )
     },
-    { header: 'Quantity', accessor: 'qty' },
-    { header: 'Customer', accessor: 'customer' },
     { 
       header: 'Status', 
       render: (row) => (
-        <Badge variant={row.status === 'SHIPPED' ? 'success' : row.status === 'PACKING' ? 'primary' : 'warning'}>
+        <Badge variant={row.status === 'APPROVED' ? 'success' : row.status === 'PENDING' ? 'warning' : 'danger'}>
           {row.status}
         </Badge>
       )
     },
-    { header: 'Time', accessor: 'date' },
+    { header: 'Created Date', render: (row) => new Date(row.createdAt).toLocaleString() },
     {
       header: 'Actions',
-      render: () => <Button size="sm" variant="ghost">Track</Button>
+      render: (row) => (
+        row.status === 'PENDING' ? (
+          <Button size="sm" onClick={() => handleApprove(row.id)}>
+            Approve
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" disabled>
+            Approved
+          </Button>
+        )
+      )
     }
   ]
 
+  const dispatch = useDispatch()
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  const { user } = useSelector((state) => state.auth)
+  const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
+
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      <Header />
+      <div className="md:hidden">
+        {isMobileOpen && (
+          <button
+            className="fixed inset-0 z-40 bg-slate-900/30"
+            onClick={() => dispatch(closeMobileSidebar())}
+          />
+        )}
+      </div>
+      <div className="flex pt-14">
+        <Sidebar currentRole={currentRole} />
+        <div
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
+        >
+          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+            <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
@@ -72,11 +243,18 @@ const OutboundPage = () => {
           </h1>
           <p className="text-sm text-slate-500">Coordinate outgoing shipments and order fulfillment.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <History className="h-4 w-4 mr-2" /> History
-          </Button>
-          <Button size="sm" onClick={() => setIsModalOpen(true)}>
+        <div className="flex gap-2 items-center">
+          <select 
+            className="rounded-md border border-slate-200 p-2 text-sm"
+            value={selectedWarehouseId}
+            onChange={(e) => setSelectedWarehouseId(e.target.value)}
+          >
+            <option value="">-- Chọn Kho --</option>
+            {warehouses.map(wh => (
+              <option key={wh.id} value={wh.id}>{wh.name}</option>
+            ))}
+          </select>
+          <Button size="sm" onClick={() => setIsModalOpen(true)} disabled={!selectedWarehouseId}>
             <Minus className="h-4 w-4 mr-2" /> New Shipment
           </Button>
         </div>
@@ -84,23 +262,6 @@ const OutboundPage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[
-              { label: 'Orders Shipped', value: '84', icon: Truck, trend: '+8% growth' },
-              { label: 'Pending Fulfillment', value: '12 Orders', icon: Package, trend: '4 urgent' },
-              { label: 'Average Prep Time', value: '45 mins', icon: PieChart, trend: '-5m faster' },
-            ].map((stat, i) => (
-              <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <stat.icon className="h-5 w-5 text-primary" />
-                  <span className="text-[10px] font-bold text-success uppercase">{stat.trend}</span>
-                </div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{stat.label}</p>
-                <h3 className="text-xl font-bold text-slate-900 mt-1">{stat.value}</h3>
-              </div>
-            ))}
-          </div>
-
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-bold text-slate-900">Recent Outbound Shipments</h3>
@@ -109,7 +270,11 @@ const OutboundPage = () => {
                 <InputField placeholder="Search orders..." className="pl-10 h-9" />
               </div>
             </div>
-            <DataTable columns={columns} data={recentOutbound} />
+            {isLoading ? (
+              <div className="flex justify-center p-8"><Loader2 className="animate-spin text-slate-400" /></div>
+            ) : (
+              <DataTable columns={columns} data={receipts} />
+            )}
           </div>
         </div>
 
@@ -129,28 +294,6 @@ const OutboundPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-4 p-4 rounded-xl bg-danger/5 border border-danger/10">
-              <p className="text-xs text-danger font-bold flex items-center gap-2">
-                <ShieldAlert className="h-4 w-4" /> Pending Pickup
-              </p>
-              <p className="text-xs text-slate-600 mt-1">
-                3 orders are ready but haven't been picked up by the courier yet.
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-            <h3 className="font-bold text-slate-900 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-3">
-               <button className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-100 hover:border-primary hover:bg-primary/5 transition-all group">
-                  <FileText className="h-6 w-6 text-slate-400 group-hover:text-primary mb-2" />
-                  <span className="text-[10px] font-bold text-slate-500 group-hover:text-primary uppercase">Print Labels</span>
-               </button>
-               <button className="flex flex-col items-center justify-center p-4 rounded-xl border border-slate-100 hover:border-primary hover:bg-primary/5 transition-all group">
-                  <Share2 className="h-6 w-6 text-slate-400 group-hover:text-primary mb-2" />
-                  <span className="text-[10px] font-bold text-slate-500 group-hover:text-primary uppercase">Notify Client</span>
-               </button>
-            </div>
           </div>
         </div>
       </div>
@@ -161,24 +304,109 @@ const OutboundPage = () => {
         onClose={() => setIsModalOpen(false)}
         title="Create New Outbound Shipment"
       >
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <InputField label="Product" placeholder="Select stock item..." />
-            <InputField label="Available" value="450 Units" disabled />
+        <form onSubmit={handleCreateReceipt} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Select Product (SKU)</label>
+            <select 
+              required
+              className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+              value={formSkuId}
+              onChange={(e) => setFormSkuId(e.target.value)}
+            >
+              <option value="">-- Chọn sản phẩm --</option>
+              {skus.map(sku => (
+                <option key={sku.id} value={sku.id}>[{sku.skuCode}] {sku.productCategory?.name}</option>
+              ))}
+            </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <InputField label="Quantity to Ship" type="number" />
-            <InputField label="Priority" defaultValue="Standard" />
+          
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Quantity to Ship</label>
+            <InputField 
+              type="number" 
+              min="1" 
+              required 
+              value={formQuantity}
+              onChange={(e) => setFormQuantity(e.target.value)}
+            />
           </div>
-          <InputField label="Customer / Recipient" placeholder="Enter customer details" />
-          <InputField label="Shipping Address" placeholder="Full delivery address" />
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Select Zone (Picking)</label>
+            <select 
+              required
+              className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
+              value={formZoneId}
+              onChange={(e) => {
+                setFormZoneId(e.target.value)
+                setFormRackId('')
+                setFormBinId('')
+              }}
+            >
+              <option value="">-- Chọn Zone --</option>
+              {layout?.zones?.map(z => (
+                <option key={z.id} value={z.id}>{z.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {formZoneId && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Select Rack</label>
+              <select 
+                required
+                className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
+                value={formRackId}
+                onChange={(e) => {
+                  setFormRackId(e.target.value)
+                  setFormBinId('')
+                }}
+              >
+                <option value="">-- Chọn Rack --</option>
+                {layout?.zones?.find(z => z.id === formZoneId)?.racks?.map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {formRackId && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-700">Select Bin</label>
+              <select 
+                required
+                className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
+                value={formBinId}
+                onChange={(e) => setFormBinId(e.target.value)}
+              >
+                <option value="">-- Chọn Bin --</option>
+                {layout?.zones?.find(z => z.id === formZoneId)?.racks?.find(r => r.id === formRackId)?.bins?.map(b => (
+                  <option key={b.id} value={b.id}>{b.name} {b.isActive ? '' : '(Inactive)'}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-slate-700">Note / Customer</label>
+            <InputField 
+              value={formNote}
+              onChange={(e) => setFormNote(e.target.value)}
+              placeholder="Ghi chú người nhận..."
+            />
+          </div>
+
           <div className="pt-6 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button className="bg-primary">Create Order</Button>
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="submit" isLoading={isSubmitting} className="bg-primary">Create Order</Button>
+          </div>
+        </form>
+      </Modal>
+              </div>
+            </main>
           </div>
         </div>
-      </Modal>
-    </div>
+      </div>
   )
 }
 

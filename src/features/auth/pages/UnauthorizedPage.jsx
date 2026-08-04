@@ -1,8 +1,18 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ShieldAlert, ArrowLeft } from 'lucide-react'
+import { useDispatch } from 'react-redux'
 import Button from '@/components/atoms/Button'
+import { logoutThunk } from '@/store/authSlice'
 
 const UnauthorizedPage = () => {
+  const navigate = useNavigate()
+  const dispatch = useDispatch()
+
+  const handleLogoutAndLogin = async () => {
+    await dispatch(logoutThunk())
+    navigate('/')
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
       <div className="max-w-md w-full text-center">
@@ -21,11 +31,9 @@ const UnauthorizedPage = () => {
               Back to Home
             </Button>
           </Link>
-          <Link to="/login">
-            <Button variant="outline" className="w-full">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Log in as different user
-            </Button>
-          </Link>
+          <Button variant="outline" className="w-full" onClick={handleLogoutAndLogin}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Log in as different user
+          </Button>
         </div>
       </div>
     </div>
@@ -33,3 +41,4 @@ const UnauthorizedPage = () => {
 }
 
 export default UnauthorizedPage
+
