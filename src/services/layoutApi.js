@@ -3,7 +3,7 @@ import api from './apiConfig'
 const layoutApi = {
   //Tenant Layout API
   getTenantWarehouseLayout: (warehouseId) => {
-    return api.get(`/tenant/warehouses/${warehouseId}/layout`)
+    return api.get(`/warehouses/${warehouseId}/layout`)
   },
 
   saveTenantWarehouseLayout: (warehouseId, data) => {

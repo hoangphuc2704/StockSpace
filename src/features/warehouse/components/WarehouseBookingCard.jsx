@@ -20,24 +20,24 @@ const WarehouseBookingCard = ({
           animate={{ opacity: 1, x: 0 }}
           className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-8 shadow-2xl shadow-slate-200/50"
         >
-          <div className="absolute -mr-16 -mt-16 h-32 w-32 rounded-full bg-primary/5" />
+          <div className="bg-primary/5 absolute -mt-16 -mr-16 h-32 w-32 rounded-full" />
 
           <div className="relative z-10 mb-8 flex items-end justify-between">
             <div>
-              <p className="mb-1 text-xs font-bold uppercase tracking-widest text-slate-400">
+              <p className="mb-1 text-xs font-bold tracking-widest text-slate-400 uppercase">
                 Rental Price
               </p>
-              <span className="text-3xl font-black text-primary">
+              <span className="text-primary text-3xl font-black">
                 ${warehouse.price.toLocaleString()}
               </span>
               <span className="font-medium text-slate-500"> / mo</span>
             </div>
             <div className="text-right">
-              <div className="flex items-center gap-1 font-bold text-warning">
+              <div className="text-warning flex items-center gap-1 font-bold">
                 <Star size={14} className="fill-current" />
                 <span>{warehouse.rating}</span>
               </div>
-              <p className="text-[10px] font-bold uppercase text-slate-400">
+              <p className="text-[10px] font-bold text-slate-400 uppercase">
                 {extendedData.reviews} reviews
               </p>
             </div>
@@ -47,7 +47,10 @@ const WarehouseBookingCard = ({
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700">Start Date</label>
-                <input type="date" className="h-11 w-full rounded-md border border-slate-200 px-3 text-sm" />
+                <input
+                  type="date"
+                  className="h-11 w-full rounded-md border border-slate-200 px-3 text-sm"
+                />
               </div>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-slate-700">Duration</label>
@@ -101,11 +104,15 @@ const WarehouseBookingCard = ({
           </div>
 
           <Button
-            className="group h-14 w-full rounded-2xl text-lg font-bold shadow-xl shadow-primary/30 text-black"
+            className="group shadow-primary/30 text-blackshadow-xl h-14 w-full rounded-2xl text-lg font-bold"
             disabled={isCheckingWallet || hasBooked}
             onClick={onDepositClick}
           >
-            {hasBooked ? 'Request Submitted' : isCheckingWallet ? 'Checking Wallet...' : `Instant Deposit (${depositPercentage}%)`}
+            {hasBooked
+              ? 'Request Submitted'
+              : isCheckingWallet
+                ? 'Checking Wallet...'
+                : `Instant Deposit (${depositPercentage}%)`}
           </Button>
         </motion.div>
       </div>
