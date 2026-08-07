@@ -43,6 +43,8 @@ const CreateWarehouse = () => {
     name: '',
     address: '',
     description: '',
+    warehouseWidth: '',
+    warehouseHeight: '',
     capacity: '',
     pricePerMonth: '',
   })
@@ -68,7 +70,9 @@ const CreateWarehouse = () => {
         } else if (Array.isArray(response)) {
           setWarehouseTypes(response)
         }
-      } catch (error) {}
+      } catch {
+        setWarehouseTypes([])
+      }
     }
     fetchWarehouseTypes()
   }, [])
@@ -103,7 +107,13 @@ const CreateWarehouse = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
-    const processedValue = name === 'capacity' || name === 'pricePerMonth' ? Number(value) : value
+    const processedValue =
+      name === 'capacity' ||
+      name === 'pricePerMonth' ||
+      name === 'warehouseWidth' ||
+      name === 'warehouseHeight'
+        ? Number(value)
+        : value
     setFormData((prev) => ({ ...prev, [name]: processedValue }))
   }
 
@@ -143,6 +153,8 @@ const CreateWarehouse = () => {
     formData.address.trim() !== '' &&
     formData.description.trim() !== '' &&
     formData.typeId !== '' &&
+    Number(formData.warehouseWidth) > 0 &&
+    Number(formData.warehouseHeight) > 0 &&
     Number(formData.capacity) > 0 &&
     Number(formData.pricePerMonth) > 0 &&
     coverFile !== null
@@ -166,14 +178,21 @@ const CreateWarehouse = () => {
     setIsLoading(true)
     try {
       const formPayload = new FormData()
+      const warehouseWidth = Number(formData.warehouseWidth)
+      const warehouseHeight = Number(formData.warehouseHeight)
+      const capacity = Number(formData.capacity)
+      const pricePerMonth = Number(formData.pricePerMonth)
+
       const warehouseInfo = {
         typeId: formData.typeId,
-        name: formData.name,
-        address: formData.address,
-        description: formData.description,
-        capacity: Number(formData.capacity),
-        pricePerMonth: Number(formData.pricePerMonth),
+        name: formData.name.trim(),
+        address: formData.address.trim(),
+        description: formData.description.trim(),
+        capacity,
+        pricePerMonth,
+        imageUrls: [],
       }
+
       formPayload.append(
         'request',
         new Blob([JSON.stringify(warehouseInfo)], { type: 'application/json' })
@@ -188,15 +207,21 @@ const CreateWarehouse = () => {
       })
 
       const response = await ownerApi.createWarehouse(formPayload)
-      if (response && (response.success || response.status === 200 || response.status === 201)) {
-        alert('Đăng tin kho vận thành công!')
-        navigate('/owner/warehouses')
+      if (response?.data?.success) {
+        const createdWarehouseId = response?.data?.data?.id ?? response?.data?.data?.warehouseId
+
+        alert('Đăng tin kho vận thành công! Hãy cấu hình layout cho kho vừa tạo.')
+        navigate(
+          createdWarehouseId
+            ? `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${encodeURIComponent(String(warehouseWidth))}&height=${encodeURIComponent(String(warehouseHeight))}`
+            : '/owner/layoutwarehouses'
+        )
       } else {
-        alert(response?.message || 'Đăng tin thất bại, vui lòng kiểm tra lại dữ liệu.')
+        alert(response?.data?.message || 'Đăng tin thất bại, vui lòng kiểm tra lại dữ liệu.')
       }
     } catch (error) {
       console.error('Error creating warehouse:', error)
-      alert('Đã xảy ra lỗi hệ thống khi kết nối!')
+      alert(error.response?.data?.message || 'Đã xảy ra lỗi hệ thống khi kết nối!')
     } finally {
       setIsLoading(false)
     }
@@ -356,6 +381,46 @@ const CreateWarehouse = () => {
                         className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
                         required
                       />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Chiều rộng kho (m) *
+                      </label>
+                      <div className="relative">
+                        <Layers className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="number"
+                          name="warehouseWidth"
+                          step="any"
+                          value={formData.warehouseWidth}
+                          onChange={handleInputChange}
+                          className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
+                          min="1"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-700">
+                        Chiều cao kho (m) *
+                      </label>
+                      <div className="relative">
+                        <Layers className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="number"
+                          name="warehouseHeight"
+                          step="any"
+                          value={formData.warehouseHeight}
+                          onChange={handleInputChange}
+                          className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
+                          min="1"
+                          required
+                        />
+                      </div>
                     </div>
                   </div>
 
