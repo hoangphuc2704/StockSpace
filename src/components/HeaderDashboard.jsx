@@ -4,6 +4,7 @@ import logoDaidien from '../assets/logoDaidien.png'
 import { useDispatch } from 'react-redux'
 // ✅ Đã kết nối trực tiếp action từ Redux store và sửa chính tả uiSlice
 import { toggleSidebar } from '../store/uiSlide'
+import NotificationDropdown from './NotificationDropdown'
 
 const Header = () => {
   const dispatch = useDispatch()
@@ -23,10 +24,14 @@ const Header = () => {
           <div className="shrink-0 rounded-lg bg-white p-1.5">
             <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
           </div>
-          <span className="font-display text-xl font-bold tracking-tight text-slate-950">
+          <span className="font-display text-xl font-bold tracking-tight text-slate-950 hidden sm:inline-block">
             StockSpace Owner
           </span>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <NotificationDropdown />
       </div>
     </header>
   )

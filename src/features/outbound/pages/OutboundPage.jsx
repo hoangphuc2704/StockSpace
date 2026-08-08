@@ -48,7 +48,6 @@ const OutboundPage = () => {
   // Form states
   const [formSkuId, setFormSkuId] = useState('')
   const [formQuantity, setFormQuantity] = useState(1)
-  const [formZoneId, setFormZoneId] = useState('')
   const [formRackId, setFormRackId] = useState('')
   const [formBinId, setFormBinId] = useState('')
   const [formNote, setFormNote] = useState('')
@@ -113,7 +112,7 @@ const OutboundPage = () => {
 
   const handleCreateReceipt = async (e) => {
     e.preventDefault()
-    if (!formSkuId || !formZoneId || !formRackId || !formBinId) {
+    if (!formSkuId || !formRackId || !formBinId) {
       toast.error('Vui lòng chọn đầy đủ sản phẩm và vị trí lấy hàng')
       return
     }
@@ -127,7 +126,6 @@ const OutboundPage = () => {
           {
             skuId: formSkuId,
             quantity: Number(formQuantity),
-            zoneId: formZoneId,
             rackId: formRackId,
             binId: formBinId,
             note: formNote
@@ -142,7 +140,6 @@ const OutboundPage = () => {
       // Reset form
       setFormSkuId('')
       setFormQuantity(1)
-      setFormZoneId('')
       setFormRackId('')
       setFormBinId('')
       setFormNote('')
@@ -332,43 +329,24 @@ const OutboundPage = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Select Zone (Picking)</label>
+            <label className="text-sm font-medium text-slate-700">Select Rack (Picking)</label>
             <select 
               required
               className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
-              value={formZoneId}
+              value={formRackId}
               onChange={(e) => {
-                setFormZoneId(e.target.value)
-                setFormRackId('')
+                setFormRackId(e.target.value)
                 setFormBinId('')
               }}
             >
-              <option value="">-- Chọn Zone --</option>
-              {layout?.zones?.map(z => (
-                <option key={z.id} value={z.id}>{z.name}</option>
+              <option value="">-- Chọn Rack --</option>
+              {layout?.racks?.map(r => (
+                <option key={r.id} value={r.id}>
+                  {r.name} {r.zoneName ? `(${r.zoneName})` : ''}
+                </option>
               ))}
             </select>
           </div>
-
-          {formZoneId && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">Select Rack</label>
-              <select 
-                required
-                className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
-                value={formRackId}
-                onChange={(e) => {
-                  setFormRackId(e.target.value)
-                  setFormBinId('')
-                }}
-              >
-                <option value="">-- Chọn Rack --</option>
-                {layout?.zones?.find(z => z.id === formZoneId)?.racks?.map(r => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
 
           {formRackId && (
             <div className="space-y-1.5">
@@ -380,8 +358,8 @@ const OutboundPage = () => {
                 onChange={(e) => setFormBinId(e.target.value)}
               >
                 <option value="">-- Chọn Bin --</option>
-                {layout?.zones?.find(z => z.id === formZoneId)?.racks?.find(r => r.id === formRackId)?.bins?.map(b => (
-                  <option key={b.id} value={b.id}>{b.name} {b.isActive ? '' : '(Inactive)'}</option>
+                {layout?.racks?.find(r => r.id === formRackId)?.bins?.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
             </div>
