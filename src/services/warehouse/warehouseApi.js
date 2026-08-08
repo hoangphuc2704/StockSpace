@@ -8,7 +8,11 @@ const onwerwarehouseApi = {
   },
 
   getPublicWarehouseById: (warehouseId) => {
-    return api.get(`/warehouses/${warehouseId}`)
+    return api.get(`/warehouses/${warehouseId}/layout`)
+  },
+
+  getPublicWarehouseLayout: (warehouseId) => {
+    return api.get(`/warehouses/${warehouseId}/layout`)
   },
 
   //cập nhật thông tin kho
@@ -65,7 +69,7 @@ const onwerwarehouseApi = {
   },
 
   // --- API Xét duyệt Booking của Owner ---
-  
+
   // Lấy danh sách yêu cầu thuê kho gửi đến (phân trang)
   getIncomingRequests: ({ page, size } = {}) => {
     return api.get('/owner/bookings', { params: { page, size } })
@@ -80,7 +84,7 @@ const onwerwarehouseApi = {
   rejectBooking: (bookingId, data) => {
     // data = { reason: "..." }
     return api.patch(`/owner/bookings/${bookingId}/reject`, data)
-  }
+  },
 }
 
 export default onwerwarehouseApi

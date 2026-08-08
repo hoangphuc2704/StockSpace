@@ -32,6 +32,14 @@ const WarehouseInfo = ({ warehouse, extendedData }) => {
         <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
           {[
             { icon: Maximize2, label: 'Area', value: `${warehouse.area.toLocaleString()} m²` },
+            {
+              icon: Maximize2,
+              label: 'Dimensions',
+              value:
+                warehouse.width > 0 && warehouse.height > 0
+                  ? `${warehouse.width}m x ${warehouse.height}m`
+                  : 'Updating',
+            },
             { icon: Shield, label: 'Security', value: '24/7 Monitoring' },
             { icon: Clock, label: 'Access', value: 'Anytime' },
             { icon: Truck, label: 'Loading', value: 'Supported' },
