@@ -23,7 +23,7 @@ const normalizeWarehouse = (warehouse) => ({
   area: Number(warehouse.area ?? warehouse.capacity ?? 0),
   width: Number(warehouse.width ?? warehouse.warehouseWidth ?? 0),
   height: Number(warehouse.height ?? warehouse.warehouseHeight ?? 0),
-  price: Number(warehouse.pricePerMonth ?? warehouse.price ?? 9999),
+  price: Number(warehouse.pricePerMonth ?? warehouse.price ?? 0),
   status: warehouse.status || 'UNKNOWN',
   rating: Number(warehouse.rating ?? 4.8),
   type: warehouse.warehouseType?.name || warehouse.typeName || warehouse.type || 'General',
