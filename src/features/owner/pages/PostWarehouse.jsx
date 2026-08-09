@@ -208,9 +208,7 @@ const CreateWarehouse = () => {
 
       const response = await ownerApi.createWarehouse(formPayload)
       if (response?.data?.success) {
-        const createdWarehouseId =
-          response?.data?.data?.id ??
-          response?.data?.data?.warehouseId
+        const createdWarehouseId = response?.data?.data?.id ?? response?.data?.data?.warehouseId
 
         alert('Đăng tin kho vận thành công! Hãy cấu hình layout cho kho vừa tạo.')
         navigate(

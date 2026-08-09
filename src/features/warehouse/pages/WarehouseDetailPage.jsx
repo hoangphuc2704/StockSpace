@@ -5,6 +5,7 @@ import warehouseApi from '@/services/warehouse/warehouseApi'
 import systemConfigApi from '@/services/systemConfigApi'
 import tenantApi from '@/services/tenant/tenantApi'
 import walletApi from '@/services/wallet/walletApi'
+import layoutApi from '../../../services/warehouse/warehouseApi'
 import { useSelector, useDispatch } from 'react-redux'
 import { addBookedWarehouse } from '@/store/tenantBookingSlice'
 
@@ -90,6 +91,7 @@ const buildGallery = (warehouse) => {
     ...(Array.isArray(warehouse.imageUrls) ? warehouse.imageUrls : []),
   ].filter(Boolean)
 
+  //cần thêm hình để hiển thị đủ 5 hình, nếu không có hình thì dùng hình mặc định
   if (images.length === 0) {
     return [
       'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1200',
@@ -111,9 +113,9 @@ const WarehouseDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const dispatch = useDispatch()
-  const bookedWarehouseIds = useSelector(state => state.tenantBooking.bookedWarehouseIds)
+  const bookedWarehouseIds = useSelector((state) => state.tenantBooking.bookedWarehouseIds)
   const hasBooked = bookedWarehouseIds.includes(id)
-  
+
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [warehouse, setWarehouse] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -125,6 +127,7 @@ const WarehouseDetailPage = () => {
   const [walletBalance, setWalletBalance] = useState(0)
   const [isCheckingWallet, setIsCheckingWallet] = useState(false)
   const [layout, setLayout] = useState(null)
+  const [layoutDebug, setLayoutDebug] = useState(null)
 
   useEffect(() => {
     const fetchWarehouse = async () => {
@@ -153,11 +156,16 @@ const WarehouseDetailPage = () => {
 
     const fetchLayout = async () => {
       try {
-        const response = await warehouseApi.getPublicWarehouseLayout(id)
+        const response = await layoutApi.getPublicWarehouseById(id)
         const payload = response?.data?.data || response?.data
         setLayout(normalizePublicLayout(payload || {}))
-      } catch {
+        setLayoutDebug(payload || null)
+        console.log('Fetched layout:', payload)
+      } catch (err) {
+        console.error('Failed to fetch tenant layout', err)
+
         setLayout(null)
+        setLayoutDebug(null)
       }
     }
 
@@ -217,7 +225,7 @@ const WarehouseDetailPage = () => {
       setIsBooking(true)
       await tenantApi.createBooking({
         warehouseId: warehouse.id,
-        depositAmount: extendedData.deposit
+        depositAmount: extendedData.deposit,
       })
       dispatch(addBookedWarehouse(warehouse.id))
       alert('Booking request sent successfully! Deposit deducted from wallet.')
@@ -245,7 +253,9 @@ const WarehouseDetailPage = () => {
       <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
           <h2 className="mb-4 text-2xl font-bold">Warehouse not found</h2>
-          <p className="mb-6 text-slate-500">{error || 'This warehouse is unavailable right now.'}</p>
+          <p className="mb-6 text-slate-500">
+            {error || 'This warehouse is unavailable right now.'}
+          </p>
           <Button onClick={() => navigate('/warehouses')}>Back to Listings</Button>
         </div>
       </div>
@@ -254,25 +264,25 @@ const WarehouseDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <main className="pb-20 pt-24">
-        <div className="container mx-auto px-4">
-          <WarehouseHeader 
+      <main className="pt-10 pb-20">
+        <div className="sticky top-0 z-10 container mx-auto bg-white px-4 shadow-sm">
+          <WarehouseHeader
             warehouseName={warehouse.name}
             isBookmarked={isBookmarked}
             onBookmarkToggle={() => setIsBookmarked(!isBookmarked)}
+            compact
           />
+        </div>
 
+        <div className="container mx-auto px-4 pt-10">
           <WarehouseGallery images={extendedData.images} />
 
           <WarehouseLayoutShowcase layout={layout} />
 
           <div className="flex flex-col gap-12 lg:flex-row">
-            <WarehouseInfo 
-              warehouse={warehouse} 
-              extendedData={extendedData} 
-            />
+            <WarehouseInfo warehouse={warehouse} extendedData={extendedData} />
 
-            <WarehouseBookingCard 
+            <WarehouseBookingCard
               warehouse={warehouse}
               extendedData={extendedData}
               durationMonths={durationMonths}
@@ -286,7 +296,7 @@ const WarehouseDetailPage = () => {
         </div>
       </main>
 
-      <ConfirmDepositModal 
+      <ConfirmDepositModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
         walletBalance={walletBalance}
