@@ -20,7 +20,7 @@ import Modal from '@/components/organisms/Modal'
 import receiptApi from '../../../services/wms/receiptApi'
 import contractApi from '@/services/contractApi'
 import productApi from '../../../services/wms/productApi'
-import layoutApi from '../../../services/layoutApi'
+import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 
 const shipmentData = [
@@ -93,7 +93,7 @@ const OutboundPage = () => {
 
   const fetchLayout = async () => {
     try {
-      const res = await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
+      const res = await warehouseApi.getTenantWarehouseLayout(selectedWarehouseId)
       setLayout(res.data?.data)
     } catch (error) {
       setLayout(null)
