@@ -96,8 +96,16 @@ const normalizeLayout = (payload = {}) => ({
 })
 
 const serializeBin = (bin, rackIndex, binIndex, rackWidth, rackLength) => {
-  const width = clamp(integerOf(bin.width, 8), MIN_ENTITY_SIZE, Math.max(MIN_ENTITY_SIZE, Math.floor(rackWidth * BIN_MAX_RATIO)))
-  const length = clamp(integerOf(bin.length, 8), MIN_ENTITY_SIZE, Math.max(MIN_ENTITY_SIZE, Math.floor(rackLength * BIN_MAX_RATIO)))
+  const width = clamp(
+    integerOf(bin.width, 8),
+    MIN_ENTITY_SIZE,
+    Math.max(MIN_ENTITY_SIZE, Math.floor(rackWidth * BIN_MAX_RATIO))
+  )
+  const length = clamp(
+    integerOf(bin.length, 8),
+    MIN_ENTITY_SIZE,
+    Math.max(MIN_ENTITY_SIZE, Math.floor(rackLength * BIN_MAX_RATIO))
+  )
   return {
     id: nullableId(bin.id),
     shelfLevel: Math.max(integerOf(bin.shelfLevel, 1), 1),
@@ -130,9 +138,7 @@ const serializeRack = (rack, rackIndex, layoutWidth, layoutLength) => {
     width,
     length,
     height: Math.max(integerOf(rack.height, 18), MIN_ENTITY_SIZE),
-    bins: rack.bins.map((bin, binIndex) =>
-      serializeBin(bin, rackIndex, binIndex, width, length)
-    ),
+    bins: rack.bins.map((bin, binIndex) => serializeBin(bin, rackIndex, binIndex, width, length)),
   }
 }
 
@@ -144,9 +150,7 @@ const toPayload = (layout) => {
     length,
     height: Math.max(integerOf(layout.height, DEFAULT_LAYOUT_SIZE), 20),
     footprintCells: layout.footprintCells,
-    racks: layout.racks.map((rack, rackIndex) =>
-      serializeRack(rack, rackIndex, width, length)
-    ),
+    racks: layout.racks.map((rack, rackIndex) => serializeRack(rack, rackIndex, width, length)),
   }
 }
 
@@ -165,7 +169,8 @@ const updateBin = (layout, binKey, updater) => ({
 
 const getSelected = (layout, selection) => {
   if (selection.type === 'layout') return layout
-  if (selection.type === 'rack') return layout.racks.find((rack) => rack.clientKey === selection.key)
+  if (selection.type === 'rack')
+    return layout.racks.find((rack) => rack.clientKey === selection.key)
   return layout.racks.flatMap((rack) => rack.bins).find((bin) => bin.clientKey === selection.key)
 }
 
@@ -211,7 +216,8 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
       .filter((contract) => contract?.status === 'ACTIVE' && contract?.warehouseId)
       .forEach((contract) => {
         const id = String(contract.warehouseId)
-        if (!unique.has(id)) unique.set(id, { id, name: contract.warehouseName || `Warehouse ${id}` })
+        if (!unique.has(id))
+          unique.set(id, { id, name: contract.warehouseName || `Warehouse ${id}` })
       })
     return [...unique.values()]
   }, [contracts, isOwner, ownedWarehouses])
@@ -425,7 +431,10 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
       height: 8,
     })
     setLayout((current) =>
-      updateRack(current, selectedRack.clientKey, (rack) => ({ ...rack, bins: [...rack.bins, bin] }))
+      updateRack(current, selectedRack.clientKey, (rack) => ({
+        ...rack,
+        bins: [...rack.bins, bin],
+      }))
     )
     setSelection({ type: 'bin', key: bin.clientKey })
     setError('')
@@ -435,7 +444,10 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
     if (!isOwner || selection.type === 'layout') return
     setLayout((current) => {
       if (selection.type === 'rack') {
-        return { ...current, racks: current.racks.filter((rack) => rack.clientKey !== selection.key) }
+        return {
+          ...current,
+          racks: current.racks.filter((rack) => rack.clientKey !== selection.key),
+        }
       }
       return {
         ...current,
@@ -501,37 +513,38 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
     })
   }
 
-  const propertyFields = selection.type === 'layout'
-    ? [
-        ['width', 'Rộng'],
-        ['length', 'Dài'],
-        ['height', 'Cao'],
-      ]
-    : selection.type === 'rack'
+  const propertyFields =
+    selection.type === 'layout'
       ? [
-          ['name', 'Tên'],
-          ['code', 'Mã'],
-          ['coordinateX', 'Tọa độ X'],
-          ['coordinateY', 'Tọa độ Y'],
           ['width', 'Rộng'],
           ['length', 'Dài'],
           ['height', 'Cao'],
-          ['rotation', 'Góc xoay'],
-          ['maxWeight', 'Tải trọng tối đa'],
-          ['maxVolume', 'Thể tích tối đa'],
         ]
-      : [
-          ['name', 'Tên'],
-          ['code', 'Mã'],
-          ['coordinateX', 'Tọa độ X'],
-          ['coordinateY', 'Tọa độ Y'],
-          ['width', 'Rộng'],
-          ['length', 'Dài'],
-          ['height', 'Cao'],
-          ['shelfLevel', 'Tầng'],
-          ['maxWeight', 'Tải trọng tối đa'],
-          ['maxVolume', 'Thể tích tối đa'],
-        ]
+      : selection.type === 'rack'
+        ? [
+            ['name', 'Tên'],
+            ['code', 'Mã'],
+            ['coordinateX', 'Tọa độ X'],
+            ['coordinateY', 'Tọa độ Y'],
+            ['width', 'Rộng'],
+            ['length', 'Dài'],
+            ['height', 'Cao'],
+            ['rotation', 'Góc xoay'],
+            ['maxWeight', 'Tải trọng tối đa'],
+            ['maxVolume', 'Thể tích tối đa'],
+          ]
+        : [
+            ['name', 'Tên'],
+            ['code', 'Mã'],
+            ['coordinateX', 'Tọa độ X'],
+            ['coordinateY', 'Tọa độ Y'],
+            ['width', 'Rộng'],
+            ['length', 'Dài'],
+            ['height', 'Cao'],
+            ['shelfLevel', 'Tầng'],
+            ['maxWeight', 'Tải trọng tối đa'],
+            ['maxVolume', 'Thể tích tối đa'],
+          ]
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -551,7 +564,7 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1700px] space-y-4 p-3 sm:p-5 lg:p-7">
+          <main className="mx-auto w-full max-w-425 space-y-4 p-3 sm:p-5 lg:p-7">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h1 className="flex items-center gap-2 text-2xl font-bold">
@@ -570,7 +583,8 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                   disabled={!selectedWarehouseId || loadingLayout}
                   className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
                 >
-                  <RotateCcw className={`mr-2 h-4 w-4 ${loadingLayout ? 'animate-spin' : ''}`} /> Tải lại
+                  <RotateCcw className={`mr-2 h-4 w-4 ${loadingLayout ? 'animate-spin' : ''}`} />{' '}
+                  Tải lại
                 </button>
                 <button
                   type="button"
@@ -578,7 +592,11 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                   disabled={!selectedWarehouseId || saving || loadingLayout || tenantDefault}
                   className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-slate-300"
                 >
-                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  {saving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
                   Lưu layout
                 </button>
               </div>
@@ -596,7 +614,9 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
               >
                 {!warehouses.length && <option value="">Không có warehouse phù hợp</option>}
                 {warehouses.map((warehouse) => (
-                  <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name}
+                  </option>
                 ))}
               </select>
             </section>
@@ -606,10 +626,15 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
               </div>
             )}
-            {message && <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">{message}</div>}
+            {message && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                {message}
+              </div>
+            )}
             {tenantDefault && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                Đây là layout mặc định của Owner. Layout Tenant chưa được clone nên chưa thể lưu vị trí riêng.
+                Đây là layout mặc định của Owner. Layout Tenant chưa được clone nên chưa thể lưu vị
+                trí riêng.
               </div>
             )}
 
@@ -617,14 +642,24 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
               <aside className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-bold">Cấu trúc</h2>
-                  <span className="text-xs text-slate-500">{layout.racks.length} Rack · {binCount} Bin</span>
+                  <span className="text-xs text-slate-500">
+                    {layout.racks.length} Rack · {binCount} Bin
+                  </span>
                 </div>
                 {isOwner && (
                   <div className="mb-4 grid gap-2">
-                    <button type="button" onClick={addRack} className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
+                    <button
+                      type="button"
+                      onClick={addRack}
+                      className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white"
+                    >
                       <PackagePlus className="mr-2 h-4 w-4" /> Thêm Rack
                     </button>
-                    <button type="button" onClick={addBin} className="inline-flex items-center justify-center rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700">
+                    <button
+                      type="button"
+                      onClick={addBin}
+                      className="inline-flex items-center justify-center rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700"
+                    >
                       <Box className="mr-2 h-4 w-4" /> Thêm Bin
                     </button>
                   </div>
@@ -636,22 +671,31 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                 >
                   Layout tổng
                 </button>
-                <div className="max-h-[520px] space-y-2 overflow-auto">
+                <div className="max-h-130 space-y-2 overflow-auto">
                   {layout.racks.map((rack) => (
                     <div key={rack.clientKey} className="rounded-xl border border-slate-200 p-2">
                       <button
                         type="button"
-                        onClick={() => { setSelection({ type: 'rack', key: rack.clientKey }); setFootprintMode(false) }}
+                        onClick={() => {
+                          setSelection({ type: 'rack', key: rack.clientKey })
+                          setFootprintMode(false)
+                        }}
                         className={`w-full rounded-lg px-2 py-2 text-left text-sm font-semibold ${selection.key === rack.clientKey ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}
                       >
-                        {rack.name || rack.code} <span className="text-xs font-normal text-slate-400">({rack.bins.length} Bin)</span>
+                        {rack.name || rack.code}{' '}
+                        <span className="text-xs font-normal text-slate-400">
+                          ({rack.bins.length} Bin)
+                        </span>
                       </button>
                       <div className="ml-3 space-y-1 border-l border-slate-200 pl-2">
                         {rack.bins.map((bin) => (
                           <button
                             key={bin.clientKey}
                             type="button"
-                            onClick={() => { setSelection({ type: 'bin', key: bin.clientKey }); setFootprintMode(false) }}
+                            onClick={() => {
+                              setSelection({ type: 'bin', key: bin.clientKey })
+                              setFootprintMode(false)
+                            }}
                             className={`block w-full rounded px-2 py-1.5 text-left text-xs ${selection.key === bin.clientKey ? 'bg-emerald-50 font-semibold text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
                           >
                             {bin.name || bin.code}
@@ -666,17 +710,54 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
               <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex rounded-lg bg-slate-100 p-1">
-                    <button type="button" onClick={() => setView('2d')} className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '2d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>2D</button>
-                    <button type="button" onClick={() => setView('3d')} className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '3d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>3D</button>
+                    <button
+                      type="button"
+                      onClick={() => setView('2d')}
+                      className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '2d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
+                    >
+                      2D
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setView('3d')}
+                      className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '3d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
+                    >
+                      3D
+                    </button>
                   </div>
                   {isOwner && view === '2d' && (
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" onClick={() => setFootprintMode(false)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${!footprintMode ? 'bg-blue-600 text-white' : 'bg-slate-100'}`}>Chỉnh Rack / Bin</button>
-                      <button type="button" onClick={() => setFootprintMode(true)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${footprintMode ? 'bg-blue-600 text-white' : 'bg-slate-100'}`}><Grid3X3 className="mr-1 inline h-3.5 w-3.5" />Tô hình kho</button>
+                      <button
+                        type="button"
+                        onClick={() => setFootprintMode(false)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${!footprintMode ? 'bg-blue-600 text-white' : 'bg-slate-100'}`}
+                      >
+                        Chỉnh Rack / Bin
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFootprintMode(true)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${footprintMode ? 'bg-blue-600 text-white' : 'bg-slate-100'}`}
+                      >
+                        <Grid3X3 className="mr-1 inline h-3.5 w-3.5" />
+                        Tô hình kho
+                      </button>
                       {footprintMode && (
                         <>
-                          <button type="button" onClick={() => setFootprintTool('add')} className={`rounded-lg px-2 py-1.5 text-xs ${footprintTool === 'add' ? 'bg-emerald-600 text-white' : 'bg-slate-100'}`}>Tô ô</button>
-                          <button type="button" onClick={() => setFootprintTool('erase')} className={`rounded-lg px-2 py-1.5 text-xs ${footprintTool === 'erase' ? 'bg-red-600 text-white' : 'bg-slate-100'}`}>Xóa ô</button>
+                          <button
+                            type="button"
+                            onClick={() => setFootprintTool('add')}
+                            className={`rounded-lg px-2 py-1.5 text-xs ${footprintTool === 'add' ? 'bg-emerald-600 text-white' : 'bg-slate-100'}`}
+                          >
+                            Tô ô
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFootprintTool('erase')}
+                            className={`rounded-lg px-2 py-1.5 text-xs ${footprintTool === 'erase' ? 'bg-red-600 text-white' : 'bg-slate-100'}`}
+                          >
+                            Xóa ô
+                          </button>
                         </>
                       )}
                     </div>
@@ -684,15 +765,17 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                 </div>
 
                 {loadingLayout ? (
-                  <div className="flex h-[560px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>
+                  <div className="flex h-140 items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  </div>
                 ) : view === '3d' ? (
-                  <div className="h-[560px] overflow-hidden rounded-xl border border-slate-200">
+                  <div className="h-140 overflow-hidden rounded-xl border border-slate-200">
                     <WarehouseLayoutPreview3D layout={layout} />
                   </div>
                 ) : (
                   <div className="overflow-auto rounded-xl bg-slate-100 p-3 sm:p-5">
                     <div
-                      className="relative mx-auto aspect-square w-full min-w-[520px] max-w-[820px] overflow-hidden border-2 border-slate-300 bg-white shadow-inner"
+                      className="relative mx-auto aspect-square w-full max-w-205 min-w-130 overflow-hidden border-2 border-slate-300 bg-white shadow-inner"
                       onPointerDown={() => setSelection({ type: 'layout', key: null })}
                     >
                       <div className="absolute inset-0 grid grid-cols-10 grid-rows-10">
@@ -705,59 +788,104 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                               key={cellKey(row, column)}
                               type="button"
                               aria-label={`Ô ${row + 1}-${column + 1}`}
-                              onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); toggleFootprint(row, column) }}
+                              onPointerDown={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                toggleFootprint(row, column)
+                              }}
                               className={`border border-slate-200/80 ${active ? 'bg-blue-50' : 'bg-slate-300/80'} ${footprintMode ? 'cursor-crosshair' : 'pointer-events-none'}`}
                             />
                           )
                         })}
                       </div>
 
-                      {!footprintMode && layout.racks.map((rack) => (
-                        <div
-                          key={rack.clientKey}
-                          onPointerDown={(event) => startInteraction(event, 'rack', rack, 'move', event.currentTarget.parentElement)}
-                          className={`absolute touch-none overflow-hidden rounded-md border-2 bg-blue-500/80 text-white shadow-md ${selection.key === rack.clientKey ? 'z-20 border-blue-950 ring-2 ring-blue-300' : 'z-10 border-blue-700'}`}
-                          style={{
-                            left: `${(rack.coordinateX / layout.width) * 100}%`,
-                            top: `${(rack.coordinateY / layout.length) * 100}%`,
-                            width: `${(rack.width / layout.width) * 100}%`,
-                            height: `${(rack.length / layout.length) * 100}%`,
-                          }}
-                        >
-                          <div className="pointer-events-none truncate bg-blue-800/80 px-1.5 py-1 text-[10px] font-bold sm:text-xs">{rack.name || rack.code}</div>
-                          {rack.bins.map((bin) => (
-                            <div
-                              key={bin.clientKey}
-                              onPointerDown={(event) => startInteraction(event, 'bin', bin, 'move', event.currentTarget.parentElement)}
-                              className={`absolute touch-none overflow-hidden rounded-sm border bg-emerald-500/90 text-white shadow ${selection.key === bin.clientKey ? 'z-20 border-white ring-2 ring-emerald-200' : 'z-10 border-emerald-800'}`}
-                              style={{
-                                left: `${(bin.coordinateX / rack.width) * 100}%`,
-                                top: `${(bin.coordinateY / rack.length) * 100}%`,
-                                width: `${(bin.width / rack.width) * 100}%`,
-                                height: `${(bin.length / rack.length) * 100}%`,
-                              }}
-                            >
-                              <span className="pointer-events-none block truncate px-1 text-[9px] font-semibold">{bin.name || bin.code}</span>
-                              {isOwner && (
-                                <button
-                                  type="button"
-                                  aria-label="Đổi kích thước Bin"
-                                  onPointerDown={(event) => startInteraction(event, 'bin', bin, 'resize', event.currentTarget.parentElement?.parentElement)}
-                                  className="absolute right-0 bottom-0 flex h-4 w-4 touch-none cursor-se-resize items-end justify-end bg-emerald-950/80 text-[10px] leading-none text-white"
-                                >◢</button>
-                              )}
+                      {!footprintMode &&
+                        layout.racks.map((rack) => (
+                          <div
+                            key={rack.clientKey}
+                            onPointerDown={(event) =>
+                              startInteraction(
+                                event,
+                                'rack',
+                                rack,
+                                'move',
+                                event.currentTarget.parentElement
+                              )
+                            }
+                            className={`absolute touch-none overflow-hidden rounded-md border-2 bg-blue-500/80 text-white shadow-md ${selection.key === rack.clientKey ? 'z-20 border-blue-950 ring-2 ring-blue-300' : 'z-10 border-blue-700'}`}
+                            style={{
+                              left: `${(rack.coordinateX / layout.width) * 100}%`,
+                              top: `${(rack.coordinateY / layout.length) * 100}%`,
+                              width: `${(rack.width / layout.width) * 100}%`,
+                              height: `${(rack.length / layout.length) * 100}%`,
+                            }}
+                          >
+                            <div className="pointer-events-none truncate bg-blue-800/80 px-1.5 py-1 text-[10px] font-bold sm:text-xs">
+                              {rack.name || rack.code}
                             </div>
-                          ))}
-                          {isOwner && (
-                            <button
-                              type="button"
-                              aria-label="Đổi kích thước Rack"
-                              onPointerDown={(event) => startInteraction(event, 'rack', rack, 'resize', event.currentTarget.parentElement?.parentElement)}
-                              className="absolute right-0 bottom-0 z-30 flex h-5 w-5 touch-none cursor-se-resize items-end justify-end bg-blue-950 text-xs leading-none text-white"
-                            >◢</button>
-                          )}
-                        </div>
-                      ))}
+                            {rack.bins.map((bin) => (
+                              <div
+                                key={bin.clientKey}
+                                onPointerDown={(event) =>
+                                  startInteraction(
+                                    event,
+                                    'bin',
+                                    bin,
+                                    'move',
+                                    event.currentTarget.parentElement
+                                  )
+                                }
+                                className={`absolute touch-none overflow-hidden rounded-sm border bg-emerald-500/90 text-white shadow ${selection.key === bin.clientKey ? 'z-20 border-white ring-2 ring-emerald-200' : 'z-10 border-emerald-800'}`}
+                                style={{
+                                  left: `${(bin.coordinateX / rack.width) * 100}%`,
+                                  top: `${(bin.coordinateY / rack.length) * 100}%`,
+                                  width: `${(bin.width / rack.width) * 100}%`,
+                                  height: `${(bin.length / rack.length) * 100}%`,
+                                }}
+                              >
+                                <span className="pointer-events-none block truncate px-1 text-[9px] font-semibold">
+                                  {bin.name || bin.code}
+                                </span>
+                                {isOwner && (
+                                  <button
+                                    type="button"
+                                    aria-label="Đổi kích thước Bin"
+                                    onPointerDown={(event) =>
+                                      startInteraction(
+                                        event,
+                                        'bin',
+                                        bin,
+                                        'resize',
+                                        event.currentTarget.parentElement?.parentElement
+                                      )
+                                    }
+                                    className="absolute right-0 bottom-0 flex h-4 w-4 cursor-se-resize touch-none items-end justify-end bg-emerald-950/80 text-[10px] leading-none text-white"
+                                  >
+                                    ◢
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            {isOwner && (
+                              <button
+                                type="button"
+                                aria-label="Đổi kích thước Rack"
+                                onPointerDown={(event) =>
+                                  startInteraction(
+                                    event,
+                                    'rack',
+                                    rack,
+                                    'resize',
+                                    event.currentTarget.parentElement?.parentElement
+                                  )
+                                }
+                                className="absolute right-0 bottom-0 z-30 flex h-5 w-5 cursor-se-resize touch-none items-end justify-end bg-blue-950 text-xs leading-none text-white"
+                              >
+                                ◢
+                              </button>
+                            )}
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -767,16 +895,31 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div>
                     <h2 className="font-bold">Thuộc tính</h2>
-                    <p className="text-xs text-slate-500">{selection.type === 'layout' ? 'Layout tổng' : selection.type === 'rack' ? 'Rack' : 'Bin'}</p>
+                    <p className="text-xs text-slate-500">
+                      {selection.type === 'layout'
+                        ? 'Layout tổng'
+                        : selection.type === 'rack'
+                          ? 'Rack'
+                          : 'Bin'}
+                    </p>
                   </div>
                   {isOwner && selection.type !== 'layout' && (
-                    <button type="button" onClick={removeSelected} className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100" aria-label="Xóa"><Trash2 className="h-4 w-4" /></button>
+                    <button
+                      type="button"
+                      onClick={removeSelected}
+                      className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100"
+                      aria-label="Xóa"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   )}
                 </div>
                 <div className="space-y-3">
                   {propertyFields.map(([field, label]) => {
                     const isText = field === 'name' || field === 'code'
-                    const tenantEditable = !isOwner && ['coordinateX', 'coordinateY', 'positionZ', 'rotation'].includes(field)
+                    const tenantEditable =
+                      !isOwner &&
+                      ['coordinateX', 'coordinateY', 'positionZ', 'rotation'].includes(field)
                     const disabled = !isOwner && !tenantEditable
                     return (
                       <label key={field} className="block text-xs font-semibold text-slate-600">
@@ -794,7 +937,8 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                   })}
                 </div>
                 <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
-                  Kéo thân Rack hoặc Bin để di chuyển. {isOwner && 'Kéo ◢ ngay góc dưới phải để đổi kích thước. Bin tối đa 80% Rack.'}
+                  Kéo thân Rack hoặc Bin để di chuyển.{' '}
+                  {isOwner && 'Kéo ◢ ngay góc dưới phải để đổi kích thước. Bin tối đa 80% Rack.'}
                 </div>
               </aside>
             </div>

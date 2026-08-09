@@ -5,7 +5,6 @@ import warehouseApi from '@/services/warehouse/warehouseApi'
 import systemConfigApi from '@/services/systemConfigApi'
 import tenantApi from '@/services/tenant/tenantApi'
 import walletApi from '@/services/wallet/walletApi'
-import layoutApi from '../../../services/warehouse/warehouseApi'
 import { useSelector, useDispatch } from 'react-redux'
 import { addBookedWarehouse } from '@/store/tenantBookingSlice'
 
@@ -23,6 +22,7 @@ const normalizeWarehouse = (warehouse) => ({
   location: warehouse.address || warehouse.location || 'Updating address',
   area: Number(warehouse.area ?? warehouse.capacity ?? 0),
   width: Number(warehouse.width ?? warehouse.warehouseWidth ?? 0),
+  length: Number(warehouse.length ?? warehouse.warehouseLength ?? warehouse.height ?? 0),
   height: Number(warehouse.height ?? warehouse.warehouseHeight ?? 0),
   price: Number(warehouse.pricePerMonth ?? warehouse.price ?? 0),
   status: warehouse.status || 'UNKNOWN',
@@ -44,41 +44,37 @@ const ensureNumber = (value, fallback = 0) => {
 }
 
 const normalizePublicLayout = (payload = {}) => ({
+  id: payload.id ?? null,
   width: Math.max(ensureNumber(payload.width, 100), 20),
+  length: Math.max(ensureNumber(payload.length, 100), 20),
   height: Math.max(ensureNumber(payload.height, 100), 20),
-  zones: Array.isArray(payload.zones)
-    ? payload.zones.map((zone) => ({
-        clientKey: createClientKey('zone'),
-        id: zone.id != null ? String(zone.id) : null,
-        name: zone.name ?? 'Zone',
-        coordinateX: ensureNumber(zone.coordinateX, 0),
-        coordinateY: ensureNumber(zone.coordinateY, 0),
-        width: Math.max(ensureNumber(zone.width, 20), 10),
-        height: Math.max(ensureNumber(zone.height, 20), 10),
-        racks: Array.isArray(zone.racks)
-          ? zone.racks.map((rack) => ({
-              clientKey: createClientKey('rack'),
-              id: rack.id != null ? String(rack.id) : null,
-              name: rack.name ?? 'Rack',
-              code: rack.code != null ? String(rack.code) : '',
-              coordinateX: ensureNumber(rack.coordinateX, 0),
-              coordinateY: ensureNumber(rack.coordinateY, 0),
-              width: Math.max(ensureNumber(rack.width, 12), 8),
-              height: Math.max(ensureNumber(rack.height, 12), 8),
-              bins: Array.isArray(rack.bins)
-                ? rack.bins.map((bin) => ({
-                    clientKey: createClientKey('bin'),
-                    id: bin.id != null ? String(bin.id) : null,
-                    name: bin.name ?? 'Bin',
-                    code: bin.code != null ? String(bin.code) : '',
-                    coordinateX: ensureNumber(bin.coordinateX, 0),
-                    coordinateY: ensureNumber(bin.coordinateY, 0),
-                    width: Math.max(ensureNumber(bin.width, 4), 4),
-                    height: Math.max(ensureNumber(bin.height, 4), 4),
-                    maxWeight: ensureNumber(bin.maxWeight, 0),
-                    maxVolume: ensureNumber(bin.maxVolume, 0),
-                  }))
-                : [],
+  footprintCells: Array.isArray(payload.footprintCells) ? payload.footprintCells.map(String) : null,
+  racks: Array.isArray(payload.racks)
+    ? payload.racks.map((rack) => ({
+        clientKey: createClientKey('rack'),
+        id: rack.id != null ? String(rack.id) : null,
+        name: rack.name ?? 'Rack',
+        code: rack.code != null ? String(rack.code) : '',
+        coordinateX: ensureNumber(rack.coordinateX, 0),
+        coordinateY: ensureNumber(rack.coordinateY, 0),
+        width: Math.max(ensureNumber(rack.width, 18), 4),
+        length: Math.max(ensureNumber(rack.length, 18), 4),
+        height: Math.max(ensureNumber(rack.height, 18), 4),
+        bins: Array.isArray(rack.bins)
+          ? rack.bins.map((bin) => ({
+              clientKey: createClientKey('bin'),
+              id: bin.id != null ? String(bin.id) : null,
+              name: bin.name ?? 'Bin',
+              code: bin.code != null ? String(bin.code) : '',
+              shelfLevel: Math.max(ensureNumber(bin.shelfLevel, 1), 1),
+              coordinateX: ensureNumber(bin.coordinateX, 0),
+              coordinateY: ensureNumber(bin.coordinateY, 0),
+              positionZ: ensureNumber(bin.positionZ, 0),
+              width: Math.max(ensureNumber(bin.width, 8), 4),
+              length: Math.max(ensureNumber(bin.length, 8), 4),
+              height: Math.max(ensureNumber(bin.height, 8), 4),
+              maxWeight: ensureNumber(bin.maxWeight, 0),
+              maxVolume: ensureNumber(bin.maxVolume, 0),
             }))
           : [],
       }))
@@ -86,27 +82,13 @@ const normalizePublicLayout = (payload = {}) => ({
 })
 
 const buildGallery = (warehouse) => {
-  const images = [
-    warehouse.thumbnail,
-    ...(Array.isArray(warehouse.imageUrls) ? warehouse.imageUrls : []),
-  ].filter(Boolean)
-
-  //cần thêm hình để hiển thị đủ 5 hình, nếu không có hình thì dùng hình mặc định
-  if (images.length === 0) {
-    return [
-      'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1200',
-      'https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1600585152220-90363fe7e115?auto=format&fit=crop&q=80&w=600',
-      'https://images.unsplash.com/photo-1493946740644-2d8a1f1a6afd?auto=format&fit=crop&q=80&w=600',
-    ]
-  }
-
-  while (images.length < 5) {
-    images.push(images[images.length - 1])
-  }
-
-  return images.slice(0, 5)
+  return [
+    ...new Set(
+      [warehouse.thumbnail, ...(Array.isArray(warehouse.imageUrls) ? warehouse.imageUrls : [])]
+        .filter((image) => typeof image === 'string' && image.trim())
+        .map((image) => image.trim())
+    ),
+  ]
 }
 
 const WarehouseDetailPage = () => {
@@ -127,7 +109,8 @@ const WarehouseDetailPage = () => {
   const [walletBalance, setWalletBalance] = useState(0)
   const [isCheckingWallet, setIsCheckingWallet] = useState(false)
   const [layout, setLayout] = useState(null)
-  const [layoutDebug, setLayoutDebug] = useState(null)
+  const [isLayoutLoading, setIsLayoutLoading] = useState(true)
+  const [layoutUnavailable, setLayoutUnavailable] = useState(false)
 
   useEffect(() => {
     const fetchWarehouse = async () => {
@@ -156,16 +139,16 @@ const WarehouseDetailPage = () => {
 
     const fetchLayout = async () => {
       try {
-        const response = await layoutApi.getPublicWarehouseById(id)
+        setIsLayoutLoading(true)
+        setLayoutUnavailable(false)
+        const response = await warehouseApi.getPublicWarehouseLayout(id)
         const payload = response?.data?.data || response?.data
         setLayout(normalizePublicLayout(payload || {}))
-        setLayoutDebug(payload || null)
-        console.log('Fetched layout:', payload)
-      } catch (err) {
-        console.error('Failed to fetch tenant layout', err)
-
+      } catch {
         setLayout(null)
-        setLayoutDebug(null)
+        setLayoutUnavailable(true)
+      } finally {
+        setIsLayoutLoading(false)
       }
     }
 
@@ -277,7 +260,12 @@ const WarehouseDetailPage = () => {
         <div className="container mx-auto px-4 pt-10">
           <WarehouseGallery images={extendedData.images} />
 
-          <WarehouseLayoutShowcase layout={layout} />
+          <WarehouseLayoutShowcase
+            layout={layout}
+            warehouse={warehouse}
+            isLoading={isLayoutLoading}
+            isFallback={layoutUnavailable}
+          />
 
           <div className="flex flex-col gap-12 lg:flex-row">
             <WarehouseInfo warehouse={warehouse} extendedData={extendedData} />
@@ -285,7 +273,6 @@ const WarehouseDetailPage = () => {
             <WarehouseBookingCard
               warehouse={warehouse}
               extendedData={extendedData}
-              durationMonths={durationMonths}
               onDurationChange={setDurationMonths}
               depositPercentage={depositPercentage}
               hasBooked={hasBooked}
