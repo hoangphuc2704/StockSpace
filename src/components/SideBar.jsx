@@ -55,6 +55,7 @@ const SIDEBAR_MENUS = {
     { text: 'Tranh chấp', icon: HiOutlineExclamationCircle, path: '/tenant/disputes' },
     { text: 'Billing', icon: HiOutlineCurrencyDollar, path: '/tenant/payments' },
     { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
+    { text: 'Hàng trong Bin', icon: HiOutlineCircleStack, path: '/tenant/bin-stock' },
     { text: 'Wallet', icon: HiOutlineCurrencyDollar, path: '/tenant/wallet' },
     { text: 'Nhân Viên', icon: HiOutlineUserGroup, path: '/tenant/staff' },
   ],

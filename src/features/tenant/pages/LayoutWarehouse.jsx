@@ -6,6 +6,7 @@ import {
   Box,
   Grid3X3,
   Loader2,
+  Package2,
   PackagePlus,
   RotateCcw,
   Save,
@@ -18,6 +19,7 @@ import WarehouseLayoutPreview3D from '@/components/WarehouseLayoutPreview3D'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import contractApi from '@/services/contractApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
+import stockApi from '@/services/wms/stockApi'
 
 const DEFAULT_LAYOUT_SIZE = 100
 const MIN_ENTITY_SIZE = 4
@@ -177,7 +179,88 @@ const getSelected = (layout, selection) => {
 const inputClass =
   'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500'
 
-function LayoutWarehouse({ currentRole = 'TENANT' }) {
+function BinStockMiniMap({ layout, selection, onSelectBin }) {
+  const activeCells = new Set(layout.footprintCells)
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="mb-3">
+        <h3 className="text-sm font-bold text-slate-800">Chọn Bin trên layout 2D</h3>
+        <p className="mt-0.5 text-xs text-slate-500">Sơ đồ chỉ cho phép xem và chọn Bin.</p>
+      </div>
+      <div className="overflow-auto rounded-xl bg-slate-100 p-2">
+        <div className="relative mx-auto aspect-square w-full max-w-90 min-w-65 overflow-hidden rounded-lg border-2 border-slate-300 bg-white shadow-inner">
+          <div className="absolute inset-0 grid grid-cols-10 grid-rows-10">
+            {Array.from({ length: FOOTPRINT_GRID_SIZE ** 2 }, (_, index) => {
+              const row = Math.floor(index / FOOTPRINT_GRID_SIZE)
+              const column = index % FOOTPRINT_GRID_SIZE
+              return (
+                <div
+                  key={cellKey(row, column)}
+                  className={`border border-slate-200/70 ${
+                    activeCells.has(cellKey(row, column)) ? 'bg-blue-50' : 'bg-slate-300/80'
+                  }`}
+                />
+              )
+            })}
+          </div>
+
+          {layout.racks.map((rack) => (
+            <div
+              key={rack.clientKey}
+              className="pointer-events-none absolute z-10 overflow-hidden rounded border border-blue-700 bg-blue-500/75 shadow-sm"
+              style={{
+                left: `${(rack.coordinateX / layout.width) * 100}%`,
+                top: `${(rack.coordinateY / layout.length) * 100}%`,
+                width: `${(rack.width / layout.width) * 100}%`,
+                height: `${(rack.length / layout.length) * 100}%`,
+              }}
+            >
+              <span className="block truncate bg-blue-800/80 px-1 py-0.5 text-[8px] font-bold text-white">
+                {rack.name || rack.code}
+              </span>
+              {rack.bins.map((bin) => (
+                <button
+                  key={bin.clientKey}
+                  type="button"
+                  title={`Xem hàng trong ${bin.name || bin.code}`}
+                  aria-label={`Xem hàng trong ${bin.name || bin.code}`}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onSelectBin(bin.clientKey)
+                  }}
+                  className={`pointer-events-auto absolute min-h-3.5 min-w-3.5 cursor-pointer rounded-sm border bg-emerald-500/95 shadow transition hover:z-30 hover:scale-110 hover:bg-emerald-400 ${
+                    selection.type === 'bin' && selection.key === bin.clientKey
+                      ? 'z-20 border-white ring-2 ring-emerald-200'
+                      : 'z-10 border-emerald-900'
+                  }`}
+                  style={{
+                    left: `${(bin.coordinateX / rack.width) * 100}%`,
+                    top: `${(bin.coordinateY / rack.length) * 100}%`,
+                    width: `${(bin.width / rack.width) * 100}%`,
+                    height: `${(bin.length / rack.length) * 100}%`,
+                  }}
+                >
+                  <span className="sr-only">{bin.name || bin.code}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-500">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-blue-500" /> Rack
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> Bin có thể chọn
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly = false }) {
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -189,7 +272,7 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
   const [preferredWarehouseId, setPreferredWarehouseId] = useState('')
   const [layout, setLayout] = useState(() => normalizeLayout())
   const [selection, setSelection] = useState({ type: 'layout', key: null })
-  const [view, setView] = useState('2d')
+  const [view, setView] = useState(stockOnly ? 'stock' : initialView)
   const [footprintMode, setFootprintMode] = useState(false)
   const [footprintTool, setFootprintTool] = useState('add')
   const [loadingOptions, setLoadingOptions] = useState(true)
@@ -198,6 +281,15 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [tenantDefault, setTenantDefault] = useState(false)
+  const [stockRefreshKey, setStockRefreshKey] = useState(0)
+  const [binStockState, setBinStockState] = useState({
+    binId: null,
+    status: 'idle',
+    content: [],
+    totalElements: 0,
+    totalQuantity: 0,
+    error: '',
+  })
 
   const warehouses = useMemo(() => {
     if (isOwner) {
@@ -245,6 +337,10 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
     () => layout.racks.reduce((total, rack) => total + rack.bins.length, 0),
     [layout.racks]
   )
+  const selectedBinId =
+    !isOwner && selection.type === 'bin' && selectedEntity?.id
+      ? String(selectedEntity.id)
+      : null
 
   useEffect(() => {
     let alive = true
@@ -315,6 +411,43 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadLayout()
   }, [loadLayout])
+
+  useEffect(() => {
+    if (isOwner || view !== 'stock' || !selectedWarehouseId || !selectedBinId) return undefined
+
+    let alive = true
+    stockApi
+      .getStockByBin(selectedWarehouseId, selectedBinId)
+      .then((result) => {
+        if (!alive) return
+        setBinStockState({
+          binId: selectedBinId,
+          status: 'success',
+          content: result.content,
+          totalElements: result.totalElements,
+          totalQuantity: result.totalQuantity,
+          error: '',
+        })
+      })
+      .catch((requestError) => {
+        if (!alive) return
+        setBinStockState({
+          binId: selectedBinId,
+          status: 'error',
+          content: [],
+          totalElements: 0,
+          totalQuantity: 0,
+          error:
+            requestError.response?.data?.message ||
+            requestError.message ||
+            'Không tải được tồn kho trong Bin.',
+        })
+      })
+
+    return () => {
+      alive = false
+    }
+  }, [isOwner, selectedBinId, selectedWarehouseId, stockRefreshKey, view])
 
   useEffect(() => {
     const onMove = (event) => {
@@ -568,10 +701,17 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h1 className="flex items-center gap-2 text-2xl font-bold">
-                  <Warehouse className="h-7 w-7 text-blue-600" /> Layout kho
+                  {stockOnly ? (
+                    <Package2 className="h-7 w-7 text-blue-600" />
+                  ) : (
+                    <Warehouse className="h-7 w-7 text-blue-600" />
+                  )}
+                  {stockOnly ? 'Hàng hóa trong Bin' : 'Layout kho'}
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  {isOwner
+                  {stockOnly
+                    ? 'Chọn kho và Bin để xem mặt hàng, đơn vị và số lượng tồn kho. Màn hình này chỉ cho phép xem.'
+                    : isOwner
                     ? 'Tạo Rack, Bin và hình dạng kho. Dữ liệu được lưu theo đúng cấu trúc BE, không có Zone.'
                     : 'Di chuyển Rack và Bin trên layout riêng của Tenant.'}
                 </p>
@@ -586,19 +726,23 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                   <RotateCcw className={`mr-2 h-4 w-4 ${loadingLayout ? 'animate-spin' : ''}`} />{' '}
                   Tải lại
                 </button>
-                <button
-                  type="button"
-                  onClick={saveLayout}
-                  disabled={!selectedWarehouseId || saving || loadingLayout || tenantDefault}
-                  className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-slate-300"
-                >
-                  {saving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Lưu layout
-                </button>
+                {!stockOnly && (
+                  <button
+                    type="button"
+                    onClick={saveLayout}
+                    disabled={
+                      !selectedWarehouseId || saving || loadingLayout || tenantDefault || view === 'stock'
+                    }
+                    className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-slate-300"
+                  >
+                    {saving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Lưu layout
+                  </button>
+                )}
               </div>
             </div>
 
@@ -710,20 +854,29 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
               <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex rounded-lg bg-slate-100 p-1">
-                    <button
-                      type="button"
-                      onClick={() => setView('2d')}
-                      className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '2d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
-                    >
-                      2D
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setView('3d')}
-                      className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '3d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
-                    >
-                      3D
-                    </button>
+                    {stockOnly ? (
+                      <span className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm">
+                        <Package2 className="mr-1.5 h-4 w-4 text-blue-600" />
+                        Tồn kho trong Bin
+                      </span>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setView('2d')}
+                          className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '2d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
+                        >
+                          2D
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setView('3d')}
+                          className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '3d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
+                        >
+                          3D
+                        </button>
+                      </>
+                    )}
                   </div>
                   {isOwner && view === '2d' && (
                     <div className="flex flex-wrap gap-2">
@@ -767,6 +920,124 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                 {loadingLayout ? (
                   <div className="flex h-140 items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  </div>
+                ) : view === 'stock' ? (
+                  <div className="min-h-140 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-6">
+                    <div className="mb-5 max-w-md">
+                      <BinStockMiniMap
+                        layout={layout}
+                        selection={selection}
+                        onSelectBin={(binKey) => {
+                          setSelection({ type: 'bin', key: binKey })
+                          setFootprintMode(false)
+                        }}
+                      />
+                    </div>
+                    {selection.type !== 'bin' ? (
+                      <div className="flex min-h-72 flex-col items-center justify-center px-4 text-center">
+                        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100 text-blue-700">
+                          <Package2 className="h-7 w-7" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800">Chọn một Bin để xem tồn kho</h3>
+                        <p className="mt-2 max-w-md text-sm text-slate-500">
+                          Chọn Bin trong cây cấu trúc bên trái, sau đó tab này sẽ hiển thị mặt hàng và số lượng đang có trong Bin.
+                        </p>
+                      </div>
+                    ) : !selectedBinId ? (
+                      <div className="flex min-h-72 flex-col items-center justify-center px-4 text-center">
+                        <AlertCircle className="mb-3 h-8 w-8 text-amber-500" />
+                        <h3 className="font-bold text-slate-800">Bin chưa được lưu</h3>
+                        <p className="mt-2 text-sm text-slate-500">
+                          Bin cần có ID từ hệ thống trước khi có thể xem tồn kho.
+                        </p>
+                      </div>
+                    ) : binStockState.binId !== selectedBinId || binStockState.status === 'loading' ? (
+                      <div className="flex min-h-72 items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                      </div>
+                    ) : binStockState.status === 'error' ? (
+                      <div className="flex min-h-72 flex-col items-center justify-center px-4 text-center">
+                        <AlertCircle className="mb-3 h-8 w-8 text-red-500" />
+                        <h3 className="font-bold text-slate-800">Không tải được tồn kho</h3>
+                        <p className="mt-2 max-w-md text-sm text-red-600">{binStockState.error}</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBinStockState((current) => ({ ...current, status: 'loading' }))
+                            setStockRefreshKey((current) => current + 1)
+                          }}
+                          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                        >
+                          Thử lại
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                          <div>
+                            <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">Tồn kho chỉ đọc</p>
+                            <h3 className="mt-1 text-xl font-bold text-slate-900">
+                              {selectedEntity.name || selectedEntity.code}
+                            </h3>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {selectedRack?.name || selectedRack?.code} · {binStockState.totalElements} lô hàng
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="rounded-xl bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-800">
+                              Tổng: {binStockState.totalQuantity.toLocaleString()}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setBinStockState((current) => ({ ...current, status: 'loading' }))
+                                setStockRefreshKey((current) => current + 1)
+                              }}
+                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                            >
+                              Tải lại
+                            </button>
+                          </div>
+                        </div>
+
+                        {!binStockState.content.length ? (
+                          <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white px-4 text-center">
+                            <Package2 className="mb-3 h-9 w-9 text-slate-300" />
+                            <p className="font-semibold text-slate-700">Bin này đang trống</p>
+                            <p className="mt-1 text-sm text-slate-500">Chưa có mặt hàng nào được lưu trong Bin.</p>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                            <table className="w-full min-w-150 text-left text-sm">
+                              <thead className="bg-slate-100 text-xs tracking-wider text-slate-500 uppercase">
+                                <tr>
+                                  <th className="px-4 py-3">SKU</th>
+                                  <th className="px-4 py-3">Mặt hàng</th>
+                                  <th className="px-4 py-3">Đơn vị</th>
+                                  <th className="px-4 py-3 text-right">Số lượng</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {binStockState.content.map((batch) => (
+                                  <tr key={batch.id} className="text-slate-700">
+                                    <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-700">
+                                      {batch.skuCode || '—'}
+                                    </td>
+                                    <td className="px-4 py-3 font-semibold">{batch.skuName || 'Chưa có tên'}</td>
+                                    <td className="px-4 py-3 text-slate-500">
+                                      {batch.uomSymbol || batch.uomName || '—'}
+                                    </td>
+                                    <td className="px-4 py-3 text-right text-base font-bold text-slate-900">
+                                      {(Number(batch.quantity) || 0).toLocaleString()}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : view === '3d' ? (
                   <div className="h-140 overflow-hidden rounded-xl border border-slate-200">
@@ -920,7 +1191,7 @@ function LayoutWarehouse({ currentRole = 'TENANT' }) {
                     const tenantEditable =
                       !isOwner &&
                       ['coordinateX', 'coordinateY', 'positionZ', 'rotation'].includes(field)
-                    const disabled = !isOwner && !tenantEditable
+                    const disabled = view === 'stock' || (!isOwner && !tenantEditable)
                     return (
                       <label key={field} className="block text-xs font-semibold text-slate-600">
                         <span className="mb-1 block">{label}</span>

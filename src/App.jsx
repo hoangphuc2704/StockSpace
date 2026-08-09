@@ -141,6 +141,17 @@ const App = () => {
           <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
           <Route path="/tenant/payments" element={<BillingPage />} />
           <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse currentRole="TENANT" />} />
+          <Route
+            path="/tenant/bin-stock"
+            element={
+              <LayoutWarehouse
+                key="tenant-bin-stock"
+                currentRole="TENANT"
+                initialView="stock"
+                stockOnly
+              />
+            }
+          />
           <Route path="/tenant/wallet" element={<WalletTenant />} />
           <Route path="/tenant/contracts" element={<TenantContractsPage />} />
           <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
