@@ -169,9 +169,10 @@ function BinMesh({
   onMoveEntity,
 }) {
   const width = getWorldSize(bin.width, rack.width, rackWorldWidth)
-  const depth = Math.max(rackWorldDepth * 0.72, 0.32)
+  const depth = getWorldSize(bin.length, rack.length, rackWorldDepth)
   const x = getWorldCenter(bin.coordinateX, width, rack.width, rackWorldWidth)
-  const level = getLevelFromCoordinate(rack, bin)
+  const z = getWorldCenter(bin.coordinateY, depth, rack.length, rackWorldDepth)
+  const level = clamp(Number(bin.shelfLevel) || getLevelFromCoordinate(rack, bin), 1, getRackLevels(rack))
   const levels = getRackLevels(rack)
   const y = getShelfY(level - 1, levels, rackHeight) + 0.25
 
@@ -199,7 +200,7 @@ function BinMesh({
       }}
     >
       <mesh
-        position={[x, y, 0]}
+        position={[x, y, z]}
         onClick={(event) => {
           event.stopPropagation()
           onSelect({ type: 'bin', clientKey: bin.clientKey })
@@ -221,9 +222,9 @@ function BinMesh({
 
 function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity }) {
   const width = getWorldSize(rack.width, layout.width, WORLD_SIZE)
-  const depth = getWorldSize(rack.height, layout.height, WORLD_SIZE)
+  const depth = getWorldSize(rack.length, layout.length, WORLD_SIZE)
   const x = getWorldCenter(rack.coordinateX, width, layout.width, WORLD_SIZE)
-  const z = getWorldCenter(rack.coordinateY, depth, layout.height, WORLD_SIZE)
+  const z = getWorldCenter(rack.coordinateY, depth, layout.length, WORLD_SIZE)
   const levels = getRackLevels(rack)
   const rackHeight = 1.9 + levels * 0.7
   const isSelected = selection?.type === 'rack' && selection.clientKey === rack.clientKey
@@ -240,7 +241,7 @@ function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity })
       anchor={[0, 0, 0]}
       onDrag={(matrix) => {
         const nextX = toCoordinateFromCenter(matrix.elements[12], width, layout.width, WORLD_SIZE)
-        const nextY = toCoordinateFromCenter(matrix.elements[14], depth, layout.height, WORLD_SIZE)
+        const nextY = toCoordinateFromCenter(matrix.elements[14], depth, layout.length, WORLD_SIZE)
 
         onMoveEntity('rack', rack.clientKey, Number(nextX.toFixed(2)), Number(nextY.toFixed(2)))
       }}
@@ -300,7 +301,7 @@ function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity })
 export default function WarehouseLayoutPreview3D({
   layout,
   selection,
-  onSelect,
+  onSelect = () => {},
   onMoveEntity = () => {},
   editable = true,
 }) {
