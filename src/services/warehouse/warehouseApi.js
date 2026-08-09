@@ -8,7 +8,7 @@ const onwerwarehouseApi = {
   },
 
   getPublicWarehouseById: (warehouseId) => {
-    return api.get(`/warehouses/${warehouseId}/layout`)
+    return api.get(`/warehouses/${warehouseId}`)
   },
 
   getPublicWarehouseLayout: (warehouseId) => {
