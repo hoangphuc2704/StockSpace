@@ -7,8 +7,8 @@ const walletApi = {
   },
 
   //lịch sử các yêu cầu rút tiền của minh
-  getWithdrawHistory: ({ page, size, sortBy, sortDir } = {}) => {
-    return api.get('/wallet/withdraws', { params: { page, size } })
+  getWithdrawHistory: ({ page = 0, size = 10 } = {}) => {
+    return api.get('/wallet/withdrawals', { params: { page, size } })
   },
 
   //xem các giao dịch trng ví

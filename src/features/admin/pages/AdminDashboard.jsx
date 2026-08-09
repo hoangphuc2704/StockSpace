@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+import adminApi from '../../../services/admin/adminApi'
 // Import các action từ uiSlice (Điều chỉnh lại đường dẫn cho đúng với dự án của bạn nếu cần)
 import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 import {
@@ -28,15 +29,7 @@ import StatCard from '../../../components/molecules/StatCard'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
-const growthData = [
-  { name: 'Mon', users: 400, listings: 240 },
-  { name: 'Tue', users: 300, listings: 139 },
-  { name: 'Wed', users: 200, listings: 980 },
-  { name: 'Thu', text: 'Thu', users: 278, listings: 390 },
-  { name: 'Fri', users: 189, listings: 480 },
-  { name: 'Sat', users: 239, listings: 380 },
-  { name: 'Sun', users: 349, listings: 430 },
-]
+// Mock pending approvals
 
 const AdminDashboard = () => {
   const dispatch = useDispatch()
@@ -44,23 +37,67 @@ const AdminDashboard = () => {
   // ✅ Đã đồng bộ trạng thái Sidebar từ Redux Store chung giống y hệt Owner
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
 
+  const [summary, setSummary] = useState({
+    totalUsers: 0,
+    totalWarehouses: 0,
+    totalBookings: 0,
+    totalContracts: 0,
+  })
+  
+  const [revenueData, setRevenueData] = useState([])
+  const [totalRevenue, setTotalRevenue] = useState(0)
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true)
+        // Fetch summary
+        const summaryRes = await adminApi.getSummaryStats()
+        if (summaryRes?.data) {
+          setSummary(summaryRes.data)
+        }
+
+        // Fetch revenue for current year
+        const revenueRes = await adminApi.getRevenueStats(currentYear)
+        if (revenueRes?.data) {
+          setTotalRevenue(revenueRes.data.totalRevenue || 0)
+          
+          // Map to chart format
+          const formattedRevenue = (revenueRes.data.monthlyRevenue || []).map((item) => ({
+            name: `T${item.month}`,
+            revenue: item.revenue,
+          }))
+          setRevenueData(formattedRevenue)
+        }
+      } catch (error) {
+        console.error('Failed to fetch admin dashboard stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [currentYear])
+
   const stats = [
     {
       title: 'Total Revenue',
-      value: '$128.5k',
+      value: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalRevenue),
       icon: HiOutlineCurrencyDollar,
-      trend: 'up',
-      trendValue: 12,
+      trend: 'stable',
+      trendValue: 0,
     },
-    { title: 'Platform Users', value: '14,280', icon: HiOutlineUsers, trend: 'up', trendValue: 5 },
+    { title: 'Platform Users', value: summary.totalUsers.toLocaleString(), icon: HiOutlineUsers, trend: 'stable', trendValue: 0 },
     {
-      title: 'Active Listings',
-      value: '2,450',
+      title: 'Warehouses',
+      value: summary.totalWarehouses.toLocaleString(),
       icon: HiOutlineHomeModern,
-      trend: 'up',
-      trendValue: 8,
+      trend: 'stable',
+      trendValue: 0,
     },
-    { title: 'System Load', value: '24%', icon: HiOutlineChartBar, trend: 'stable', trendValue: 0 },
+    { title: 'Contracts', value: summary.totalContracts.toLocaleString(), icon: HiOutlineChartBar, trend: 'stable', trendValue: 0 },
   ]
 
   const pendingApprovals = [
@@ -178,46 +215,56 @@ const AdminDashboard = () => {
             {/* Biểu Đồ & Logs */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
-                <h3 className="mb-8 font-bold text-slate-900">User & Listing Growth</h3>
+                <div className="mb-8 flex items-center justify-between">
+                  <h3 className="font-bold text-slate-900">Revenue Overview</h3>
+                  <select 
+                    className="rounded-md border-slate-200 text-sm"
+                    value={currentYear}
+                    onChange={(e) => setCurrentYear(Number(e.target.value))}
+                  >
+                    <option value={new Date().getFullYear()}>This Year</option>
+                    <option value={new Date().getFullYear() - 1}>Last Year</option>
+                  </select>
+                </div>
                 <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={growthData}>
-                      <defs>
-                        <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
-                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="name"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <Tooltip />
-                      <Area
-                        type="monotone"
-                        dataKey="users"
-                        stroke="#2563eb"
-                        fillOpacity={1}
-                        fill="url(#colorUsers)"
-                        strokeWidth={2}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="listings"
-                        stroke="#10b981"
-                        fillOpacity={0}
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {loading ? (
+                    <div className="flex h-full items-center justify-center">Loading chart data...</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={revenueData}>
+                        <defs>
+                          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis
+                          dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#64748b', fontSize: 12 }}
+                        />
+                        <YAxis
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#64748b', fontSize: 12 }}
+                          tickFormatter={(value) => new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(value)}
+                        />
+                        <Tooltip 
+                          formatter={(value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="revenue"
+                          stroke="#10b981"
+                          fillOpacity={1}
+                          fill="url(#colorRevenue)"
+                          strokeWidth={2}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
               </div>
 
