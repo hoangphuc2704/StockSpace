@@ -1,13 +1,18 @@
 import React from 'react'
 import { Menu } from 'lucide-react'
 import logoDaidien from '../assets/logoDaidien.png'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 // ✅ Đã kết nối trực tiếp action từ Redux store và sửa chính tả uiSlice
 import { toggleSidebar } from '../store/uiSlide'
 import NotificationDropdown from './NotificationDropdown'
 
 const Header = () => {
   const dispatch = useDispatch()
+  const { user } = useSelector((state) => state.auth)
+
+  const displayRole = user?.role 
+    ? user.role.replace('ROLE_', '').charAt(0) + user.role.replace('ROLE_', '').slice(1).toLowerCase()
+    : 'Owner'
 
   return (
     <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
@@ -25,7 +30,7 @@ const Header = () => {
             <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
           </div>
           <span className="font-display text-xl font-bold tracking-tight text-slate-950 hidden sm:inline-block">
-            StockSpace Owner
+            StockSpace {displayRole}
           </span>
         </div>
       </div>

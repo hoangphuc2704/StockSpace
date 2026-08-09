@@ -21,6 +21,14 @@ const receiptApi = {
   // Duyệt phiếu nhập/xuất kho (Approve)
   approveReceipt: (id) => {
     return api.patch(`/tenant/inventory/receipts/${id}/approve`)
+  },
+
+  // Xuất file Excel/CSV danh sách phiếu nhập/xuất kho
+  exportReceipts: (warehouseId, type) => {
+    return api.get('/tenant/inventory/receipts/export', {
+      params: { warehouseId, type },
+      responseType: 'blob'
+    })
   }
 }
 
