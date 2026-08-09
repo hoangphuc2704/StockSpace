@@ -1,3 +1,0 @@
-src:
-app	 assets      config    index.css  services  store   utils
-App.jsx  components  features  main.jsx   socket    styles

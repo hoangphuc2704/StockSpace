@@ -222,6 +222,15 @@ const adminApi = {
   // =========================
   getTransactions: ({ page = 0, size = 10 } = {}) =>
     api.get('/admin/transactions', { params: { page, size } }),
+
+  // =========================
+  // STATS (Summary & Revenue)
+  // =========================
+  getSummaryStats: () =>
+    api.get('/admin/stats/summary'),
+
+  getRevenueStats: (year) =>
+    api.get('/admin/stats/revenue', { params: { year } }),
 }
 
 export default adminApi

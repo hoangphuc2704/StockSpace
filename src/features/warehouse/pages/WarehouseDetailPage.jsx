@@ -5,7 +5,6 @@ import warehouseApi from '@/services/warehouse/warehouseApi'
 import systemConfigApi from '@/services/systemConfigApi'
 import tenantApi from '@/services/tenant/tenantApi'
 import walletApi from '@/services/wallet/walletApi'
-import layoutApi from '../../../services/warehouse/warehouseApi'
 import { useSelector, useDispatch } from 'react-redux'
 import { addBookedWarehouse } from '@/store/tenantBookingSlice'
 
@@ -24,7 +23,7 @@ const normalizeWarehouse = (warehouse) => ({
   area: Number(warehouse.area ?? warehouse.capacity ?? 0),
   width: Number(warehouse.width ?? warehouse.warehouseWidth ?? 0),
   height: Number(warehouse.height ?? warehouse.warehouseHeight ?? 0),
-  price: Number(warehouse.pricePerMonth ?? warehouse.price ?? 0),
+  price: Number(warehouse.pricePerMonth ?? warehouse.price ?? 9999),
   status: warehouse.status || 'UNKNOWN',
   rating: Number(warehouse.rating ?? 4.8),
   type: warehouse.warehouseType?.name || warehouse.typeName || warehouse.type || 'General',
@@ -137,6 +136,7 @@ const WarehouseDetailPage = () => {
 
         const response = await warehouseApi.getPublicWarehouseById(id)
         const payload = response?.data?.data || response?.data
+        console.log('Warehouse payload:', payload)
         const normalized = normalizeWarehouse(payload || {})
 
         if (!normalized.id) {
@@ -156,7 +156,7 @@ const WarehouseDetailPage = () => {
 
     const fetchLayout = async () => {
       try {
-        const response = await layoutApi.getPublicWarehouseById(id)
+        const response = await warehouseApi.getPublicWarehouseLayout(id)
         const payload = response?.data?.data || response?.data
         setLayout(normalizePublicLayout(payload || {}))
         setLayoutDebug(payload || null)

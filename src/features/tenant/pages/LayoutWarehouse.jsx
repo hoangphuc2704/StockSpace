@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   AlertCircle,
-  Layers3,
+  Box,
+  Grid3X3,
   Loader2,
-  Maximize2,
-  Package2,
-  Plus,
+  PackagePlus,
   RotateCcw,
   Save,
   Trash2,
@@ -18,1834 +17,784 @@ import Sidebar from '@/components/SideBar'
 import WarehouseLayoutPreview3D from '@/components/WarehouseLayoutPreview3D'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import contractApi from '@/services/contractApi'
-import layoutApi from '@/services/layoutApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 
 const DEFAULT_LAYOUT_SIZE = 100
 const MIN_ENTITY_SIZE = 4
 const FOOTPRINT_GRID_SIZE = 10
+const BIN_MAX_RATIO = 0.8
 
-const createClientKey = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-
-const toOptionalString = (value) => (value == null || value === '' ? null : String(value))
-const toDisplayString = (value, fallback = '') => (value == null ? fallback : String(value))
-
+const keyOf = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+const numberOf = (value, fallback = 0) => {
+  const valueAsNumber = Number(value)
+  return Number.isFinite(valueAsNumber) ? valueAsNumber : fallback
+}
+const integerOf = (value, fallback = 0) => Math.round(numberOf(value, fallback))
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+const apiData = (response) => response?.data?.data ?? response?.data ?? null
+const nullableId = (value) => (value == null || value === '' ? null : String(value))
+const cellKey = (row, column) => `${row}:${column}`
+const fullFootprint = () =>
+  Array.from({ length: FOOTPRINT_GRID_SIZE ** 2 }, (_, index) =>
+    cellKey(Math.floor(index / FOOTPRINT_GRID_SIZE), index % FOOTPRINT_GRID_SIZE)
+  )
 
-const ensureNumber = (value, fallback = 0) => {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : fallback
+const normalizeFootprint = (cells) => {
+  if (!Array.isArray(cells)) return fullFootprint()
+  return [...new Set(cells.map(String))].filter((cell) => {
+    const [row, column] = cell.split(':').map(Number)
+    return (
+      Number.isInteger(row) &&
+      Number.isInteger(column) &&
+      row >= 0 &&
+      row < FOOTPRINT_GRID_SIZE &&
+      column >= 0 &&
+      column < FOOTPRINT_GRID_SIZE
+    )
+  })
 }
 
 const normalizeBin = (bin = {}) => ({
-  clientKey: createClientKey('bin'),
-  id: toOptionalString(bin.id),
-  name: toDisplayString(bin.name, 'Bin mới'),
-  code: toDisplayString(bin.code, ''),
-  maxWeight: ensureNumber(bin.maxWeight, 0),
-  maxVolume: ensureNumber(bin.maxVolume, 0),
-  coordinateX: ensureNumber(bin.coordinateX, 0),
-  coordinateY: ensureNumber(bin.coordinateY, 0),
-  width: Math.max(ensureNumber(bin.width, 8), 4),
-  height: Math.max(ensureNumber(bin.length ?? bin.height, 8), 4),
+  clientKey: keyOf('bin'),
+  id: nullableId(bin.id),
+  name: bin.name == null ? 'Bin mới' : String(bin.name),
+  code: bin.code == null ? '' : String(bin.code),
+  shelfLevel: Math.max(integerOf(bin.shelfLevel, 1), 1),
+  maxWeight: numberOf(bin.maxWeight, 0),
+  maxVolume: numberOf(bin.maxVolume, 0),
+  coordinateX: numberOf(bin.coordinateX, 0),
+  coordinateY: numberOf(bin.coordinateY, 0),
+  positionZ: numberOf(bin.positionZ, 0),
+  width: Math.max(numberOf(bin.width, 8), MIN_ENTITY_SIZE),
+  length: Math.max(numberOf(bin.length, 8), MIN_ENTITY_SIZE),
+  height: Math.max(numberOf(bin.height, 8), MIN_ENTITY_SIZE),
 })
 
 const normalizeRack = (rack = {}) => ({
-  clientKey: createClientKey('rack'),
-  id: toOptionalString(rack.id),
-  name: toDisplayString(rack.name, 'Rack mới'),
-  code: toDisplayString(rack.code, ''),
-  coordinateX: ensureNumber(rack.coordinateX, 0),
-  coordinateY: ensureNumber(rack.coordinateY, 0),
-  width: Math.max(ensureNumber(rack.width, 18), 8),
-  height: Math.max(ensureNumber(rack.length ?? rack.height, 18), 8),
+  clientKey: keyOf('rack'),
+  id: nullableId(rack.id),
+  name: rack.name == null ? 'Rack mới' : String(rack.name),
+  code: rack.code == null ? '' : String(rack.code),
+  maxWeight: numberOf(rack.maxWeight, 0),
+  maxVolume: numberOf(rack.maxVolume, 0),
+  coordinateX: numberOf(rack.coordinateX, 0),
+  coordinateY: numberOf(rack.coordinateY, 0),
+  positionZ: numberOf(rack.positionZ, 0),
+  rotation: numberOf(rack.rotation, 0),
+  width: Math.max(numberOf(rack.width, 18), MIN_ENTITY_SIZE),
+  length: Math.max(numberOf(rack.length, 18), MIN_ENTITY_SIZE),
+  height: Math.max(numberOf(rack.height, 18), MIN_ENTITY_SIZE),
   bins: Array.isArray(rack.bins) ? rack.bins.map(normalizeBin) : [],
 })
 
-const normalizeZone = (zone = {}) => ({
-  clientKey: createClientKey('zone'),
-  id: toOptionalString(zone.id),
-  name: toDisplayString(zone.name, 'Zone mới'),
-  code: toDisplayString(zone.code, ''),
-  coordinateX: ensureNumber(zone.coordinateX, 0),
-  coordinateY: ensureNumber(zone.coordinateY, 0),
-  width: Math.max(ensureNumber(zone.width, 30), 10),
-  height: Math.max(ensureNumber(zone.height, 30), 10),
-  racks: Array.isArray(zone.racks) ? zone.racks.map(normalizeRack) : [],
-})
-
-const buildZonesFromRacks = (payload = {}) => {
-  if (Array.isArray(payload.zones)) return payload.zones
-  if (!Array.isArray(payload.racks)) return []
-
-  const groupedRacks = new Map()
-
-  payload.racks.forEach((rack) => {
-    const zoneName = rack.zoneName?.trim() || 'Zone chung'
-    const zoneCode = rack.zoneCode?.trim() || zoneName
-    const groupKey = `${zoneCode}::${zoneName}`
-    const current = groupedRacks.get(groupKey) || { name: zoneName, code: zoneCode, racks: [] }
-    current.racks.push(rack)
-    groupedRacks.set(groupKey, current)
-  })
-
-  return Array.from(groupedRacks.values()).map((zone) => {
-    const minX = Math.max(
-      Math.min(...zone.racks.map((rack) => ensureNumber(rack.coordinateX, 0))) - 2,
-      0
-    )
-    const minY = Math.max(
-      Math.min(...zone.racks.map((rack) => ensureNumber(rack.coordinateY, 0))) - 2,
-      0
-    )
-    const maxX = Math.max(
-      ...zone.racks.map(
-        (rack) => ensureNumber(rack.coordinateX, 0) + ensureNumber(rack.width, 18)
-      )
-    )
-    const maxY = Math.max(
-      ...zone.racks.map(
-        (rack) =>
-          ensureNumber(rack.coordinateY, 0) + ensureNumber(rack.length ?? rack.height, 18)
-      )
-    )
-
-    return {
-      ...zone,
-      coordinateX: minX,
-      coordinateY: minY,
-      width: Math.max(maxX - minX + 2, 10),
-      height: Math.max(maxY - minY + 2, 10),
-      racks: zone.racks.map((rack) => ({
-        ...rack,
-        coordinateX: ensureNumber(rack.coordinateX, 0) - minX,
-        coordinateY: ensureNumber(rack.coordinateY, 0) - minY,
-      })),
-    }
-  })
-}
-
-const createFootprintCellKey = (row, col) => `${row}:${col}`
-
-const createFullFootprint = () =>
-  Array.from({ length: FOOTPRINT_GRID_SIZE * FOOTPRINT_GRID_SIZE }, (_, index) =>
-    createFootprintCellKey(
-      Math.floor(index / FOOTPRINT_GRID_SIZE),
-      index % FOOTPRINT_GRID_SIZE
-    )
-  )
-
-const normalizeFootprintCells = (cells) => {
-  if (!Array.isArray(cells) || !cells.length) {
-    return createFullFootprint()
-  }
-
-  const validCells = cells
-    .map((cell) => String(cell))
-    .filter((cell) => {
-      const [row, col] = cell.split(':').map(Number)
-      return (
-        Number.isInteger(row) &&
-        Number.isInteger(col) &&
-        row >= 0 &&
-        row < FOOTPRINT_GRID_SIZE &&
-        col >= 0 &&
-        col < FOOTPRINT_GRID_SIZE
-      )
-    })
-
-  return validCells.length ? Array.from(new Set(validCells)) : createFullFootprint()
-}
-
 const normalizeLayout = (payload = {}) => ({
-  width: Math.max(ensureNumber(payload.width, DEFAULT_LAYOUT_SIZE), 20),
-  height: Math.max(ensureNumber(payload.height, DEFAULT_LAYOUT_SIZE), 20),
-  footprintCells: normalizeFootprintCells(payload.footprintCells),
-  targetRackCount: Math.max(ensureNumber(payload.targetRackCount, 0), 0),
-  targetBinCount: Math.max(ensureNumber(payload.targetBinCount, 0), 0),
-  zones: buildZonesFromRacks(payload).map(normalizeZone),
+  width: Math.max(numberOf(payload.width, DEFAULT_LAYOUT_SIZE), 20),
+  length: Math.max(numberOf(payload.length, DEFAULT_LAYOUT_SIZE), 20),
+  height: Math.max(numberOf(payload.height, DEFAULT_LAYOUT_SIZE), 20),
+  footprintCells: normalizeFootprint(payload.footprintCells),
+  racks: Array.isArray(payload.racks) ? payload.racks.map(normalizeRack) : [],
 })
 
-const resolveWarehouseFootprint = (warehouse = {}) => ({
-  width: Math.max(
-    ensureNumber(warehouse.width ?? warehouse.warehouseWidth, DEFAULT_LAYOUT_SIZE),
-    20
-  ),
-  height: Math.max(
-    ensureNumber(warehouse.height ?? warehouse.warehouseHeight, DEFAULT_LAYOUT_SIZE),
-    20
-  ),
-})
-
-const createDraftLayoutFromWarehouse = (warehouse = {}) =>
-  normalizeLayout({
-    ...resolveWarehouseFootprint(warehouse),
-    zones: [],
-  })
-
-const resolveLayoutFromSources = (layoutPayload = {}, warehouse = {}) =>
-  normalizeLayout({
-    width:
-      layoutPayload.width ??
-      layoutPayload.warehouseWidth ??
-      warehouse.width ??
-      warehouse.warehouseWidth,
-    height:
-      layoutPayload.height ??
-      layoutPayload.warehouseHeight ??
-      warehouse.height ??
-      warehouse.warehouseHeight,
-    zones: buildZonesFromRacks(layoutPayload),
-  })
-
-const hasConfiguredLayout = (layoutPayload = {}) =>
-  (Array.isArray(layoutPayload?.zones) && layoutPayload.zones.length > 0) ||
-  (Array.isArray(layoutPayload?.racks) && layoutPayload.racks.length > 0)
-
-const isDefaultLayoutPayload = (layoutPayload = {}) =>
-  Boolean(layoutPayload.isDefault ?? layoutPayload.default)
-
-const getApiData = (response) => response?.data?.data ?? response?.data ?? null
-
-const sanitizeId = (id) => (id == null || id === '' ? null : String(id))
-
-const toApiInteger = (value, fallback = 0) => Math.round(ensureNumber(value, fallback))
-
-const serializeBin = (bin, fallbackCode) => ({
-  id: sanitizeId(bin.id),
-  name: bin.name?.trim() || 'Bin',
-  code: bin.code?.trim() || fallbackCode,
-  maxWeight: ensureNumber(bin.maxWeight, 0),
-  maxVolume: ensureNumber(bin.maxVolume, 0),
-  coordinateX: toApiInteger(bin.coordinateX),
-  coordinateY: toApiInteger(bin.coordinateY),
-  width: toApiInteger(bin.width, MIN_ENTITY_SIZE),
-  length: toApiInteger(bin.height, MIN_ENTITY_SIZE),
-  height: toApiInteger(bin.height, MIN_ENTITY_SIZE),
-})
-
-const serializeRack = (rack, zone, zoneIndex, rackIndex) => ({
-  id: sanitizeId(rack.id),
-  zoneName: zone.name?.trim() || `Zone ${zoneIndex + 1}`,
-  zoneCode: zone.code?.trim() || `ZONE-${zoneIndex + 1}`,
-  name: rack.name?.trim() || 'Rack',
-  code: rack.code?.trim() || `RACK-${zoneIndex + 1}-${rackIndex + 1}`,
-  coordinateX: toApiInteger(zone.coordinateX) + toApiInteger(rack.coordinateX),
-  coordinateY: toApiInteger(zone.coordinateY) + toApiInteger(rack.coordinateY),
-  width: toApiInteger(rack.width, MIN_ENTITY_SIZE),
-  length: toApiInteger(rack.height, MIN_ENTITY_SIZE),
-  height: toApiInteger(rack.height, MIN_ENTITY_SIZE),
-  bins: rack.bins.map((bin, binIndex) =>
-    serializeBin(bin, `BIN-${zoneIndex + 1}-${rackIndex + 1}-${binIndex + 1}`)
-  ),
-})
-
-const toPayload = (layout) => ({
-  width: toApiInteger(layout.width, DEFAULT_LAYOUT_SIZE),
-  length: toApiInteger(layout.height, DEFAULT_LAYOUT_SIZE),
-  height: toApiInteger(layout.height, DEFAULT_LAYOUT_SIZE),
-  racks: layout.zones.flatMap((zone, zoneIndex) =>
-    zone.racks.map((rack, rackIndex) => serializeRack(rack, zone, zoneIndex, rackIndex))
-  ),
-})
-
-const findSelectedEntity = (layout, selection) => {
-  if (!selection) return null
-
-  if (selection.type === 'layout') {
-    return layout
-  }
-
-  for (const zone of layout.zones) {
-    if (selection.type === 'zone' && zone.clientKey === selection.clientKey) {
-      return zone
-    }
-
-    for (const rack of zone.racks) {
-      if (selection.type === 'rack' && rack.clientKey === selection.clientKey) {
-        return rack
-      }
-
-      for (const bin of rack.bins) {
-        if (selection.type === 'bin' && bin.clientKey === selection.clientKey) {
-          return bin
-        }
-      }
-    }
-  }
-
-  return null
-}
-
-const updateZoneByKey = (layout, zoneKey, updater) => ({
-  ...layout,
-  zones: layout.zones.map((zone) => (zone.clientKey === zoneKey ? updater(zone) : zone)),
-})
-
-const updateRackByKey = (layout, rackKey, updater) => ({
-  ...layout,
-  zones: layout.zones.map((zone) => ({
-    ...zone,
-    racks: zone.racks.map((rack) => (rack.clientKey === rackKey ? updater(rack, zone) : rack)),
-  })),
-})
-
-const updateBinByKey = (layout, binKey, updater) => ({
-  ...layout,
-  zones: layout.zones.map((zone) => ({
-    ...zone,
-    racks: zone.racks.map((rack) => ({
-      ...rack,
-      bins: rack.bins.map((bin) => (bin.clientKey === binKey ? updater(bin, rack, zone) : bin)),
-    })),
-  })),
-})
-
-const removeSelection = (layout, selection) => {
-  if (!selection || selection.type === 'layout') return layout
-
-  if (selection.type === 'zone') {
-    return {
-      ...layout,
-      zones: layout.zones.filter((zone) => zone.clientKey !== selection.clientKey),
-    }
-  }
-
-  if (selection.type === 'rack') {
-    return {
-      ...layout,
-      zones: layout.zones.map((zone) => ({
-        ...zone,
-        racks: zone.racks.filter((rack) => rack.clientKey !== selection.clientKey),
-      })),
-    }
-  }
-
+const serializeBin = (bin, rackIndex, binIndex, rackWidth, rackLength) => {
+  const width = clamp(integerOf(bin.width, 8), MIN_ENTITY_SIZE, Math.max(MIN_ENTITY_SIZE, Math.floor(rackWidth * BIN_MAX_RATIO)))
+  const length = clamp(integerOf(bin.length, 8), MIN_ENTITY_SIZE, Math.max(MIN_ENTITY_SIZE, Math.floor(rackLength * BIN_MAX_RATIO)))
   return {
-    ...layout,
-    zones: layout.zones.map((zone) => ({
-      ...zone,
-      racks: zone.racks.map((rack) => ({
-        ...rack,
-        bins: rack.bins.filter((bin) => bin.clientKey !== selection.clientKey),
-      })),
-    })),
+    id: nullableId(bin.id),
+    shelfLevel: Math.max(integerOf(bin.shelfLevel, 1), 1),
+    name: bin.name?.trim() || 'Bin',
+    code: bin.code?.trim() || `BIN-${rackIndex + 1}-${binIndex + 1}`,
+    maxWeight: numberOf(bin.maxWeight),
+    maxVolume: numberOf(bin.maxVolume),
+    coordinateX: clamp(integerOf(bin.coordinateX), 0, Math.max(rackWidth - width, 0)),
+    coordinateY: clamp(integerOf(bin.coordinateY), 0, Math.max(rackLength - length, 0)),
+    positionZ: integerOf(bin.positionZ),
+    width,
+    length,
+    height: Math.max(integerOf(bin.height, 8), MIN_ENTITY_SIZE),
   }
 }
 
-const getSelectionLabel = (selection, entity) => {
-  if (!selection) return 'Chưa chọn'
-  if (selection.type === 'layout') return 'Layout tổng'
-  if (!entity) return 'Không tìm thấy'
-  return `${selection.type.toUpperCase()} - ${entity.name || 'Chưa đặt tên'}`
+const serializeRack = (rack, rackIndex, layoutWidth, layoutLength) => {
+  const width = clamp(integerOf(rack.width, 18), MIN_ENTITY_SIZE, layoutWidth)
+  const length = clamp(integerOf(rack.length, 18), MIN_ENTITY_SIZE, layoutLength)
+  return {
+    id: nullableId(rack.id),
+    name: rack.name?.trim() || 'Rack',
+    code: rack.code?.trim() || `RACK-${rackIndex + 1}`,
+    maxWeight: numberOf(rack.maxWeight),
+    maxVolume: numberOf(rack.maxVolume),
+    coordinateX: clamp(integerOf(rack.coordinateX), 0, Math.max(layoutWidth - width, 0)),
+    coordinateY: clamp(integerOf(rack.coordinateY), 0, Math.max(layoutLength - length, 0)),
+    positionZ: integerOf(rack.positionZ),
+    rotation: integerOf(rack.rotation),
+    width,
+    length,
+    height: Math.max(integerOf(rack.height, 18), MIN_ENTITY_SIZE),
+    bins: rack.bins.map((bin, binIndex) =>
+      serializeBin(bin, rackIndex, binIndex, width, length)
+    ),
+  }
 }
 
-const renderTreeItem = (label, isActive, onClick, meta) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={`w-full rounded-xl border px-3 py-2 text-left transition ${
-      isActive
-        ? 'border-blue-200 bg-blue-50 text-blue-900'
-        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-    }`}
-  >
-    <div className="text-sm font-semibold">{label}</div>
-    {meta ? <div className="mt-1 text-xs text-slate-500">{meta}</div> : null}
-  </button>
-)
-
-const clampCoordinate = (value, size, total) => {
-  const numericValue = ensureNumber(value, 0)
-  const max = Math.max(ensureNumber(total, 0) - ensureNumber(size, 0), 0)
-  return clamp(numericValue, 0, max)
+const toPayload = (layout) => {
+  const width = Math.max(integerOf(layout.width, DEFAULT_LAYOUT_SIZE), 20)
+  const length = Math.max(integerOf(layout.length, DEFAULT_LAYOUT_SIZE), 20)
+  return {
+    width,
+    length,
+    height: Math.max(integerOf(layout.height, DEFAULT_LAYOUT_SIZE), 20),
+    footprintCells: layout.footprintCells,
+    racks: layout.racks.map((rack, rackIndex) =>
+      serializeRack(rack, rackIndex, width, length)
+    ),
+  }
 }
 
-const getRackLevels = (rack) => clamp(Math.round((ensureNumber(rack?.height, 12) || 12) / 6), 2, 6)
+const updateRack = (layout, rackKey, updater) => ({
+  ...layout,
+  racks: layout.racks.map((rack) => (rack.clientKey === rackKey ? updater(rack) : rack)),
+})
 
-const getCoordinateYForLevel = (rack, bin, level) => {
-  const levels = getRackLevels(rack)
-  const maxCoordinate = Math.max(ensureNumber(rack?.height, 0) - ensureNumber(bin?.height, 0), 0)
-  if (levels <= 1 || maxCoordinate <= 0) return 0
-  const normalizedLevel = clamp(level, 1, levels)
-  const ratio = (normalizedLevel - 1) / (levels - 1)
-  return maxCoordinate - ratio * maxCoordinate
+const updateBin = (layout, binKey, updater) => ({
+  ...layout,
+  racks: layout.racks.map((rack) => ({
+    ...rack,
+    bins: rack.bins.map((bin) => (bin.clientKey === binKey ? updater(bin, rack) : bin)),
+  })),
+})
+
+const getSelected = (layout, selection) => {
+  if (selection.type === 'layout') return layout
+  if (selection.type === 'rack') return layout.racks.find((rack) => rack.clientKey === selection.key)
+  return layout.racks.flatMap((rack) => rack.bins).find((bin) => bin.clientKey === selection.key)
 }
 
-const getBinLevelFromCoordinate = (rack, bin) => {
-  const levels = getRackLevels(rack)
-  const maxCoordinate = Math.max(ensureNumber(rack?.height, 0) - ensureNumber(bin?.height, 0), 0)
-  if (levels <= 1 || maxCoordinate <= 0) return 1
-  const ratio = 1 - clamp(ensureNumber(bin?.coordinateY, 0) / maxCoordinate, 0, 1)
-  return clamp(Math.round(ratio * (levels - 1)) + 1, 1, levels)
-}
+const inputClass =
+  'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-blue-500 disabled:bg-slate-100 disabled:text-slate-500'
 
 function LayoutWarehouse({ currentRole = 'TENANT' }) {
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
-  const canvasRef = useRef(null)
-  const dragRef = useRef(null)
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  const dragRef = useRef(null)
+  const isOwner = currentRole === 'OWNER'
 
   const [contracts, setContracts] = useState([])
   const [ownedWarehouses, setOwnedWarehouses] = useState([])
   const [preferredWarehouseId, setPreferredWarehouseId] = useState('')
-  const [layout, setLayout] = useState(normalizeLayout())
-  const [selection, setSelection] = useState({ type: 'layout' })
-  const [loadingWarehouseOptions, setLoadingWarehouseOptions] = useState(true)
+  const [layout, setLayout] = useState(() => normalizeLayout())
+  const [selection, setSelection] = useState({ type: 'layout', key: null })
+  const [view, setView] = useState('2d')
+  const [footprintMode, setFootprintMode] = useState(false)
+  const [footprintTool, setFootprintTool] = useState('add')
+  const [loadingOptions, setLoadingOptions] = useState(true)
   const [loadingLayout, setLoadingLayout] = useState(false)
-  const [savingLayout, setSavingLayout] = useState(false)
-  const [statusMessage, setStatusMessage] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
-  const [footprintBrush, setFootprintBrush] = useState('erase')
-  const [isFootprintEditMode, setIsFootprintEditMode] = useState(false)
-  const [isFootprintPainting, setIsFootprintPainting] = useState(false)
-  const [tenantUsesDefaultLayout, setTenantUsesDefaultLayout] = useState(false)
-  const isOwnerMode = currentRole === 'OWNER'
-  const requestedWarehouseId = searchParams.get('warehouseId')
-  const requestedWarehouseWidth = ensureNumber(searchParams.get('width'), 0)
-  const requestedWarehouseHeight = ensureNumber(searchParams.get('height'), 0)
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const [tenantDefault, setTenantDefault] = useState(false)
 
-  const tenantWarehouses = useMemo(() => {
-    const activeContracts = contracts.filter((contract) => contract?.status === 'ACTIVE')
-    const uniqueMap = new Map()
-
-    activeContracts.forEach((contract) => {
-      if (!contract?.warehouseId || uniqueMap.has(contract.warehouseId)) return
-      const warehouseId = String(contract.warehouseId)
-      uniqueMap.set(warehouseId, {
-        warehouseId,
-        warehouseName: contract.warehouseName || `Warehouse ${contract.warehouseId}`,
-        contractId: contract.id,
-      })
-    })
-
-    return Array.from(uniqueMap.values())
-  }, [contracts])
-
-  const ownerWarehouses = useMemo(
-    () =>
-      ownedWarehouses
+  const warehouses = useMemo(() => {
+    if (isOwner) {
+      return ownedWarehouses
         .filter((warehouse) => warehouse?.id)
         .map((warehouse) => ({
-          warehouseId: String(warehouse.id),
-          warehouseName: warehouse.name || `Warehouse ${warehouse.id}`,
-          width: ensureNumber(warehouse.width ?? warehouse.warehouseWidth, DEFAULT_LAYOUT_SIZE),
-          height: ensureNumber(
-            warehouse.height ?? warehouse.warehouseHeight,
-            DEFAULT_LAYOUT_SIZE
-          ),
-        })),
-    [ownedWarehouses]
-  )
-
-  const availableWarehouses = isOwnerMode ? ownerWarehouses : tenantWarehouses
+          id: String(warehouse.id),
+          name: warehouse.name || `Warehouse ${warehouse.id}`,
+          width: warehouse.width ?? warehouse.warehouseWidth,
+          length: warehouse.length ?? warehouse.warehouseLength ?? warehouse.height,
+          height: warehouse.height ?? warehouse.warehouseHeight,
+        }))
+    }
+    const unique = new Map()
+    contracts
+      .filter((contract) => contract?.status === 'ACTIVE' && contract?.warehouseId)
+      .forEach((contract) => {
+        const id = String(contract.warehouseId)
+        if (!unique.has(id)) unique.set(id, { id, name: contract.warehouseName || `Warehouse ${id}` })
+      })
+    return [...unique.values()]
+  }, [contracts, isOwner, ownedWarehouses])
 
   const selectedWarehouseId = useMemo(() => {
-    if (!availableWarehouses.length) return ''
-
-    if (
-      requestedWarehouseId &&
-      availableWarehouses.some((item) => item.warehouseId === requestedWarehouseId)
-    ) {
-      return requestedWarehouseId
+    if (!warehouses.length) return ''
+    const requested = searchParams.get('warehouseId')
+    if (requested && warehouses.some((warehouse) => warehouse.id === requested)) return requested
+    if (warehouses.some((warehouse) => warehouse.id === preferredWarehouseId)) {
+      return preferredWarehouseId
     }
+    return warehouses[0].id
+  }, [preferredWarehouseId, searchParams, warehouses])
 
-    return availableWarehouses.some((item) => item.warehouseId === preferredWarehouseId)
-      ? preferredWarehouseId
-      : availableWarehouses[0].warehouseId
-  }, [availableWarehouses, preferredWarehouseId, requestedWarehouseId])
-
-  const selectedEntity = useMemo(() => findSelectedEntity(layout, selection), [layout, selection])
-  const footprintCellSet = useMemo(
-    () => new Set(normalizeFootprintCells(layout.footprintCells)),
-    [layout.footprintCells]
-  )
-  const activeFootprintCount = footprintCellSet.size
-  const currentRackCount = useMemo(
-    () => layout.zones.reduce((total, zone) => total + zone.racks.length, 0),
-    [layout.zones]
-  )
-  const currentBinCount = useMemo(
-    () =>
-      layout.zones.reduce(
-        (total, zone) =>
-          total + zone.racks.reduce((rackTotal, rack) => rackTotal + rack.bins.length, 0),
-        0
-      ),
-    [layout.zones]
-  )
-  const selectedWarehouseOption = useMemo(() => {
-    const selected =
-      availableWarehouses.find((item) => item.warehouseId === selectedWarehouseId) ?? null
-
-    if (!selected || selectedWarehouseId !== requestedWarehouseId) return selected
-
-    return {
-      ...selected,
-      width: requestedWarehouseWidth > 0 ? requestedWarehouseWidth : selected.width,
-      height: requestedWarehouseHeight > 0 ? requestedWarehouseHeight : selected.height,
+  const selectedEntity = useMemo(() => getSelected(layout, selection), [layout, selection])
+  const selectedRack = useMemo(() => {
+    if (selection.type === 'rack') return selectedEntity
+    if (selection.type === 'bin') {
+      return layout.racks.find((rack) => rack.bins.some((bin) => bin.clientKey === selection.key))
     }
-  }, [
-    availableWarehouses,
-    requestedWarehouseHeight,
-    requestedWarehouseId,
-    requestedWarehouseWidth,
-    selectedWarehouseId,
-  ])
+    return null
+  }, [layout.racks, selectedEntity, selection])
+  const footprintSet = useMemo(() => new Set(layout.footprintCells), [layout.footprintCells])
+  const binCount = useMemo(
+    () => layout.racks.reduce((total, rack) => total + rack.bins.length, 0),
+    [layout.racks]
+  )
 
   useEffect(() => {
-    const stopPainting = () => {
-      setIsFootprintPainting(false)
-    }
-
-    window.addEventListener('pointerup', stopPainting)
-    return () => window.removeEventListener('pointerup', stopPainting)
-  }, [])
-
-  useEffect(() => {
-    const fetchWarehouseOptions = async () => {
+    let alive = true
+    const load = async () => {
       try {
-        setLoadingWarehouseOptions(true)
-        setErrorMessage('')
-        if (isOwnerMode) {
+        setLoadingOptions(true)
+        setError('')
+        if (isOwner) {
           const response = await warehouseApi.getOwnerWarehouses({
             page: 0,
             size: 100,
             sortBy: 'createdAt',
             sortDir: 'desc',
           })
-          const payload = getApiData(response)
-          const content = Array.isArray(payload?.content) ? payload.content : []
-          setOwnedWarehouses(content)
-          setContracts([])
+          if (alive) setOwnedWarehouses(apiData(response)?.content ?? [])
         } else {
           const response = await contractApi.getMyContracts({ page: 0, size: 100 })
-          const payload = getApiData(response)
-          const content = Array.isArray(payload?.content) ? payload.content : []
-          setContracts(content)
-          setOwnedWarehouses([])
+          if (alive) setContracts(apiData(response)?.content ?? [])
         }
-      } catch (error) {
-        setContracts([])
-        setOwnedWarehouses([])
-        setErrorMessage(
-          error.response?.data?.message ||
-            (isOwnerMode
-              ? 'Không tải được danh sách kho của owner.'
-              : 'Không tải được danh sách hợp đồng.')
-        )
+      } catch (requestError) {
+        if (alive) setError(requestError.response?.data?.message || 'Không tải được danh sách kho.')
       } finally {
-        setLoadingWarehouseOptions(false)
+        if (alive) setLoadingOptions(false)
       }
     }
-
-    fetchWarehouseOptions()
-  }, [isOwnerMode])
-
-  useEffect(() => {
-    if (!selectedWarehouseId) {
-      return
-    }
-
-    const fetchLayout = async () => {
-      try {
-        setLoadingLayout(true)
-        setErrorMessage('')
-        setStatusMessage('')
-        const [response, warehouseResponse] = await Promise.all([
-          isOwnerMode
-            ? layoutApi.getOwnerWarehouseLayout(selectedWarehouseId)
-            : layoutApi.getTenantWarehouseLayout(selectedWarehouseId),
-          warehouseApi.getPublicWarehouseById(selectedWarehouseId).catch(() => null),
-        ])
-        const layoutPayload = getApiData(response) || {}
-        const warehousePayload = getApiData(warehouseResponse) || selectedWarehouseOption || {}
-        const nextLayout = resolveLayoutFromSources(layoutPayload, warehousePayload)
-        const usesDefaultLayout = !isOwnerMode && isDefaultLayoutPayload(layoutPayload)
-        setLayout(nextLayout)
-        setTenantUsesDefaultLayout(usesDefaultLayout)
-        setSelection({ type: 'layout' })
-        if (isOwnerMode && !hasConfiguredLayout(layoutPayload)) {
-          setStatusMessage(
-            `Kho này chưa có layout lưu sẵn. Hệ thống đã khởi tạo lưới 100 ô theo kích thước ${nextLayout.width} x ${nextLayout.height} để bạn bắt đầu cấu hình hình dạng kho, rack và bin.`
-          )
-        } else if (usesDefaultLayout) {
-          setStatusMessage(
-            'Đang hiển thị layout mặc định của Owner vì bản layout riêng của Tenant chưa có dữ liệu.'
-          )
-        }
-      } catch (error) {
-        const fallbackLayout = createDraftLayoutFromWarehouse(selectedWarehouseOption || {})
-        setLayout(fallbackLayout)
-        setTenantUsesDefaultLayout(false)
-        setSelection({ type: 'layout' })
-        if (isOwnerMode) {
-          setStatusMessage(
-            `Chưa lấy được layout đã lưu. Bạn vẫn có thể cấu hình mới trên lưới 100 ô với kích thước ${fallbackLayout.width} x ${fallbackLayout.height}.`
-          )
-        } else {
-          setErrorMessage(error.response?.data?.message || 'Không tải được layout kho đã chọn.')
-        }
-      } finally {
-        setLoadingLayout(false)
-      }
-    }
-
-    fetchLayout()
-  }, [isOwnerMode, selectedWarehouseId, selectedWarehouseOption])
-
-  useEffect(() => {
-    const handlePointerMove = (event) => {
-      const dragState = dragRef.current
-      const canvas = canvasRef.current
-      if (!dragState || !canvas) return
-
-      const deltaX =
-        ((event.clientX - dragState.startClientX) / dragState.canvasWidth) * dragState.parentWidth
-      const deltaY =
-        ((event.clientY - dragState.startClientY) / dragState.canvasHeight) * dragState.parentHeight
-
-      if (dragState.mode === 'resize') {
-        const nextWidth = clamp(
-          dragState.initialWidth + deltaX,
-          MIN_ENTITY_SIZE,
-          Math.max(MIN_ENTITY_SIZE, dragState.parentWidth - dragState.initialX)
-        )
-        const nextHeight = clamp(
-          dragState.initialHeight + deltaY,
-          MIN_ENTITY_SIZE,
-          Math.max(MIN_ENTITY_SIZE, dragState.parentHeight - dragState.initialY)
-        )
-
-        setLayout((current) => {
-          if (dragState.type === 'zone') {
-            return updateZoneByKey(current, dragState.clientKey, (zone) => ({
-              ...zone,
-              width: Number(nextWidth.toFixed(2)),
-              height: Number(nextHeight.toFixed(2)),
-            }))
-          }
-
-          if (dragState.type === 'rack') {
-            return updateRackByKey(current, dragState.clientKey, (rack) => ({
-              ...rack,
-              width: Number(nextWidth.toFixed(2)),
-              height: Number(nextHeight.toFixed(2)),
-            }))
-          }
-
-          return updateBinByKey(current, dragState.clientKey, (bin) => ({
-            ...bin,
-            width: Number(nextWidth.toFixed(2)),
-            height: Number(nextHeight.toFixed(2)),
-          }))
-        })
-
-        return
-      }
-
-      const nextX = clamp(
-        dragState.initialX + deltaX,
-        0,
-        Math.max(0, dragState.parentWidth - dragState.entityWidth)
-      )
-      const nextY = clamp(
-        dragState.initialY + deltaY,
-        0,
-        Math.max(0, dragState.parentHeight - dragState.entityHeight)
-      )
-
-      setLayout((current) => {
-        if (dragState.type === 'zone') {
-          return updateZoneByKey(current, dragState.clientKey, (zone) => ({
-            ...zone,
-            coordinateX: Number(nextX.toFixed(2)),
-            coordinateY: Number(nextY.toFixed(2)),
-          }))
-        }
-
-        if (dragState.type === 'rack') {
-          return updateRackByKey(current, dragState.clientKey, (rack) => ({
-            ...rack,
-            coordinateX: Number(nextX.toFixed(2)),
-            coordinateY: Number(nextY.toFixed(2)),
-          }))
-        }
-
-        return updateBinByKey(current, dragState.clientKey, (bin) => ({
-          ...bin,
-          coordinateX: Number(nextX.toFixed(2)),
-          coordinateY: Number(nextY.toFixed(2)),
-        }))
-      })
-    }
-
-    const handlePointerUp = () => {
-      dragRef.current = null
-    }
-
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', handlePointerUp)
-
+    load()
     return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handlePointerUp)
+      alive = false
     }
-  }, [])
+  }, [isOwner])
 
-  const handleCreateZone = () => {
-    const zoneNumber = layout.zones.length + 1
-    const zone = normalizeZone({
-      name: `Zone ${zoneNumber}`,
-      code: `ZONE-${zoneNumber}`,
-      coordinateX: 5,
-      coordinateY: 5,
-      width: 30,
-      height: 30,
-      racks: [
-        {
-          name: 'Rack mới',
-          code: `RACK-${zoneNumber}-1`,
-          coordinateX: 2,
-          coordinateY: 2,
-          width: 18,
-          height: 18,
-          bins: [],
-        },
-      ],
-    })
-
-    setLayout((current) => ({ ...current, zones: [...current.zones, zone] }))
-    setSelection({ type: 'zone', clientKey: zone.clientKey })
-    setStatusMessage('Đã thêm zone mới cùng một rack mặc định để API có thể lưu zone.')
-  }
-
-  const handleCreateRack = () => {
-    if (selection?.type !== 'zone') {
-      setErrorMessage('Hãy chọn một zone trước khi thêm rack.')
-      return
-    }
-
-    const rack = normalizeRack({
-      name: 'Rack mới',
-      coordinateX: 2,
-      coordinateY: 2,
-      width: 18,
-      height: 18,
-      bins: [],
-    })
-
-    setLayout((current) =>
-      updateZoneByKey(current, selection.clientKey, (zone) => ({
-        ...zone,
-        racks: [...zone.racks, rack],
-      }))
-    )
-    setSelection({ type: 'rack', clientKey: rack.clientKey })
-    setErrorMessage('')
-    setStatusMessage('Đã thêm rack trong zone đang chọn.')
-  }
-
-  const handleCreateBin = () => {
-    if (selection?.type !== 'rack') {
-      setErrorMessage('Hãy chọn một rack trước khi thêm bin.')
-      return
-    }
-
-    setLayout((current) => {
-      let nextBinClientKey = ''
-
-      const nextLayout = updateRackByKey(current, selection.clientKey, (rack) => {
-        const draftBin = normalizeBin({
-          name: 'Bin mới',
-          coordinateX: 1,
-          width: Math.min(8, Math.max(rack.width / 2, 4)),
-          height: Math.min(8, Math.max(rack.height / 4, 4)),
-          maxWeight: 0,
-          maxVolume: 0,
-        })
-
-        const positionedBin = {
-          ...draftBin,
-          coordinateY: getCoordinateYForLevel(rack, draftBin, 1),
-        }
-
-        nextBinClientKey = positionedBin.clientKey
-
-        return {
-          ...rack,
-          bins: [...rack.bins, positionedBin],
-        }
-      })
-
-      if (nextBinClientKey) {
-        setSelection({ type: 'bin', clientKey: nextBinClientKey })
-      }
-
-      return nextLayout
-    })
-    setErrorMessage('')
-    setStatusMessage('Đã thêm bin trong rack đang chọn ở tầng 1.')
-  }
-
-  const handleDeleteSelection = () => {
-    if (!selection || selection.type === 'layout') {
-      setErrorMessage('Hãy chọn zone, rack hoặc bin để xóa.')
-      return
-    }
-
-    setLayout((current) => removeSelection(current, selection))
-    setSelection({ type: 'layout' })
-    setErrorMessage('')
-    setStatusMessage('Đã xóa phần tử khỏi layout cục bộ. Nhấn Lưu để đồng bộ backend.')
-  }
-
-  const handleReloadLayout = async () => {
+  const loadLayout = useCallback(async () => {
     if (!selectedWarehouseId) return
-
+    const warehouse = warehouses.find((item) => item.id === selectedWarehouseId)
     try {
       setLoadingLayout(true)
-      setErrorMessage('')
-      setStatusMessage('')
-      const [response, warehouseResponse] = await Promise.all([
-        isOwnerMode
-          ? layoutApi.getOwnerWarehouseLayout(selectedWarehouseId)
-          : layoutApi.getTenantWarehouseLayout(selectedWarehouseId),
-        warehouseApi.getPublicWarehouseById(selectedWarehouseId).catch(() => null),
-      ])
-      const layoutPayload = getApiData(response) || {}
-      const warehousePayload = getApiData(warehouseResponse) || selectedWarehouseOption || {}
-      const nextLayout = resolveLayoutFromSources(layoutPayload, warehousePayload)
-      const usesDefaultLayout = !isOwnerMode && isDefaultLayoutPayload(layoutPayload)
-      setLayout(nextLayout)
-      setTenantUsesDefaultLayout(usesDefaultLayout)
-      setSelection({ type: 'layout' })
-      setStatusMessage(
-        isOwnerMode && !hasConfiguredLayout(layoutPayload)
-          ? `Đã khởi tạo lại lưới 100 ô theo kích thước ${nextLayout.width} x ${nextLayout.height}. Hãy tiếp tục cấu hình layout cho kho này.`
-          : usesDefaultLayout
-            ? 'Đang hiển thị layout mặc định của Owner vì bản layout riêng của Tenant chưa có dữ liệu.'
-          : 'Đã tải lại layout từ hệ thống.'
-      )
-    } catch (error) {
-      if (isOwnerMode) {
-        const fallbackLayout = createDraftLayoutFromWarehouse(selectedWarehouseOption || {})
-        setLayout(fallbackLayout)
-        setSelection({ type: 'layout' })
-        setStatusMessage(
-          `Không tải lại được layout đã lưu. Hệ thống đã trả về lưới 100 ô với kích thước ${fallbackLayout.width} x ${fallbackLayout.height} để bạn tiếp tục cấu hình.`
+      setError('')
+      setMessage('')
+      const response = isOwner
+        ? await warehouseApi.getOwnerWarehouseLayout(selectedWarehouseId)
+        : await warehouseApi.getTenantWarehouseLayout(selectedWarehouseId)
+      const payload = apiData(response) || {}
+      setLayout(normalizeLayout(payload))
+      setTenantDefault(!isOwner && Boolean(payload.isDefault ?? payload.default))
+      setSelection({ type: 'layout', key: null })
+    } catch (requestError) {
+      const notFound = requestError.response?.status === 404
+      if (isOwner && notFound) {
+        setLayout(
+          normalizeLayout({
+            width: warehouse?.width,
+            length: warehouse?.length,
+            height: warehouse?.height,
+            racks: [],
+          })
         )
-        return
+        setMessage('Kho chưa có layout. Bạn có thể tạo layout mới và lưu lại.')
+      } else {
+        setError(requestError.response?.data?.message || 'Không tải được layout kho.')
       }
-
-      setErrorMessage(error.response?.data?.message || 'Không tải lại được layout.')
     } finally {
       setLoadingLayout(false)
     }
-  }
+  }, [isOwner, selectedWarehouseId, warehouses])
 
-  const handleSaveLayout = async () => {
-    if (!selectedWarehouseId) {
-      setErrorMessage('Vui lòng chọn warehouse trước khi lưu.')
-      return
-    }
+  useEffect(() => {
+    // Loading the selected warehouse is the external synchronization performed by this effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadLayout()
+  }, [loadLayout])
 
-    if (tenantUsesDefaultLayout) {
-      setErrorMessage(
-        'Layout đang là bản mặc định chỉ để xem. Cần tạo lại bản clone Tenant trước khi lưu thay đổi.'
-      )
-      return
-    }
+  useEffect(() => {
+    const onMove = (event) => {
+      const drag = dragRef.current
+      if (!drag) return
+      const deltaX = ((event.clientX - drag.startX) / drag.parentPixelWidth) * drag.parentWidth
+      const deltaY = ((event.clientY - drag.startY) / drag.parentPixelHeight) * drag.parentLength
 
-    const emptyZone = layout.zones.find((zone) => zone.racks.length === 0)
-    if (emptyZone) {
-      setErrorMessage(
-        `${emptyZone.name || 'Zone'} cần có ít nhất một rack vì API lưu thông tin zone trên rack.`
-      )
-      return
-    }
-
-    try {
-      setSavingLayout(true)
-      setErrorMessage('')
-      setStatusMessage('')
-      if (isOwnerMode) {
-        await layoutApi.saveOwnerWarehouseLayout(selectedWarehouseId, toPayload(layout))
-      } else {
-        await layoutApi.saveTenantWarehouseLayout(selectedWarehouseId, toPayload(layout))
+      if (drag.mode === 'move') {
+        const x = clamp(drag.x + deltaX, 0, Math.max(drag.parentWidth - drag.width, 0))
+        const y = clamp(drag.y + deltaY, 0, Math.max(drag.parentLength - drag.length, 0))
+        setLayout((current) =>
+          drag.type === 'rack'
+            ? updateRack(current, drag.key, (rack) => ({ ...rack, coordinateX: x, coordinateY: y }))
+            : updateBin(current, drag.key, (bin) => ({ ...bin, coordinateX: x, coordinateY: y }))
+        )
+        return
       }
-      setStatusMessage('Đã lưu layout thành công.')
-      const response = isOwnerMode
-        ? await layoutApi.getOwnerWarehouseLayout(selectedWarehouseId)
-        : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
-      setLayout(normalizeLayout(getApiData(response) || {}))
-    } catch (error) {
-      setErrorMessage(
-        error.response?.data?.message ||
-          'Lưu layout thất bại. Nếu bạn vừa xóa bin đang có tồn kho, backend có thể đã chặn thao tác này.'
+
+      const maxRatio = drag.type === 'bin' ? BIN_MAX_RATIO : 1
+      const maxWidth = Math.max(
+        MIN_ENTITY_SIZE,
+        Math.min(drag.parentWidth - drag.x, drag.parentWidth * maxRatio)
       )
-    } finally {
-      setSavingLayout(false)
-    }
-  }
-
-  const updateSelectedEntityField = (field, value) => {
-    if (!selection || selection.type === 'layout') {
-      setLayout((current) => ({
-        ...current,
-        [field]:
-          field === 'targetRackCount' || field === 'targetBinCount'
-            ? Math.max(ensureNumber(value, 0), 0)
-            : ensureNumber(value, DEFAULT_LAYOUT_SIZE),
-      }))
-      return
-    }
-
-    if (selection.type === 'zone') {
+      const maxLength = Math.max(
+        MIN_ENTITY_SIZE,
+        Math.min(drag.parentLength - drag.y, drag.parentLength * maxRatio)
+      )
+      const width = clamp(drag.width + deltaX, MIN_ENTITY_SIZE, maxWidth)
+      const length = clamp(drag.length + deltaY, MIN_ENTITY_SIZE, maxLength)
       setLayout((current) =>
-        updateZoneByKey(current, selection.clientKey, (zone) => ({
-          ...zone,
-          [field]: ['name'].includes(field) ? value : ensureNumber(value, zone[field]),
-        }))
+        drag.type === 'rack'
+          ? updateRack(current, drag.key, (rack) => ({ ...rack, width, length }))
+          : updateBin(current, drag.key, (bin) => ({ ...bin, width, length }))
       )
-      return
     }
-
-    if (selection.type === 'rack') {
-      setLayout((current) =>
-        updateRackByKey(current, selection.clientKey, (rack) => ({
-          ...rack,
-          [field]: ['name', 'code'].includes(field) ? value : ensureNumber(value, rack[field]),
-        }))
-      )
-      return
+    const onUp = () => {
+      dragRef.current = null
+      document.body.style.userSelect = ''
     }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+    }
+  }, [])
 
-    setLayout((current) =>
-      updateBinByKey(current, selection.clientKey, (bin) => ({
-        ...bin,
-        [field]: ['name', 'code'].includes(field) ? value : ensureNumber(value, bin[field]),
-      }))
-    )
-  }
-
-  const startDrag = (event, type, entity, parentDimensions) => {
+  const startInteraction = (event, type, entity, mode, parentElement) => {
+    if (footprintMode || (mode === 'resize' && !isOwner) || !parentElement) return
+    event.preventDefault()
     event.stopPropagation()
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    setSelection({ type, clientKey: entity.clientKey })
+    const rect = parentElement.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+    const parentRack =
+      type === 'bin'
+        ? layout.racks.find((rack) => rack.bins.some((bin) => bin.clientKey === entity.clientKey))
+        : null
+    const parent =
+      type === 'rack'
+        ? { width: layout.width, length: layout.length }
+        : { width: parentRack?.width ?? 1, length: parentRack?.length ?? 1 }
     dragRef.current = {
-      mode: 'move',
       type,
-      clientKey: entity.clientKey,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      initialX: entity.coordinateX,
-      initialY: entity.coordinateY,
-      entityWidth: entity.width,
-      entityHeight: entity.height,
-      parentWidth: parentDimensions.width,
-      parentHeight: parentDimensions.height,
-      canvasWidth: canvas.getBoundingClientRect().width,
-      canvasHeight: canvas.getBoundingClientRect().height,
+      mode,
+      key: entity.clientKey,
+      startX: event.clientX,
+      startY: event.clientY,
+      parentPixelWidth: rect.width,
+      parentPixelHeight: rect.height,
+      parentWidth: parent.width,
+      parentLength: parent.length,
+      x: entity.coordinateX,
+      y: entity.coordinateY,
+      width: entity.width,
+      length: entity.length,
     }
+    // eslint-disable-next-line react-hooks/immutability
+    document.body.style.userSelect = 'none'
+    setSelection({ type, key: entity.clientKey })
   }
 
-  const paintFootprintCell = (row, col, mode = footprintBrush) => {
-    const cellKey = createFootprintCellKey(row, col)
+  const addRack = () => {
+    if (!isOwner) return
+    const rack = normalizeRack({
+      name: `Rack ${layout.racks.length + 1}`,
+      code: `RACK-${Date.now().toString().slice(-6)}`,
+      coordinateX: 2,
+      coordinateY: 2,
+      width: 18,
+      length: 18,
+      height: 18,
+      bins: [],
+    })
+    setLayout((current) => ({ ...current, racks: [...current.racks, rack] }))
+    setSelection({ type: 'rack', key: rack.clientKey })
+    setFootprintMode(false)
+  }
 
+  const addBin = () => {
+    if (!isOwner || !selectedRack) {
+      setError('Hãy chọn một Rack trước khi thêm Bin.')
+      return
+    }
+    const bin = normalizeBin({
+      name: `Bin ${selectedRack.bins.length + 1}`,
+      code: `BIN-${Date.now().toString().slice(-6)}`,
+      coordinateX: 1,
+      coordinateY: 1,
+      width: Math.min(8, Math.max(selectedRack.width / 2, 4)),
+      length: Math.min(8, Math.max(selectedRack.length / 4, 4)),
+      height: 8,
+    })
+    setLayout((current) =>
+      updateRack(current, selectedRack.clientKey, (rack) => ({ ...rack, bins: [...rack.bins, bin] }))
+    )
+    setSelection({ type: 'bin', key: bin.clientKey })
+    setError('')
+  }
+
+  const removeSelected = () => {
+    if (!isOwner || selection.type === 'layout') return
     setLayout((current) => {
-      const nextCells = new Set(normalizeFootprintCells(current.footprintCells))
-      if (mode === 'add') {
-        nextCells.add(cellKey)
-      } else {
-        nextCells.delete(cellKey)
+      if (selection.type === 'rack') {
+        return { ...current, racks: current.racks.filter((rack) => rack.clientKey !== selection.key) }
       }
-
       return {
         ...current,
-        footprintCells: nextCells.size ? Array.from(nextCells) : [cellKey],
+        racks: current.racks.map((rack) => ({
+          ...rack,
+          bins: rack.bins.filter((bin) => bin.clientKey !== selection.key),
+        })),
       }
     })
+    setSelection({ type: 'layout', key: null })
   }
 
-  const handleFootprintPointerDown = (event, row, col) => {
-    if (!isOwnerMode || !isFootprintEditMode) return
-    event.stopPropagation()
-    setIsFootprintPainting(true)
-    paintFootprintCell(row, col)
-  }
-
-  const handleFootprintPointerEnter = (row, col) => {
-    if (!isOwnerMode || !isFootprintEditMode || !isFootprintPainting) return
-    paintFootprintCell(row, col)
-  }
-
-  const handleFillFootprint = () => {
-    setLayout((current) => ({ ...current, footprintCells: createFullFootprint() }))
-    setStatusMessage('Đã tô kín toàn bộ 100 ô của mặt bằng kho.')
-    setErrorMessage('')
-  }
-
-  const handleClearFootprint = () => {
-    setLayout((current) => ({
-      ...current,
-      footprintCells: [createFootprintCellKey(0, 0)],
-    }))
-    setStatusMessage('Đã xóa phần footprint hiện tại. Hãy tô lại hình dạng kho.')
-    setErrorMessage('')
-  }
-
-  const startResize = (event, type, entity, parentDimensions) => {
-    event.stopPropagation()
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    setSelection({ type, clientKey: entity.clientKey })
-    dragRef.current = {
-      mode: 'resize',
-      type,
-      clientKey: entity.clientKey,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      initialX: entity.coordinateX,
-      initialY: entity.coordinateY,
-      initialWidth: entity.width,
-      initialHeight: entity.height,
-      entityWidth: entity.width,
-      entityHeight: entity.height,
-      parentWidth: parentDimensions.width,
-      parentHeight: parentDimensions.height,
-      canvasWidth: canvas.getBoundingClientRect().width,
-      canvasHeight: canvas.getBoundingClientRect().height,
+  const saveLayout = async () => {
+    if (!selectedWarehouseId || tenantDefault) return
+    try {
+      setSaving(true)
+      setError('')
+      const response = isOwner
+        ? await warehouseApi.saveOwnerWarehouseLayout(selectedWarehouseId, toPayload(layout))
+        : await warehouseApi.saveTenantWarehouseLayout(selectedWarehouseId, toPayload(layout))
+      const saved = apiData(response)
+      if (saved) setLayout(normalizeLayout(saved))
+      setSelection({ type: 'layout', key: null })
+      setMessage('Đã lưu layout kho thành công.')
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || 'Lưu layout không thành công.')
+    } finally {
+      setSaving(false)
     }
   }
 
-  const handleMoveEntityFrom3D = (type, clientKey, nextCoordinateX, nextCoordinateY) => {
-    setSelection({ type, clientKey })
-
+  const changeProperty = (field, value) => {
+    const numericFields = new Set([
+      'width',
+      'length',
+      'height',
+      'coordinateX',
+      'coordinateY',
+      'positionZ',
+      'rotation',
+      'shelfLevel',
+      'maxWeight',
+      'maxVolume',
+    ])
+    const nextValue = numericFields.has(field) ? numberOf(value) : value
     setLayout((current) => {
-      if (type === 'zone') {
-        return updateZoneByKey(current, clientKey, (zone) => ({
-          ...zone,
-          coordinateX: Number(
-            clampCoordinate(nextCoordinateX, zone.width, current.width).toFixed(2)
-          ),
-          coordinateY: Number(
-            clampCoordinate(nextCoordinateY, zone.height, current.height).toFixed(2)
-          ),
-        }))
+      if (selection.type === 'layout') return { ...current, [field]: nextValue }
+      if (selection.type === 'rack') {
+        return updateRack(current, selection.key, (rack) => ({ ...rack, [field]: nextValue }))
       }
-
-      if (type === 'rack') {
-        return current.zones.reduce(
-          (nextLayout, zone) =>
-            zone.racks.some((rack) => rack.clientKey === clientKey)
-              ? updateRackByKey(nextLayout, clientKey, (rack) => ({
-                  ...rack,
-                  coordinateX: Number(
-                    clampCoordinate(nextCoordinateX, rack.width, zone.width).toFixed(2)
-                  ),
-                  coordinateY: Number(
-                    clampCoordinate(nextCoordinateY, rack.height, zone.height).toFixed(2)
-                  ),
-                }))
-              : nextLayout,
-          current
-        )
-      }
-
-      return current.zones.reduce(
-        (nextLayout, zone) =>
-          zone.racks.some((rack) => rack.bins.some((bin) => bin.clientKey === clientKey))
-            ? updateBinByKey(nextLayout, clientKey, (bin, rack) => ({
-                ...bin,
-                coordinateX: Number(
-                  clampCoordinate(nextCoordinateX, bin.width, rack.width).toFixed(2)
-                ),
-                coordinateY: Number(
-                  clampCoordinate(nextCoordinateY, bin.height, rack.height).toFixed(2)
-                ),
-              }))
-            : nextLayout,
-        current
-      )
+      return updateBin(current, selection.key, (bin) => ({ ...bin, [field]: nextValue }))
     })
   }
 
-  const warehouseName = availableWarehouses.find(
-    (item) => item.warehouseId === selectedWarehouseId
-  )?.warehouseName
+  const toggleFootprint = (row, column) => {
+    if (!isOwner || !footprintMode) return
+    const key = cellKey(row, column)
+    setLayout((current) => {
+      const cells = new Set(current.footprintCells)
+      if (footprintTool === 'add') cells.add(key)
+      else cells.delete(key)
+      return { ...current, footprintCells: [...cells] }
+    })
+  }
+
+  const propertyFields = selection.type === 'layout'
+    ? [
+        ['width', 'Rộng'],
+        ['length', 'Dài'],
+        ['height', 'Cao'],
+      ]
+    : selection.type === 'rack'
+      ? [
+          ['name', 'Tên'],
+          ['code', 'Mã'],
+          ['coordinateX', 'Tọa độ X'],
+          ['coordinateY', 'Tọa độ Y'],
+          ['width', 'Rộng'],
+          ['length', 'Dài'],
+          ['height', 'Cao'],
+          ['rotation', 'Góc xoay'],
+          ['maxWeight', 'Tải trọng tối đa'],
+          ['maxVolume', 'Thể tích tối đa'],
+        ]
+      : [
+          ['name', 'Tên'],
+          ['code', 'Mã'],
+          ['coordinateX', 'Tọa độ X'],
+          ['coordinateY', 'Tọa độ Y'],
+          ['width', 'Rộng'],
+          ['length', 'Dài'],
+          ['height', 'Cao'],
+          ['shelfLevel', 'Tầng'],
+          ['maxWeight', 'Tải trọng tối đa'],
+          ['maxVolume', 'Thể tích tối đa'],
+        ]
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900">
       <Header />
-
-      <div className="md:hidden">
-        {isMobileOpen && (
-          <button
-            className="fixed inset-0 z-40 bg-slate-900/30"
-            onClick={() => dispatch(closeMobileSidebar())}
-          />
-        )}
-      </div>
-
+      {isMobileOpen && (
+        <button
+          type="button"
+          aria-label="Đóng menu"
+          className="fixed inset-0 z-40 bg-slate-900/30 md:hidden"
+          onClick={() => dispatch(closeMobileSidebar())}
+        />
+      )}
       <div className="flex pt-14">
         <Sidebar currentRole={currentRole} />
-
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+          className={`min-w-0 flex-1 transition-all duration-150 ${
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 md:p-8">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <main className="mx-auto w-full max-w-[1700px] space-y-4 p-3 sm:p-5 lg:p-7">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
-                  <Warehouse className="h-7 w-7 text-blue-600" />
-                  Thiết kế layout kho 2D + 3D
+                <h1 className="flex items-center gap-2 text-2xl font-bold">
+                  <Warehouse className="h-7 w-7 text-blue-600" /> Layout kho
                 </h1>
-                <p className="mt-2 max-w-3xl text-sm text-slate-500">
-                  {isOwnerMode
-                    ? 'Chọn kho của bạn để quản lý sơ đồ mặc định, chỉnh zone, rack, bin trên canvas 2D và quan sát không gian kho bằng preview 3D đồng bộ theo thời gian thực.'
-                    : 'Chọn kho từ danh sách hợp đồng đang hiệu lực để xem zone, rack, bin trên canvas 2D và preview 3D; vị trí chỉ có thể cập nhật trên bản layout riêng của Tenant.'}
+                <p className="mt-1 text-sm text-slate-500">
+                  {isOwner
+                    ? 'Tạo Rack, Bin và hình dạng kho. Dữ liệu được lưu theo đúng cấu trúc BE, không có Zone.'
+                    : 'Di chuyển Rack và Bin trên layout riêng của Tenant.'}
                 </p>
               </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={handleReloadLayout}
+                  onClick={loadLayout}
                   disabled={!selectedWarehouseId || loadingLayout}
-                  className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
                 >
-                  {loadingLayout ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <RotateCcw className="mr-2 h-4 w-4" />
-                  )}
-                  Tải lại
+                  <RotateCcw className={`mr-2 h-4 w-4 ${loadingLayout ? 'animate-spin' : ''}`} /> Tải lại
                 </button>
                 <button
                   type="button"
-                  onClick={handleSaveLayout}
-                  disabled={
-                    !selectedWarehouseId ||
-                    savingLayout ||
-                    loadingLayout ||
-                    tenantUsesDefaultLayout
-                  }
-                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  onClick={saveLayout}
+                  disabled={!selectedWarehouseId || saving || loadingLayout || tenantDefault}
+                  className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-slate-300"
                 >
-                  {savingLayout ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Lưu sơ đồ
+                  {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                  Lưu layout
                 </button>
               </div>
             </div>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="grid gap-4 lg:grid-cols-[minmax(280px,360px)_1fr]">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                    {isOwnerMode ? 'Warehouse của owner' : 'Warehouse từ hợp đồng'}
-                  </label>
-                  <select
-                    value={selectedWarehouseId}
-                    onChange={(event) => setPreferredWarehouseId(event.target.value)}
-                    disabled={loadingWarehouseOptions || !availableWarehouses.length}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 focus:border-blue-500 focus:bg-white focus:outline-none"
-                  >
-                    {!availableWarehouses.length ? (
-                      <option value="">
-                        {loadingWarehouseOptions
-                          ? isOwnerMode
-                            ? 'Đang tải danh sách kho...'
-                            : 'Đang tải hợp đồng...'
-                          : isOwnerMode
-                            ? 'Bạn chưa có warehouse để thiết kế layout'
-                            : 'Không có hợp đồng ACTIVE để mở layout'}
-                      </option>
-                    ) : null}
-                    {availableWarehouses.map((item) => (
-                      <option key={item.warehouseId} value={item.warehouseId}>
-                        {item.warehouseName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {isOwnerMode ? (
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <button
-                      type="button"
-                      onClick={handleCreateZone}
-                      className="inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Thêm zone
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCreateRack}
-                      className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100"
-                    >
-                      <Layers3 className="mr-2 h-4 w-4" />
-                      Thêm rack
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCreateBin}
-                      className="inline-flex items-center justify-center rounded-xl border border-fuchsia-200 bg-fuchsia-50 px-4 py-3 text-sm font-semibold text-fuchsia-700 hover:bg-fuchsia-100"
-                    >
-                      <Package2 className="mr-2 h-4 w-4" />
-                      Thêm bin
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                    Tenant xem layout và chỉ được cập nhật vị trí trên bản layout riêng.
-                  </div>
-                )}
-              </div>
-
-              {errorMessage ? (
-                <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                  <AlertCircle className="mr-2 inline h-4 w-4" />
-                  {errorMessage}
-                </div>
-              ) : null}
-
-              {statusMessage ? (
-                <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                  {statusMessage}
-                </div>
-              ) : null}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <label className="mb-2 block text-xs font-bold tracking-wider text-slate-400 uppercase">
+                Chọn warehouse
+              </label>
+              <select
+                value={selectedWarehouseId}
+                onChange={(event) => setPreferredWarehouseId(event.target.value)}
+                disabled={loadingOptions || !warehouses.length}
+                className={inputClass}
+              >
+                {!warehouses.length && <option value="">Không có warehouse phù hợp</option>}
+                {warehouses.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>
+                ))}
+              </select>
             </section>
 
-            <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_320px]">
-              <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <h2 className="text-base font-bold text-slate-900">Cây layout</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Chọn phần tử để sửa hoặc kéo trực tiếp trên canvas.
-                </p>
+            {error && (
+              <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
+              </div>
+            )}
+            {message && <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">{message}</div>}
+            {tenantDefault && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                Đây là layout mặc định của Owner. Layout Tenant chưa được clone nên chưa thể lưu vị trí riêng.
+              </div>
+            )}
 
-                <div className="mt-4 space-y-3">
-                  {renderTreeItem(
-                    warehouseName ? `Layout - ${warehouseName}` : 'Layout tổng',
-                    selection?.type === 'layout',
-                    () => setSelection({ type: 'layout' }),
-                    `${layout.width} x ${layout.height} | ${activeFootprintCount}/100 ô | ${currentRackCount} rack | ${currentBinCount} bin`
-                  )}
-
-                  {layout.zones.map((zone, zoneIndex) => (
-                    <div key={zone.clientKey} className="space-y-2">
-                      {renderTreeItem(
-                        `Zone ${zoneIndex + 1}: ${zone.name}`,
-                        selection?.type === 'zone' && selection?.clientKey === zone.clientKey,
-                        () => setSelection({ type: 'zone', clientKey: zone.clientKey }),
-                        `${zone.width} x ${zone.height}`
-                      )}
-
-                      {zone.racks.map((rack, rackIndex) => (
-                        <div key={rack.clientKey} className="ml-3 space-y-2 border-l border-slate-200 pl-3">
-                          {renderTreeItem(
-                            `Rack ${rackIndex + 1}: ${rack.name}`,
-                            selection?.type === 'rack' && selection?.clientKey === rack.clientKey,
-                            () => setSelection({ type: 'rack', clientKey: rack.clientKey }),
-                            `${rack.width} x ${rack.height}`
-                          )}
-
-                          {rack.bins.map((bin, binIndex) => (
-                            <div key={bin.clientKey} className="ml-3 border-l border-slate-100 pl-3">
-                              {renderTreeItem(
-                                `Bin ${binIndex + 1}: ${bin.name}`,
-                                selection?.type === 'bin' &&
-                                  selection?.clientKey === bin.clientKey,
-                                () => setSelection({ type: 'bin', clientKey: bin.clientKey }),
-                                `${bin.width} x ${bin.height}`
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ))}
+            <div className="grid min-w-0 gap-4 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
+              <aside className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="font-bold">Cấu trúc</h2>
+                  <span className="text-xs text-slate-500">{layout.racks.length} Rack · {binCount} Bin</span>
+                </div>
+                {isOwner && (
+                  <div className="mb-4 grid gap-2">
+                    <button type="button" onClick={addRack} className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white">
+                      <PackagePlus className="mr-2 h-4 w-4" /> Thêm Rack
+                    </button>
+                    <button type="button" onClick={addBin} className="inline-flex items-center justify-center rounded-lg border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700">
+                      <Box className="mr-2 h-4 w-4" /> Thêm Bin
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelection({ type: 'layout', key: null })}
+                  className={`mb-2 w-full rounded-lg border px-3 py-2 text-left text-sm font-semibold ${selection.type === 'layout' ? 'border-blue-300 bg-blue-50' : 'border-slate-200'}`}
+                >
+                  Layout tổng
+                </button>
+                <div className="max-h-[520px] space-y-2 overflow-auto">
+                  {layout.racks.map((rack) => (
+                    <div key={rack.clientKey} className="rounded-xl border border-slate-200 p-2">
+                      <button
+                        type="button"
+                        onClick={() => { setSelection({ type: 'rack', key: rack.clientKey }); setFootprintMode(false) }}
+                        className={`w-full rounded-lg px-2 py-2 text-left text-sm font-semibold ${selection.key === rack.clientKey ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}
+                      >
+                        {rack.name || rack.code} <span className="text-xs font-normal text-slate-400">({rack.bins.length} Bin)</span>
+                      </button>
+                      <div className="ml-3 space-y-1 border-l border-slate-200 pl-2">
+                        {rack.bins.map((bin) => (
+                          <button
+                            key={bin.clientKey}
+                            type="button"
+                            onClick={() => { setSelection({ type: 'bin', key: bin.clientKey }); setFootprintMode(false) }}
+                            className={`block w-full rounded px-2 py-1.5 text-left text-xs ${selection.key === bin.clientKey ? 'bg-emerald-50 font-semibold text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                          >
+                            {bin.name || bin.code}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
               </aside>
 
-              <div className="grid gap-6">
-                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h2 className="text-base font-bold text-slate-900">Canvas 2D</h2>
-                      <p className="text-sm text-slate-500">
-                        Owner có thể tô hoặc xóa từng ô để tạo hình kho thật, ví dụ kho chữ U thì
-                        chỉ giữ các ô thuộc phần kho và chừa phần khuyết ở giữa.
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
-                      Tỷ lệ: {layout.width} x {layout.height} | {activeFootprintCount}/100 ô
-                    </div>
+              <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex rounded-lg bg-slate-100 p-1">
+                    <button type="button" onClick={() => setView('2d')} className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '2d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>2D</button>
+                    <button type="button" onClick={() => setView('3d')} className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === '3d' ? 'bg-white shadow-sm' : 'text-slate-500'}`}>3D</button>
                   </div>
-
-                  {isOwnerMode ? (
-                    <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setIsFootprintEditMode((current) => !current)}
-                          className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                            isFootprintEditMode
-                              ? 'bg-slate-900 text-white'
-                              : 'border border-slate-200 bg-white text-slate-700'
-                          }`}
-                        >
-                          {isFootprintEditMode ? 'Đang chỉnh hình kho' : 'Chỉnh hình kho'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFootprintBrush('erase')}
-                          className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                            footprintBrush === 'erase'
-                              ? 'bg-rose-600 text-white'
-                              : 'border border-rose-200 bg-white text-rose-700'
-                          }`}
-                        >
-                          Xóa ô
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setFootprintBrush('add')}
-                          className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                            footprintBrush === 'add'
-                              ? 'bg-emerald-600 text-white'
-                              : 'border border-emerald-200 bg-white text-emerald-700'
-                          }`}
-                        >
-                          Tô ô
-                        </button>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={handleFillFootprint}
-                          className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700"
-                        >
-                          Tô kín 100 ô
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleClearFootprint}
-                          className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700"
-                        >
-                          Xóa hết để vẽ lại
-                        </button>
-                      </div>
+                  {isOwner && view === '2d' && (
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" onClick={() => setFootprintMode(false)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${!footprintMode ? 'bg-blue-600 text-white' : 'bg-slate-100'}`}>Chỉnh Rack / Bin</button>
+                      <button type="button" onClick={() => setFootprintMode(true)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${footprintMode ? 'bg-blue-600 text-white' : 'bg-slate-100'}`}><Grid3X3 className="mr-1 inline h-3.5 w-3.5" />Tô hình kho</button>
+                      {footprintMode && (
+                        <>
+                          <button type="button" onClick={() => setFootprintTool('add')} className={`rounded-lg px-2 py-1.5 text-xs ${footprintTool === 'add' ? 'bg-emerald-600 text-white' : 'bg-slate-100'}`}>Tô ô</button>
+                          <button type="button" onClick={() => setFootprintTool('erase')} className={`rounded-lg px-2 py-1.5 text-xs ${footprintTool === 'erase' ? 'bg-red-600 text-white' : 'bg-slate-100'}`}>Xóa ô</button>
+                        </>
+                      )}
                     </div>
-                  ) : null}
+                  )}
+                </div>
 
-                  <div className="overflow-auto rounded-2xl border border-slate-200 bg-slate-100 p-2 sm:p-4">
+                {loadingLayout ? (
+                  <div className="flex h-[560px] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-blue-600" /></div>
+                ) : view === '3d' ? (
+                  <div className="h-[560px] overflow-hidden rounded-xl border border-slate-200">
+                    <WarehouseLayoutPreview3D layout={layout} />
+                  </div>
+                ) : (
+                  <div className="overflow-auto rounded-xl bg-slate-100 p-3 sm:p-5">
                     <div
-                      ref={canvasRef}
-                      className="relative mx-auto aspect-square min-h-[320px] w-full max-w-[860px] rounded-[28px] border border-slate-300 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.9),_rgba(226,232,240,0.9))] shadow-inner sm:min-h-[420px] lg:min-h-[560px]"
-                      onClick={() => setSelection({ type: 'layout' })}
+                      className="relative mx-auto aspect-square w-full min-w-[520px] max-w-[820px] overflow-hidden border-2 border-slate-300 bg-white shadow-inner"
+                      onPointerDown={() => setSelection({ type: 'layout', key: null })}
                     >
-                      <div className="pointer-events-none absolute inset-0 rounded-[28px] bg-[linear-gradient(to_right,rgba(148,163,184,0.14)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.14)_1px,transparent_1px)] bg-[size:10%_10%]" />
-
-                      {Array.from({ length: FOOTPRINT_GRID_SIZE }).map((_, row) =>
-                        Array.from({ length: FOOTPRINT_GRID_SIZE }).map((__, col) => {
-                          const cellKey = createFootprintCellKey(row, col)
-                          const isActive = footprintCellSet.has(cellKey)
-
+                      <div className="absolute inset-0 grid grid-cols-10 grid-rows-10">
+                        {Array.from({ length: FOOTPRINT_GRID_SIZE ** 2 }, (_, index) => {
+                          const row = Math.floor(index / FOOTPRINT_GRID_SIZE)
+                          const column = index % FOOTPRINT_GRID_SIZE
+                          const active = footprintSet.has(cellKey(row, column))
                           return (
                             <button
-                              key={cellKey}
+                              key={cellKey(row, column)}
                               type="button"
-                              aria-label={`footprint-${row}-${col}`}
-                              onPointerDown={(event) => handleFootprintPointerDown(event, row, col)}
-                              onPointerEnter={() => handleFootprintPointerEnter(row, col)}
-                              onClick={(event) => {
-                                if (isOwnerMode && isFootprintEditMode) {
-                                  event.stopPropagation()
-                                  paintFootprintCell(row, col)
-                                }
-                              }}
-                              className={`absolute border border-slate-300/50 transition ${
-                                isFootprintEditMode && isOwnerMode ? 'cursor-crosshair' : 'cursor-default'
-                              }`}
-                              style={{
-                                left: `${(col / FOOTPRINT_GRID_SIZE) * 100}%`,
-                                top: `${(row / FOOTPRINT_GRID_SIZE) * 100}%`,
-                                width: `${100 / FOOTPRINT_GRID_SIZE}%`,
-                                height: `${100 / FOOTPRINT_GRID_SIZE}%`,
-                                background: isActive
-                                  ? 'rgba(15,23,42,0.14)'
-                                  : 'rgba(255,255,255,0.78)',
-                              }}
+                              aria-label={`Ô ${row + 1}-${column + 1}`}
+                              onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); toggleFootprint(row, column) }}
+                              className={`border border-slate-200/80 ${active ? 'bg-blue-50' : 'bg-slate-300/80'} ${footprintMode ? 'cursor-crosshair' : 'pointer-events-none'}`}
                             />
                           )
-                        })
-                      )}
+                        })}
+                      </div>
 
-                      {loadingLayout ? (
-                        <div className="absolute inset-0 z-30 flex items-center justify-center rounded-[28px] bg-white/70 backdrop-blur-sm">
-                          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 shadow-sm">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Đang tải layout...
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {layout.zones.map((zone) => (
+                      {!footprintMode && layout.racks.map((rack) => (
                         <div
-                          key={zone.clientKey}
-                          className={`absolute rounded-2xl border-2 shadow-sm transition ${
-                            selection?.type === 'zone' && selection?.clientKey === zone.clientKey
-                              ? 'z-20 border-emerald-500 ring-4 ring-emerald-100'
-                              : 'border-emerald-300'
-                          }`}
+                          key={rack.clientKey}
+                          onPointerDown={(event) => startInteraction(event, 'rack', rack, 'move', event.currentTarget.parentElement)}
+                          className={`absolute touch-none overflow-hidden rounded-md border-2 bg-blue-500/80 text-white shadow-md ${selection.key === rack.clientKey ? 'z-20 border-blue-950 ring-2 ring-blue-300' : 'z-10 border-blue-700'}`}
                           style={{
-                            left: `${(zone.coordinateX / layout.width) * 100}%`,
-                            top: `${(zone.coordinateY / layout.height) * 100}%`,
-                            width: `${(zone.width / layout.width) * 100}%`,
-                            height: `${(zone.height / layout.height) * 100}%`,
-                            background:
-                              'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.2))',
+                            left: `${(rack.coordinateX / layout.width) * 100}%`,
+                            top: `${(rack.coordinateY / layout.length) * 100}%`,
+                            width: `${(rack.width / layout.width) * 100}%`,
+                            height: `${(rack.length / layout.length) * 100}%`,
                           }}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setSelection({ type: 'zone', clientKey: zone.clientKey })
-                          }}
-                          onPointerDown={(event) =>
-                            startDrag(event, 'zone', zone, {
-                              width: layout.width,
-                              height: layout.height,
-                            })
-                          }
                         >
-                          <div className="flex items-center justify-between border-b border-emerald-200 bg-white/70 px-3 py-2 text-xs font-bold text-emerald-700">
-                            <span>{zone.name}</span>
-                            <span>
-                              {zone.width} x {zone.height}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            className="absolute right-1 bottom-1 z-30 h-3.5 w-3.5 cursor-se-resize rounded-sm border border-emerald-500 bg-white shadow sm:h-4 sm:w-4"
-                            onPointerDown={(event) =>
-                              startResize(event, 'zone', zone, {
-                                width: layout.width,
-                                height: layout.height,
-                              })
-                            }
-                          />
-
-                          {zone.racks.map((rack) => (
+                          <div className="pointer-events-none truncate bg-blue-800/80 px-1.5 py-1 text-[10px] font-bold sm:text-xs">{rack.name || rack.code}</div>
+                          {rack.bins.map((bin) => (
                             <div
-                              key={rack.clientKey}
-                              className={`absolute rounded-xl border-2 transition ${
-                                selection?.type === 'rack' && selection?.clientKey === rack.clientKey
-                                  ? 'z-20 border-amber-500 ring-4 ring-amber-100'
-                                  : 'border-amber-300'
-                              }`}
+                              key={bin.clientKey}
+                              onPointerDown={(event) => startInteraction(event, 'bin', bin, 'move', event.currentTarget.parentElement)}
+                              className={`absolute touch-none overflow-hidden rounded-sm border bg-emerald-500/90 text-white shadow ${selection.key === bin.clientKey ? 'z-20 border-white ring-2 ring-emerald-200' : 'z-10 border-emerald-800'}`}
                               style={{
-                                left: `${(rack.coordinateX / zone.width) * 100}%`,
-                                top: `${(rack.coordinateY / zone.height) * 100}%`,
-                                width: `${(rack.width / zone.width) * 100}%`,
-                                height: `${(rack.height / zone.height) * 100}%`,
-                                background:
-                                  'linear-gradient(135deg, rgba(245,158,11,0.16), rgba(251,191,36,0.24))',
+                                left: `${(bin.coordinateX / rack.width) * 100}%`,
+                                top: `${(bin.coordinateY / rack.length) * 100}%`,
+                                width: `${(bin.width / rack.width) * 100}%`,
+                                height: `${(bin.length / rack.length) * 100}%`,
                               }}
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                setSelection({ type: 'rack', clientKey: rack.clientKey })
-                              }}
-                              onPointerDown={(event) =>
-                                startDrag(event, 'rack', rack, {
-                                  width: zone.width,
-                                  height: zone.height,
-                                })
-                              }
                             >
-                              <div className="flex items-center justify-between border-b border-amber-200 bg-white/75 px-2 py-1 text-[11px] font-bold text-amber-700">
-                                <span>{rack.name}</span>
-                                <span>{rack.code || 'No code'}</span>
-                              </div>
-                              <button
-                                type="button"
-                                className="absolute right-1 bottom-1 z-30 h-3 w-3 cursor-se-resize rounded-sm border border-amber-500 bg-white shadow sm:h-3.5 sm:w-3.5"
-                                onPointerDown={(event) =>
-                                  startResize(event, 'rack', rack, {
-                                    width: zone.width,
-                                    height: zone.height,
-                                  })
-                                }
-                              />
-
-                              {rack.bins.map((bin) => (
-                                <div
-                                  key={bin.clientKey}
-                                  className={`absolute rounded-lg border transition ${
-                                    selection?.type === 'bin' &&
-                                    selection?.clientKey === bin.clientKey
-                                      ? 'z-20 border-fuchsia-500 ring-4 ring-fuchsia-100'
-                                      : 'border-fuchsia-300'
-                                  }`}
-                                  style={{
-                                    left: `${(bin.coordinateX / rack.width) * 100}%`,
-                                    top: `${(bin.coordinateY / rack.height) * 100}%`,
-                                    width: `${(bin.width / rack.width) * 100}%`,
-                                    height: `${(bin.height / rack.height) * 100}%`,
-                                    background:
-                                      'linear-gradient(135deg, rgba(217,70,239,0.14), rgba(232,121,249,0.22))',
-                                  }}
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    setSelection({ type: 'bin', clientKey: bin.clientKey })
-                                  }}
-                                  onPointerDown={(event) =>
-                                    startDrag(event, 'bin', bin, {
-                                      width: rack.width,
-                                      height: rack.height,
-                                    })
-                                  }
-                                >
-                                  <div className="flex h-full flex-col justify-between rounded-lg px-2 py-1 text-[10px] font-semibold text-fuchsia-800">
-                                    <span>{bin.name}</span>
-                                    <span>{bin.code || 'No code'}</span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    className="absolute right-0.5 bottom-0.5 z-30 h-2.5 w-2.5 cursor-se-resize rounded-sm border border-fuchsia-500 bg-white shadow sm:h-3 sm:w-3"
-                                    onPointerDown={(event) =>
-                                      startResize(event, 'bin', bin, {
-                                        width: rack.width,
-                                        height: rack.height,
-                                      })
-                                    }
-                                  />
-                                </div>
-                              ))}
+                              <span className="pointer-events-none block truncate px-1 text-[9px] font-semibold">{bin.name || bin.code}</span>
+                              {isOwner && (
+                                <button
+                                  type="button"
+                                  aria-label="Đổi kích thước Bin"
+                                  onPointerDown={(event) => startInteraction(event, 'bin', bin, 'resize', event.currentTarget.parentElement?.parentElement)}
+                                  className="absolute right-0 bottom-0 flex h-4 w-4 touch-none cursor-se-resize items-end justify-end bg-emerald-950/80 text-[10px] leading-none text-white"
+                                >◢</button>
+                              )}
                             </div>
                           ))}
+                          {isOwner && (
+                            <button
+                              type="button"
+                              aria-label="Đổi kích thước Rack"
+                              onPointerDown={(event) => startInteraction(event, 'rack', rack, 'resize', event.currentTarget.parentElement?.parentElement)}
+                              className="absolute right-0 bottom-0 z-30 flex h-5 w-5 touch-none cursor-se-resize items-end justify-end bg-blue-950 text-xs leading-none text-white"
+                            >◢</button>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
-                </section>
+                )}
+              </section>
 
-                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                  <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h2 className="text-base font-bold text-slate-900">Preview 3D</h2>
-                      <p className="text-sm text-slate-500">
-                        Xem nhanh không gian kho, xoay camera tự do và click vào phần tử để đồng bộ lựa chọn.
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700">
-                      Đồng bộ theo thời gian thực
-                    </div>
-                  </div>
-
-                  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-sky-50">
-                    <div className="h-[460px] w-full">
-                      <WarehouseLayoutPreview3D
-                        layout={layout}
-                        selection={selection}
-                        onSelect={setSelection}
-                        onMoveEntity={handleMoveEntityFrom3D}
-                      />
-                    </div>
-                  </div>
-                </section>
-              </div>
-
-              <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-                <div className="flex items-start justify-between gap-3">
+              <aside className="min-w-0 self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:sticky xl:top-20">
+                <div className="mb-4 flex items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-base font-bold text-slate-900">Thuộc tính</h2>
-                    <p className="mt-1 text-sm text-slate-500">
-                      {getSelectionLabel(selection, selectedEntity)}
-                    </p>
+                    <h2 className="font-bold">Thuộc tính</h2>
+                    <p className="text-xs text-slate-500">{selection.type === 'layout' ? 'Layout tổng' : selection.type === 'rack' ? 'Rack' : 'Bin'}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleDeleteSelection}
-                    className="inline-flex items-center rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-                  >
-                    <Trash2 className="mr-1.5 h-4 w-4" />
-                    Xóa
-                  </button>
+                  {isOwner && selection.type !== 'layout' && (
+                    <button type="button" onClick={removeSelected} className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100" aria-label="Xóa"><Trash2 className="h-4 w-4" /></button>
+                  )}
                 </div>
-
-                <div className="mt-5 space-y-4">
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <label className="space-y-2">
-                      <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                        Width
-                      </span>
-                      <input
-                        type="number"
-                        min="1"
-                        value={selectedEntity?.width ?? layout.width}
-                        onChange={(event) => updateSelectedEntityField('width', event.target.value)}
-                        disabled={selection?.type === 'layout' && isOwnerMode}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                      />
-                    </label>
-                    <label className="space-y-2">
-                      <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                        Height
-                      </span>
-                      <input
-                        type="number"
-                        min="1"
-                        value={selectedEntity?.height ?? layout.height}
-                        onChange={(event) =>
-                          updateSelectedEntityField('height', event.target.value)
-                        }
-                        disabled={selection?.type === 'layout' && isOwnerMode}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                      />
-                    </label>
-                  </div>
-
-                  {selection?.type === 'layout' && isOwnerMode ? (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-                      Kích thước tổng vẫn lấy từ bài đăng. Hình dạng thật của kho được chỉnh bằng
-                      cách tô hoặc xóa các ô trong Canvas 2D.
-                    </div>
-                  ) : null}
-
-                  {selection?.type === 'layout' && isOwnerMode ? (
-                    <>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="space-y-2">
-                          <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                            Target racks
-                          </span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={layout.targetRackCount ?? 0}
-                            onChange={(event) =>
-                              updateSelectedEntityField('targetRackCount', event.target.value)
-                            }
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                          />
-                        </label>
-                        <label className="space-y-2">
-                          <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                            Target bins
-                          </span>
-                          <input
-                            type="number"
-                            min="0"
-                            value={layout.targetBinCount ?? 0}
-                            onChange={(event) =>
-                              updateSelectedEntityField('targetBinCount', event.target.value)
-                            }
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                          />
-                        </label>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                          Rack hiện có: <span className="font-bold">{currentRackCount}</span>
-                          {layout.targetRackCount > 0 ? (
-                            <span className="ml-1 text-amber-700">
-                              / mục tiêu {layout.targetRackCount}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="rounded-xl border border-fuchsia-200 bg-fuchsia-50 px-4 py-3 text-sm text-fuchsia-800">
-                          Bin hiện có: <span className="font-bold">{currentBinCount}</span>
-                          {layout.targetBinCount > 0 ? (
-                            <span className="ml-1 text-fuchsia-700">
-                              / mục tiêu {layout.targetBinCount}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </>
-                  ) : null}
-
-                  {selection?.type !== 'layout' ? (
-                    <>
-                      <label className="space-y-2">
-                        <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                          Tên hiển thị
-                        </span>
+                <div className="space-y-3">
+                  {propertyFields.map(([field, label]) => {
+                    const isText = field === 'name' || field === 'code'
+                    const tenantEditable = !isOwner && ['coordinateX', 'coordinateY', 'positionZ', 'rotation'].includes(field)
+                    const disabled = !isOwner && !tenantEditable
+                    return (
+                      <label key={field} className="block text-xs font-semibold text-slate-600">
+                        <span className="mb-1 block">{label}</span>
                         <input
-                          type="text"
-                          value={selectedEntity?.name ?? ''}
-                          onChange={(event) =>
-                            updateSelectedEntityField('name', event.target.value)
-                          }
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
+                          type={isText ? 'text' : 'number'}
+                          min={isText ? undefined : 0}
+                          value={selectedEntity?.[field] ?? ''}
+                          disabled={disabled}
+                          onChange={(event) => changeProperty(field, event.target.value)}
+                          className={inputClass}
                         />
                       </label>
-
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="space-y-2">
-                          <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                            X
-                          </span>
-                          <input
-                            type="number"
-                            value={selectedEntity?.coordinateX ?? 0}
-                            onChange={(event) =>
-                              updateSelectedEntityField('coordinateX', event.target.value)
-                            }
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                          />
-                        </label>
-                        <label className="space-y-2">
-                          <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                            Y
-                          </span>
-                          <input
-                            type="number"
-                            value={selectedEntity?.coordinateY ?? 0}
-                            onChange={(event) =>
-                              updateSelectedEntityField('coordinateY', event.target.value)
-                            }
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                          />
-                        </label>
-                      </div>
-                    </>
-                  ) : null}
-
-                  {(selection?.type === 'zone' ||
-                    selection?.type === 'rack' ||
-                    selection?.type === 'bin') && (
-                    <label className="space-y-2">
-                      <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                        Code
-                      </span>
-                      <input
-                        type="text"
-                        value={selectedEntity?.code ?? ''}
-                        onChange={(event) => updateSelectedEntityField('code', event.target.value)}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                      />
-                    </label>
-                  )}
-
-                  {selection?.type === 'bin' && (
-                    <>
-                      <label className="space-y-2">
-                        <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                          Tầng trong rack
-                        </span>
-                        <select
-                          value={
-                            selectedEntity
-                              ? getBinLevelFromCoordinate(
-                                  layout.zones
-                                    .flatMap((zone) => zone.racks)
-                                    .find((rack) =>
-                                      rack.bins.some((bin) => bin.clientKey === selection?.clientKey)
-                                    ),
-                                  selectedEntity
-                                )
-                              : 1
-                          }
-                          onChange={(event) => {
-                            const activeRack = layout.zones
-                              .flatMap((zone) => zone.racks)
-                              .find((rack) =>
-                                rack.bins.some((bin) => bin.clientKey === selection?.clientKey)
-                              )
-                            if (!activeRack || !selectedEntity) return
-                            updateSelectedEntityField(
-                              'coordinateY',
-                              getCoordinateYForLevel(
-                                activeRack,
-                                selectedEntity,
-                                Number(event.target.value)
-                              )
-                            )
-                          }}
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                        >
-                          {Array.from({ length: Math.max(2, selectedEntity ? getRackLevels(
-                            layout.zones
-                              .flatMap((zone) => zone.racks)
-                              .find((rack) =>
-                                rack.bins.some((bin) => bin.clientKey === selection?.clientKey)
-                              )
-                          ) : 2) }).map((_, index) => (
-                            <option key={index + 1} value={index + 1}>
-                              Tầng {index + 1}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="space-y-2">
-                          <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                            Max weight
-                          </span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.1"
-                            value={selectedEntity?.maxWeight ?? 0}
-                            onChange={(event) =>
-                              updateSelectedEntityField('maxWeight', event.target.value)
-                            }
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                          />
-                        </label>
-                        <label className="space-y-2">
-                          <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-                            Max volume
-                          </span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.1"
-                            value={selectedEntity?.maxVolume ?? 0}
-                            onChange={(event) =>
-                              updateSelectedEntityField('maxVolume', event.target.value)
-                            }
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-medium focus:border-blue-500 focus:bg-white focus:outline-none"
-                          />
-                        </label>
-                      </div>
-
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-                        Bạn có thể chọn tầng tại đây hoặc kéo bin theo trục dọc trong preview 3D để đổi tầng.
-                      </div>
-                    </>
-                  )}
-
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                      <Maximize2 className="h-4 w-4 text-slate-400" />
-                      Gợi ý thao tác
-                    </div>
-                    <ul className="mt-3 space-y-2 text-sm text-slate-500">
-                      <li>Chọn `zone` rồi thêm `rack`.</li>
-                      <li>Chọn `rack` rồi thêm `bin`.</li>
-                      <li>Bật `Chỉnh hình kho` để tô phần kho thật và chừa phần khuyết như kho chữ U.</li>
-                      <li>Kéo phần tử trên canvas để đổi vị trí nhanh.</li>
-                      <li>Kéo góc phải dưới của zone, rack hoặc bin để phóng to hay thu nhỏ bằng chuột.</li>
-                      <li>Kéo `rack` trên sàn kho và kéo `bin` theo ngang hoặc dọc trong preview 3D để đổi vị trí và tầng.</li>
-                      <li>Nhấn `Lưu sơ đồ` để backend sync create, update và delete một lần.</li>
-                    </ul>
-                  </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
+                  Kéo thân Rack hoặc Bin để di chuyển. {isOwner && 'Kéo ◢ ngay góc dưới phải để đổi kích thước. Bin tối đa 80% Rack.'}
                 </div>
               </aside>
             </div>

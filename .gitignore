@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .env
+
+state_machines.md
+staff-integration-summary.md    

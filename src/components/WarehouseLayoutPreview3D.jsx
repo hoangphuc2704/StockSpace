@@ -57,11 +57,6 @@ function WarehouseShell() {
         <meshStandardMaterial color="#d1d5db" />
       </mesh>
 
-      <mesh position={[0, 4.8, -(WORLD_SIZE + 4) / 2]} receiveShadow>
-        <boxGeometry args={[WORLD_SIZE + 6, 9.6, 0.35]} />
-        <meshStandardMaterial color="#cbd5e1" transparent opacity={0.26} />
-      </mesh>
-
       <mesh position={[-(WORLD_SIZE + 4) / 2, 4.8, 0]} receiveShadow>
         <boxGeometry args={[0.35, 9.6, WORLD_SIZE + 6]} />
         <meshStandardMaterial color="#e2e8f0" transparent opacity={0.18} />
@@ -120,22 +115,6 @@ function WarehouseShell() {
         <boxGeometry args={[0.35, 4.0, 6.4]} />
         <meshStandardMaterial color="#e2e8f0" opacity={0.1} transparent />
       </mesh>
-
-      <mesh position={[0, 9.65, 0]} receiveShadow>
-        <boxGeometry args={[WORLD_SIZE + 6, 0.25, WORLD_SIZE + 6]} />
-        <meshStandardMaterial color="#f8fafc" />
-      </mesh>
-
-      {[-6, 0, 6].map((x) => (
-        <group key={`light-row-${x}`} position={[x, 8.9, 0]}>
-          <mesh>
-            <boxGeometry args={[0.2, 0.2, WORLD_SIZE - 3]} />
-            <meshStandardMaterial color="#94a3b8" metalness={0.2} roughness={0.4} />
-          </mesh>
-          <pointLight position={[0, -0.2, 0]} intensity={0.35} distance={16} color="#fff7d6" />
-        </group>
-      ))}
-
     </group>
   )
 }
@@ -190,9 +169,10 @@ function BinMesh({
   onMoveEntity,
 }) {
   const width = getWorldSize(bin.width, rack.width, rackWorldWidth)
-  const depth = Math.max(rackWorldDepth * 0.72, 0.32)
+  const depth = getWorldSize(bin.length, rack.length, rackWorldDepth)
   const x = getWorldCenter(bin.coordinateX, width, rack.width, rackWorldWidth)
-  const level = getLevelFromCoordinate(rack, bin)
+  const z = getWorldCenter(bin.coordinateY, depth, rack.length, rackWorldDepth)
+  const level = clamp(Number(bin.shelfLevel) || getLevelFromCoordinate(rack, bin), 1, getRackLevels(rack))
   const levels = getRackLevels(rack)
   const y = getShelfY(level - 1, levels, rackHeight) + 0.25
 
@@ -208,7 +188,11 @@ function BinMesh({
       anchor={[0, 0, 0]}
       onDrag={(matrix) => {
         const nextX = toCoordinateFromCenter(matrix.elements[12], width, rack.width, rackWorldWidth)
-        const normalizedY = clamp((matrix.elements[13] - 0.95) / Math.max(rackHeight - 1.2, 0.8), 0, 1)
+        const normalizedY = clamp(
+          (matrix.elements[13] - 0.95) / Math.max(rackHeight - 1.2, 0.8),
+          0,
+          1
+        )
         const nextLevel = clamp(Math.round(normalizedY * (levels - 1)) + 1, 1, levels)
         const nextY = getCoordinateYForLevel(rack, bin, nextLevel)
 
@@ -216,7 +200,7 @@ function BinMesh({
       }}
     >
       <mesh
-        position={[x, y, 0]}
+        position={[x, y, z]}
         onClick={(event) => {
           event.stopPropagation()
           onSelect({ type: 'bin', clientKey: bin.clientKey })
@@ -236,20 +220,11 @@ function BinMesh({
   )
 }
 
-function RackMesh({
-  rack,
-  zone,
-  zoneWorldWidth,
-  zoneWorldDepth,
-  selection,
-  editable,
-  onSelect,
-  onMoveEntity,
-}) {
-  const width = getWorldSize(rack.width, zone.width, zoneWorldWidth)
-  const depth = getWorldSize(rack.height, zone.height, zoneWorldDepth)
-  const x = getWorldCenter(rack.coordinateX, width, zone.width, zoneWorldWidth)
-  const z = getWorldCenter(rack.coordinateY, depth, zone.height, zoneWorldDepth)
+function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity }) {
+  const width = getWorldSize(rack.width, layout.width, WORLD_SIZE)
+  const depth = getWorldSize(rack.length, layout.length, WORLD_SIZE)
+  const x = getWorldCenter(rack.coordinateX, width, layout.width, WORLD_SIZE)
+  const z = getWorldCenter(rack.coordinateY, depth, layout.length, WORLD_SIZE)
   const levels = getRackLevels(rack)
   const rackHeight = 1.9 + levels * 0.7
   const isSelected = selection?.type === 'rack' && selection.clientKey === rack.clientKey
@@ -265,8 +240,8 @@ function RackMesh({
       depthTest={false}
       anchor={[0, 0, 0]}
       onDrag={(matrix) => {
-        const nextX = toCoordinateFromCenter(matrix.elements[12], width, zone.width, zoneWorldWidth)
-        const nextY = toCoordinateFromCenter(matrix.elements[14], depth, zone.height, zoneWorldDepth)
+        const nextX = toCoordinateFromCenter(matrix.elements[12], width, layout.width, WORLD_SIZE)
+        const nextY = toCoordinateFromCenter(matrix.elements[14], depth, layout.length, WORLD_SIZE)
 
         onMoveEntity('rack', rack.clientKey, Number(nextX.toFixed(2)), Number(nextY.toFixed(2)))
       }}
@@ -323,79 +298,23 @@ function RackMesh({
   )
 }
 
-function ZoneMesh({ zone, layout, selection, editable, onSelect, onMoveEntity }) {
-  const width = getWorldSize(zone.width, layout.width, WORLD_SIZE)
-  const depth = getWorldSize(zone.height, layout.height, WORLD_SIZE)
-  const x = getWorldCenter(zone.coordinateX, width, layout.width, WORLD_SIZE)
-  const z = getWorldCenter(zone.coordinateY, depth, layout.height, WORLD_SIZE)
-  const isSelected = selection?.type === 'zone' && selection.clientKey === zone.clientKey
-
-  return (
-    <PivotControls
-      visible={editable && isSelected}
-      enabled={editable && isSelected}
-      activeAxes={[true, false, true]}
-      disableRotations
-      disableScaling
-      scale={0.95}
-      depthTest={false}
-      anchor={[0, 0, 0]}
-      onDrag={(matrix) => {
-        const nextX = toCoordinateFromCenter(matrix.elements[12], width, layout.width, WORLD_SIZE)
-        const nextY = toCoordinateFromCenter(matrix.elements[14], depth, layout.height, WORLD_SIZE)
-
-        onMoveEntity('zone', zone.clientKey, Number(nextX.toFixed(2)), Number(nextY.toFixed(2)))
-      }}
-    >
-      <group position={[x, 0, z]}>
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]}
-          onClick={(event) => {
-            event.stopPropagation()
-            onSelect({ type: 'zone', clientKey: zone.clientKey })
-          }}
-          receiveShadow
-        >
-          <planeGeometry args={[width, depth]} />
-          <meshStandardMaterial
-            color={colorByType.zone}
-            opacity={isSelected ? 0.35 : 0.22}
-            transparent
-            emissive={isSelected ? '#6ee7b7' : '#000000'}
-            emissiveIntensity={isSelected ? 0.35 : 0}
-          />
-        </mesh>
-
-        <mesh position={[0, 0.01, 0]} receiveShadow>
-          <boxGeometry args={[width, 0.02, depth]} />
-          <meshStandardMaterial color="#d1fae5" />
-        </mesh>
-
-        {zone.racks.map((rack) => (
-          <RackMesh
-            key={rack.clientKey}
-            rack={rack}
-            zone={zone}
-            zoneWorldWidth={width}
-            zoneWorldDepth={depth}
-            selection={selection}
-            editable={editable}
-            onSelect={onSelect}
-            onMoveEntity={onMoveEntity}
-          />
-        ))}
-      </group>
-    </PivotControls>
-  )
-}
-
 export default function WarehouseLayoutPreview3D({
   layout,
   selection,
-  onSelect,
+  onSelect = () => {},
   onMoveEntity = () => {},
   editable = true,
 }) {
+  const racks = Array.isArray(layout?.racks)
+    ? layout.racks
+    : (layout?.zones || []).flatMap((zone) =>
+        (zone.racks || []).map((rack) => ({
+          ...rack,
+          coordinateX: Number(zone.coordinateX || 0) + Number(rack.coordinateX || 0),
+          coordinateY: Number(zone.coordinateY || 0) + Number(rack.coordinateY || 0),
+        }))
+      )
+
   return (
     <Canvas
       shadows
@@ -417,10 +336,10 @@ export default function WarehouseLayoutPreview3D({
       <WarehouseShell />
       <FootprintFloor layout={layout} />
 
-      {layout.zones.map((zone) => (
-        <ZoneMesh
-          key={zone.clientKey}
-          zone={zone}
+      {racks.map((rack) => (
+        <RackMesh
+          key={rack.clientKey}
+          rack={rack}
           layout={layout}
           selection={selection}
           editable={editable}

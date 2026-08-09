@@ -6,6 +6,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import logoDaidien from '../assets/logoDaidien.png'
 import LoginModal from '../features/auth/pages/LoginPage'
 import RegisterModal from '../features/auth/pages/RegisterPage'
+import NotificationDropdown from './NotificationDropdown'
 
 const PublicHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -88,13 +89,15 @@ const PublicHeader = () => {
                 </button>
               </>
             ) : (
-              <div className="group relative">
-                <button className="flex items-center gap-2 text-sm font-bold text-stone-700 hover:text-[#FF5A1F]">
-                  <div className="h-8 w-8 rounded-full bg-stone-200 flex items-center justify-center text-stone-600">
-                    {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
-                  <span>{user?.name || 'User'}</span>
-                </button>
+              <div className="flex items-center gap-4">
+                <NotificationDropdown />
+                <div className="group relative">
+                  <button className="flex items-center gap-2 text-sm font-bold text-stone-700 hover:text-[#FF5A1F]">
+                    <div className="h-8 w-8 rounded-full bg-stone-200 flex items-center justify-center text-stone-600">
+                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                    <span>{user?.name || 'User'}</span>
+                  </button>
 
                 {/* Dropdown Menu */}
                 <div className="absolute right-0 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 opacity-0 invisible transition-all group-hover:opacity-100 group-hover:visible z-50">
@@ -127,6 +130,7 @@ const PublicHeader = () => {
                   </div>
                 </div>
               </div>
+            </div>
             )}
 
             <div>

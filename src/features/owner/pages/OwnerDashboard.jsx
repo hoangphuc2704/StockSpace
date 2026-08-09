@@ -38,19 +38,20 @@ import Header from '../../../components/HeaderDashboard'
 // Import API config của bạn
 import walletApi from '../../../services/wallet/walletApi'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
+import ownerStatsApi from '../../../services/owner/ownerStatsApi'
 
 // Mock Data giữ nguyên
-const revenueData = [
-  { name: 'Jan', value: 4500 },
-  { name: 'Feb', value: 5200 },
-  { name: 'Mar', value: 4800 },
-  { name: 'Apr', value: 6100 },
-  { name: 'May', value: 5900 },
+const defaultRevenueData = [
+  { name: 'Jan', value: 0 },
+  { name: 'Feb', value: 0 },
+  { name: 'Mar', value: 0 },
+  { name: 'Apr', value: 0 },
+  { name: 'May', value: 0 },
 ]
 
-const occupancyData = [
-  { name: 'Occupied', value: 75, color: '#2563eb' },
-  { name: 'Vacant', value: 25, color: '#e2e8f0' },
+const defaultOccupancyData = [
+  { name: 'Đang thuê', value: 0, color: '#2563eb' },
+  { name: 'Còn trống', value: 0, color: '#e2e8f0' },
 ]
 
 const OwnerDashboard = () => {
@@ -65,6 +66,12 @@ const OwnerDashboard = () => {
   // --- STATE YÊU CẦU THUÊ KHO ---
   const [incomingRequests, setIncomingRequests] = useState([])
   const [loadingRequests, setLoadingRequests] = useState(true)
+
+  // --- STATE THỐNG KÊ ---
+  const [revenueData, setRevenueData] = useState(defaultRevenueData)
+  const [occupancyData, setOccupancyData] = useState(defaultOccupancyData)
+  const [occupancyRate, setOccupancyRate] = useState(0)
+  const [totalWarehouses, setTotalWarehouses] = useState(0)
 
   // State điều khiển Modal nhập tiền
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -101,9 +108,46 @@ const OwnerDashboard = () => {
     }
   }
 
+  const fetchStats = async () => {
+    try {
+      const [revenueRes, occupancyRes] = await Promise.all([
+        ownerStatsApi.getRevenueSummary(),
+        ownerStatsApi.getOccupancyRate()
+      ])
+
+      // Map Revenue Data (xử lý tùy xem BE trả về bọc ApiResponse hay không)
+      if (revenueRes?.data) {
+        const revData = revenueRes.data.data || revenueRes.data
+        if (revData?.monthlyRevenue) {
+          const formatted = revData.monthlyRevenue.map(item => ({
+            name: `T${item.month}`,
+            value: item.revenue
+          }))
+          setRevenueData(formatted)
+        }
+      }
+
+      // Map Occupancy Data
+      if (occupancyRes?.data) {
+        const occData = occupancyRes.data.data || occupancyRes.data
+        if (occData) {
+          setOccupancyData([
+            { name: 'Đang thuê', value: occData.rentedWarehousesCount, color: '#2563eb' },
+            { name: 'Còn trống', value: occData.availableWarehousesCount, color: '#e2e8f0' },
+          ])
+          setOccupancyRate(occData.occupancyRatePercentage)
+          setTotalWarehouses(occData.totalWarehouses)
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi lấy dữ liệu thống kê Owner:', error)
+    }
+  }
+
   useEffect(() => {
     fetchWallet()
     fetchRequests()
+    fetchStats()
   }, [])
 
   // --- XỬ LÝ GỬI YÊU CẦU NẠP TIỀN LÊN BE ---
@@ -149,7 +193,7 @@ const OwnerDashboard = () => {
 
   // Khối Thẻ Thống kê hiển thị số dư thực tế
   const stats = [
-    { title: 'My Warehouses', value: '12', icon: Warehouse, trend: 'stable', trendValue: 0 },
+    { title: 'My Warehouses', value: totalWarehouses.toString(), icon: Warehouse, trend: 'stable', trendValue: 0 },
     {
       title: 'Wallet Balance',
       value: loadingWallet ? 'Đang tải...' : formatVND(wallet?.balance),
@@ -157,8 +201,8 @@ const OwnerDashboard = () => {
       trend: 'stable',
       trendValue: 0,
     },
-    { title: 'Avg. Occupancy', value: '82%', icon: PieChart, trend: 'up', trendValue: 3 },
-    { title: 'Pending Requests', value: '5', icon: FileCheck, trend: 'down', trendValue: 2 },
+    { title: 'Avg. Occupancy', value: `${occupancyRate}%`, icon: PieChart, trend: 'stable', trendValue: 0 },
+    { title: 'Pending Requests', value: incomingRequests.length.toString(), icon: FileCheck, trend: 'stable', trendValue: 0 },
   ]
 
   const handleApprove = async (id) => {
@@ -353,8 +397,8 @@ const OwnerDashboard = () => {
                     </RePieChart>
                   </ResponsiveContainer>
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                    <p className="text-2xl font-bold text-slate-900">75%</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Occupied</p>
+                    <p className="text-2xl font-bold text-slate-900">{occupancyRate}%</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Tỷ lệ lấp đầy</p>
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
