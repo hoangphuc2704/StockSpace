@@ -87,7 +87,11 @@ const InboundPage = () => {
       setSkus(skuRes.data?.data?.content || [])
     } catch (error) {
       console.error('Error fetching initial data:', error)
-      toast.error('Failed to load initial data')
+      if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
+        toast.error('Vui lòng mua gói dịch vụ (Subscription) để sử dụng chức năng Inbound!')
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to load initial data')
+      }
     }
   }
 
@@ -110,7 +114,11 @@ const InboundPage = () => {
       setReceipts(res.data?.data?.content || [])
     } catch (error) {
       console.error('Error fetching receipts:', error)
-      toast.error('Failed to load receipts')
+      if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
+        // Only show if not already shown by initial data
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to load receipts')
+      }
     } finally {
       setIsLoading(false)
     }

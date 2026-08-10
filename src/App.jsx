@@ -34,6 +34,8 @@ import InspectionsManagementPage from './features/admin/pages/InspectionsManagem
 import WareHouseManagementPage from './features/admin/pages/WareHouseManagementPage'
 import WarehousesTypePage from './features/admin/pages/WarehousesTypePage'
 import SystemConfigueManagementPage from './features/admin/pages/SystemConfigueManagementPage'
+import AdminAuditsPage from './features/admin/pages/AdminAuditsPage'
+import AdminInventoryPage from './features/admin/pages/AdminInventoryPage'
 // Tenant Pages
 import TenantDashboard from './features/tenant/pages/TenantDashboard'
 import InventoryPage from './features/inventory/pages/InventoryPage'
@@ -132,6 +134,8 @@ const App = () => {
         <Route path="admin/warehouse-types" element={<WarehousesTypePage />} />
         <Route path="admin/system-config" element={<SystemConfigueManagementPage />} />
         <Route path="admin/package-subcription" element={<Packages_SubcriptionsManagementPage />} />
+        <Route path="/admin/wms-audits" element={<AdminAuditsPage />} />
+        <Route path="/admin/wms-inventory" element={<AdminInventoryPage />} />
         {/* </Route> */}
 
         {/* Tenant Routes */}

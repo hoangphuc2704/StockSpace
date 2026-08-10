@@ -175,47 +175,24 @@ const WarehouseApprovalPage = () => {
 
         {/* 3. MAIN CONTENT CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // ✅ Đồng bộ pl-[72px] chuẩn xác của toàn bộ dự án
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // ✅ Đồng bộ pl-[72px] chuẩn xác của toàn bộ dự án
+            }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">Warehouse Approvals</h1>
-                <p className="mt-1 text-sm text-slate-500">
-                  Review and approve new warehouse listings before they go live.
-                </p>
+
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3, 4].map((i) => (
-                    <Avatar key={i} size="sm" className="border-2 border-white" />
-                  ))}
-                </div>
-                <span className="text-xs font-medium text-slate-500 underline">
-                  4 reviewers active
-                </span>
-              </div>
+
             </div>
 
-            {/* Hero Alert */}
-            <div className="bg-primary/5 border-primary/20 flex items-start gap-4 rounded-xl border p-4">
-              <div className="bg-primary/10 text-primary shrink-0 rounded-lg p-2">
-                <ShieldCheck size={24} />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">3 Pending Verifications</h4>
-                <p className="mt-1 text-sm text-slate-600">
-                  New listings require physical inspection or document verification before approval.
-                  Automated verification has flagged 1 listing for manual review.
-                </p>
-              </div>
-            </div>
+
+
 
             {/* Filters Section */}
-            <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
+            {/* <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row">
               <div className="relative w-full md:w-80">
                 <Search
                   className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
@@ -240,7 +217,7 @@ const WarehouseApprovalPage = () => {
                   Rejected (12)
                 </Badge>
               </div>
-            </div>
+            </div> */}
 
             {/* Table wrapper */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

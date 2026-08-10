@@ -5,7 +5,10 @@ import { ArrowLeft, Check } from 'lucide-react'
 import PublicHeader from '../../../components/PublicHeader'
 import packageApi from '../../../services/packageApi'
 import subscriptionApi from '../../../services/tenant/subscriptionApi'
+import { parseFeaturesToList } from '../../../utils/formatFeatures'
 import { toast } from 'react-hot-toast'
+import Modal from '@/components/organisms/Modal'
+import Button from '@/components/atoms/Button'
 
 const PackageDetail = () => {
   const { id } = useParams()
@@ -15,6 +18,11 @@ const PackageDetail = () => {
   const [pkg, setPkg] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isPurchasing, setIsPurchasing] = useState(false)
+  const [isPreviewing, setIsPreviewing] = useState(false)
+  const [previewData, setPreviewData] = useState(null)
+  
+  const [showBuyConfirm, setShowBuyConfirm] = useState(false)
+  const [showWalletConfirm, setShowWalletConfirm] = useState(false)
 
   useEffect(() => {
     const fetchPackageDetail = async () => {
@@ -30,7 +38,7 @@ const PackageDetail = () => {
     fetchPackageDetail()
   }, [id])
 
-  const handlePurchase = async () => {
+  const handlePurchaseClick = async () => {
     if (!isAuthenticated) {
       toast.error("Vui lòng đăng nhập để mua gói dịch vụ.")
       return
@@ -40,9 +48,27 @@ const PackageDetail = () => {
       return
     }
     
-    const confirmBuy = window.confirm(`Bạn có chắc chắn muốn mua gói ${pkg.name} với giá ${Number(pkg.price || 0).toLocaleString('vi-VN')} VNĐ không?`)
-    if (!confirmBuy) return
+    try {
+      setIsPreviewing(true)
+      const res = await subscriptionApi.previewSubscriptionChange(id)
+      const data = res.data?.data || res.data
+      
+      if (data && data.canProceed === false) {
+        toast.error(data.message || "Không thể thực hiện giao dịch này.")
+        return
+      }
+      
+      setPreviewData(data)
+      setShowBuyConfirm(true)
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Không thể xem trước giao dịch.")
+    } finally {
+      setIsPreviewing(false)
+    }
+  }
 
+  const confirmPurchase = async () => {
+    setShowBuyConfirm(false)
     try {
       setIsPurchasing(true)
       await subscriptionApi.purchasePackage({ packageId: id })
@@ -51,10 +77,7 @@ const PackageDetail = () => {
     } catch (error) {
       const errorCode = error.response?.data?.errorCode
       if (errorCode === 'WALLET_INSUFFICIENT_BALANCE') {
-        const toWallet = window.confirm("Số dư ví của bạn không đủ để thanh toán. Bạn có muốn đi đến Ví của tôi để nạp thêm tiền không?")
-        if (toWallet) {
-          navigate('/tenant/wallet')
-        }
+        setShowWalletConfirm(true)
       } else if (errorCode === 'SUBSCRIPTION_ALREADY_ACTIVE') {
         toast.error("Bạn đã có một gói dịch vụ đang hoạt động. Không thể đăng ký thêm.")
       } else {
@@ -135,47 +158,92 @@ const PackageDetail = () => {
               </h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {pkg.features && Array.isArray(pkg.features) && pkg.features.length > 0 ? (
-                  pkg.features.map((feature, i) => (
-                    <div key={i} className="flex items-start bg-white p-6 rounded-2xl border border-stone-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
-                      <Check className="mr-4 h-6 w-6 shrink-0 text-[#FF5A1F]" />
-                      <span className="text-sm text-stone-700 font-medium leading-relaxed">{feature}</span>
-                    </div>
-                  ))
-                ) : (
-                  <>
-                    <div className="flex items-start bg-white p-6 rounded-2xl border border-stone-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
-                      <Check className="mr-4 h-6 w-6 shrink-0 text-[#FF5A1F]" />
-                      <span className="text-sm text-stone-700 font-medium leading-relaxed">Hỗ trợ khách hàng ưu tiên 24/7 qua hotline và email</span>
-                    </div>
-                    <div className="flex items-start bg-white p-6 rounded-2xl border border-stone-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
-                      <Check className="mr-4 h-6 w-6 shrink-0 text-[#FF5A1F]" />
-                      <span className="text-sm text-stone-700 font-medium leading-relaxed">Truy cập đầy đủ các tính năng quản lý kho bãi</span>
-                    </div>
-                    <div className="flex items-start bg-white p-6 rounded-2xl border border-stone-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
-                      <Check className="mr-4 h-6 w-6 shrink-0 text-[#FF5A1F]" />
-                      <span className="text-sm text-stone-700 font-medium leading-relaxed">Báo cáo phân tích chuyên sâu về xuất nhập tồn</span>
-                    </div>
-                    <div className="flex items-start bg-white p-6 rounded-2xl border border-stone-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
-                      <Check className="mr-4 h-6 w-6 shrink-0 text-[#FF5A1F]" />
-                      <span className="text-sm text-stone-700 font-medium leading-relaxed">Kết nối API tự động đồng bộ dữ liệu</span>
-                    </div>
-                  </>
-                )}
+                {(() => {
+                  const featuresList = parseFeaturesToList(pkg.features);
+                  
+                  if (featuresList.length > 0) {
+                    return featuresList.map((feature, i) => (
+                      <div key={i} className="flex items-start bg-white p-6 rounded-2xl border border-stone-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
+                        <Check className="mr-4 h-6 w-6 shrink-0 text-[#FF5A1F]" />
+                        <span className="text-sm text-stone-700 font-medium leading-relaxed">{feature}</span>
+                      </div>
+                    ))
+                  } else {
+                    return (
+                      <>
+                        <div className="flex items-start bg-white p-6 rounded-2xl border border-stone-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
+                          <Check className="mr-4 h-6 w-6 shrink-0 text-[#FF5A1F]" />
+                          <span className="text-sm text-stone-700 font-medium leading-relaxed">Hỗ trợ khách hàng ưu tiên 24/7 qua hotline và email</span>
+                        </div>
+                        <div className="flex items-start bg-white p-6 rounded-2xl border border-stone-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
+                          <Check className="mr-4 h-6 w-6 shrink-0 text-[#FF5A1F]" />
+                          <span className="text-sm text-stone-700 font-medium leading-relaxed">Truy cập đầy đủ các tính năng quản lý kho bãi</span>
+                        </div>
+                        <div className="flex items-start bg-white p-6 rounded-2xl border border-stone-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
+                          <Check className="mr-4 h-6 w-6 shrink-0 text-[#FF5A1F]" />
+                          <span className="text-sm text-stone-700 font-medium leading-relaxed">Kết nối API tự động đồng bộ dữ liệu</span>
+                        </div>
+                      </>
+                    )
+                  }
+                })()}
               </div>
               
               <div className="mt-16 text-center">
                 <button 
-                  onClick={handlePurchase}
-                  disabled={isPurchasing}
+                  onClick={handlePurchaseClick}
+                  disabled={isPurchasing || isPreviewing}
                   className="inline-flex items-center justify-center rounded-md bg-[#FF5A1F] px-10 py-4 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#e04e19] shadow-[0_10px_30px_rgba(255,90,31,0.2)] hover:shadow-[0_15px_40px_rgba(255,90,31,0.3)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed">
-                  {isPurchasing ? 'Đang xử lý...' : 'Đăng ký gói dịch vụ ngay'}
+                  {isPurchasing ? 'Đang xử lý...' : (isPreviewing ? 'Đang kiểm tra...' : 'Đăng ký gói dịch vụ ngay')}
                 </button>
               </div>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Buy Confirm Modal */}
+      <Modal 
+        isOpen={showBuyConfirm} 
+        onClose={() => setShowBuyConfirm(false)}
+        title="Xác nhận mua gói dịch vụ"
+      >
+        <div className="space-y-4">
+          <div className={`flex items-center gap-4 p-4 rounded-xl ${previewData?.transactionType === 'UPGRADE' ? 'bg-blue-50 text-blue-800' : 'bg-amber-50 text-amber-800'}`}>
+            <p className="text-sm whitespace-pre-line">
+              {previewData?.message || `Bạn có chắc chắn muốn mua gói ${pkg?.name} với giá ${Number(pkg?.price || 0).toLocaleString('vi-VN')} VNĐ không?`}
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-stone-100">
+            <Button variant="outline" onClick={() => setShowBuyConfirm(false)}>Hủy</Button>
+            <Button className="bg-[#FF5A1F] hover:bg-[#e04e19] text-white border-transparent" onClick={confirmPurchase} isLoading={isPurchasing}>
+              Xác nhận mua
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Wallet Insufficient Confirm Modal */}
+      <Modal 
+        isOpen={showWalletConfirm} 
+        onClose={() => setShowWalletConfirm(false)}
+        title="Số dư không đủ"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 bg-red-50 p-4 rounded-xl text-red-800">
+            <p className="text-sm">
+              Số dư ví của bạn không đủ để thanh toán. Bạn có muốn đi đến Ví của tôi để nạp thêm tiền không?
+            </p>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-stone-100">
+            <Button variant="outline" onClick={() => setShowWalletConfirm(false)}>Hủy</Button>
+            <Button className="bg-[#FF5A1F] hover:bg-[#e04e19] text-white border-transparent" onClick={() => navigate('/tenant/wallet')}>
+              Đến ví của tôi
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
     </div>
   )
 }

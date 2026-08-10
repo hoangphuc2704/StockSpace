@@ -31,6 +31,7 @@ import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { parseFeaturesToList } from '../../../utils/formatFeatures'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (dt) => dt ? new Date(dt).toLocaleDateString('vi-VN') : '—'
@@ -279,7 +280,11 @@ const Packages_SubcriptionsManagementPage = () => {
                                                         className="group transition-colors hover:bg-slate-50/60">
                                                         <td className="px-5 py-4">
                                                             <p className="font-bold text-slate-800">{pkg.name}</p>
-                                                            <p className="text-xs text-slate-500 mt-1 max-w-sm line-clamp-2" title={pkg.features}>{pkg.features || 'Không có mô tả tính năng'}</p>
+                                                            <div className="text-xs text-slate-500 mt-1 max-w-sm" title={pkg.features}>
+                                                                {pkg.features ? parseFeaturesToList(pkg.features).map((feat, i) => (
+                                                                    <span key={i} className="block">• {feat}</span>
+                                                                )) : 'Không có mô tả tính năng'}
+                                                            </div>
                                                         </td>
                                                         <td className="px-5 py-4">
                                                             <span className="font-bold text-slate-800 text-base bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-1 rounded-md whitespace-nowrap inline-flex items-center gap-1">

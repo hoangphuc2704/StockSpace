@@ -56,7 +56,7 @@ const ContractViewerModal = ({ isOpen, onClose, images = [] }) => {
       isOpen={isOpen}
       onClose={onClose}
       title="Bản Phụ Lục Hợp Đồng"
-      size="5xl" // Large modal for viewing
+      className="max-w-6xl w-[95vw]"
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left side: Images (takes 2/3 space) */}

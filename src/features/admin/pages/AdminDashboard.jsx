@@ -43,7 +43,7 @@ const AdminDashboard = () => {
     totalBookings: 0,
     totalContracts: 0,
   })
-  
+
   const [revenueData, setRevenueData] = useState([])
   const [totalRevenue, setTotalRevenue] = useState(0)
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
@@ -63,7 +63,7 @@ const AdminDashboard = () => {
         const revenueRes = await adminApi.getRevenueStats(currentYear)
         if (revenueRes?.data) {
           setTotalRevenue(revenueRes.data.totalRevenue || 0)
-          
+
           // Map to chart format
           const formattedRevenue = (revenueRes.data.monthlyRevenue || []).map((item) => ({
             name: `T${item.month}`,
@@ -193,9 +193,8 @@ const AdminDashboard = () => {
 
         {/* 3. MAIN CONTENT CONTAINER - Tự động co giãn đồng nhất */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // Thống nhất khoảng cách pl-[72px] giống owner
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // Thống nhất khoảng cách pl-[72px] giống owner
+            }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             <div>
@@ -217,7 +216,7 @@ const AdminDashboard = () => {
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
                 <div className="mb-8 flex items-center justify-between">
                   <h3 className="font-bold text-slate-900">Revenue Overview</h3>
-                  <select 
+                  <select
                     className="rounded-md border-slate-200 text-sm"
                     value={currentYear}
                     onChange={(e) => setCurrentYear(Number(e.target.value))}
@@ -251,7 +250,7 @@ const AdminDashboard = () => {
                           tick={{ fill: '#64748b', fontSize: 12 }}
                           tickFormatter={(value) => new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(value)}
                         />
-                        <Tooltip 
+                        <Tooltip
                           formatter={(value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)}
                         />
                         <Area
@@ -268,7 +267,7 @@ const AdminDashboard = () => {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              {/* <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-6 font-bold text-slate-900">Recent Platform Logs</h3>
                 <div className="space-y-6">
                   {[
@@ -324,11 +323,11 @@ const AdminDashboard = () => {
                 >
                   View Audit Logs
                 </Button>
-              </div>
+              </div> */}
             </div>
 
             {/* DataTable */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            {/* <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="font-bold text-slate-900">Pending Warehouse Approvals</h3>
                 <Button variant="ghost" size="sm">
@@ -336,7 +335,7 @@ const AdminDashboard = () => {
                 </Button>
               </div>
               <DataTable columns={columns} data={pendingApprovals} />
-            </div>
+            </div> */}
           </main>
         </div>
       </div>

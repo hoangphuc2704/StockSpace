@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux'
 import PublicHeader from '../../../components/PublicHeader'
 import packageApi from '../../../services/packageApi'
 import subscriptionApi from '../../../services/subscriptionApi'
+import { parseFeaturesToList } from '../../../utils/formatFeatures'
 
 const PackageList = () => {
   const [packages, setPackages] = useState([])
@@ -113,25 +114,31 @@ const PackageList = () => {
                       Tính năng bao gồm
                     </p>
                     <ul className="space-y-4">
-                      {pkg.features && Array.isArray(pkg.features) && pkg.features.length > 0 ? (
-                        pkg.features.map((feature, i) => (
-                          <li key={i} className="flex items-start">
-                            <Check className="mr-3 h-5 w-5 shrink-0 text-emerald-500" />
-                            <span className="text-sm text-stone-600">{feature}</span>
-                          </li>
-                        ))
-                      ) : (
-                         <>
-                           <li className="flex items-start">
-                             <Check className="mr-3 h-5 w-5 shrink-0 text-emerald-500" />
-                             <span className="text-sm text-stone-600">Truy cập đầy đủ tính năng hệ thống</span>
-                           </li>
-                           <li className="flex items-start">
-                             <Check className="mr-3 h-5 w-5 shrink-0 text-emerald-500" />
-                             <span className="text-sm text-stone-600">Hỗ trợ khách hàng ưu tiên 24/7</span>
-                           </li>
-                         </>
-                      )}
+                      {(() => {
+                        const featuresList = parseFeaturesToList(pkg.features);
+                        
+                        if (featuresList.length > 0) {
+                          return featuresList.map((feature, i) => (
+                            <li key={i} className="flex items-start">
+                              <Check className="mr-3 h-5 w-5 shrink-0 text-emerald-500" />
+                              <span className="text-sm text-stone-600">{feature}</span>
+                            </li>
+                          ))
+                        } else {
+                          return (
+                            <>
+                              <li className="flex items-start">
+                                <Check className="mr-3 h-5 w-5 shrink-0 text-emerald-500" />
+                                <span className="text-sm text-stone-600">Truy cập đầy đủ tính năng hệ thống</span>
+                              </li>
+                              <li className="flex items-start">
+                                <Check className="mr-3 h-5 w-5 shrink-0 text-emerald-500" />
+                                <span className="text-sm text-stone-600">Hỗ trợ khách hàng ưu tiên 24/7</span>
+                              </li>
+                            </>
+                          )
+                        }
+                      })()}
                     </ul>
                   </div>
                 </motion.div>

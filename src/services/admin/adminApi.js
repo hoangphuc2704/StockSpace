@@ -231,6 +231,18 @@ const adminApi = {
 
   getRevenueStats: (year) =>
     api.get('/admin/stats/revenue', { params: { year } }),
+
+  // =========================
+  // WMS INVENTORY MANAGEMENT (Admin)
+  // =========================
+  getAdminAudits: ({ page = 0, size = 20 } = {}) =>
+    api.get('/admin/inventory/audits', { params: { page, size } }),
+
+  getAdminReceipts: ({ warehouseId, type, page = 0, size = 20 }) =>
+    api.get('/admin/inventory/receipts', { params: { warehouseId, type, page, size } }),
+
+  getAdminStock: ({ warehouseId, page = 0, size = 50 }) =>
+    api.get('/admin/inventory/stock', { params: { warehouseId, page, size } }),
 }
 
 export default adminApi

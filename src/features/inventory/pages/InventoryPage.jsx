@@ -106,7 +106,11 @@ const InventoryPage = () => {
       setProducts(productsWithStock)
     } catch (error) {
       console.error('Error fetching inventory:', error)
-      toast.error('Failed to load inventory data')
+      if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
+        toast.error('Vui lòng mua gói dịch vụ (Subscription) để sử dụng chức năng Quản lý Kho!')
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to load inventory data')
+      }
     } finally {
       setIsLoading(false)
     }
