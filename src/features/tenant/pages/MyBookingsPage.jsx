@@ -13,6 +13,7 @@ import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import { Link } from 'react-router-dom'
 import tenantApi from '@/services/tenant/tenantApi'
+import { toast } from 'react-hot-toast'
 
 const MyBookingsPage = () => {
   const dispatch = useDispatch()
@@ -47,10 +48,10 @@ const MyBookingsPage = () => {
     try {
       setIsCanceling(bookingId)
       await tenantApi.cancelBooking(bookingId)
-      alert('Booking canceled successfully')
+      toast.success('Booking canceled successfully')
       fetchBookings()
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to cancel booking')
+      toast.error(err.response?.data?.message || 'Failed to cancel booking')
     } finally {
       setIsCanceling(null)
     }

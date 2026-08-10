@@ -7,6 +7,7 @@ import tenantApi from '@/services/tenant/tenantApi'
 import walletApi from '@/services/wallet/walletApi'
 import { useSelector, useDispatch } from 'react-redux'
 import { addBookedWarehouse } from '@/store/tenantBookingSlice'
+import { toast } from 'react-hot-toast'
 
 // Sub-components
 import WarehouseHeader from '../components/WarehouseHeader'
@@ -201,7 +202,7 @@ const WarehouseDetailPage = () => {
       setWalletBalance(balance)
       setShowConfirmModal(true)
     } catch {
-      alert('Failed to check wallet balance')
+      toast.error('Failed to check wallet balance')
     } finally {
       setIsCheckingWallet(false)
     }
@@ -215,10 +216,10 @@ const WarehouseDetailPage = () => {
         depositAmount: extendedData.deposit,
       })
       dispatch(addBookedWarehouse(warehouse.id))
-      alert('Booking request sent successfully! Deposit deducted from wallet.')
+      toast.success('Booking request sent successfully! Deposit deducted from wallet.')
       setShowConfirmModal(false)
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to send booking request')
+      toast.error(err.response?.data?.message || 'Failed to send booking request')
     } finally {
       setIsBooking(false)
     }

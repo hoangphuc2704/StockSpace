@@ -5,6 +5,7 @@ import Button from '@/components/atoms/Button'
 // Import Sidebar và Header mới tách
 import Sidebar from '../../../components/SideBar'
 import Header from '../../../components/HeaderDashboard' // Đảm bảo đường dẫn này trỏ đúng đến file Header.jsx của bạn
+import { toast } from 'react-hot-toast'
 
 const OwnerProfile = () => {
   // Quản lý trạng thái đóng mở Sidebar đồng bộ với hệ thống
@@ -37,7 +38,7 @@ const OwnerProfile = () => {
   const handleSubmit = (e) => {
     e.preventDefault()
     // Xử lý logic Call API cập nhật thông tin tại đây
-    alert('Cập nhật thông tin tài khoản thành công!')
+    toast.success('Cập nhật thông tin tài khoản thành công!')
   }
 
   return (

@@ -139,10 +139,23 @@ const WithdrawHistory = () => {
             Chiết khấu
           </span>
         )
+      case 'WITHDRAWAL':
       case 'WITHDRAW':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-700/10 ring-inset">
             Rút tiền
+          </span>
+        )
+      case 'DEPOSIT_PAYMENT':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-700/10 ring-inset">
+            Nhận tiền cọc
+          </span>
+        )
+      case 'DEPOSIT_REFUND':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-700/10 ring-inset">
+            Hoàn tiền cọc
           </span>
         )
       default:
@@ -191,9 +204,10 @@ const WithdrawHistory = () => {
     {
       header: 'Số tiền',
       render: (row) => {
-        const isPlus = row.transactionType === 'TOP_UP'
+        const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_PAYMENT'
+        const isFailed = row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
         return (
-          <span className={`font-bold ${isPlus ? 'text-emerald-600' : 'text-rose-600'}`}>
+          <span className={`font-bold ${isFailed ? 'text-rose-600' : (isPlus ? 'text-emerald-600' : 'text-rose-600')}`}>
             {isPlus ? '+' : '-'} {formatVND(row.amount)}
           </span>
         )

@@ -427,8 +427,8 @@ const UserManagementPage = () => {
     {
       header: 'Trạng thái',
       render: (row) => (
-        <Badge variant={row.isActive ? 'success' : 'danger'} size="sm" className="rounded-full">
-          {row.isActive ? 'Hoạt động' : 'Bị khóa'}
+        <Badge variant={(row.active !== undefined ? row.active : row.isActive) ? 'success' : 'danger'} size="sm" className="rounded-full">
+          {(row.active !== undefined ? row.active : row.isActive) ? 'Hoạt động' : 'Bị khóa'}
         </Badge>
       ),
     },
@@ -448,7 +448,7 @@ const UserManagementPage = () => {
             <Edit2 size={15} />
           </button>
 
-          {row.isActive ? (
+          {(row.active !== undefined ? row.active : row.isActive) ? (
             <button
               title="Khóa tài khoản"
               onClick={() => dispatch(deactivateUser(row.id))}

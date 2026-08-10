@@ -6,9 +6,11 @@ import Header from '@/components/HeaderDashboard'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
+import ContractViewerModal from '@/components/ContractViewerModal'
 import { FileText, CheckCircle, Loader2, Scale, X, Upload, ImageIcon, AlertCircle, CheckCircle2, User } from 'lucide-react'
 import contractApi from '@/services/contractApi'
 import disputeApi from '@/services/disputeApi'
+import { toast } from 'react-hot-toast'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 /** Kiểm tra hợp đồng còn trong vòng 7 ngày kể từ createdAt */
@@ -52,7 +54,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
         { contractId, reason: reason.trim() },
         files
       )
-      alert('Đã gửi yêu cầu tranh chấp thành công! Admin sẽ xử lý sớm.')
+      toast.success('Đã gửi yêu cầu tranh chấp thành công! Admin sẽ xử lý sớm.')
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -299,6 +301,10 @@ const TenantContractsPage = () => {
   const [viewDispute, setViewDispute] = useState(null)
   const [loadingDispute, setLoadingDispute] = useState(false)
 
+  // Contract Viewer Modal state
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerImages, setViewerImages] = useState([])
+
   const fetchContracts = async () => {
     try {
       setLoading(true)
@@ -322,10 +328,10 @@ const TenantContractsPage = () => {
 
     try {
       await contractApi.tenantConfirmContract(id)
-      alert('Đã xác nhận hợp đồng thành công! Hợp đồng đã có hiệu lực (ACTIVE).')
+      toast.success('Đã xác nhận hợp đồng thành công! Hợp đồng đã có hiệu lực (ACTIVE).')
       fetchContracts()
     } catch (error) {
-      alert(error.response?.data?.message || 'Xác nhận hợp đồng thất bại')
+      toast.error(error.response?.data?.message || 'Xác nhận hợp đồng thất bại')
     }
   }
 
@@ -333,25 +339,31 @@ const TenantContractsPage = () => {
     try {
       if (!imageUrlRaw) throw new Error('No image');
       
-      let imageUrl = imageUrlRaw;
+      let imageArray = [];
       
-      if (typeof imageUrlRaw === 'string' && imageUrlRaw.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(imageUrlRaw);
-          if (parsed && parsed.length > 0) imageUrl = parsed[0];
-        } catch (e) {
-          // Fallback cho Java List.toString() không có quotes
-          const content = imageUrlRaw.slice(1, -1);
-          if (content) {
-            imageUrl = content.split(',')[0].trim();
+      if (Array.isArray(imageUrlRaw)) {
+        imageArray = imageUrlRaw;
+      } else if (typeof imageUrlRaw === 'string') {
+        if (imageUrlRaw.startsWith('[')) {
+          try {
+            imageArray = JSON.parse(imageUrlRaw);
+          } catch (e) {
+            // Fallback for Java List.toString()
+            const content = imageUrlRaw.slice(1, -1);
+            if (content) {
+              imageArray = content.split(',').map(url => url.trim());
+            }
           }
+        } else {
+          imageArray = [imageUrlRaw];
         }
       }
 
-      if (!imageUrl || imageUrl.startsWith('[')) throw new Error('Invalid URL');
-      window.open(imageUrl, '_blank', 'noopener,noreferrer')
+      if (!imageArray || imageArray.length === 0) throw new Error('Invalid URL');
+      setViewerImages(imageArray);
+      setViewerOpen(true);
     } catch (error) {
-      alert('Chủ kho chưa upload bản hợp đồng hoặc không tìm thấy file hợp lệ!')
+      toast.error('Chủ kho chưa upload bản hợp đồng hoặc không tìm thấy file hợp lệ!')
     }
   }
 
@@ -365,10 +377,10 @@ const TenantContractsPage = () => {
       if (dispute) {
         setViewDispute(dispute)
       } else {
-        alert('Không tìm thấy chi tiết tranh chấp do bạn mở cho hợp đồng này.\n\n(Lưu ý: Bạn chỉ xem được nếu bạn là người trực tiếp mở tranh chấp).')
+        toast.error('Không tìm thấy chi tiết tranh chấp do bạn mở cho hợp đồng này.\n\n(Lưu ý: Bạn chỉ xem được nếu bạn là người trực tiếp mở tranh chấp).')
       }
     } catch (err) {
-      alert('Lỗi khi lấy thông tin tranh chấp.')
+      toast.error('Lỗi khi lấy thông tin tranh chấp.')
     } finally {
       setLoadingDispute(false)
     }
@@ -385,8 +397,15 @@ const TenantContractsPage = () => {
     },
     { header: 'Warehouse', accessor: 'warehouseName' },
     {
-      header: 'Start Date',
-      render: (row) => <span>{row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+      header: 'Thời Hạn',
+      render: (row) => (
+        <div className="grid grid-cols-[max-content_1fr] gap-x-2 gap-y-1 text-xs whitespace-nowrap">
+          <span className="text-slate-400">Bắt đầu:</span>
+          <span className="font-medium">{row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+          <span className="text-slate-400">Kết thúc:</span>
+          <span className="font-medium">{row.endDate ? new Date(row.endDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+        </div>
+      )
     },
     {
       header: 'Status',
@@ -505,6 +524,12 @@ const TenantContractsPage = () => {
           onClose={() => setViewDispute(null)}
         />
       )}
+      {/* Viewer Modal */}
+      <ContractViewerModal
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        images={viewerImages}
+      />
     </div>
   )
 }

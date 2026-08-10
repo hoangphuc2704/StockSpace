@@ -5,6 +5,7 @@ import { ArrowLeft, Check } from 'lucide-react'
 import PublicHeader from '../../../components/PublicHeader'
 import packageApi from '../../../services/packageApi'
 import subscriptionApi from '../../../services/tenant/subscriptionApi'
+import { toast } from 'react-hot-toast'
 
 const PackageDetail = () => {
   const { id } = useParams()
@@ -31,11 +32,11 @@ const PackageDetail = () => {
 
   const handlePurchase = async () => {
     if (!isAuthenticated) {
-      alert("Vui lòng đăng nhập để mua gói dịch vụ.")
+      toast.error("Vui lòng đăng nhập để mua gói dịch vụ.")
       return
     }
     if (user?.role !== 'ROLE_TENANT') {
-      alert("Chỉ tài khoản Người Thuê Kho (Tenant) mới có thể mua gói dịch vụ này.")
+      toast.error("Chỉ tài khoản Người Thuê Kho (Tenant) mới có thể mua gói dịch vụ này.")
       return
     }
     
@@ -45,7 +46,7 @@ const PackageDetail = () => {
     try {
       setIsPurchasing(true)
       await subscriptionApi.purchasePackage({ packageId: id })
-      alert("Đăng ký gói dịch vụ thành công! Hệ thống WMS của bạn đã được mở khóa.")
+      toast.success("Đăng ký gói dịch vụ thành công! Hệ thống WMS của bạn đã được mở khóa.")
       navigate('/tenant/dashboard')
     } catch (error) {
       const errorCode = error.response?.data?.errorCode
@@ -55,9 +56,9 @@ const PackageDetail = () => {
           navigate('/tenant/wallet')
         }
       } else if (errorCode === 'SUBSCRIPTION_ALREADY_ACTIVE') {
-        alert("Bạn đã có một gói dịch vụ đang hoạt động. Không thể đăng ký thêm.")
+        toast.error("Bạn đã có một gói dịch vụ đang hoạt động. Không thể đăng ký thêm.")
       } else {
-        alert(error.response?.data?.message || "Đăng ký gói dịch vụ thất bại.")
+        toast.error(error.response?.data?.message || "Đăng ký gói dịch vụ thất bại.")
       }
     } finally {
       setIsPurchasing(false)

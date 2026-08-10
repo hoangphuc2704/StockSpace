@@ -17,7 +17,6 @@ import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
-import contractApi from '@/services/contractApi'
 import receiptApi from '@/services/wms/receiptApi'
 import productApi from '../../../services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
@@ -72,14 +71,14 @@ const InboundPage = () => {
 
   const fetchInitialData = async () => {
     try {
-      const [contractRes, skuRes] = await Promise.all([
-        contractApi.getMyContracts({ page: 0, size: 50 }),
+      const [whRes, skuRes] = await Promise.all([
+        warehouseApi.getMyWarehouses(),
         productApi.getSKUs({ page: 0, size: 50 })
       ])
 
-      const activeContracts = contractRes.data?.data?.content?.filter(c => c.status === 'ACTIVE') || []
-      const allWhList = activeContracts.map(c => ({ id: c.warehouseId, name: c.warehouseName }))
-      const whList = Array.from(new Map(allWhList.map(item => [item.id, item])).values())
+      // API trả về danh sách kho, có thể ở data.data hoặc data.data.content
+      const whData = whRes.data?.data?.content || whRes.data?.data || []
+      const whList = whData.map(w => ({ id: w.id || w.warehouseId, name: w.name || w.warehouseName }))
       setWarehouses(whList)
       if (whList.length > 0) {
         setSelectedWarehouseId(whList[0].id)

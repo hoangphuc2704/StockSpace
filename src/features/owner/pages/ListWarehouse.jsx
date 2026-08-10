@@ -25,6 +25,7 @@ import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
+import { toast } from 'react-hot-toast'
 
 const WarehouseManagement = () => {
   const navigate = useNavigate()
@@ -55,10 +56,10 @@ const WarehouseManagement = () => {
       const res = await warehouseApi.requestInspection(warehouseId)
 
       if (res?.data?.success || res?.success || res?.status === 200 || res?.status === 201) {
-        alert('Gửi yêu cầu kiểm định thành công!')
+        toast.success('Gửi yêu cầu kiểm định thành công!')
         setRefreshTrigger((prev) => prev + 1)
       } else {
-        alert(res?.data?.message || res?.message || 'Yêu cầu kiểm định thất bại.')
+        toast.error(res?.data?.message || res?.message || 'Yêu cầu kiểm định thất bại.')
       }
     } catch (error) {
       console.error('Lỗi khi gửi yêu cầu kiểm định:', error)
@@ -107,7 +108,7 @@ const WarehouseManagement = () => {
     setWarehouses((prevList) =>
       prevList.map((wh) => (wh.id === id ? { ...wh, status: newStatus } : wh))
     )
-    alert(`Đã chuyển trạng thái kho sang: ${newStatus}`)
+    toast.success(`Đã chuyển trạng thái kho sang: ${newStatus}`)
   }
 
   // Định dạng Badge hiển thị cho Trạng thái kho

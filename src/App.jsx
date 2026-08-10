@@ -59,6 +59,7 @@ import OwnerContractsPage from './features/owner/pages/OwnerContractsPage'
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
 import StaffTasksPage from './features/staff/pages/StaffTasksPage'
+import StaffCareerHistoryPage from './features/staff/pages/StaffCareerHistoryPage'
 import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages_SubcriptionsManagementPage'
 
 // Inspector Pages
@@ -177,6 +178,7 @@ const App = () => {
           <Route path="/staff/inventory" element={<InventoryPage />} />
           <Route path="/staff/inbound" element={<InboundPage />} />
           <Route path="/staff/outbound" element={<OutboundPage />} />
+          <Route path="/staff/career-history" element={<StaffCareerHistoryPage />} />
         </Route>
 
         {/* Inspector Routes */}

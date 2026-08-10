@@ -5,13 +5,14 @@ import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import {
   Users, UserPlus, Trash2, Search, Loader2,
-  CheckCircle, XCircle, Mail, Phone, Calendar, Shield
+  CheckCircle, XCircle, Mail, Phone, Calendar, Shield, Briefcase
 } from 'lucide-react'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import Modal from '@/components/organisms/Modal'
 import InputField from '@/components/atoms/InputField'
 import staffApi from '@/services/staff/staffApi'
+import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 
 const TenantStaffManagementPage = () => {
@@ -36,9 +37,33 @@ const TenantStaffManagementPage = () => {
   // Remove confirm
   const [removingId, setRemovingId] = useState(null)
 
+  // Assignment Modal
+  const [isAssignOpen, setIsAssignOpen] = useState(false)
+  const [selectedStaff, setSelectedStaff] = useState(null)
+  const [assignments, setAssignments] = useState([])
+  const [myWarehouses, setMyWarehouses] = useState([])
+  const [isAssigning, setIsAssigning] = useState(false)
+  const [assignForm, setAssignForm] = useState({
+    warehouseId: '',
+    role: 'OPERATOR',
+    customTitle: '',
+    notes: ''
+  })
+  const [revokingId, setRevokingId] = useState(null)
+
   useEffect(() => {
     fetchStaffs()
+    fetchMyWarehouses()
   }, [page, keyword])
+
+  const fetchMyWarehouses = async () => {
+    try {
+      const res = await warehouseApi.getMyWarehouses()
+      setMyWarehouses(res.data?.data?.content || res.data?.data || [])
+    } catch (err) {
+      console.error('Failed to load warehouses', err)
+    }
+  }
 
   const fetchStaffs = async () => {
     setIsLoading(true)
@@ -86,6 +111,55 @@ const TenantStaffManagementPage = () => {
       toast.error(err.response?.data?.message || 'Xóa nhân viên thất bại')
     } finally {
       setRemovingId(null)
+    }
+  }
+
+  const handleOpenAssign = async (staff) => {
+    setSelectedStaff(staff)
+    setIsAssignOpen(true)
+    fetchAssignments(staff.user?.id || staff.memberId)
+  }
+
+  const fetchAssignments = async (staffUserId) => {
+    try {
+      const res = await staffApi.getWarehouseAssignments(staffUserId)
+      setAssignments(res.data?.data || [])
+    } catch (err) {
+      toast.error('Không thể tải lịch sử phân công')
+    }
+  }
+
+  const handleAssign = async (e) => {
+    e.preventDefault()
+    if (!assignForm.warehouseId) {
+      toast.error('Vui lòng chọn kho')
+      return
+    }
+    setIsAssigning(true)
+    try {
+      const staffUserId = selectedStaff.user?.id || selectedStaff.memberId
+      await staffApi.assignWarehouse(staffUserId, assignForm)
+      toast.success('Phân công kho thành công')
+      setAssignForm({ warehouseId: '', role: 'OPERATOR', customTitle: '', notes: '' })
+      fetchAssignments(staffUserId)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Phân công thất bại')
+    } finally {
+      setIsAssigning(false)
+    }
+  }
+
+  const handleRevoke = async (assignmentId) => {
+    if (!window.confirm('Bạn có chắc muốn thu hồi quyền làm việc tại kho này?')) return
+    setRevokingId(assignmentId)
+    try {
+      await staffApi.revokeWarehouseAssignment(assignmentId)
+      toast.success('Đã thu hồi phân công')
+      fetchAssignments(selectedStaff.user?.id || selectedStaff.memberId)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Thu hồi thất bại')
+    } finally {
+      setRevokingId(null)
     }
   }
 
@@ -206,7 +280,7 @@ const TenantStaffManagementPage = () => {
                             )}
                           </td>
                           <td className="py-4 px-4">
-                            {staff.isActive ? (
+                            {(staff.active !== undefined ? staff.active : staff.isActive) ? (
                               <Badge variant="success">
                                 <CheckCircle className="h-3 w-3 mr-1" />Hoạt động
                               </Badge>
@@ -217,19 +291,31 @@ const TenantStaffManagementPage = () => {
                             )}
                           </td>
                           <td className="py-4 px-4 text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-600 border-red-200 hover:bg-red-50"
-                              disabled={removingId === staff.memberId}
-                              onClick={() => handleRemove(staff.memberId, staff.fullName)}
-                            >
-                              {removingId === staff.memberId ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-primary border-primary/20 hover:bg-primary/5"
+                                disabled={!(staff.active !== undefined ? staff.active : staff.isActive)}
+                                onClick={() => handleOpenAssign(staff)}
+                              >
+                                <Briefcase className="h-4 w-4 mr-1" />
+                                Phân công
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                                disabled={removingId === staff.memberId}
+                                onClick={() => handleRemove(staff.memberId, staff.fullName)}
+                              >
+                                {removingId === staff.memberId ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -317,6 +403,112 @@ const TenantStaffManagementPage = () => {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Assignment Modal */}
+      <Modal
+        isOpen={isAssignOpen}
+        onClose={() => { setIsAssignOpen(false); setSelectedStaff(null); }}
+        title={`Phân công kho - ${selectedStaff?.fullName || ''}`}
+        size="lg"
+      >
+        <div className="space-y-6">
+          {/* Current Assignments */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800 mb-3">Kho đang phụ trách</h3>
+            <div className="space-y-2">
+              {assignments.length > 0 ? assignments.map(assign => (
+                <div key={assign.id} className={`p-3 rounded-xl border ${assign.status === 'ACTIVE' ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100'} flex items-start justify-between`}>
+                  <div>
+                    <p className="font-medium text-slate-900">{assign.warehouseName}</p>
+                    <div className="flex items-center gap-2 mt-1 text-xs">
+                      <Badge variant={assign.status === 'ACTIVE' ? 'success' : 'secondary'}>{assign.status}</Badge>
+                      <span className="text-slate-500 font-medium">Vai trò: {assign.role}</span>
+                      {assign.customTitle && <span className="text-slate-400">({assign.customTitle})</span>}
+                    </div>
+                  </div>
+                  {assign.status === 'ACTIVE' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-500 hover:bg-red-50 hover:border-red-200 border-transparent h-8"
+                      disabled={revokingId === assign.id}
+                      onClick={() => handleRevoke(assign.id)}
+                    >
+                      {revokingId === assign.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Thu hồi'}
+                    </Button>
+                  )}
+                </div>
+              )) : (
+                <p className="text-slate-500 text-sm italic">Chưa được phân công kho nào.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200"></div>
+
+          {/* Add new assignment */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800 mb-3">Phân công kho mới</h3>
+            <form onSubmit={handleAssign} className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Chọn kho <span className="text-red-500">*</span></label>
+                  <select
+                    className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    value={assignForm.warehouseId}
+                    onChange={e => setAssignForm(f => ({ ...f, warehouseId: e.target.value }))}
+                    required
+                  >
+                    <option value="">-- Chọn kho --</option>
+                    {myWarehouses.map(w => (
+                      <option key={w.id} value={w.id}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Vai trò <span className="text-red-500">*</span></label>
+                  <select
+                    className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    value={assignForm.role}
+                    onChange={e => setAssignForm(f => ({ ...f, role: e.target.value }))}
+                    required
+                  >
+                    <option value="MANAGER">Manager</option>
+                    <option value="OPERATOR">Operator</option>
+                    <option value="INSPECTOR">Inspector</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Chức danh hiển thị</label>
+                  <InputField
+                    placeholder="VD: Thủ kho Ca 1"
+                    value={assignForm.customTitle}
+                    onChange={e => setAssignForm(f => ({ ...f, customTitle: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Ghi chú</label>
+                  <InputField
+                    placeholder="Ghi chú phân công..."
+                    value={assignForm.notes}
+                    onChange={e => setAssignForm(f => ({ ...f, notes: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <Button type="submit" isLoading={isAssigning}>
+                  Thêm Phân Công
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       </Modal>
     </div>
   )

@@ -22,6 +22,7 @@ import Header from '../../../components/HeaderDashboard'
 
 // Import API config
 import walletApi from '../../../services/wallet/walletApi'
+import { toast } from 'react-hot-toast'
 
 const WalletTenant = () => {
   const dispatch = useDispatch()
@@ -138,7 +139,7 @@ const WalletTenant = () => {
 
     const amountNumber = Number(inputAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      alert('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
+      toast.error('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
       return
     }
 
@@ -155,11 +156,11 @@ const WalletTenant = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-        alert(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
+        toast.error(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
       }
     } catch (error) {
       console.error('Lỗi nạp tiền:', error)
-      alert('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
+      toast.error('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
     } finally {
       setDepositLoading(false)
     }
@@ -244,8 +245,9 @@ const WalletTenant = () => {
       header: 'Số tiền',
       render: (row) => {
         const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_REFUND'
+        const isFailed = row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
         return (
-          <span className={`font-bold ${isPlus ? 'text-emerald-600' : 'text-rose-600'}`}>
+          <span className={`font-bold ${isFailed ? 'text-rose-600' : (isPlus ? 'text-emerald-600' : 'text-rose-600')}`}>
             {isPlus ? '+' : '-'} {formatVND(row.amount)}
           </span>
         )

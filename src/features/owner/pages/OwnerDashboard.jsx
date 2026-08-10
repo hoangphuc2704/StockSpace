@@ -39,6 +39,7 @@ import Header from '../../../components/HeaderDashboard'
 import walletApi from '../../../services/wallet/walletApi'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import ownerStatsApi from '../../../services/owner/ownerStatsApi'
+import { toast } from 'react-hot-toast'
 
 // Mock Data giữ nguyên
 const defaultRevenueData = [
@@ -156,7 +157,7 @@ const OwnerDashboard = () => {
 
     const amountNumber = Number(inputAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      alert('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
+      toast.error('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
       return
     }
 
@@ -175,11 +176,11 @@ const OwnerDashboard = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl // Chuyển hướng sang VNPay
       } else {
-        alert(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
+        toast.error(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
       }
     } catch (error) {
       console.error('Lỗi nạp tiền:', error)
-      alert('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
+      toast.error('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
     } finally {
       setDepositLoading(false)
     }
@@ -208,10 +209,10 @@ const OwnerDashboard = () => {
   const handleApprove = async (id) => {
     try {
       await warehouseApi.approveBooking(id)
-      alert('Đã chấp nhận yêu cầu thuê kho thành công!')
+      toast.success('Đã chấp nhận yêu cầu thuê kho thành công!')
       fetchRequests() // Refresh data
     } catch (error) {
-      alert(error.response?.data?.message || 'Chấp nhận yêu cầu thất bại')
+      toast.error(error.response?.data?.message || 'Chấp nhận yêu cầu thất bại')
     }
   }
 
@@ -221,10 +222,10 @@ const OwnerDashboard = () => {
     
     try {
       await warehouseApi.rejectBooking(id, { reason })
-      alert('Đã từ chối yêu cầu thuê kho!')
+      toast.error('Đã từ chối yêu cầu thuê kho!')
       fetchRequests() // Refresh data
     } catch (error) {
-      alert(error.response?.data?.message || 'Từ chối yêu cầu thất bại')
+      toast.error(error.response?.data?.message || 'Từ chối yêu cầu thất bại')
     }
   }
 

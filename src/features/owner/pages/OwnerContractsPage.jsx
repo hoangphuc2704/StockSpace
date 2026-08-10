@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
-import Sidebar from '@/components/SideBar'
+import Sidebar from '@/components/Sidebar'
 import Header from '@/components/HeaderDashboard'
+import ContractViewerModal from '@/components/ContractViewerModal'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
@@ -10,6 +11,7 @@ import { FileText, Upload, X, Loader2, Scale, ImageIcon, AlertCircle, CheckCircl
 import contractApi from '@/services/contractApi'
 import uploadApi from '@/services/uploadApi'
 import disputeApi from '@/services/disputeApi'
+import { toast } from 'react-hot-toast'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 /** Kiểm tra hợp đồng còn trong vòng 7 ngày kể từ createdAt */
@@ -53,7 +55,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
         { contractId, reason: reason.trim() },
         files
       )
-      alert('Đã gửi yêu cầu tranh chấp thành công! Admin sẽ xử lý sớm.')
+      toast.success('Đã gửi yêu cầu tranh chấp thành công! Admin sẽ xử lý sớm.')
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -298,7 +300,11 @@ const OwnerContractsPage = () => {
   const [submitLoading, setSubmitLoading] = useState(false)
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [contractFile, setContractFile] = useState(null)
+  const [contractFiles, setContractFiles] = useState([])
+
+  // Contract Viewer Modal state
+  const [viewerOpen, setViewerOpen] = useState(false)
+  const [viewerImages, setViewerImages] = useState([])
 
   // Dispute modal state
   const [disputeContractId, setDisputeContractId] = useState(null)
@@ -328,7 +334,7 @@ const OwnerContractsPage = () => {
     setSelectedContractId(id)
     setStartDate('')
     setEndDate('')
-    setContractFile(null)
+    setContractFiles([])
     setIsModalOpen(true)
   }
 
@@ -336,60 +342,69 @@ const OwnerContractsPage = () => {
     try {
       if (!imageUrlRaw) throw new Error('No image');
       
-      let imageUrl = imageUrlRaw;
+      let imageArray = [];
       
-      if (typeof imageUrlRaw === 'string' && imageUrlRaw.startsWith('[')) {
-        try {
-          const parsed = JSON.parse(imageUrlRaw);
-          if (parsed && parsed.length > 0) imageUrl = parsed[0];
-        } catch (e) {
-          // Fallback cho Java List.toString() không có quotes
-          const content = imageUrlRaw.slice(1, -1);
-          if (content) {
-            imageUrl = content.split(',')[0].trim();
+      if (Array.isArray(imageUrlRaw)) {
+        imageArray = imageUrlRaw;
+      } else if (typeof imageUrlRaw === 'string') {
+        if (imageUrlRaw.startsWith('[')) {
+          try {
+            imageArray = JSON.parse(imageUrlRaw);
+          } catch (e) {
+            // Fallback for Java List.toString()
+            const content = imageUrlRaw.slice(1, -1);
+            if (content) {
+              imageArray = content.split(',').map(url => url.trim());
+            }
           }
+        } else {
+          imageArray = [imageUrlRaw];
         }
       }
 
-      if (!imageUrl || imageUrl.startsWith('[')) throw new Error('Invalid URL');
-      window.open(imageUrl, '_blank', 'noopener,noreferrer')
+      if (!imageArray || imageArray.length === 0) throw new Error('Invalid URL');
+      setViewerImages(imageArray);
+      setViewerOpen(true);
     } catch (error) {
-      alert('Chưa có ảnh hợp đồng hợp lệ!')
+      toast.error('Chưa có ảnh hợp đồng hợp lệ!')
     }
   }
 
   const handleSubmitContract = async (e) => {
     e.preventDefault()
-    if (!startDate || !endDate || !contractFile) {
-      alert('Vui lòng điền đầy đủ thông tin và chọn file hợp đồng!')
+    if (!startDate || !endDate || contractFiles.length === 0) {
+      toast.error('Vui lòng điền đầy đủ thông tin và chọn file hợp đồng!')
       return
     }
 
     try {
       setSubmitLoading(true)
       
-      // Upload file to get URL
-      const uploadRes = await uploadApi.uploadImage(contractFile)
-      let uploadedUrl = ''
+      // Upload multiple files using Promise.all
+      const uploadPromises = contractFiles.map(file => uploadApi.uploadImage(file))
+      const uploadResponses = await Promise.all(uploadPromises)
       
-      if (uploadRes?.data?.success) {
-        uploadedUrl = uploadRes.data.data
-      } else {
-        throw new Error(uploadRes?.data?.message || 'Upload ảnh thất bại')
+      const uploadedUrls = []
+      for (const res of uploadResponses) {
+        if (res?.data?.success) {
+          uploadedUrls.push(res.data.data)
+        } else {
+          throw new Error(res?.data?.message || 'Upload ảnh thất bại')
+        }
       }
 
       const payload = {
         startDate,
         endDate,
-        paperContractImages: [uploadedUrl]
+        paperContractImages: uploadedUrls
       }
       await contractApi.submitOnlineContract(selectedContractId, payload)
       
-      alert('Đã upload hợp đồng thành công! Đang chờ Tenant xác nhận.')
+      toast.success('Đã upload hợp đồng thành công! Đang chờ Tenant xác nhận.')
       setIsModalOpen(false)
       fetchContracts()
     } catch (error) {
-      alert(error.response?.data?.message || error.message || 'Upload hợp đồng thất bại')
+      toast.error(error.response?.data?.message || error.message || 'Upload hợp đồng thất bại')
     } finally {
       setSubmitLoading(false)
     }
@@ -405,10 +420,10 @@ const OwnerContractsPage = () => {
       if (dispute) {
         setViewDispute(dispute)
       } else {
-        alert('Không tìm thấy chi tiết tranh chấp do bạn mở cho hợp đồng này.\n\n(Lưu ý: Bạn chỉ xem được nếu bạn là người trực tiếp mở tranh chấp).')
+        toast.error('Không tìm thấy chi tiết tranh chấp do bạn mở cho hợp đồng này.\n\n(Lưu ý: Bạn chỉ xem được nếu bạn là người trực tiếp mở tranh chấp).')
       }
     } catch (err) {
-      alert('Lỗi khi lấy thông tin tranh chấp.')
+      toast.error('Lỗi khi lấy thông tin tranh chấp.')
     } finally {
       setLoadingDispute(false)
     }
@@ -428,6 +443,17 @@ const OwnerContractsPage = () => {
     {
       header: 'Deposit',
       render: (row) => <span className="font-semibold text-primary">{row.depositAmount?.toLocaleString()} ₫</span>
+    },
+    {
+      header: 'Thời Hạn',
+      render: (row) => (
+        <div className="grid grid-cols-[max-content_1fr] gap-x-2 gap-y-1 text-xs whitespace-nowrap">
+          <span className="text-slate-400">Bắt đầu:</span>
+          <span className="font-medium">{row.startDate ? new Date(row.startDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+          <span className="text-slate-400">Kết thúc:</span>
+          <span className="font-medium">{row.endDate ? new Date(row.endDate).toLocaleDateString('vi-VN') : 'N/A'}</span>
+        </div>
+      )
     },
     {
       header: 'Status',
@@ -571,18 +597,43 @@ const OwnerContractsPage = () => {
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-bold text-slate-500">Ảnh Hợp Đồng Giấy</label>
+                <label className="mb-2 block text-xs font-bold text-slate-500">Ảnh Hợp Đồng Giấy (Có thể chọn nhiều)</label>
                 <input
                   type="file"
                   accept="image/*"
-                  required
+                  multiple
                   onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setContractFile(e.target.files[0])
+                    if (e.target.files && e.target.files.length > 0) {
+                      setContractFiles(prev => [...prev, ...Array.from(e.target.files)])
+                      // Reset value so user can select again
+                      e.target.value = null
                     }
                   }}
                   className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
                 />
+                
+                {contractFiles.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium text-slate-500 mb-2">Đã chọn {contractFiles.length} ảnh:</p>
+                    <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
+                      {contractFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <ImageIcon size={14} className="text-blue-500 shrink-0" />
+                            <span className="text-xs text-slate-700 truncate">{file.name}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setContractFiles(prev => prev.filter((_, i) => i !== index))}
+                            className="text-slate-400 hover:text-red-500 shrink-0 p-1"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-4">
@@ -629,6 +680,12 @@ const OwnerContractsPage = () => {
           onClose={() => setViewDispute(null)}
         />
       )}
+      {/* Viewer Modal */}
+      <ContractViewerModal
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        images={viewerImages}
+      />
     </div>
   )
 }

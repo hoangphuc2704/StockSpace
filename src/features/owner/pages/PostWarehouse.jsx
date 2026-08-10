@@ -19,6 +19,7 @@ import {
 import Button from '../../../components/atoms/Button'
 import ownerApi from '../../../services/warehouse/warehouseApi'
 import walletApi from '../../../services/wallet/walletApi'
+import { toast } from 'react-hot-toast'
 
 // Phí tạo bài đăng (VND) - chỉnh lại theo quy định thực tế của hệ thống
 const POSTING_FEE = 50000
@@ -210,18 +211,18 @@ const CreateWarehouse = () => {
       if (response?.data?.success) {
         const createdWarehouseId = response?.data?.data?.id ?? response?.data?.data?.warehouseId
 
-        alert('Đăng tin kho vận thành công! Hãy cấu hình layout cho kho vừa tạo.')
+        toast.success('Đăng tin kho vận thành công! Hãy cấu hình layout cho kho vừa tạo.')
         navigate(
           createdWarehouseId
             ? `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${encodeURIComponent(String(warehouseWidth))}&height=${encodeURIComponent(String(warehouseHeight))}`
             : '/owner/layoutwarehouses'
         )
       } else {
-        alert(response?.data?.message || 'Đăng tin thất bại, vui lòng kiểm tra lại dữ liệu.')
+        toast.error(response?.data?.message || 'Đăng tin thất bại, vui lòng kiểm tra lại dữ liệu.')
       }
     } catch (error) {
       console.error('Error creating warehouse:', error)
-      alert(error.response?.data?.message || 'Đã xảy ra lỗi hệ thống khi kết nối!')
+      toast.error(error.response?.data?.message || 'Đã xảy ra lỗi hệ thống khi kết nối!')
     } finally {
       setIsLoading(false)
     }
@@ -232,7 +233,7 @@ const CreateWarehouse = () => {
     e.preventDefault()
     const amountNumber = Number(depositAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      alert('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
+      toast.error('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
       return
     }
     try {
@@ -242,11 +243,11 @@ const CreateWarehouse = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-        alert(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
+        toast.error(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
       }
     } catch (error) {
       console.error('Lỗi nạp tiền:', error)
-      alert('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
+      toast.error('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
     } finally {
       setDepositLoading(false)
     }

@@ -2,12 +2,14 @@ import React from 'react'
 import { Menu } from 'lucide-react'
 import logoDaidien from '../assets/logoDaidien.png'
 import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 // ✅ Đã kết nối trực tiếp action từ Redux store và sửa chính tả uiSlice
 import { toggleSidebar } from '../store/uiSlide'
 import NotificationDropdown from './NotificationDropdown'
 
 const Header = () => {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
 
   const displayRole = user?.role 
@@ -25,7 +27,14 @@ const Header = () => {
           <Menu className="h-6 w-6" />
         </button>
 
-        <div className="flex cursor-pointer items-center gap-2">
+        <div 
+          className={`flex items-center gap-2 ${user?.role === 'ROLE_TENANT' ? 'cursor-pointer' : ''}`}
+          onClick={() => {
+            if (user?.role === 'ROLE_TENANT') {
+              navigate('/')
+            }
+          }}
+        >
           <div className="shrink-0 rounded-lg bg-white p-1.5">
             <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
           </div>

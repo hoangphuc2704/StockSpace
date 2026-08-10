@@ -68,6 +68,7 @@ export const NAVIGATION_CONFIG = {
     { id: 'dash', label: 'Dashboard', icon: LayoutDashboard, path: '/staff/dashboard' },
     { id: 'tasks', label: 'Assigned Tasks', icon: Clock, path: '/staff/tasks' },
     { id: 'inventory', label: 'Inventory Check', icon: Package, path: '/staff/inventory' },
+    { id: 'career', label: 'Career History', icon: FileText, path: '/staff/career-history' },
   ],
   COMMON: [
     { id: 'support', label: 'Help Center', icon: HelpCircle, path: '/support' },

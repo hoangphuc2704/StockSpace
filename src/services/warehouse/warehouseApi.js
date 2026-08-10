@@ -7,6 +7,11 @@ const onwerwarehouseApi = {
     })
   },
 
+  // API lấy danh sách kho riêng cho Tenant & Staff (có cách ly dữ liệu)
+  getMyWarehouses: () => {
+    return api.get('/tenant/warehouses/my-warehouses')
+  },
+
   getPublicWarehouseById: (warehouseId) => {
     return api.get(`/warehouses/${warehouseId}`)
   },

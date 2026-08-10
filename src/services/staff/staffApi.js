@@ -21,6 +21,30 @@ const staffApi = {
     return api.delete(`/tenant/staffs/${memberId}`)
   },
 
+  /** POST /api/tenant/staffs/{staffUserId}/warehouses - Phân công Staff vào kho */
+  assignWarehouse: (staffUserId, data) => {
+    return api.post(`/tenant/staffs/${staffUserId}/warehouses`, data)
+  },
+
+  /** GET /api/tenant/staffs/{staffUserId}/warehouses - Lấy lịch sử/danh sách phân công */
+  getWarehouseAssignments: (staffUserId) => {
+    return api.get(`/tenant/staffs/${staffUserId}/warehouses`)
+  },
+
+  /** DELETE /api/tenant/staffs/assignments/{assignmentId} - Thu hồi phân công */
+  revokeWarehouseAssignment: (assignmentId) => {
+    return api.delete(`/tenant/staffs/assignments/${assignmentId}`)
+  },
+
+  // ========================
+  // Staff - Career History
+  // ========================
+
+  /** GET /api/staff/my-work-history - Staff xem lịch sử sự nghiệp */
+  getMyWorkHistory: () => {
+    return api.get('/staff/my-work-history')
+  },
+
   // ========================
   // Staff Invitation (Public — không cần JWT)
   // ========================
