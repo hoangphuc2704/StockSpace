@@ -16,24 +16,81 @@ import {
 } from 'lucide-react'
 import { chatApi, guestChatStorage } from '../services/chatApi'
 
-const GUEST_SUGGESTIONS = [
-  'Tìm kho phù hợp ở TP.HCM',
-  'Quy trình thuê kho như thế nào?',
-  'Chính sách đặt cọc ra sao?',
-]
+const CHAT_ROLE_CONFIG = {
+  guest: {
+    subtitle: 'Tư vấn kho hàng 24/7',
+    greeting:
+      'Xin chào! Mình là trợ lý AI của StockSpace. Mình có thể giúp bạn tìm kho và giải đáp chính sách thuê kho.',
+    suggestions: [
+      'Tìm kho phù hợp ở TP.HCM',
+      'Quy trình thuê kho như thế nào?',
+      'Chính sách đặt cọc ra sao?',
+    ],
+  },
+  tenant: {
+    subtitle: 'Trợ lý dành riêng cho tenant',
+    greeting: 'Chào bạn! Mình có thể hỗ trợ tra cứu kho, hợp đồng, hàng tồn và số dư ví của bạn.',
+    suggestions: [
+      'Tóm tắt các hợp đồng của tôi',
+      'Kiểm tra hàng tồn kho của tôi',
+      'Số dư ví hiện tại là bao nhiêu?',
+    ],
+  },
+  owner: {
+    subtitle: 'Trợ lý dành riêng cho chủ kho',
+    greeting:
+      'Chào chủ kho! Mình có thể hỗ trợ tra cứu kho của bạn, yêu cầu đặt kho, doanh thu và tỷ lệ lấp đầy.',
+    suggestions: [
+      'Liệt kê các kho của tôi',
+      'Tóm tắt yêu cầu đặt kho gần đây',
+      'Doanh thu và tỷ lệ lấp đầy của tôi',
+    ],
+  },
+  staff: {
+    subtitle: 'Trợ lý nghiệp vụ nhân viên kho',
+    greeting:
+      'Chào bạn! Mình có thể hỗ trợ xem tồn kho được phân công và các phiếu nhập, xuất đang chờ xử lý.',
+    suggestions: [
+      'Kiểm tra tồn kho tôi được phân công',
+      'Có phiếu nhập nào đang chờ?',
+      'Có phiếu xuất nào đang chờ?',
+    ],
+  },
+  admin: {
+    subtitle: 'Trợ lý quản trị hệ thống',
+    greeting:
+      'Chào quản trị viên! Mình có thể hỗ trợ xem tổng quan nền tảng và báo cáo doanh thu theo tháng.',
+    suggestions: [
+      'Cho tôi tổng quan nền tảng',
+      'Thống kê doanh thu tháng này',
+      'Tìm chính sách hệ thống hiện hành',
+    ],
+  },
+  inspector: {
+    subtitle: 'Trợ lý dành cho kiểm định viên',
+    greeting:
+      'Chào kiểm định viên! Mình có thể hỗ trợ xem danh sách kiểm định được giao và thông tin chi tiết từng nhiệm vụ.',
+    suggestions: [
+      'Liệt kê các kiểm định được giao cho tôi',
+      'Tôi có kiểm định nào đang chờ?',
+      'Quy trình kiểm định kho như thế nào?',
+    ],
+  },
+}
 
-const TENANT_SUGGESTIONS = [
-  'Tóm tắt các hợp đồng của tôi',
-  'Kiểm tra hàng tồn kho của tôi',
-  'Số dư ví hiện tại là bao nhiêu?',
-]
+const AUTH_ROLE_TO_CHAT_ROLE = {
+  ROLE_TENANT: 'tenant',
+  ROLE_OWNER: 'owner',
+  ROLE_STAFF: 'staff',
+  ROLE_ADMIN: 'admin',
+  ROLE_INSPECTOR: 'inspector',
+  ROLE_GUEST: 'guest',
+}
 
-const greeting = (isTenant) => ({
-  id: `greeting-${isTenant ? 'tenant' : 'guest'}`,
+const greeting = (chatRole) => ({
+  id: `greeting-${chatRole}`,
   role: 'assistant',
-  content: isTenant
-    ? 'Chào bạn! Mình là trợ lý AI của StockSpace. Mình có thể hỗ trợ tra cứu kho, hợp đồng, hàng tồn và số dư ví của bạn.'
-    : 'Xin chào! Mình là trợ lý AI của StockSpace. Mình có thể giúp bạn tìm kho và giải đáp chính sách thuê kho.',
+  content: CHAT_ROLE_CONFIG[chatRole].greeting,
 })
 
 const formatTime = (value) => {
@@ -46,13 +103,15 @@ const formatTime = (value) => {
 const getErrorMessage = (error) =>
   error?.response?.data?.message || error?.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.'
 
-const AIChatPanel = ({ isTenant }) => {
+const AIChatPanel = ({ chatRole }) => {
+  const isAuthenticatedChat = chatRole !== 'guest'
+  const roleConfig = CHAT_ROLE_CONFIG[chatRole]
   const [isOpen, setIsOpen] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const [messages, setMessages] = useState(() => [greeting(isTenant)])
+  const [messages, setMessages] = useState(() => [greeting(chatRole)])
   const [sessions, setSessions] = useState([])
   const [sessionId, setSessionId] = useState(() =>
-    isTenant ? null : guestChatStorage.getSessionId()
+    isAuthenticatedChat ? null : guestChatStorage.getSessionId()
   )
   const [input, setInput] = useState('')
   const [status, setStatus] = useState('')
@@ -64,7 +123,7 @@ const AIChatPanel = ({ isTenant }) => {
   const abortRef = useRef(null)
   const messageSequenceRef = useRef(0)
 
-  const suggestions = isTenant ? TENANT_SUGGESTIONS : GUEST_SUGGESTIONS
+  const suggestions = roleConfig.suggestions
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -72,7 +131,7 @@ const AIChatPanel = ({ isTenant }) => {
 
   useEffect(() => () => abortRef.current?.abort(), [])
 
-  const loadTenantSessions = async () => {
+  const loadUserSessions = async () => {
     try {
       const data = await chatApi.getSessions()
       setSessions(data)
@@ -105,20 +164,20 @@ const AIChatPanel = ({ isTenant }) => {
   const handleOpen = () => {
     setIsOpen(true)
     setTimeout(() => inputRef.current?.focus(), 100)
-    if (isTenant) loadTenantSessions()
+    if (isAuthenticatedChat) loadUserSessions()
     else loadGuestHistory()
   }
 
   const startNewChat = () => {
     abortRef.current?.abort()
     setSessionId(null)
-    setMessages([greeting(isTenant)])
+    setMessages([greeting(chatRole)])
     setInput('')
     setError('')
     setStatus('')
     setIsSending(false)
     setShowHistory(false)
-    if (!isTenant) guestChatStorage.clear()
+    if (!isAuthenticatedChat) guestChatStorage.clear()
     setTimeout(() => inputRef.current?.focus(), 50)
   }
 
@@ -129,7 +188,7 @@ const AIChatPanel = ({ isTenant }) => {
     try {
       const data = await chatApi.getSessionMessages(selectedSession.id)
       setSessionId(selectedSession.id)
-      setMessages(data.length ? data : [greeting(true)])
+      setMessages(data.length ? data : [greeting(chatRole)])
       setShowHistory(false)
     } catch (requestError) {
       setError(getErrorMessage(requestError))
@@ -140,7 +199,8 @@ const AIChatPanel = ({ isTenant }) => {
 
   const deleteSession = async (event, selectedSession) => {
     event.stopPropagation()
-    if (!window.confirm(`Xóa cuộc trò chuyện “${selectedSession.title || 'Không có tiêu đề'}”?`)) return
+    if (!window.confirm(`Xóa cuộc trò chuyện “${selectedSession.title || 'Không có tiêu đề'}”?`))
+      return
 
     try {
       await chatApi.deleteSession(selectedSession.id)
@@ -182,15 +242,15 @@ const AIChatPanel = ({ isTenant }) => {
 
     try {
       await chatApi.streamMessage({
-        isTenant,
+        isAuthenticatedChat,
         sessionId,
-        sessionToken: isTenant ? null : guestChatStorage.getToken(),
+        sessionToken: isAuthenticatedChat ? null : guestChatStorage.getToken(),
         message,
         signal: controller.signal,
         onEvent: (eventName, data) => {
           if (eventName === 'session') {
             setSessionId(data.sessionId)
-            if (!isTenant) guestChatStorage.save(data)
+            if (!isAuthenticatedChat) guestChatStorage.save(data)
           }
           if (eventName === 'status') setStatus(data.message || 'Đang xử lý yêu cầu...')
           if (eventName === 'delta' && data.content) {
@@ -218,7 +278,7 @@ const AIChatPanel = ({ isTenant }) => {
           )
         )
       }
-      if (isTenant) loadTenantSessions()
+      if (isAuthenticatedChat) loadUserSessions()
     } catch (requestError) {
       if (requestError.name === 'AbortError') return
       const messageText = getErrorMessage(requestError)
@@ -226,7 +286,10 @@ const AIChatPanel = ({ isTenant }) => {
       setMessages((current) =>
         current.map((item) =>
           item.id === assistantId && !item.content
-            ? { ...item, content: 'Xin lỗi, kết nối với trợ lý đang gặp sự cố. Bạn hãy thử gửi lại.' }
+            ? {
+                ...item,
+                content: 'Xin lỗi, kết nối với trợ lý đang gặp sự cố. Bạn hãy thử gửi lại.',
+              }
             : item
         )
       )
@@ -269,11 +332,9 @@ const AIChatPanel = ({ isTenant }) => {
                   <h2 className="font-bold tracking-tight">StockSpace AI</h2>
                   <Sparkles size={14} className="text-orange-300" />
                 </div>
-                <p className="truncate text-xs text-slate-300">
-                  {isTenant ? 'Trợ lý dành riêng cho tenant' : 'Tư vấn kho hàng 24/7'}
-                </p>
+                <p className="truncate text-xs text-slate-300">{roleConfig.subtitle}</p>
               </div>
-              {isTenant && (
+              {isAuthenticatedChat && (
                 <button
                   type="button"
                   onClick={() => setShowHistory((value) => !value)}
@@ -294,7 +355,7 @@ const AIChatPanel = ({ isTenant }) => {
             </div>
           </header>
 
-          {showHistory && isTenant ? (
+          {showHistory && isAuthenticatedChat ? (
             <div className="flex min-h-0 flex-1 flex-col bg-slate-50">
               <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
                 <button
@@ -342,14 +403,16 @@ const AIChatPanel = ({ isTenant }) => {
                             </span>
                             <span className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-400">
                               <Clock3 size={11} />
-                              {new Date(item.updatedAt || item.createdAt).toLocaleDateString('vi-VN')}
+                              {new Date(item.updatedAt || item.createdAt).toLocaleDateString(
+                                'vi-VN'
+                              )}
                             </span>
                           </span>
                         </button>
                         <button
                           type="button"
                           onClick={(event) => deleteSession(event, item)}
-                          className="rounded-lg p-2 text-slate-300 opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100 focus:opacity-100"
+                          className="rounded-lg p-2 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-red-50 hover:text-red-500 focus:opacity-100"
                           aria-label="Xóa cuộc trò chuyện"
                         >
                           <Trash2 size={16} />
@@ -369,7 +432,7 @@ const AIChatPanel = ({ isTenant }) => {
           ) : (
             <>
               <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-4 py-5">
-                {isTenant && sessionId && (
+                {isAuthenticatedChat && sessionId && (
                   <button
                     type="button"
                     onClick={startNewChat}
@@ -389,15 +452,20 @@ const AIChatPanel = ({ isTenant }) => {
                     {messages.map((item) => {
                       const fromUser = item.role === 'user'
                       return (
-                        <div key={item.id} className={`flex gap-2.5 ${fromUser ? 'justify-end' : ''}`}>
+                        <div
+                          key={item.id}
+                          className={`flex gap-2.5 ${fromUser ? 'justify-end' : ''}`}
+                        >
                           {!fromUser && (
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-orange-300">
                               <Bot size={17} />
                             </span>
                           )}
-                          <div className={`max-w-[82%] ${fromUser ? 'items-end' : 'items-start'} flex flex-col`}>
+                          <div
+                            className={`max-w-[82%] ${fromUser ? 'items-end' : 'items-start'} flex flex-col`}
+                          >
                             <div
-                              className={`whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-6 ${
+                              className={`rounded-2xl px-3.5 py-2.5 text-sm leading-6 whitespace-pre-wrap ${
                                 fromUser
                                   ? 'rounded-br-md bg-orange-500 text-white shadow-sm'
                                   : 'rounded-bl-md border border-slate-200 bg-white text-slate-700 shadow-sm'
@@ -443,7 +511,9 @@ const AIChatPanel = ({ isTenant }) => {
                         </div>
                       </div>
                     )}
-                    {status && <p className="pl-11 text-xs font-medium text-orange-600">{status}</p>}
+                    {status && (
+                      <p className="pl-11 text-xs font-medium text-orange-600">{status}</p>
+                    )}
                     <div ref={bottomRef} />
                   </div>
                 )}
@@ -451,9 +521,14 @@ const AIChatPanel = ({ isTenant }) => {
 
               <footer className="border-t border-slate-200 bg-white p-3">
                 {error && (
-                  <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">{error}</div>
+                  <div className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">
+                    {error}
+                  </div>
                 )}
-                <form onSubmit={handleSubmit} className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100">
+                <form
+                  onSubmit={handleSubmit}
+                  className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100"
+                >
                   <textarea
                     ref={inputRef}
                     value={input}
@@ -471,7 +546,11 @@ const AIChatPanel = ({ isTenant }) => {
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white shadow-sm transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-slate-300"
                     aria-label="Gửi tin nhắn"
                   >
-                    {isSending ? <LoaderCircle size={18} className="animate-spin" /> : <SendHorizontal size={18} />}
+                    {isSending ? (
+                      <LoaderCircle size={18} className="animate-spin" />
+                    ) : (
+                      <SendHorizontal size={18} />
+                    )}
                   </button>
                 </form>
                 <p className="mt-2 text-center text-[10px] text-slate-400">
@@ -490,7 +569,7 @@ const AIChatPanel = ({ isTenant }) => {
         >
           <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500" />
           <MessageCircleMore size={29} className="transition group-hover:scale-110" />
-          <span className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold shadow-lg sm:group-hover:block">
+          <span className="pointer-events-none absolute right-full mr-3 hidden rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold whitespace-nowrap shadow-lg sm:group-hover:block">
             Hỏi StockSpace AI
           </span>
         </button>
@@ -501,11 +580,11 @@ const AIChatPanel = ({ isTenant }) => {
 
 const AIChatWidget = () => {
   const { isAuthenticated, user } = useSelector((state) => state.auth)
-  const isTenant = isAuthenticated && user?.role === 'ROLE_TENANT'
+  const chatRole = isAuthenticated ? AUTH_ROLE_TO_CHAT_ROLE[user?.role] : 'guest'
 
-  if (isAuthenticated && !isTenant) return null
+  if (!chatRole) return null
 
-  return <AIChatPanel key={isTenant ? 'tenant' : 'guest'} isTenant={isTenant} />
+  return <AIChatPanel key={chatRole} chatRole={chatRole} />
 }
 
 export default AIChatWidget
