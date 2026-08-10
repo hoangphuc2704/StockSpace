@@ -649,34 +649,29 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const propertyFields =
     selection.type === 'layout'
       ? [
-          ['width', 'Rộng'],
-          ['length', 'Dài'],
-          ['height', 'Cao'],
+          ['width', 'Rộng', 'm'],
+          ['length', 'Dài', 'm'],
+          ['height', 'Cao', 'm'],
         ]
       : selection.type === 'rack'
         ? [
             ['name', 'Tên'],
             ['code', 'Mã'],
-            ['coordinateX', 'Tọa độ X'],
-            ['coordinateY', 'Tọa độ Y'],
-            ['width', 'Rộng'],
-            ['length', 'Dài'],
-            ['height', 'Cao'],
-            ['rotation', 'Góc xoay'],
-            ['maxWeight', 'Tải trọng tối đa'],
-            ['maxVolume', 'Thể tích tối đa'],
+            ['width', 'Rộng', 'm'],
+            ['length', 'Dài', 'm'],
+            ['height', 'Cao', 'm'],
+            ['maxWeight', 'Tải trọng tối đa', 'kg'],
+            ['maxVolume', 'Thể tích tối đa', 'm³'],
           ]
         : [
             ['name', 'Tên'],
             ['code', 'Mã'],
-            ['coordinateX', 'Tọa độ X'],
-            ['coordinateY', 'Tọa độ Y'],
-            ['width', 'Rộng'],
-            ['length', 'Dài'],
-            ['height', 'Cao'],
+            ['width', 'Rộng', 'm'],
+            ['length', 'Dài', 'm'],
+            ['height', 'Cao', 'm'],
             ['shelfLevel', 'Tầng'],
-            ['maxWeight', 'Tải trọng tối đa'],
-            ['maxVolume', 'Thể tích tối đa'],
+            ['maxWeight', 'Tải trọng tối đa', 'kg'],
+            ['maxVolume', 'Thể tích tối đa', 'm³'],
           ]
 
   return (
@@ -1185,8 +1180,15 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     </button>
                   )}
                 </div>
+                <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] leading-5 text-blue-700">
+                  {selection.type === 'layout'
+                    ? 'Đơn vị kích thước: mét (m).'
+                    : selection.type === 'rack'
+                      ? 'Đơn vị: kích thước (m), tải trọng (kg), thể tích (m³).'
+                      : 'Đơn vị: kích thước (m), tải trọng (kg), thể tích (m³).'}
+                </div>
                 <div className="space-y-3">
-                  {propertyFields.map(([field, label]) => {
+                  {propertyFields.map(([field, label, unit]) => {
                     const isText = field === 'name' || field === 'code'
                     const tenantEditable =
                       !isOwner &&
@@ -1194,7 +1196,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     const disabled = view === 'stock' || (!isOwner && !tenantEditable)
                     return (
                       <label key={field} className="block text-xs font-semibold text-slate-600">
-                        <span className="mb-1 block">{label}</span>
+                        <span className="mb-1 flex items-center justify-between gap-2">
+                          <span>{label}</span>
+                          {unit && (
+                            <span className="font-normal text-slate-400">Đơn vị: {unit}</span>
+                          )}
+                        </span>
                         <input
                           type={isText ? 'text' : 'number'}
                           min={isText ? undefined : 0}
