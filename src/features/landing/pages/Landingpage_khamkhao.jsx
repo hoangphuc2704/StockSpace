@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useEffect, useState } from 'react'
 import {
   Clock,
   Warehouse,
@@ -102,7 +101,7 @@ const LandingPageKhamkhao = () => {
           }))
 
         setApprovedWarehouses(normalized)
-      } catch (error) {
+      } catch {
         setApprovedWarehouses([])
       } finally {
         setIsLoadingWarehouses(false)
@@ -220,16 +219,17 @@ const LandingPageKhamkhao = () => {
                   </div>
                 ))
               : approvedWarehouses.map((warehouse) => (
-                  <article
+                  <Link
                     key={warehouse.id}
-                    className="overflow-hidden rounded-3xl border border-stone-200 bg-white transition-all hover:-translate-y-1 hover:shadow-xl"
+                    to={`/warehouse/${warehouse.id}`}
+                    className="group block overflow-hidden rounded-3xl border border-stone-200 bg-white transition-all hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2"
                   >
                     <div className="relative h-56 overflow-hidden bg-stone-100">
                       {warehouse.image ? (
                         <img
                           src={warehouse.image}
                           alt={warehouse.name}
-                          className="h-full w-full object-cover transition-transform duration-700 hover:scale-105"
+                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-stone-400">
@@ -285,16 +285,13 @@ const LandingPageKhamkhao = () => {
                           </p>
                         </div>
 
-                        <Link
-                          to={`/warehouse/${warehouse.id}`}
-                          className="inline-flex items-center gap-2 rounded-md bg-stone-900 px-4 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#FF5A1F]"
-                        >
+                        <span className="inline-flex items-center gap-2 rounded-md bg-stone-900 px-4 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all group-hover:bg-[#FF5A1F]">
                           Xem chi tiết
                           <ArrowRight size={14} />
-                        </Link>
+                        </span>
                       </div>
                     </div>
-                  </article>
+                  </Link>
                 ))}
           </div>
 

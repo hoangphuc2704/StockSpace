@@ -65,6 +65,7 @@ import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages
 // Inspector Pages
 import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
 import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
+import AIChatWidget from './features/chat/components/AIChatWidget'
 
 const App = () => {
   const dispatch = useDispatch()
@@ -189,6 +190,7 @@ const App = () => {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <AIChatWidget />
     </BrowserRouter>
   )
   //check config mail
