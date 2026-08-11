@@ -45,7 +45,6 @@ const TenantStaffManagementPage = () => {
   const [isAssigning, setIsAssigning] = useState(false)
   const [assignForm, setAssignForm] = useState({
     warehouseId: '',
-    role: 'OPERATOR',
     customTitle: '',
     notes: ''
   })
@@ -117,7 +116,7 @@ const TenantStaffManagementPage = () => {
   const handleOpenAssign = async (staff) => {
     setSelectedStaff(staff)
     setIsAssignOpen(true)
-    fetchAssignments(staff.user?.id || staff.memberId)
+    fetchAssignments(staff.userId || staff.memberId)
   }
 
   const fetchAssignments = async (staffUserId) => {
@@ -137,10 +136,10 @@ const TenantStaffManagementPage = () => {
     }
     setIsAssigning(true)
     try {
-      const staffUserId = selectedStaff.user?.id || selectedStaff.memberId
+      const staffUserId = selectedStaff.userId || selectedStaff.memberId
       await staffApi.assignWarehouse(staffUserId, assignForm)
       toast.success('Phân công kho thành công')
-      setAssignForm({ warehouseId: '', role: 'OPERATOR', customTitle: '', notes: '' })
+      setAssignForm({ warehouseId: '', customTitle: '', notes: '' })
       fetchAssignments(staffUserId)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Phân công thất bại')
@@ -155,7 +154,7 @@ const TenantStaffManagementPage = () => {
     try {
       await staffApi.revokeWarehouseAssignment(assignmentId)
       toast.success('Đã thu hồi phân công')
-      fetchAssignments(selectedStaff.user?.id || selectedStaff.memberId)
+      fetchAssignments(selectedStaff.userId || selectedStaff.memberId)
     } catch (err) {
       toast.error(err.response?.data?.message || 'Thu hồi thất bại')
     } finally {
@@ -423,7 +422,6 @@ const TenantStaffManagementPage = () => {
                     <p className="font-medium text-slate-900">{assign.warehouseName}</p>
                     <div className="flex items-center gap-2 mt-1 text-xs">
                       <Badge variant={assign.status === 'ACTIVE' ? 'success' : 'secondary'}>{assign.status}</Badge>
-                      <span className="text-slate-500 font-medium">Vai trò: {assign.role}</span>
                       {assign.customTitle && <span className="text-slate-400">({assign.customTitle})</span>}
                     </div>
                   </div>
@@ -451,7 +449,7 @@ const TenantStaffManagementPage = () => {
           <div>
             <h3 className="text-sm font-semibold text-slate-800 mb-3">Phân công kho mới</h3>
             <form onSubmit={handleAssign} className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Chọn kho <span className="text-red-500">*</span></label>
                   <select
@@ -464,20 +462,6 @@ const TenantStaffManagementPage = () => {
                     {myWarehouses.map(w => (
                       <option key={w.id} value={w.id}>{w.name}</option>
                     ))}
-                  </select>
-                </div>
-                
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Vai trò <span className="text-red-500">*</span></label>
-                  <select
-                    className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                    value={assignForm.role}
-                    onChange={e => setAssignForm(f => ({ ...f, role: e.target.value }))}
-                    required
-                  >
-                    <option value="MANAGER">Manager</option>
-                    <option value="OPERATOR">Operator</option>
-                    <option value="INSPECTOR">Inspector</option>
                   </select>
                 </div>
               </div>

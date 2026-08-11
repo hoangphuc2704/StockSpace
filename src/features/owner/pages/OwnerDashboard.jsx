@@ -73,6 +73,7 @@ const OwnerDashboard = () => {
   const [occupancyData, setOccupancyData] = useState(defaultOccupancyData)
   const [occupancyRate, setOccupancyRate] = useState(0)
   const [totalWarehouses, setTotalWarehouses] = useState(0)
+  const [totalRevenue, setTotalRevenue] = useState(0)
 
   // State điều khiển Modal nhập tiền
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -119,6 +120,9 @@ const OwnerDashboard = () => {
       // Map Revenue Data (xử lý tùy xem BE trả về bọc ApiResponse hay không)
       if (revenueRes?.data) {
         const revData = revenueRes.data.data || revenueRes.data
+        if (revData) {
+          setTotalRevenue(revData.totalRevenue || 0)
+        }
         if (revData?.monthlyRevenue) {
           const formatted = revData.monthlyRevenue.map(item => ({
             name: `T${item.month}`,
@@ -192,9 +196,16 @@ const OwnerDashboard = () => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
   }
 
-  // Khối Thẻ Thống kê hiển thị số dư thực tế
+  // Khối Thẻ Thống kê hiển thị số dư thực tế và dòng tiền tổng
   const stats = [
     { title: 'My Warehouses', value: totalWarehouses.toString(), icon: Warehouse, trend: 'stable', trendValue: 0 },
+    {
+      title: 'Total Revenue',
+      value: formatVND(totalRevenue),
+      icon: PieChart,
+      trend: 'stable',
+      trendValue: 0,
+    },
     {
       title: 'Wallet Balance',
       value: loadingWallet ? 'Đang tải...' : formatVND(wallet?.balance),
@@ -202,7 +213,6 @@ const OwnerDashboard = () => {
       trend: 'stable',
       trendValue: 0,
     },
-    { title: 'Avg. Occupancy', value: `${occupancyRate}%`, icon: PieChart, trend: 'stable', trendValue: 0 },
     { title: 'Pending Requests', value: incomingRequests.length.toString(), icon: FileCheck, trend: 'stable', trendValue: 0 },
   ]
 

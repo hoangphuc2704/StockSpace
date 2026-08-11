@@ -152,29 +152,25 @@ const StaffCareerHistoryPage = () => {
                                 </Badge>
                               </div>
 
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 bg-white p-3 rounded-lg border border-slate-200">
-                                <div>
-                                  <p className="text-xs text-slate-400 font-medium uppercase">Chức danh</p>
-                                  <p className="font-semibold mt-1 flex items-center gap-1">
-                                    <ShieldCheck className="h-4 w-4 text-blue-500" />
-                                    {assignment.customTitle || assignment.role}
-                                  </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 bg-white p-3 rounded-lg border border-slate-200">
+                                  <div>
+                                    <p className="text-xs text-slate-400 font-medium uppercase">Chức danh</p>
+                                    <p className="font-semibold mt-1 flex items-center gap-1">
+                                      <ShieldCheck className="h-4 w-4 text-blue-500" />
+                                      {assignment.customTitle || 'Nhân viên kho'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-slate-400 font-medium uppercase">Thời gian</p>
+                                    <p className="text-sm mt-1">
+                                      {formatDate(assignment.startDate)} - {formatDate(assignment.endDate)}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-slate-400 font-medium uppercase">Ghi chú</p>
+                                    <p className="text-sm mt-1">{assignment.notes || 'Không có ghi chú'}</p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="text-xs text-slate-400 font-medium uppercase">Vai trò Hệ thống</p>
-                                  <p className="font-medium mt-1">{assignment.role}</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-slate-400 font-medium uppercase">Thời gian</p>
-                                  <p className="text-sm mt-1">
-                                    {formatDate(assignment.startDate)} - {formatDate(assignment.endDate)}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-slate-400 font-medium uppercase">Ghi chú</p>
-                                  <p className="text-sm mt-1">{assignment.notes || 'Không có ghi chú'}</p>
-                                </div>
-                              </div>
                             </div>
                           </div>
                         ))

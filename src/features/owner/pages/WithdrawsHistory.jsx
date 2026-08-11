@@ -148,14 +148,15 @@ const WithdrawHistory = () => {
         )
       case 'DEPOSIT_PAYMENT':
         return (
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-700/10 ring-inset">
-            Nhận tiền cọc
+          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
+            Thanh toán cọc
           </span>
         )
-      case 'DEPOSIT_REFUND':
+      case 'DEPOSIT_RECEIVED':
+      case 'DEPOSIT_REFUND': // Xử lý dữ liệu cũ từ BE khi Owner nhận cọc bị gán nhầm thành DEPOSIT_REFUND
         return (
-          <span className="inline-flex items-center gap-1 rounded-md bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-700/10 ring-inset">
-            Hoàn tiền cọc
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-700/10 ring-inset">
+            Nhận tiền cọc
           </span>
         )
       default:
@@ -204,7 +205,7 @@ const WithdrawHistory = () => {
     {
       header: 'Số tiền',
       render: (row) => {
-        const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_PAYMENT'
+        const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_RECEIVED' || row.transactionType === 'DEPOSIT_REFUND'
         const isFailed = row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
         return (
           <span className={`font-bold ${isFailed ? 'text-rose-600' : (isPlus ? 'text-emerald-600' : 'text-rose-600')}`}>

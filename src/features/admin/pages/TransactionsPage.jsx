@@ -27,12 +27,13 @@ const TRANSACTION_TYPE_LABELS = {
   TOP_UP: 'Nạp tiền',
   WITHDRAWAL: 'Rút tiền',
   DEPOSIT_PAYMENT: 'Thanh toán cọc',
+  DEPOSIT_RECEIVED: 'Nhận tiền cọc',
   DEPOSIT_REFUND: 'Hoàn tiền cọc',
   PACKAGE_PAYMENT: 'Mua gói dịch vụ',
   COMMISSION: 'Phí hoa hồng',
 }
 
-const CREDIT_TYPES = new Set(['TOP_UP', 'DEPOSIT_REFUND'])
+const CREDIT_TYPES = new Set(['TOP_UP', 'DEPOSIT_REFUND', 'DEPOSIT_RECEIVED'])
 
 const STATUS_VARIANT = {
   SUCCESS: 'success',
@@ -52,6 +53,7 @@ const ALL_TYPES = [
   'TOP_UP',
   'WITHDRAWAL',
   'DEPOSIT_PAYMENT',
+  'DEPOSIT_RECEIVED',
   'DEPOSIT_REFUND',
   'PACKAGE_PAYMENT',
   'COMMISSION',

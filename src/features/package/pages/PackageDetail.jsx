@@ -149,6 +149,9 @@ const PackageDetail = () => {
                 <span className={`inline-flex items-center px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${pkg.status === 'ACTIVE' || pkg.status === 'active' || pkg.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-700'}`}>
                   {pkg.status || 'Đang hoạt động'}
                 </span>
+                <span className="inline-flex items-center px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">
+                  {pkg.maxStaff > 0 ? `Tối đa ${pkg.maxStaff} nhân viên` : 'Không giới hạn nhân viên'}
+                </span>
               </div>
             </div>
             

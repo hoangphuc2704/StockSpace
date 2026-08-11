@@ -26,6 +26,7 @@ import { closeMobileSidebar } from '../store/uiSlide'
 const SIDEBAR_MENUS = {
   ADMIN: [
     { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/admin/dashboard' },
+    { text: 'System Wallet', icon: HiOutlineCurrencyDollar, path: '/admin/wallet' },
     { text: 'Users', icon: HiOutlineUsers, path: '/admin/users' },
     { text: 'Warehouses Approval', icon: HiOutlineHomeModern, path: '/admin/listings' },
     // { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },

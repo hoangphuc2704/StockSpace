@@ -114,6 +114,12 @@ const PackageList = () => {
                       Tính năng bao gồm
                     </p>
                     <ul className="space-y-4">
+                      <li className="flex items-start">
+                        <Check className="mr-3 h-5 w-5 shrink-0 text-[#FF5A1F]" />
+                        <span className="text-sm font-bold text-stone-700">
+                          {pkg.maxStaff > 0 ? `Tối đa ${pkg.maxStaff} nhân viên` : 'Không giới hạn nhân viên'}
+                        </span>
+                      </li>
                       {(() => {
                         const featuresList = parseFeaturesToList(pkg.features);
                         

@@ -54,6 +54,7 @@ const PackageFormModal = ({ pkg, onClose }) => {
     const [features, setFeatures] = useState(pkg?.features || '')
     const [price, setPrice] = useState(pkg?.price || '')
     const [durationDays, setDurationDays] = useState(pkg?.durationDays || '')
+    const [maxStaff, setMaxStaff] = useState(pkg?.maxStaff !== undefined ? pkg.maxStaff : 0)
     const [localError, setLocalError] = useState(null)
 
     useEffect(() => { dispatch(clearActionError()) }, [dispatch])
@@ -63,6 +64,7 @@ const PackageFormModal = ({ pkg, onClose }) => {
         if (!name.trim()) return setLocalError('Vui lòng nhập tên gói')
         if (price === '' || isNaN(price) || Number(price) < 0) return setLocalError('Giá không hợp lệ')
         if (!durationDays || isNaN(durationDays) || Number(durationDays) < 1) return setLocalError('Thời hạn tối thiểu 1 ngày')
+        if (maxStaff === '' || isNaN(maxStaff) || Number(maxStaff) < 0) return setLocalError('Giới hạn nhân viên không được âm')
         
         setLocalError(null)
 
@@ -70,7 +72,8 @@ const PackageFormModal = ({ pkg, onClose }) => {
             name: name.trim(),
             features: features.trim(),
             price: Number(price),
-            durationDays: Number(durationDays)
+            durationDays: Number(durationDays),
+            maxStaff: Number(maxStaff)
         }
 
         let result
@@ -118,6 +121,13 @@ const PackageFormModal = ({ pkg, onClose }) => {
                                 placeholder="Ví dụ: 30"
                                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
                         </div>
+                    </div>
+                    
+                    <div>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Giới hạn nhân viên (0 = Không giới hạn) <span className="text-rose-500">*</span></label>
+                        <input value={maxStaff} onChange={(e) => setMaxStaff(e.target.value)} type="number" min="0"
+                            placeholder="Ví dụ: 5"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
                     </div>
 
                     <div>
@@ -269,7 +279,7 @@ const Packages_SubcriptionsManagementPage = () => {
                                         <table className="w-full text-sm">
                                             <thead>
                                                 <tr className="border-b border-slate-100 bg-slate-50">
-                                                    {['Tên Gói / Tính năng', 'Giá', 'Thời hạn', ''].map((h) => (
+                                                    {['Tên Gói / Tính năng', 'Giá', 'Thời hạn', 'Nhân viên tối đa', ''].map((h) => (
                                                         <th key={h} className="px-5 py-3.5 text-left text-xs font-bold tracking-wide text-slate-500 uppercase">{h}</th>
                                                     ))}
                                                 </tr>
@@ -294,6 +304,11 @@ const Packages_SubcriptionsManagementPage = () => {
                                                         <td className="px-5 py-4">
                                                             <span className="inline-flex items-center gap-1 text-slate-700 font-medium whitespace-nowrap">
                                                                 <CalendarDays size={14} className="text-slate-400" /> {pkg.durationDays} ngày
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-5 py-4">
+                                                            <span className="inline-flex items-center gap-1 text-slate-700 font-medium whitespace-nowrap">
+                                                                {pkg.maxStaff > 0 ? `${pkg.maxStaff} nhân viên` : 'Không giới hạn'}
                                                             </span>
                                                         </td>
                                                         <td className="px-5 py-4 text-right">
