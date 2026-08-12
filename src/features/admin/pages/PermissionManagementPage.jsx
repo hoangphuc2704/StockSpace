@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
     fetchPermissions,
@@ -34,6 +35,7 @@ const shortId = (id) => (id ? `#${String(id).slice(0, 6).toUpperCase()}` : '—'
 
 // ─── Create Permission Modal ──────────────────────────────────────────────────
 const CreatePermissionModal = ({ onClose }) => {
+    useEscapeKey(true, onClose)
     const dispatch = useDispatch()
     const { actionLoading, actionError } = useSelector((s) => s.adminPermission)
     const [name, setName] = useState('')
@@ -44,7 +46,7 @@ const CreatePermissionModal = ({ onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!name.trim()) { setLocalError('Tên Permission không được để trống.'); return }
+        if (!name.trim()) { setLocalError("The Permission name cannot be empty."); return }
         setLocalError(null)
         const result = await dispatch(createPermission({ name: name.trim(), description: description.trim() }))
         if (createPermission.fulfilled.match(result)) onClose()
@@ -56,31 +58,31 @@ const CreatePermissionModal = ({ onClose }) => {
                 transition={{ duration: 0.18 }} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 <div className="mb-5 flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900">Tạo Permission mới</h2>
-                        <p className="mt-0.5 text-sm text-slate-500">Thêm quyền hạn vào hệ thống</p>
+                        <h2 className="text-lg font-bold text-slate-900">Create new Permission</h2>
+                        <p className="mt-0.5 text-sm text-slate-500">Add permissions to the system</p>
                     </div>
                     <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X size={18} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Tên Permission <span className="text-rose-500">*</span></label>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Permission name <span className="text-rose-500">*</span></label>
                         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100}
-                            placeholder="Ví dụ: WAREHOUSE_MANAGE, USER_VIEW..."
+                            placeholder="For example: WAREHOUSE_MANAGE, USER_VIEW..."
                             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
                     </div>
                     <div>
-                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Mô tả</label>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Description</label>
                         <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={255} rows={2}
-                            placeholder="Mô tả ngắn về quyền hạn này..."
+                            placeholder="Short description of this power..."
                             className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
                     </div>
                     {(localError || actionError) && (
                         <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{localError || actionError}</p>
                     )}
                     <div className="flex justify-end gap-3 pt-1">
-                        <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Hủy</button>
+                        <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
                         <button type="submit" disabled={actionLoading} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
-                            {actionLoading && <Loader2 size={14} className="animate-spin" />}Tạo Permission
+                            {actionLoading && <Loader2 size={14} className="animate-spin" />}Create Permissions
                         </button>
                     </div>
                 </form>
@@ -91,6 +93,7 @@ const CreatePermissionModal = ({ onClose }) => {
 
 // ─── Create/Edit Role Modal ───────────────────────────────────────────────────
 const RoleModal = ({ role, onClose }) => {
+    useEscapeKey(true, onClose)
     const dispatch = useDispatch()
     const { actionLoading, actionError } = useSelector((s) => s.adminPermission)
     const isEdit = !!role
@@ -102,7 +105,7 @@ const RoleModal = ({ role, onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!name.trim()) { setLocalError('Tên Role không được để trống.'); return }
+        if (!name.trim()) { setLocalError("Role name cannot be empty."); return }
         setLocalError(null)
         const action = isEdit
             ? dispatch(updateRole({ id: role.id, name: name.trim(), description: description.trim() }))
@@ -117,32 +120,32 @@ const RoleModal = ({ role, onClose }) => {
                 transition={{ duration: 0.18 }} className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 <div className="mb-5 flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900">{isEdit ? 'Chỉnh sửa Role' : 'Tạo Role mới'}</h2>
-                        <p className="mt-0.5 text-sm text-slate-500">{isEdit ? `Sửa vai trò ${shortId(role.id)}` : 'Thêm vai trò mới vào hệ thống'}</p>
+                        <h2 className="text-lg font-bold text-slate-900">{isEdit ? "Edit Roles" : "Create new Role"}</h2>
+                        <p className="mt-0.5 text-sm text-slate-500">{isEdit ? `Edit roles ${shortId(role.id)}` : "Add new roles to the system"}</p>
                     </div>
                     <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X size={18} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Tên Role <span className="text-rose-500">*</span></label>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Role name <span className="text-rose-500">*</span></label>
                         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={100}
-                            placeholder="Ví dụ: ADMIN, TENANT, OWNER..."
+                            placeholder="For example: ADMIN, TENANT, OWNER..."
                             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
                     </div>
                     <div>
-                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Mô tả</label>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Description</label>
                         <textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={255} rows={2}
-                            placeholder="Mô tả ngắn về vai trò này..."
+                            placeholder="Short description of this role..."
                             className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
                     </div>
                     {(localError || actionError) && (
                         <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{localError || actionError}</p>
                     )}
                     <div className="flex justify-end gap-3 pt-1">
-                        <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Hủy</button>
+                        <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
                         <button type="submit" disabled={actionLoading} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
                             {actionLoading && <Loader2 size={14} className="animate-spin" />}
-                            {isEdit ? 'Cập nhật' : 'Tạo Role'}
+                            {isEdit ? "Update" : "Create Role"}
                         </button>
                     </div>
                 </form>
@@ -153,6 +156,7 @@ const RoleModal = ({ role, onClose }) => {
 
 // ─── Assign Permission to Role Modal ──────────────────────────────────────────
 const AssignPermModal = ({ role, allPermissions, onClose }) => {
+    useEscapeKey(true, onClose)
     const dispatch = useDispatch()
     const { actionLoading, actionError } = useSelector((s) => s.adminPermission)
     const [selectedPermId, setSelectedPermId] = useState('')
@@ -180,7 +184,7 @@ const AssignPermModal = ({ role, allPermissions, onClose }) => {
                 transition={{ duration: 0.18 }} className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                 <div className="mb-5 flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900">Quản lý Permissions của Role</h2>
+                        <h2 className="text-lg font-bold text-slate-900">Manage Role Permissions</h2>
                         <p className="mt-0.5 text-sm text-slate-500 font-semibold">{role.name}</p>
                     </div>
                     <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X size={18} /></button>
@@ -188,9 +192,9 @@ const AssignPermModal = ({ role, allPermissions, onClose }) => {
 
                 {/* Current permissions */}
                 <div className="mb-4">
-                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Permissions hiện tại ({(role.permissions || []).length})</p>
+                    <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Current Permissions ({(role.permissions || []).length})</p>
                     {(role.permissions || []).length === 0 ? (
-                        <p className="text-sm text-slate-400 italic">Chưa có permission nào.</p>
+                        <p className="text-sm text-slate-400 italic">No permissions yet.</p>
                     ) : (
                         <div className="flex flex-wrap gap-2">
                             {(role.permissions || []).map((p) => (
@@ -212,14 +216,14 @@ const AssignPermModal = ({ role, allPermissions, onClose }) => {
 
                 {/* Assign new */}
                 <form onSubmit={handleAssign} className="space-y-3">
-                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Thêm Permission</p>
+                    <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Add Permissions</p>
                     <div className="flex gap-2">
                         <select
                             value={selectedPermId}
                             onChange={(e) => setSelectedPermId(e.target.value)}
                             className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 focus:outline-none"
                         >
-                            <option value="">-- Chọn permission --</option>
+                            <option value="">-- Select permission --</option>
                             {available.map((p) => (
                                 <option key={p.id} value={p.id}>{p.name}{p.description ? ` — ${p.description}` : ''}</option>
                             ))}
@@ -227,14 +231,14 @@ const AssignPermModal = ({ role, allPermissions, onClose }) => {
                         <button type="submit" disabled={!selectedPermId || actionLoading}
                             className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
                             {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                            Thêm
+                            Add
                         </button>
                     </div>
                     {actionError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{actionError}</p>}
                 </form>
 
                 <div className="mt-5 flex justify-end">
-                    <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Đóng</button>
+                    <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Close</button>
                 </div>
             </motion.div>
         </div>
@@ -243,6 +247,7 @@ const AssignPermModal = ({ role, allPermissions, onClose }) => {
 
 // ─── Delete Confirm Modal ─────────────────────────────────────────────────────
 const DeleteRoleModal = ({ role, onClose }) => {
+    useEscapeKey(true, onClose)
     const dispatch = useDispatch()
     const { actionLoading, actionError } = useSelector((s) => s.adminPermission)
 
@@ -260,17 +265,17 @@ const DeleteRoleModal = ({ role, onClose }) => {
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
                     <Trash2 size={22} />
                 </div>
-                <h2 className="text-lg font-bold text-slate-900">Xóa Role</h2>
+                <h2 className="text-lg font-bold text-slate-900">Delete Role</h2>
                 <p className="mt-2 text-sm text-slate-600">
-                    Bạn có chắc muốn xóa role <strong>{role.name}</strong>?<br />
-                    Thao tác này không thể hoàn tác.
+                    Are you sure you want to delete the role <strong>{role.name}</strong>?<br />
+                    This operation cannot be undone.
                 </p>
                 {actionError && <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{actionError}</p>}
                 <div className="mt-5 flex justify-end gap-3">
-                    <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Hủy</button>
+                    <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
                     <button onClick={handleDelete} disabled={actionLoading}
                         className="flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60">
-                        {actionLoading && <Loader2 size={14} className="animate-spin" />}Xóa
+                        {actionLoading && <Loader2 size={14} className="animate-spin" />}Delete
                     </button>
                 </div>
             </motion.div>
@@ -336,7 +341,9 @@ const PermissionManagementPage = () => {
                     </button>
                     <div className="flex cursor-pointer items-center gap-2">
                         <div className="shrink-0 rounded-lg bg-white p-1.5">
-                            <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
                         </div>
                         <span className="font-display text-xl font-bold tracking-tight text-slate-950">StockSpace Admin</span>
                     </div>
@@ -350,9 +357,9 @@ const PermissionManagementPage = () => {
                     <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
                         {/* Page header */}
                         <div>
-                            <h1 className="text-2xl font-bold text-slate-900">Quản lý Phân quyền</h1>
+                            <h1 className="text-2xl font-bold text-slate-900">Decentralized Management</h1>
                             <p className="mt-1 text-sm text-slate-500">
-                                Quản lý Permissions và Roles trong hệ thống.
+                                Manage Permissions and Roles in the system.
                             </p>
                         </div>
 
@@ -371,7 +378,7 @@ const PermissionManagementPage = () => {
                                     <Key size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Tổng Permissions</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Total Permissions</p>
                                     <p className="mt-0.5 text-2xl font-bold text-slate-900">{permissions.length}</p>
                                 </div>
                             </div>
@@ -380,7 +387,7 @@ const PermissionManagementPage = () => {
                                     <Shield size={24} />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Tổng Roles</p>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Total Roles</p>
                                     <p className="mt-0.5 text-2xl font-bold text-slate-900">{roles.length}</p>
                                 </div>
                             </div>
@@ -391,20 +398,20 @@ const PermissionManagementPage = () => {
                             <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                                 <div>
                                     <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2"><Key size={18} className="text-blue-500" /> Permissions</h2>
-                                    <p className="text-sm text-slate-500">Quyền hạn nguyên tử của hệ thống</p>
+                                    <p className="text-sm text-slate-500">The system's atomic powers</p>
                                 </div>
                                 <button
                                     onClick={() => setShowCreatePerm(true)}
                                     className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                                 >
-                                    <Plus size={16} /> Tạo Permission
+                                    <Plus size={16} /> Create Permissions
                                 </button>
                             </div>
 
                             {/* Search */}
                             <div className="relative mb-3 w-full sm:w-72">
                                 <Search className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" size={15} />
-                                <input type="text" placeholder="Tìm permission..." value={permSearch} onChange={(e) => setPermSearch(e.target.value)}
+                                <input type="text" placeholder="Find permission..." value={permSearch} onChange={(e) => setPermSearch(e.target.value)}
                                     className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
                             </div>
 
@@ -412,11 +419,11 @@ const PermissionManagementPage = () => {
                             {permLoading ? (
                                 <div className="flex items-center justify-center gap-2 py-10 text-slate-400">
                                     <Loader2 size={22} className="animate-spin text-blue-400" />
-                                    <span className="text-sm">Đang tải...</span>
+                                    <span className="text-sm">Loading...</span>
                                 </div>
                             ) : filteredPerms.length === 0 ? (
                                 <div className="rounded-xl border border-dashed border-slate-200 py-10 text-center text-sm text-slate-400">
-                                    Không có permission nào.
+                                    There are no permissions.
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -448,20 +455,20 @@ const PermissionManagementPage = () => {
                             <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
                                 <div>
                                     <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2"><Shield size={18} className="text-violet-500" /> Roles</h2>
-                                    <p className="text-sm text-slate-500">Vai trò tập hợp nhiều Permissions</p>
+                                    <p className="text-sm text-slate-500">Roles collect multiple Permissions</p>
                                 </div>
                                 <button
                                     onClick={() => setRoleModal({ mode: 'create' })}
                                     className="flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700"
                                 >
-                                    <Plus size={16} /> Tạo Role
+                                    <Plus size={16} /> Create Role
                                 </button>
                             </div>
 
                             {/* Search */}
                             <div className="relative mb-3 w-full sm:w-72">
                                 <Search className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" size={15} />
-                                <input type="text" placeholder="Tìm role..." value={roleSearch} onChange={(e) => setRoleSearch(e.target.value)}
+                                <input type="text" placeholder="Find roles..." value={roleSearch} onChange={(e) => setRoleSearch(e.target.value)}
                                     className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200" />
                             </div>
 
@@ -470,16 +477,16 @@ const PermissionManagementPage = () => {
                                 {roleLoading ? (
                                     <div className="flex items-center justify-center gap-2 py-14 text-slate-400">
                                         <Loader2 size={22} className="animate-spin text-violet-400" />
-                                        <span className="text-sm">Đang tải...</span>
+                                        <span className="text-sm">Loading...</span>
                                     </div>
                                 ) : filteredRoles.length === 0 ? (
-                                    <div className="py-14 text-center text-sm text-slate-400">Không có role nào.</div>
+                                    <div className="py-14 text-center text-sm text-slate-400">There are no roles.</div>
                                 ) : (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-sm">
                                             <thead>
                                                 <tr className="border-b border-slate-100 bg-slate-50">
-                                                    {['ID', 'Tên Role', 'Mô tả', 'Permissions', ''].map((h) => (
+                                                    {['ID', "Role name", "Description", 'Permissions', ''].map((h) => (
                                                         <th key={h} className="px-5 py-3.5 text-left text-xs font-bold tracking-wide text-slate-500 uppercase">{h}</th>
                                                     ))}
                                                 </tr>
@@ -505,7 +512,7 @@ const PermissionManagementPage = () => {
                                                         <td className="px-5 py-3.5">
                                                             <div className="flex flex-wrap gap-1">
                                                                 {(r.permissions || []).length === 0 ? (
-                                                                    <span className="text-xs text-slate-400 italic">Chưa có</span>
+                                                                    <span className="text-xs text-slate-400 italic">Not yet</span>
                                                                 ) : (r.permissions || []).slice(0, 3).map((p) => (
                                                                     <span key={p.id} className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">{p.name}</span>
                                                                 ))}
@@ -520,17 +527,17 @@ const PermissionManagementPage = () => {
                                                             <div className="flex items-center gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                                                                 <button onClick={() => setAssignModal(r)}
                                                                     className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-100"
-                                                                    title="Quản lý permissions">
+                                                                    title="Manage permissions">
                                                                     <Key size={13} />
                                                                 </button>
                                                                 <button onClick={() => setRoleModal({ mode: 'edit', role: r })}
                                                                     className="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200"
-                                                                    title="Sửa role">
+                                                                    title="Edit roles">
                                                                     <Pencil size={13} />
                                                                 </button>
                                                                 <button onClick={() => setDeleteModal(r)}
                                                                     className="rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-100"
-                                                                    title="Xóa role">
+                                                                    title="Delete roles">
                                                                     <Trash2 size={13} />
                                                                 </button>
                                                             </div>

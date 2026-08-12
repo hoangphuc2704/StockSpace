@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
 import {
@@ -51,8 +52,8 @@ const defaultRevenueData = [
 ]
 
 const defaultOccupancyData = [
-  { name: 'Đang thuê', value: 0, color: '#2563eb' },
-  { name: 'Còn trống', value: 0, color: '#e2e8f0' },
+  { name: "Currently renting", value: 0, color: '#2563eb' },
+  { name: "Still empty", value: 0, color: '#e2e8f0' },
 ]
 
 const OwnerDashboard = () => {
@@ -77,6 +78,8 @@ const OwnerDashboard = () => {
 
   // State điều khiển Modal nhập tiền
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  useEscapeKey(isModalOpen, () => setIsModalOpen(false))
   const [inputAmount, setInputAmount] = useState('')
 
   // --- LẤY DỮ LIỆU VÍ TỪ API ---
@@ -90,7 +93,7 @@ const OwnerDashboard = () => {
         setWallet(res?.data || res)
       }
     } catch (error) {
-      console.error('Lỗi lấy dữ liệu ví:', error)
+      console.error("Error retrieving wallet data:", error)
     } finally {
       setLoadingWallet(false)
     }
@@ -104,7 +107,7 @@ const OwnerDashboard = () => {
         setIncomingRequests(res.data.data.content || [])
       }
     } catch (error) {
-      console.error('Lỗi lấy danh sách yêu cầu thuê:', error)
+      console.error("Error getting list of rental requests:", error)
     } finally {
       setLoadingRequests(false)
     }
@@ -137,15 +140,15 @@ const OwnerDashboard = () => {
         const occData = occupancyRes.data.data || occupancyRes.data
         if (occData) {
           setOccupancyData([
-            { name: 'Đang thuê', value: occData.rentedWarehousesCount, color: '#2563eb' },
-            { name: 'Còn trống', value: occData.availableWarehousesCount, color: '#e2e8f0' },
+            { name: "Currently renting", value: occData.rentedWarehousesCount, color: '#2563eb' },
+            { name: "Still empty", value: occData.availableWarehousesCount, color: '#e2e8f0' },
           ])
           setOccupancyRate(occData.occupancyRatePercentage)
           setTotalWarehouses(occData.totalWarehouses)
         }
       }
     } catch (error) {
-      console.error('Lỗi lấy dữ liệu thống kê Owner:', error)
+      console.error("Error retrieving Owner statistics data:", error)
     }
   }
 
@@ -161,7 +164,7 @@ const OwnerDashboard = () => {
 
     const amountNumber = Number(inputAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
+      toast.error("Please enter a valid deposit amount greater than 0")
       return
     }
 
@@ -180,11 +183,11 @@ const OwnerDashboard = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl // Chuyển hướng sang VNPay
       } else {
-        toast.error(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
+        toast.error(res?.data?.message || "VNPay payment link not found in the system!")
       }
     } catch (error) {
-      console.error('Lỗi nạp tiền:', error)
-      toast.error('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
+      console.error("Deposit error:", error)
+      toast.error("Deposit request failed, please try again!")
     } finally {
       setDepositLoading(false)
     }
@@ -193,7 +196,7 @@ const OwnerDashboard = () => {
   // Hàm định dạng tiền VND
   const formatVND = (value) => {
     if (value === undefined || value === null) return '0 ₫'
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   // Khối Thẻ Thống kê hiển thị số dư thực tế và dòng tiền tổng
@@ -208,7 +211,7 @@ const OwnerDashboard = () => {
     },
     {
       title: 'Wallet Balance',
-      value: loadingWallet ? 'Đang tải...' : formatVND(wallet?.balance),
+      value: loadingWallet ? "Loading..." : formatVND(wallet?.balance),
       icon: Wallet,
       trend: 'stable',
       trendValue: 0,
@@ -219,23 +222,23 @@ const OwnerDashboard = () => {
   const handleApprove = async (id) => {
     try {
       await warehouseApi.approveBooking(id)
-      toast.success('Đã chấp nhận yêu cầu thuê kho thành công!')
+      toast.success("Warehouse rental request successfully accepted!")
       fetchRequests() // Refresh data
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Chấp nhận yêu cầu thất bại')
+      toast.error(error.response?.data?.message || "Accept failed request")
     }
   }
 
   const handleReject = async (id) => {
-    const reason = prompt('Nhập lý do từ chối:')
+    const reason = prompt("Enter reason for rejection:")
     if (!reason) return
     
     try {
       await warehouseApi.rejectBooking(id, { reason })
-      toast.error('Đã từ chối yêu cầu thuê kho!')
+      toast.error("Rejected warehouse rental request!")
       fetchRequests() // Refresh data
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Từ chối yêu cầu thất bại')
+      toast.error(error.response?.data?.message || "Reject failed request")
     }
   }
 
@@ -262,7 +265,7 @@ const OwnerDashboard = () => {
     },
     { 
       header: 'Date', 
-      render: (row) => <span>{new Date(row.createdAt).toLocaleDateString('vi-VN')}</span>
+      render: (row) => <span>{new Date(row.createdAt).toLocaleDateString('en-US')}</span>
     },
     {
       header: 'Actions',
@@ -340,7 +343,7 @@ const OwnerDashboard = () => {
                   }}
                   className="hover:bg-blue-5 border-blue-200 text-blue-600 hover:text-blue-700"
                 >
-                  <PlusCircle className="mr-2 h-4 w-4" /> Nạp tiền vào ví
+                  <PlusCircle className="mr-2 h-4 w-4" /> Top up your wallet
                 </Button>
 
                 <Button size="sm">
@@ -409,7 +412,7 @@ const OwnerDashboard = () => {
                   </ResponsiveContainer>
                   <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
                     <p className="text-2xl font-bold text-slate-900">{occupancyRate}%</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Tỷ lệ lấp đầy</p>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Fill rate</p>
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
@@ -479,7 +482,7 @@ const OwnerDashboard = () => {
           <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <Wallet className="h-5 w-5 text-blue-600" /> Nạp tiền qua VNPay
+                <Wallet className="h-5 w-5 text-blue-600" /> Top Up via VNPay
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -492,7 +495,7 @@ const OwnerDashboard = () => {
             <form onSubmit={handleDepositSubmit} className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-bold text-slate-500 uppercase">
-                  Nhập số tiền cần nạp (VND)
+                  Enter the amount to deposit (VND)
                 </label>
                 <div className="relative">
                   <input
@@ -501,7 +504,7 @@ const OwnerDashboard = () => {
                     required
                     value={inputAmount}
                     onChange={(e) => setInputAmount(e.target.value)}
-                    placeholder="Ví dụ: 2000000"
+                    placeholder="For example: 2000000"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                   <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
@@ -510,7 +513,7 @@ const OwnerDashboard = () => {
                 </div>
                 {inputAmount && !isNaN(Number(inputAmount)) && (
                   <p className="mt-2 text-xs font-medium text-emerald-600">
-                    Xem trước: {formatVND(Number(inputAmount))}
+                    Preview: {formatVND(Number(inputAmount))}
                   </p>
                 )}
               </div>
@@ -521,7 +524,7 @@ const OwnerDashboard = () => {
                   onClick={() => setIsModalOpen(false)}
                   className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
                 >
-                  Hủy bỏ
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -531,10 +534,10 @@ const OwnerDashboard = () => {
                   {depositLoading ? (
                     <>
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      Đang kết nối...
+                      Connecting...
                     </>
                   ) : (
-                    <>Thanh toán ngay</>
+                    <>Pay now</>
                   )}
                 </button>
               </div>

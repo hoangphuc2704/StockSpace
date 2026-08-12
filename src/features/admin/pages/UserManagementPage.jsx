@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchUsers,
@@ -54,6 +55,7 @@ const formatRoleName = (name = '') =>
 
 // ==================== MODAL TẠO / CHỈNH SỬA USER ====================
 const UserFormModal = ({ user, onClose, onSave, loading }) => {
+  useEscapeKey(true, onClose)
   const isEdit = !!user?.id
   const [form, setForm] = useState({
     email: user?.email || '',
@@ -66,11 +68,11 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
 
   const validate = () => {
     const e = {}
-    if (!form.fullName.trim()) e.fullName = 'Họ tên không được trống'
+    if (!form.fullName.trim()) e.fullName = "Full name cannot be empty"
     if (!isEdit) {
-      if (!form.email.trim()) e.email = 'Email không được trống'
-      if (!form.password) e.password = 'Mật khẩu không được trống'
-      else if (form.password.length < 8) e.password = 'Mật khẩu tối thiểu 8 ký tự'
+      if (!form.email.trim()) e.email = "Email cannot be empty"
+      if (!form.password) e.password = "Password cannot be empty"
+      else if (form.password.length < 8) e.password = "Password minimum 8 characters"
     }
     setErrors(e)
     return Object.keys(e).length === 0
@@ -103,7 +105,7 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <h3 className="text-lg font-bold text-slate-900">
-            {isEdit ? 'Chỉnh sửa người dùng' : 'Tạo người dùng mới'}
+            {isEdit ? "Edit users" : "Create a new user"}
           </h3>
           <button
             onClick={onClose}
@@ -138,13 +140,13 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
 
           <div>
             <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
-              Họ & Tên *
+              Full name *
             </label>
             <input
               type="text"
               value={form.fullName}
               onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-              placeholder="Nguyễn Văn A"
+              placeholder="Nguyen Van A"
               className={`focus:ring-primary/20 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none ${errors.fullName ? 'border-red-400' : 'border-slate-200'}`}
             />
             {errors.fullName && <p className="mt-1 text-xs text-red-500">{errors.fullName}</p>}
@@ -152,7 +154,7 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
 
           <div>
             <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
-              Số điện thoại
+              Phone number
             </label>
             <div className="relative">
               <Phone
@@ -172,13 +174,13 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
           {!isEdit && (
             <div>
               <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
-                Mật khẩu *
+                Password *
               </label>
               <input
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                placeholder="Tối thiểu 8 ký tự, có chữ hoa, số"
+                placeholder="Minimum 8 characters, with uppercase letters and numbers"
                 className={`focus:ring-primary/20 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none ${errors.password ? 'border-red-400' : 'border-slate-200'}`}
               />
               {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
@@ -187,10 +189,10 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-              Hủy
+              Cancel
             </Button>
             <Button type="submit" isLoading={loading}>
-              {isEdit ? 'Lưu thay đổi' : 'Tạo người dùng'}
+              {isEdit ? "Save changes" : "Create users"}
             </Button>
           </div>
         </form>
@@ -201,15 +203,16 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
 
 // ==================== MODAL ĐẶT LẠI MẬT KHẨU ====================
 const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
+  useEscapeKey(true, onClose)
   const [form, setForm] = useState({ newPassword: '', confirmPassword: '' })
   const [errors, setErrors] = useState({})
 
   const validate = () => {
     const e = {}
-    if (!form.newPassword) e.newPassword = 'Mật khẩu không được trống'
-    else if (form.newPassword.length < 8) e.newPassword = 'Tối thiểu 8 ký tự'
+    if (!form.newPassword) e.newPassword = "Password cannot be empty"
+    else if (form.newPassword.length < 8) e.newPassword = "Minimum 8 characters"
     if (form.newPassword !== form.confirmPassword)
-      e.confirmPassword = 'Mật khẩu xác nhận không khớp'
+      e.confirmPassword = "Confirmation password does not match"
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -230,7 +233,7 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
         className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h3 className="text-lg font-bold text-slate-900">Đặt lại mật khẩu</h3>
+          <h3 className="text-lg font-bold text-slate-900">Reset password</h3>
           <button
             onClick={onClose}
             className="rounded-full p-1.5 text-slate-400 hover:bg-slate-100"
@@ -240,19 +243,19 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
         </div>
         <div className="px-6 py-4">
           <p className="mb-4 text-sm text-slate-500">
-            Đặt lại mật khẩu cho: <strong className="text-slate-800">{user?.fullName}</strong> (
+            Reset password for: <strong className="text-slate-800">{user?.fullName}</strong> (
             {user?.email})
           </p>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
-                Mật khẩu mới *
+                New password *
               </label>
               <input
                 type="password"
                 value={form.newPassword}
                 onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
-                placeholder="Tối thiểu 8 ký tự, có chữ hoa, số"
+                placeholder="Minimum 8 characters, with uppercase letters and numbers"
                 className={`focus:ring-primary/20 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none ${errors.newPassword ? 'border-red-400' : 'border-slate-200'}`}
               />
               {errors.newPassword && (
@@ -261,13 +264,13 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
             </div>
             <div>
               <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
-                Xác nhận mật khẩu *
+                Confirm password *
               </label>
               <input
                 type="password"
                 value={form.confirmPassword}
                 onChange={(e) => setForm((f) => ({ ...f, confirmPassword: e.target.value }))}
-                placeholder="Nhập lại mật khẩu"
+                placeholder="Re-enter the password"
                 className={`focus:ring-primary/20 w-full rounded-lg border px-4 py-2 text-sm focus:ring-2 focus:outline-none ${errors.confirmPassword ? 'border-red-400' : 'border-slate-200'}`}
               />
               {errors.confirmPassword && (
@@ -276,10 +279,10 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-                Hủy
+                Cancel
               </Button>
               <Button type="submit" isLoading={loading}>
-                Đặt lại mật khẩu
+                Reset password
               </Button>
             </div>
           </form>
@@ -290,8 +293,11 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
 }
 
 // ==================== MODAL XÁC NHẬN XÓA ====================
-const DeleteConfirmModal = ({ user, onClose, onConfirm, loading }) => (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
+const DeleteConfirmModal = ({ user, onClose, onConfirm, loading }) => {
+  useEscapeKey(true, onClose)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -302,28 +308,29 @@ const DeleteConfirmModal = ({ user, onClose, onConfirm, loading }) => (
         <div className="bg-danger/10 text-danger mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full">
           <AlertCircle size={28} />
         </div>
-        <h3 className="text-lg font-bold text-slate-900">Xác nhận xóa người dùng</h3>
+        <h3 className="text-lg font-bold text-slate-900">Confirm user deletion</h3>
         <p className="mt-2 text-sm text-slate-500">
-          Bạn sắp xóa vĩnh viễn tài khoản của{' '}
-          <strong className="text-slate-800">{user?.fullName}</strong>. Hành động này không thể hoàn
-          tác.
+          You are about to permanently delete your account{' '}
+          <strong className="text-slate-800">{user?.fullName}</strong>. This action cannot be undone
+          work.
         </p>
         <div className="mt-6 flex gap-3">
           <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
-            Hủy
+            Cancel
           </Button>
           <Button
             className="bg-danger hover:bg-danger/90 flex-1 border-0 text-black"
             onClick={onConfirm}
             isLoading={loading}
           >
-            Xóa
+            Delete
           </Button>
         </div>
       </div>
     </motion.div>
-  </div>
-)
+    </div>
+  )
+}
 
 // ==================== TRANG CHÍNH ====================
 const UserManagementPage = () => {
@@ -392,7 +399,7 @@ const UserManagementPage = () => {
   // ==================== COLUMNS ====================
   const columns = [
     {
-      header: 'Người dùng',
+      header: "User",
       render: (row) => (
         <div className="flex items-center gap-3 py-1">
           <Avatar alt={row.fullName} size="sm" />
@@ -404,11 +411,11 @@ const UserManagementPage = () => {
       ),
     },
     {
-      header: 'Số điện thoại',
+      header: "Phone number",
       render: (row) => <span className="text-sm text-slate-600">{row.phone || '—'}</span>,
     },
     {
-      header: 'Vai trò',
+      header: "Role",
       render: (row) => (
         <div className="flex flex-wrap gap-1">
           {row.roles?.length > 0 ? (
@@ -419,29 +426,29 @@ const UserManagementPage = () => {
               </Badge>
             ))
           ) : (
-            <span className="text-xs text-slate-400">Chưa có vai trò</span>
+            <span className="text-xs text-slate-400">No role yet</span>
           )}
         </div>
       ),
     },
     {
-      header: 'Trạng thái',
+      header: "Status",
       render: (row) => (
         <Badge variant={(row.active !== undefined ? row.active : row.isActive) ? 'success' : 'danger'} size="sm" className="rounded-full">
-          {(row.active !== undefined ? row.active : row.isActive) ? 'Hoạt động' : 'Bị khóa'}
+          {(row.active !== undefined ? row.active : row.isActive) ? "Activities" : "Locked"}
         </Badge>
       ),
     },
     {
-      header: 'Ngày tạo',
-      render: (row) => (row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—'),
+      header: "Creation date",
+      render: (row) => (row.createdAt ? new Date(row.createdAt).toLocaleDateString('en-US') : '—'),
     },
     {
-      header: 'Thao tác',
+      header: 'Actions',
       render: (row) => (
         <div className="flex items-center gap-1.5">
           <button
-            title="Chỉnh sửa"
+            title="Edit"
             onClick={() => setFormModal(row)}
             className="hover:bg-primary/10 hover:text-primary flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
           >
@@ -450,7 +457,7 @@ const UserManagementPage = () => {
 
           {(row.active !== undefined ? row.active : row.isActive) ? (
             <button
-              title="Khóa tài khoản"
+              title="Lock account"
               onClick={() => dispatch(deactivateUser(row.id))}
               className="hover:bg-danger/10 hover:text-danger flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
             >
@@ -458,7 +465,7 @@ const UserManagementPage = () => {
             </button>
           ) : (
             <button
-              title="Kích hoạt tài khoản"
+            title="Activate account"
               onClick={() => dispatch(activateUser(row.id))}
               className="hover:bg-success/10 hover:text-success flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
             >
@@ -467,7 +474,7 @@ const UserManagementPage = () => {
           )}
 
           <button
-            title="Đặt lại mật khẩu"
+            title="Reset password"
             onClick={() => setResetModal(row)}
             className="hover:bg-warning/10 hover:text-warning flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
           >
@@ -475,7 +482,7 @@ const UserManagementPage = () => {
           </button>
 
           <button
-            title="Xóa người dùng"
+            title="Delete user"
             onClick={() => setDeleteModal(row)}
             className="hover:bg-danger/10 hover:text-danger flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
           >
@@ -500,7 +507,9 @@ const UserManagementPage = () => {
           </button>
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Admin
@@ -538,14 +547,14 @@ const UserManagementPage = () => {
             {/* Page Header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Quản lý người dùng</h1>
+                <h1 className="text-2xl font-bold text-slate-900">User management</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Tổng cộng <span className="font-semibold text-slate-700">{totalElements}</span>{' '}
-                  người dùng trong hệ thống.
+                  Total <span className="font-semibold text-slate-700">{totalElements}</span>{' '}
+                  users in the system.
                 </p>
               </div>
               <Button onClick={() => setFormModal('create')}>
-                <Plus size={16} className="mr-2" /> Tạo người dùng
+                <Plus size={16} className="mr-2" /> Create users
               </Button>
             </div>
 
@@ -571,7 +580,7 @@ const UserManagementPage = () => {
                   type="text"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="Tìm theo email, họ tên, số điện thoại..."
+                  placeholder="Search by email, full name, phone number..."
                   className="focus:ring-primary/20 w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm transition-all focus:ring-2 focus:outline-none"
                 />
               </div>
@@ -588,7 +597,7 @@ const UserManagementPage = () => {
                     : 'text-slate-600 hover:bg-slate-100'
                     }`}
                 >
-                  Tất cả
+                  All
                 </button>
                 <button
                   onClick={() => handleFilterStatus(true)}
@@ -601,7 +610,7 @@ const UserManagementPage = () => {
                     : 'text-slate-600 hover:bg-slate-100'
                     }`}
                 >
-                  Hoạt động
+                  Activities
                 </button>
                 <button
                   onClick={() => handleFilterStatus(false)}
@@ -614,7 +623,7 @@ const UserManagementPage = () => {
                       : 'text-slate-600 hover:bg-slate-100'
                     }`}
                 >
-                  Bị khóa
+                  Locked
                 </button>
               </div>
             </div>
@@ -634,7 +643,7 @@ const UserManagementPage = () => {
                 ) : users.length === 0 ? (
                   <div className="flex h-48 flex-col items-center justify-center gap-2 text-slate-400">
                     <Users size={32} />
-                    <p className="text-sm">Không có người dùng nào</p>
+                    <p className="text-sm">There are no users</p>
                   </div>
                 ) : (
                   <DataTable columns={columns} data={users} />
@@ -645,7 +654,7 @@ const UserManagementPage = () => {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
                   <p className="text-sm text-slate-500">
-                    Trang {page + 1} / {totalPages}
+                    Page {page + 1} / {totalPages}
                   </p>
                   <div className="flex items-center gap-2">
                     <button

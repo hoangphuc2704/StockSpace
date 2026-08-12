@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
 import {
@@ -70,6 +71,8 @@ const WalletAdmin = () => {
   
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
 
+  useEscapeKey(isDepositModalOpen, () => setIsDepositModalOpen(false))
+
   // --- REVENUE STATE ---
   const [revenueData, setRevenueData] = useState([])
   const [totalRevenue, setTotalRevenue] = useState(0)
@@ -87,7 +90,7 @@ const WalletAdmin = () => {
         setWallet(res?.data || res)
       }
     } catch (error) {
-      console.error('Lá»—i láº¥y dá»¯ liá»‡u vÃ­:', error)
+      console.error('Failed to load wallet data:', error)
     } finally {
       setLoadingWallet(false)
     }
@@ -108,7 +111,7 @@ const WalletAdmin = () => {
         })
       }
     } catch (error) {
-      console.error('Lá»—i láº¥y lá»‹ch sá»­ giao dá»‹ch:', error)
+      console.error('Failed to load transaction history:', error)
     } finally {
       setLoadingTransactions(false)
     }
@@ -129,7 +132,7 @@ const WalletAdmin = () => {
         })
       }
     } catch (error) {
-      console.error('Lá»—i láº¥y lá»‹ch sá»­ rÃºt tiá»n:', error)
+      console.error('Failed to load withdrawal history:', error)
     } finally {
       setLoadingWithdrawals(false)
     }
@@ -148,7 +151,7 @@ const WalletAdmin = () => {
         setRevenueData(formattedRevenue)
       }
     } catch (error) {
-      console.error('Lá»—i láº¥y thá»‘ng kÃª doanh thu:', error)
+      console.error('Failed to load revenue data:', error)
     } finally {
       setLoadingRevenue(false)
     }
@@ -180,7 +183,7 @@ const WalletAdmin = () => {
 
     const amountNumber = Number(inputAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Vui lÃ²ng nháº­p sá»‘ tiá»n náº¡p há»£p lá»‡ vÃ  lá»›n hÆ¡n 0')
+      toast.error('Please enter a valid deposit amount greater than 0.')
       return
     }
 
@@ -197,11 +200,11 @@ const WalletAdmin = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-        toast.error(res?.data?.message || 'KhÃ´ng tÃ¬m tháº¥y link thanh toÃ¡n VNPay tá»« há»‡ thá»‘ng!')
+        toast.error(res?.data?.message || 'The VNPay payment link was not returned.')
       }
     } catch (error) {
-      console.error('Lá»—i náº¡p tiá»n:', error)
-      toast.error('YÃªu cáº§u náº¡p tiá»n tháº¥t báº¡i, vui lÃ²ng thá»­ láº¡i!')
+      console.error('Failed to create deposit request:', error)
+      toast.error('The deposit request failed. Please try again.')
     } finally {
       setDepositLoading(false)
     }
@@ -209,8 +212,8 @@ const WalletAdmin = () => {
 
   // --- HELPER Äá»ŠNH Dáº NG ---
   const formatVND = (value) => {
-    if (value === undefined || value === null) return '0 â‚«'
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+    if (value === undefined || value === null) return '₫0'
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   const getTransactionTypeBadge = (type) => {
@@ -218,31 +221,31 @@ const WalletAdmin = () => {
       case 'TOP_UP':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
-            Náº¡p tiá»n
+            Top up
           </span>
         )
       case 'DEPOSIT_PAYMENT':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
-            Thanh toÃ¡n cá»c
+            Deposit payment
           </span>
         )
       case 'PACKAGE_PAYMENT':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-purple-700/10 ring-inset">
-            Thanh toÃ¡n gÃ³i DV
+            Service package payment
           </span>
         )
       case 'DEPOSIT_REFUND':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-700/10 ring-inset">
-            HoÃ n tiá»n cá»c
+            Deposit refund
           </span>
         )
       case 'WITHDRAW':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-700/10 ring-inset">
-            RÃºt tiá»n
+            Withdrawal
           </span>
         )
       default:
@@ -255,15 +258,15 @@ const WalletAdmin = () => {
   }
 
   const getStatusBadge = (status) => {
-    if (status === 'SUCCESS' || status === 'APPROVED') return <Badge variant="success">ThÃ nh cÃ´ng</Badge>
-    if (status === 'PENDING') return <Badge variant="warning">Äang xá»­ lÃ½</Badge>
-    return <Badge variant="danger">Tháº¥t báº¡i</Badge>
+    if (status === 'SUCCESS' || status === 'APPROVED') return <Badge variant="success">Successful</Badge>
+    if (status === 'PENDING') return <Badge variant="warning">Processing</Badge>
+    return <Badge variant="danger">Failed</Badge>
   }
 
   // --- Cá»˜T Báº¢NG GIAO Dá»ŠCH ---
   const transactionColumns = [
     {
-      header: 'MÃ£ giao dá»‹ch',
+      header: "Transaction code",
       render: (row) => (
         <div>
           <p className="text-xs font-semibold text-slate-400">
@@ -278,7 +281,7 @@ const WalletAdmin = () => {
       ),
     },
     {
-      header: 'Loáº¡i & PhÆ°Æ¡ng thá»©c',
+      header: 'Type & Method',
       render: (row) => (
         <div className="space-y-1">
           <div>{getTransactionTypeBadge(row.transactionType)}</div>
@@ -289,7 +292,7 @@ const WalletAdmin = () => {
       ),
     },
     {
-      header: 'Sá»‘ tiá»n',
+      header: 'Amount',
       render: (row) => {
         const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_REFUND'
         const isFailed = row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
@@ -301,16 +304,16 @@ const WalletAdmin = () => {
       },
     },
     {
-      header: 'Tráº¡ng thÃ¡i',
+      header: 'Status',
       render: (row) => getStatusBadge(row.status),
     },
     {
-      header: 'Thá»i gian',
+      header: "Time",
       render: (row) => (
         <div className="space-y-0.5 text-xs text-slate-600">
-          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('vi-VN')}</p>
+          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('en-US')}</p>
           <p className="text-[11px] text-slate-400">
-            {new Date(row.createdAt).toLocaleTimeString('vi-VN')}
+            {new Date(row.createdAt).toLocaleTimeString('en-US')}
           </p>
         </div>
       ),
@@ -320,7 +323,7 @@ const WalletAdmin = () => {
   // --- Cá»˜T Báº¢NG YÃŠU Cáº¦U RÃšT TIá»€N ---
   const withdrawalColumns = [
     {
-      header: 'MÃ£ yÃªu cáº§u',
+      header: 'Request ID',
       render: (row) => (
         <p className="text-xs font-semibold text-slate-400">
           <span className="font-sans text-slate-600">{row.id.substring(0, 8)}...</span>
@@ -328,7 +331,7 @@ const WalletAdmin = () => {
       ),
     },
     {
-      header: 'NgÃ¢n hÃ ng nháº­n',
+      header: 'Receiving Bank',
       render: (row) => (
         <div className="space-y-1 text-sm">
           <p className="font-semibold text-slate-700">{row.bankName}</p>
@@ -338,7 +341,7 @@ const WalletAdmin = () => {
       ),
     },
     {
-      header: 'Sá»‘ tiá»n rÃºt',
+      header: 'Withdrawal Amount',
       render: (row) => (
         <span className="font-bold text-rose-600">
           - {formatVND(row.amount)}
@@ -346,25 +349,25 @@ const WalletAdmin = () => {
       ),
     },
     {
-      header: 'Tráº¡ng thÃ¡i',
+      header: 'Status',
       render: (row) => (
         <div className="space-y-1">
           {getStatusBadge(row.status)}
           {row.adminNotes && (
             <p className="text-[11px] text-slate-500 italic max-w-[150px] truncate" title={row.adminNotes}>
-              Ghi chÃº: {row.adminNotes}
+              Note: {row.adminNotes}
             </p>
           )}
         </div>
       ),
     },
     {
-      header: 'Thá»i gian gá»­i',
+      header: "What a time",
       render: (row) => (
         <div className="space-y-0.5 text-xs text-slate-600">
-          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('vi-VN')}</p>
+          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('en-US')}</p>
           <p className="text-[11px] text-slate-400">
-            {new Date(row.createdAt).toLocaleTimeString('vi-VN')}
+            {new Date(row.createdAt).toLocaleTimeString('en-US')}
           </p>
         </div>
       ),
@@ -399,23 +402,23 @@ const WalletAdmin = () => {
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-                  <Wallet className="h-7 w-7 text-blue-600" /> VÃ­ cá»§a tÃ´i
+                  <Wallet className="h-7 w-7 text-blue-600" /> System Wallet
                 </h1>
                 <p className="text-sm text-slate-500">
-                  Quáº£n lÃ½ sá»‘ dÆ°, náº¡p tiá»n, rÃºt tiá»n vÃ  theo dÃµi lá»‹ch sá»­ thanh toÃ¡n cá»§a báº¡n.
+                  Manage the system balance, deposits, withdrawals, and payment history.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleRefresh}>
-                  <RefreshCw className="mr-2 h-4 w-4" /> LÃ m má»›i
+                  <RefreshCw className="mr-2 h-4 w-4" /> Refresh
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => setIsWithdrawModalOpen(true)}
                   className="bg-rose-600 text-white hover:bg-rose-700"
                 >
-                  <MinusCircle className="mr-2 h-4 w-4" /> RÃºt tiá»n
+                  <MinusCircle className="mr-2 h-4 w-4" /> Withdraw
                 </Button>
                 <Button
                   size="sm"
@@ -425,8 +428,7 @@ const WalletAdmin = () => {
                   }}
                   className="bg-blue-600 text-white hover:bg-blue-700"
                 >
-                  <PlusCircle className="mr-2 h-4 w-4" /> Náº¡p tiá»n
-                  <PlusCircle className="mr-2 h-4 w-4" /> Nạp tiền
+                  <PlusCircle className="mr-2 h-4 w-4" /> Top Up
                 </Button>
               </div>
             </div>
@@ -439,9 +441,9 @@ const WalletAdmin = () => {
                     <CircleDollarSign className="h-6 w-6" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-slate-500">Số dư ví hệ thống</p>
+                    <p className="text-sm font-medium text-slate-500">System wallet balance</p>
                     <h2 className="text-3xl font-bold text-slate-900">
-                      {loadingWallet ? 'Đang tải...' : formatVND(wallet?.balance)}
+                      {loadingWallet ? "Loading..." : formatVND(wallet?.balance)}
                     </h2>
                   </div>
                 </div>
@@ -454,18 +456,18 @@ const WalletAdmin = () => {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-500">Tổng doanh thu năm {currentYear}</p>
+                      <p className="text-sm font-medium text-slate-500">Total annual revenue {currentYear}</p>
                       <select
                         className="rounded-md border-slate-200 text-xs text-slate-600 py-1 pl-2 pr-6 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                         value={currentYear}
                         onChange={(e) => setCurrentYear(Number(e.target.value))}
                       >
-                        <option value={new Date().getFullYear()}>Năm nay</option>
-                        <option value={new Date().getFullYear() - 1}>Năm trước</option>
+                        <option value={new Date().getFullYear()}>This year</option>
+                        <option value={new Date().getFullYear() - 1}>Last year</option>
                       </select>
                     </div>
                     <h2 className="text-3xl font-bold text-slate-900 mt-1">
-                      {loadingRevenue ? 'Đang tải...' : formatVND(totalRevenue)}
+                      {loadingRevenue ? "Loading..." : formatVND(totalRevenue)}
                     </h2>
                   </div>
                 </div>
@@ -475,13 +477,13 @@ const WalletAdmin = () => {
             {/* Revenue Chart */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mt-6">
               <div className="mb-6 flex items-center justify-between">
-                <h3 className="font-bold text-slate-900">Biểu đồ Doanh thu thực tế</h3>
-                <Badge variant="success">Theo tháng</Badge>
+                <h3 className="font-bold text-slate-900">Actual Revenue chart</h3>
+                <Badge variant="success">By month</Badge>
               </div>
               <div className="h-80">
                 {loadingRevenue ? (
                   <div className="flex h-full items-center justify-center text-slate-500">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" /> Đang tải biểu đồ...
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading chart...
                   </div>
                 ) : revenueData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -503,7 +505,7 @@ const WalletAdmin = () => {
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: '#64748b', fontSize: 12 }}
-                        tickFormatter={(value) => new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(value)}
+                        tickFormatter={(value) => new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value)}
                       />
                       <Tooltip
                         formatter={(value) => formatVND(value)}
@@ -519,7 +521,7 @@ const WalletAdmin = () => {
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                   <div className="flex h-full items-center justify-center text-slate-500">Chưa có dữ liệu doanh thu năm {currentYear}.</div>
+                   <div className="flex h-full items-center justify-center text-slate-500">No annual revenue data is available {currentYear}.</div>
                 )}
               </div>
             </div>
@@ -535,7 +537,7 @@ const WalletAdmin = () => {
                   }`}
                   onClick={() => setActiveTab('transactions')}
                 >
-                  Lá»‹ch sá»­ giao dá»‹ch
+                  Transaction History
                 </button>
                 <button
                   className={`flex-1 px-6 py-4 text-sm font-bold transition-colors ${
@@ -545,7 +547,7 @@ const WalletAdmin = () => {
                   }`}
                   onClick={() => setActiveTab('withdrawals')}
                 >
-                  YÃªu cáº§u rÃºt tiá»n
+                  Withdrawal Requests
                 </button>
               </div>
 
@@ -558,7 +560,7 @@ const WalletAdmin = () => {
                     {pagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Hiá»ƒn thá»‹ <span className="font-semibold text-slate-700">{transactions.length}</span> trÃªn tá»•ng sá»‘ <span className="font-semibold text-slate-700">{pagination.totalElements}</span>
+                          Showing <span className="font-semibold text-slate-700">{transactions.length}</span> of <span className="font-semibold text-slate-700">{pagination.totalElements}</span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -566,7 +568,7 @@ const WalletAdmin = () => {
                             onClick={() => fetchTransactions(pagination.page - 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            TrÆ°á»›c
+                            Previous
                           </button>
                           {[...Array(pagination.totalPages).keys()].map((p) => (
                             <button
@@ -586,7 +588,7 @@ const WalletAdmin = () => {
                             onClick={() => fetchTransactions(pagination.page + 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Sau
+                            Next
                           </button>
                         </div>
                       </div>
@@ -600,7 +602,7 @@ const WalletAdmin = () => {
                     {withdrawPagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Hiá»ƒn thá»‹ <span className="font-semibold text-slate-700">{withdrawals.length}</span> trÃªn tá»•ng sá»‘ <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span>
+                          Showing <span className="font-semibold text-slate-700">{withdrawals.length}</span> of <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -608,7 +610,7 @@ const WalletAdmin = () => {
                             onClick={() => fetchWithdrawals(withdrawPagination.page - 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            TrÆ°á»›c
+                            Previous
                           </button>
                           {[...Array(withdrawPagination.totalPages).keys()].map((p) => (
                             <button
@@ -628,7 +630,7 @@ const WalletAdmin = () => {
                             onClick={() => fetchWithdrawals(withdrawPagination.page + 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Sau
+                            Next
                           </button>
                         </div>
                       </div>
@@ -647,7 +649,7 @@ const WalletAdmin = () => {
           <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <Wallet className="h-5 w-5 text-blue-600" /> Náº¡p tiá»n qua VNPay
+                <Wallet className="h-5 w-5 text-blue-600" /> Deposit via VNPay
               </h3>
               <button
                 onClick={() => setIsDepositModalOpen(false)}
@@ -660,7 +662,7 @@ const WalletAdmin = () => {
             <form onSubmit={handleDepositSubmit} className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-bold text-slate-500 uppercase">
-                  Nháº­p sá»‘ tiá»n cáº§n náº¡p (VND)
+                  Deposit amount (VND)
                 </label>
                 <div className="relative">
                   <input
@@ -669,16 +671,16 @@ const WalletAdmin = () => {
                     required
                     value={inputAmount}
                     onChange={(e) => setInputAmount(e.target.value)}
-                    placeholder="VÃ­ dá»¥: 2000000"
+                    placeholder="Example: 2000000"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                   <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    â‚«
+                    VND
                   </span>
                 </div>
                 {inputAmount && !isNaN(Number(inputAmount)) && (
                   <p className="mt-2 text-xs font-medium text-emerald-600">
-                    Xem trÆ°á»›c: {formatVND(Number(inputAmount))}
+                    Preview: {formatVND(Number(inputAmount))}
                   </p>
                 )}
               </div>
@@ -689,7 +691,7 @@ const WalletAdmin = () => {
                   onClick={() => setIsDepositModalOpen(false)}
                   className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
                 >
-                  Há»§y bá»
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -699,10 +701,10 @@ const WalletAdmin = () => {
                   {depositLoading ? (
                     <>
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      Äang káº¿t ná»‘i...
+                      Connecting...
                     </>
                   ) : (
-                    <>Thanh toÃ¡n ngay</>
+                    <>Pay now</>
                   )}
                 </button>
               </div>

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useNavigate } from 'react-router-dom'
 import {
   Warehouse,
@@ -15,10 +16,15 @@ import {
   PlusCircle,
   Loader2,
   AlertTriangle,
+  Building2,
+  CheckCircle2,
+  RefreshCw,
 } from 'lucide-react'
 import Button from '../../../components/atoms/Button'
+import TranslatableText from '../../../components/TranslatableText'
 import ownerApi from '../../../services/warehouse/warehouseApi'
 import walletApi from '../../../services/wallet/walletApi'
+import addressApi from '../../../services/addressApi'
 import { toast } from 'react-hot-toast'
 
 // Phí tạo bài đăng (VND) - chỉnh lại theo quy định thực tế của hệ thống
@@ -28,6 +34,11 @@ const CreateWarehouse = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
   const [warehouseTypes, setWarehouseTypes] = useState([])
+  const [wards, setWards] = useState([])
+  const [wardsLoading, setWardsLoading] = useState(true)
+  const [wardsError, setWardsError] = useState('')
+  const [selectedWardCode, setSelectedWardCode] = useState('')
+  const [addressDetail, setAddressDetail] = useState('')
 
   // --- State ví ---
   const [wallet, setWallet] = useState(null)
@@ -35,6 +46,8 @@ const CreateWarehouse = () => {
 
   // --- State modal nạp tiền ---
   const [showDepositModal, setShowDepositModal] = useState(false)
+
+  useEscapeKey(showDepositModal, () => setShowDepositModal(false))
   const [depositAmount, setDepositAmount] = useState('')
   const [depositLoading, setDepositLoading] = useState(false)
 
@@ -42,7 +55,6 @@ const CreateWarehouse = () => {
   const [formData, setFormData] = useState({
     typeId: '',
     name: '',
-    address: '',
     description: '',
     warehouseWidth: '',
     warehouseHeight: '',
@@ -78,6 +90,45 @@ const CreateWarehouse = () => {
     fetchWarehouseTypes()
   }, [])
 
+  const fetchHoChiMinhCityWards = async () => {
+    try {
+      setWardsLoading(true)
+      setWardsError('')
+      const wardOptions = await addressApi.getHoChiMinhCityWards()
+      setWards(wardOptions)
+    } catch (error) {
+      console.error('Unable to load Ho Chi Minh City wards:', error)
+      setWards([])
+      setWardsError('Unable to load wards and communes. Please try again.')
+    } finally {
+      setWardsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let isActive = true
+
+    addressApi
+      .getHoChiMinhCityWards()
+      .then((wardOptions) => {
+        if (isActive) setWards(wardOptions)
+      })
+      .catch((error) => {
+        console.error('Unable to load Ho Chi Minh City wards:', error)
+        if (isActive) {
+          setWards([])
+          setWardsError('Unable to load wards and communes. Please try again.')
+        }
+      })
+      .finally(() => {
+        if (isActive) setWardsLoading(false)
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
+
   // --- Lấy thông tin ví ---
   useEffect(() => {
     const fetchWallet = async () => {
@@ -90,7 +141,7 @@ const CreateWarehouse = () => {
           setWallet(res?.data || res)
         }
       } catch (error) {
-        console.error('Lỗi lấy dữ liệu ví:', error)
+        console.error('Error retrieving wallet data:', error)
       } finally {
         setWalletLoading(false)
       }
@@ -100,11 +151,28 @@ const CreateWarehouse = () => {
 
   const formatVND = (value) => {
     if (value === undefined || value === null) return '0 ₫'
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   const walletBalance = wallet?.balance ?? 0
   const hasEnoughBalance = walletBalance >= POSTING_FEE
+  const selectedWard = useMemo(
+    () => wards.find((ward) => ward.code === selectedWardCode),
+    [selectedWardCode, wards]
+  )
+  const selectedWarehouseType = useMemo(
+    () => warehouseTypes.find((type) => String(type.id) === String(formData.typeId)),
+    [formData.typeId, warehouseTypes]
+  )
+  const fullAddress = useMemo(() => {
+    const detail = addressDetail.trim()
+    return detail && selectedWard ? `${detail}, ${selectedWard.name}, Thành phố Hồ Chí Minh` : ''
+  }, [addressDetail, selectedWard])
+  const suggestedCapacity = useMemo(() => {
+    const width = Number(formData.warehouseWidth)
+    const length = Number(formData.warehouseHeight)
+    return width > 0 && length > 0 ? Math.round(width * length * 100) / 100 : 0
+  }, [formData.warehouseHeight, formData.warehouseWidth])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -113,7 +181,9 @@ const CreateWarehouse = () => {
       name === 'pricePerMonth' ||
       name === 'warehouseWidth' ||
       name === 'warehouseHeight'
-        ? Number(value)
+        ? value === ''
+          ? ''
+          : Number(value)
         : value
     setFormData((prev) => ({ ...prev, [name]: processedValue }))
   }
@@ -151,7 +221,7 @@ const CreateWarehouse = () => {
 
   const isFormValid =
     formData.name.trim() !== '' &&
-    formData.address.trim() !== '' &&
+    fullAddress !== '' &&
     formData.description.trim() !== '' &&
     formData.typeId !== '' &&
     Number(formData.warehouseWidth) > 0 &&
@@ -187,7 +257,7 @@ const CreateWarehouse = () => {
       const warehouseInfo = {
         typeId: formData.typeId,
         name: formData.name.trim(),
-        address: formData.address.trim(),
+        address: fullAddress,
         description: formData.description.trim(),
         capacity,
         pricePerMonth,
@@ -211,18 +281,20 @@ const CreateWarehouse = () => {
       if (response?.data?.success) {
         const createdWarehouseId = response?.data?.data?.id ?? response?.data?.data?.warehouseId
 
-        toast.success('Đăng tin kho vận thành công! Hãy cấu hình layout cho kho vừa tạo.')
+        toast.success(
+          'Warehouse posted successfully! Configure the layout for the newly created warehouse.'
+        )
         navigate(
           createdWarehouseId
             ? `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${encodeURIComponent(String(warehouseWidth))}&height=${encodeURIComponent(String(warehouseHeight))}`
             : '/owner/layoutwarehouses'
         )
       } else {
-        toast.error(response?.data?.message || 'Đăng tin thất bại, vui lòng kiểm tra lại dữ liệu.')
+        toast.error(response?.data?.message || 'Posting failed, please check your data again.')
       }
     } catch (error) {
       console.error('Error creating warehouse:', error)
-      toast.error(error.response?.data?.message || 'Đã xảy ra lỗi hệ thống khi kết nối!')
+      toast.error(error.response?.data?.message || 'A system error occurred while connecting!')
     } finally {
       setIsLoading(false)
     }
@@ -233,7 +305,7 @@ const CreateWarehouse = () => {
     e.preventDefault()
     const amountNumber = Number(depositAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
+      toast.error('Please enter a valid deposit amount greater than 0')
       return
     }
     try {
@@ -243,11 +315,11 @@ const CreateWarehouse = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-        toast.error(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
+        toast.error(res?.data?.message || 'VNPay payment link not found in the system!')
       }
     } catch (error) {
-      console.error('Lỗi nạp tiền:', error)
-      toast.error('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
+      console.error('Deposit error:', error)
+      toast.error('Deposit request failed, please try again!')
     } finally {
       setDepositLoading(false)
     }
@@ -272,14 +344,16 @@ const CreateWarehouse = () => {
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm"
           >
-            <ArrowLeft className="h-4 w-4" /> Quay lại
+            <ArrowLeft className="h-4 w-4" /> Back
           </button>
         </div>
 
         <main className="mx-auto w-full max-w-250 space-y-6 p-6 md:p-10">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Đăng tin kho vận mới</h1>
-            <p className="text-sm text-slate-500">Điền đầy đủ thông tin để mở khóa nút đăng tin.</p>
+            <h1 className="text-2xl font-bold text-slate-900">Post a New Warehouse</h1>
+            <p className="text-sm text-slate-500">
+              Fill in all information to unlock the post button.
+            </p>
           </div>
 
           {/* THÔNG TIN SỐ DƯ VÍ */}
@@ -311,7 +385,9 @@ const CreateWarehouse = () => {
                 )}
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">Số dư ví của bạn</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase">
+                  Your wallet balance
+                </p>
                 <p
                   className={`text-lg font-bold ${
                     walletLoading
@@ -321,11 +397,11 @@ const CreateWarehouse = () => {
                         : 'text-amber-700'
                   }`}
                 >
-                  {walletLoading ? 'Đang tải...' : formatVND(walletBalance)}
+                  {walletLoading ? 'Loading...' : formatVND(walletBalance)}
                 </p>
                 {!walletLoading && !hasEnoughBalance && (
                   <p className="text-xs text-amber-600">
-                    Ví chưa có tiền — vui lòng nạp tiền trước khi đăng tin.
+                    Your wallet has no funds yet — please top up before posting.
                   </p>
                 )}
               </div>
@@ -339,7 +415,7 @@ const CreateWarehouse = () => {
                 }}
                 className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-amber-600"
               >
-                <PlusCircle className="h-4 w-4" /> Nạp tiền ngay
+                <PlusCircle className="h-4 w-4" /> Deposit now
               </button>
             )}
           </div>
@@ -350,11 +426,11 @@ const CreateWarehouse = () => {
               <div className="space-y-6 lg:col-span-2">
                 <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase">
-                    1. Thông tin kho
+                    1. Warehouse information
                   </h3>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Tên nhà kho *</label>
+                    <label className="text-xs font-semibold text-slate-700">Warehouse name *</label>
                     <div className="relative">
                       <Warehouse className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <input
@@ -362,92 +438,225 @@ const CreateWarehouse = () => {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
+                        maxLength={255}
+                        placeholder="For example: Thu Duc Distribution Hub"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-4 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
                         required
                       />
                     </div>
+                    <p className="text-xs leading-5 text-slate-500">
+                      This public name helps tenants quickly identify your warehouse.
+                    </p>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      Địa chỉ chính xác *
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="text"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
-                        required
-                      />
+                  <div className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700">
+                        Warehouse address *
+                      </label>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">
+                        Listings are currently limited to Ho Chi Minh City.
+                      </p>
                     </div>
+
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-semibold text-slate-600">City</label>
+                        <div className="relative">
+                          <Building2 className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-blue-500" />
+                          <input
+                            type="text"
+                            value="Ho Chi Minh City"
+                            readOnly
+                            className="w-full cursor-not-allowed rounded-xl border border-blue-100 bg-white py-3 pr-9 pl-10 text-sm font-medium text-slate-700"
+                          />
+                          <CheckCircle2 className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-emerald-500" />
+                        </div>
+                        <p className="text-[11px] leading-4 text-slate-500">
+                          Fixed service area for warehouse listings.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="warehouse-ward"
+                          className="text-[11px] font-semibold text-slate-600"
+                        >
+                          Ward / Commune *
+                        </label>
+                        <div className="relative">
+                          <MapPin className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-blue-500" />
+                          <select
+                            id="warehouse-ward"
+                            value={selectedWardCode}
+                            onChange={(event) => setSelectedWardCode(event.target.value)}
+                            disabled={wardsLoading || Boolean(wardsError)}
+                            className="w-full cursor-pointer appearance-none rounded-xl border border-blue-100 bg-white py-3 pr-9 pl-10 text-sm text-slate-700 transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
+                            required
+                          >
+                            <option value="">
+                              {wardsLoading ? 'Loading wards...' : 'Select a ward or commune'}
+                            </option>
+                            {wards.map((ward) => (
+                              <option key={ward.code} value={ward.code}>
+                                {ward.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <p className="text-[11px] leading-4 text-slate-500">
+                          Administrative data is loaded from Vietnam Provinces API.
+                        </p>
+                      </div>
+                    </div>
+
+                    {wardsError && (
+                      <div className="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
+                        <p className="text-xs text-rose-600">{wardsError}</p>
+                        <button
+                          type="button"
+                          onClick={fetchHoChiMinhCityWards}
+                          className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-rose-700 hover:underline"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" /> Retry
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label
+                        htmlFor="warehouse-address-detail"
+                        className="text-[11px] font-semibold text-slate-600"
+                      >
+                        Street address *
+                      </label>
+                      <div className="relative">
+                        <MapPin className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                          id="warehouse-address-detail"
+                          type="text"
+                          value={addressDetail}
+                          onChange={(event) => setAddressDetail(event.target.value)}
+                          maxLength={300}
+                          placeholder="House number, street name, industrial park..."
+                          className="w-full rounded-xl border border-blue-100 bg-white py-3 pr-4 pl-10 text-sm transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                          required
+                        />
+                      </div>
+                      <p className="text-[11px] leading-4 text-slate-500">
+                        Enter the precise location so tenants and inspectors can find the warehouse.
+                      </p>
+                    </div>
+
+                    {fullAddress && (
+                      <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+                        <p className="text-[10px] font-bold tracking-wide text-emerald-700 uppercase">
+                          Full address preview
+                        </p>
+                        <p className="mt-1 text-xs leading-5 font-medium text-emerald-900">
+                          {fullAddress}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-700">
-                        Chiều rộng kho (m) *
-                      </label>
+                      <label className="text-xs font-semibold text-slate-700">Layout width *</label>
                       <div className="relative">
                         <Layers className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
                           type="number"
                           name="warehouseWidth"
-                          step="any"
+                          step="0.1"
                           value={formData.warehouseWidth}
                           onChange={handleInputChange}
-                          className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
+                          placeholder="30"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-10 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
                           min="1"
                           required
                         />
+                        <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                          m
+                        </span>
                       </div>
+                      <p className="text-xs leading-5 text-slate-500">
+                        Horizontal size used to generate the warehouse layout canvas.
+                      </p>
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-slate-700">
-                        Chiều cao kho (m) *
+                        Layout length *
                       </label>
                       <div className="relative">
                         <Layers className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
                           type="number"
                           name="warehouseHeight"
-                          step="any"
+                          step="0.1"
                           value={formData.warehouseHeight}
                           onChange={handleInputChange}
-                          className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
+                          placeholder="40"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-10 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
                           min="1"
                           required
                         />
+                        <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                          m
+                        </span>
                       </div>
+                      <p className="text-xs leading-5 text-slate-500">
+                        Vertical size used with the width to draw the floor layout.
+                      </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-slate-700">
-                        Sức chứa (m²) *
+                        Usable storage area *
                       </label>
                       <div className="relative">
                         <Layers className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
                           type="number"
                           name="capacity"
-                          step="any"
+                          step="0.1"
                           value={formData.capacity}
                           onChange={handleInputChange}
-                          className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
+                          placeholder="1200"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-12 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
                           min="1"
+                          max="99999999.99"
                           required
                         />
+                        <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                          m²
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-1 text-xs leading-5 text-slate-500">
+                        <span>Actual floor area available for tenant storage.</span>
+                        {suggestedCapacity > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData((previous) => ({
+                                ...previous,
+                                capacity: suggestedCapacity,
+                              }))
+                            }
+                            className="font-semibold text-blue-600 hover:underline"
+                          >
+                            Use {suggestedCapacity.toLocaleString('en-US')} m²
+                          </button>
+                        )}
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-slate-700">
-                        Giá thuê / tháng (VND) *
+                        Monthly rental price *
                       </label>
                       <div className="relative">
                         <DollarSign className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -456,16 +665,31 @@ const CreateWarehouse = () => {
                           name="pricePerMonth"
                           value={formData.pricePerMonth}
                           onChange={handleInputChange}
-                          className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
+                          step="1"
+                          placeholder="30000000"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-14 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
                           min="1"
                           required
                         />
+                        <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                          VND
+                        </span>
                       </div>
+                      <p className="text-xs leading-5 text-slate-500">
+                        Base rent charged each month, excluding deposits or platform fees.
+                        {Number(formData.pricePerMonth) > 0 && (
+                          <span className="ml-1 font-semibold text-emerald-600">
+                            Preview: {formatVND(Number(formData.pricePerMonth))}
+                          </span>
+                        )}
+                      </p>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-700">Mô tả chi tiết *</label>
+                    <label className="text-xs font-semibold text-slate-700">
+                      Detailed description *
+                    </label>
                     <div className="relative">
                       <FileText className="absolute top-4 left-3 h-4 w-4 text-slate-400" />
                       <textarea
@@ -473,10 +697,15 @@ const CreateWarehouse = () => {
                         value={formData.description}
                         onChange={handleInputChange}
                         rows={4}
-                        className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 text-sm focus:border-blue-500 focus:outline-none"
+                        placeholder="Describe access roads, operating hours, security, loading facilities and suitable goods..."
+                        className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-4 pl-10 text-sm leading-6 transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
                         required
                       />
                     </div>
+                    <p className="text-xs text-slate-500">
+                      Explain the warehouse's main advantages and operating conditions. You can
+                      enter in Vietnamese or English.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -485,42 +714,74 @@ const CreateWarehouse = () => {
               <div className="space-y-6">
                 <div className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <h3 className="text-sm font-bold tracking-wider text-slate-400 uppercase">
-                    2. Phân loại kho *
+                    2. Warehouse classification *
                   </h3>
-                  <div className="relative">
-                    <select
-                      name="typeId"
-                      value={formData.typeId}
-                      onChange={handleInputChange}
-                      className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:border-blue-500 focus:outline-none"
-                      required
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor="warehouse-type"
+                      className="text-xs font-semibold text-slate-700"
                     >
-                      <option value="" disabled>
-                        -- Chọn loại kho --
-                      </option>
-                      {warehouseTypes.map((type) => (
-                        <option key={type.id} value={type.id}>
-                          {type.name}
+                      Warehouse type
+                    </label>
+                    <div className="relative">
+                      <Layers className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <select
+                        id="warehouse-type"
+                        name="typeId"
+                        value={formData.typeId}
+                        onChange={handleInputChange}
+                        className="w-full cursor-pointer appearance-none rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-8 pl-10 text-sm text-slate-700 transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                        required
+                      >
+                        <option value="" disabled>
+                          -- Select warehouse type --
                         </option>
-                      ))}
-                    </select>
+                        {warehouseTypes.map((type) => (
+                          <option key={type.id} value={type.id}>
+                            {type.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p className="text-xs leading-5 text-slate-500">
+                      Choose the category that best matches the warehouse's storage conditions.
+                    </p>
                   </div>
+
+                  {selectedWarehouseType && (
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3.5">
+                      <div className="mb-2 flex items-center gap-2 text-blue-700">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                        <p className="text-sm font-bold">{selectedWarehouseType.name}</p>
+                      </div>
+                      <TranslatableText
+                        text={selectedWarehouseType.description}
+                        fallback="No description is available for this warehouse type."
+                        className="text-xs leading-5 whitespace-pre-line text-slate-600"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                   <h3 className="text-sm font-bold tracking-wider text-slate-400 uppercase">
-                    3. Hình ảnh thực tế
+                    3. Actual images
                   </h3>
 
                   {/* Ảnh bìa (Bắt buộc) */}
                   <div className="space-y-2">
                     <label className="text-xs font-semibold text-slate-700">
-                      Ảnh bìa đại diện kho *
+                      Cover photo of warehouse representative *
                     </label>
+                    <p className="text-[11px] leading-4 text-slate-500">
+                      This is the primary image shown on warehouse cards and search results.
+                    </p>
                     {!coverPreview ? (
                       <label className="flex h-28 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/20">
                         <UploadCloud className="h-5 w-5 text-blue-500" />
-                        <span className="mt-1 text-xs text-slate-700">Chọn ảnh bìa chính</span>
+                        <span className="mt-1 text-xs text-slate-700">
+                          Choose the main cover photo
+                        </span>
                         <input
                           type="file"
                           accept="image/*"
@@ -549,11 +810,14 @@ const CreateWarehouse = () => {
                   {/* Ảnh bổ sung (Tùy chọn) */}
                   <div className="space-y-2 border-t border-slate-100 pt-4">
                     <label className="text-xs font-semibold text-slate-700">
-                      Ảnh liên quan (Tùy chọn)
+                      Related photos (Optional)
                     </label>
+                    <p className="text-[11px] leading-4 text-slate-500">
+                      Add clear photos of the interior, entrance, loading area and facilities.
+                    </p>
                     <label className="flex h-20 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200">
                       <ImageIcon className="h-4 w-4 text-slate-400" />
-                      <span className="text-xs text-slate-500">Thêm ảnh góc cạnh khác</span>
+                      <span className="text-xs text-slate-500">Add another angle photo</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -592,12 +856,12 @@ const CreateWarehouse = () => {
             </div>
 
             {/* SUBMIT BUTTON */}
-            <div className="pt-4">
+            <div className="flex justify-center pt-4">
               <Button
                 type="submit"
                 size="sm"
                 disabled={!isFormValid || isLoading || walletLoading}
-                className={`w-full justify-center rounded-xl py-4 text-base font-semibold transition-all ${
+                className={`w-100 justify-center rounded-xl py-4 text-base font-semibold transition-all ${
                   !isFormValid || isLoading || walletLoading
                     ? 'cursor-not-allowed bg-slate-300 text-slate-500 opacity-40'
                     : !hasEnoughBalance
@@ -607,15 +871,15 @@ const CreateWarehouse = () => {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Đang xử lý đăng tin...
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing submitting...
                   </>
                 ) : !hasEnoughBalance && !walletLoading ? (
                   <>
-                    <AlertTriangle className="mr-2 h-5 w-5" /> Nạp tiền để đăng tin
+                    <AlertTriangle className="mr-2 h-5 w-5" /> Top Up to Post
                   </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-5 w-5" /> Đăng tin kho vận ngay
+                    <Save className="mr-2 h-5 w-5" /> Submit
                   </>
                 )}
               </Button>
@@ -630,7 +894,7 @@ const CreateWarehouse = () => {
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
             <div className="mb-1 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <Wallet className="h-5 w-5 text-blue-600" /> Nạp tiền vào ví
+                <Wallet className="h-5 w-5 text-blue-600" /> Top up your wallet
               </h3>
               <button
                 onClick={() => setShowDepositModal(false)}
@@ -644,10 +908,10 @@ const CreateWarehouse = () => {
             <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
               <div>
-                <p className="text-sm font-semibold text-amber-800">Số dư ví không đủ</p>
+                <p className="text-sm font-semibold text-amber-800">Wallet balance is not enough</p>
                 <p className="text-xs text-amber-700">
-                  Số dư hiện tại: <span className="font-bold">{formatVND(walletBalance)}</span>. Vui
-                  lòng nạp thêm tiền để tiếp tục đăng tin kho.
+                  Current balance: <span className="font-bold">{formatVND(walletBalance)}</span>.
+                  Fun Please deposit more money to continue posting inventory.
                 </p>
               </div>
             </div>
@@ -655,7 +919,7 @@ const CreateWarehouse = () => {
             <form onSubmit={handleDepositSubmit} className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-bold text-slate-500 uppercase">
-                  Nhập số tiền cần nạp (VND)
+                  Enter the amount to deposit (VND)
                 </label>
                 <div className="relative">
                   <input
@@ -664,7 +928,7 @@ const CreateWarehouse = () => {
                     required
                     value={depositAmount}
                     onChange={(e) => setDepositAmount(e.target.value)}
-                    placeholder="Ví dụ: 2000000"
+                    placeholder="For example: 2000000"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                   <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
@@ -673,7 +937,7 @@ const CreateWarehouse = () => {
                 </div>
                 {depositAmount && !isNaN(Number(depositAmount)) && (
                   <p className="mt-2 text-xs font-medium text-emerald-600">
-                    Xem trước: {formatVND(Number(depositAmount))}
+                    Preview: {formatVND(Number(depositAmount))}
                   </p>
                 )}
               </div>
@@ -684,7 +948,7 @@ const CreateWarehouse = () => {
                   onClick={() => setShowDepositModal(false)}
                   className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
                 >
-                  Hủy bỏ
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -693,10 +957,10 @@ const CreateWarehouse = () => {
                 >
                   {depositLoading ? (
                     <>
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Đang kết nối...
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Connecting...
                     </>
                   ) : (
-                    <>Thanh toán qua VNPay</>
+                    <>Payment via VNPay</>
                   )}
                 </button>
               </div>

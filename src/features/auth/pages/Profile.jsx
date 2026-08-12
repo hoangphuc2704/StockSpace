@@ -59,7 +59,7 @@ const Profile = () => {
         if (!dateString) return 'N/A'
         try {
             const date = new Date(dateString)
-            return new Intl.DateTimeFormat('vi-VN', {
+            return new Intl.DateTimeFormat('en-US', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric',

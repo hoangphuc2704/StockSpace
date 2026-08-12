@@ -27,7 +27,7 @@ const StaffAcceptInvitationPage = () => {
   useEffect(() => {
     if (!token) {
       setTokenStatus('invalid')
-      setTokenError('Không tìm thấy token trong đường dẫn.')
+      setTokenError("No token found in the path.")
       return
     }
     validateToken()
@@ -41,11 +41,11 @@ const StaffAcceptInvitationPage = () => {
         setTokenStatus('valid')
       } else {
         setTokenStatus('invalid')
-        setTokenError(res.data?.message || res.message || 'Lời mời không hợp lệ.')
+        setTokenError(res.data?.message || res.message || "Invitation is not valid.")
       }
     } catch (err) {
       setTokenStatus('invalid')
-      setTokenError(err.response?.data?.message || 'Lời mời đã hết hạn hoặc không tồn tại.')
+      setTokenError(err.response?.data?.message || "The invitation has expired or does not exist.")
     }
   }
 
@@ -54,15 +54,15 @@ const StaffAcceptInvitationPage = () => {
     setFormError('')
 
     if (password.length < 8) {
-      setFormError('Mật khẩu phải có ít nhất 8 ký tự.')
+      setFormError("Password must have at least 8 characters.")
       return
     }
     if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-      setFormError('Mật khẩu phải chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 số.')
+      setFormError("Password must contain at least 1 uppercase letter, 1 lowercase letter and 1 number.")
       return
     }
     if (password !== confirmPassword) {
-      setFormError('Mật khẩu xác nhận không khớp.')
+      setFormError("Confirmation password does not match.")
       return
     }
 
@@ -71,7 +71,7 @@ const StaffAcceptInvitationPage = () => {
       await authApi.acceptStaffInvitation({ token, password, confirmPassword })
       setSubmitSuccess(true)
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Đã xảy ra lỗi. Vui lòng thử lại.')
+      setFormError(err.response?.data?.message || "An error has occurred. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -85,7 +85,7 @@ const StaffAcceptInvitationPage = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center">
         <div className="text-center text-white space-y-4">
           <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-400" />
-          <p className="text-slate-300">Đang xác thực lời mời...</p>
+          <p className="text-slate-300">Verifying invitation...</p>
         </div>
       </div>
     )
@@ -99,13 +99,13 @@ const StaffAcceptInvitationPage = () => {
           <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="h-10 w-10 text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Lời Mời Không Hợp Lệ</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Invalid Invitation</h1>
           <p className="text-slate-500 mb-6">{tokenError}</p>
           <p className="text-sm text-slate-400">
-            Vui lòng liên hệ với doanh nghiệp để nhận lại lời mời mới.
+            Please contact the business to receive a new invitation.
           </p>
           <Button className="mt-6 w-full" onClick={() => navigate('/')}>
-            Về Trang Chủ
+            Back to Home Page
           </Button>
         </div>
       </div>
@@ -120,15 +120,15 @@ const StaffAcceptInvitationPage = () => {
           <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="h-10 w-10 text-green-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">Tài Khoản Đã Kích Hoạt!</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Account Activated!</h1>
           <p className="text-slate-500 mb-2">
-            Chào mừng <strong>{inviteInfo?.fullName}</strong> gia nhập đội ngũ của <strong>{inviteInfo?.tenantName}</strong>!
+            Welcome <strong>{inviteInfo?.fullName}</strong> Join the team of <strong>{inviteInfo?.tenantName}</strong>!
           </p>
           <p className="text-sm text-slate-400 mb-8">
-            Bạn có thể đăng nhập bằng email và mật khẩu vừa thiết lập.
+            You can log in with the email and password you just set up.
           </p>
           <Button className="w-full" onClick={() => navigate('/')}>
-            Đăng Nhập Ngay
+            Login Now
           </Button>
         </div>
       </div>
@@ -144,9 +144,9 @@ const StaffAcceptInvitationPage = () => {
           <div className="h-16 w-16 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto mb-4">
             <Building2 className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Xác Nhận Tham Gia</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Confirmation of Participation</h1>
           <p className="text-slate-500 text-sm mt-2">
-            Bạn được mời vào đội ngũ của{' '}
+            You are invited to join our team{' '}
             <strong className="text-blue-600">{inviteInfo?.tenantName}</strong>
           </p>
         </div>
@@ -154,7 +154,7 @@ const StaffAcceptInvitationPage = () => {
         {/* Staff info read-only */}
         <div className="bg-slate-50 rounded-xl p-4 mb-6 space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-slate-500">Họ tên</span>
+            <span className="text-slate-500">Full name</span>
             <span className="font-medium text-slate-900">{inviteInfo?.fullName}</span>
           </div>
           <div className="flex justify-between text-sm">
@@ -162,22 +162,22 @@ const StaffAcceptInvitationPage = () => {
             <span className="font-medium text-slate-900">{inviteInfo?.email}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-500">Tổ chức</span>
+            <span className="text-slate-500">Organize</span>
             <span className="font-medium text-blue-600">{inviteInfo?.tenantName}</span>
           </div>
         </div>
 
         {/* Password form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-sm text-slate-600 font-medium">Thiết lập mật khẩu để kích hoạt tài khoản:</p>
+          <p className="text-sm text-slate-600 font-medium">Set up a password to activate your account:</p>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Mật khẩu mới</label>
+            <label className="text-sm font-medium text-slate-700">New password</label>
             <div className="relative">
               <InputField
                 type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="Ít nhất 8 ký tự, gồm chữ hoa, chữ thường và số"
+                placeholder="At least 8 characters, including uppercase letters, lowercase letters and numbers"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pr-10"
@@ -193,12 +193,12 @@ const StaffAcceptInvitationPage = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Xác nhận mật khẩu</label>
+            <label className="text-sm font-medium text-slate-700">Confirm password</label>
             <div className="relative">
               <InputField
                 type={showConfirmPassword ? 'text' : 'password'}
                 required
-                placeholder="Nhập lại mật khẩu"
+                placeholder="Re-enter the password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className="pr-10"
@@ -221,11 +221,11 @@ const StaffAcceptInvitationPage = () => {
           )}
 
           <Button type="submit" className="w-full mt-2" isLoading={isSubmitting}>
-            Xác Nhận Tham Gia
+            Confirmation of Participation
           </Button>
 
           <p className="text-xs text-center text-slate-400">
-            Nếu bạn đã có tài khoản với email này, mật khẩu cũ sẽ không thay đổi.
+            If you already have an account with this email, the old password will not change.
           </p>
         </form>
       </div>

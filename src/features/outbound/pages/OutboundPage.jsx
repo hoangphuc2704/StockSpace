@@ -87,7 +87,7 @@ const OutboundPage = () => {
     } catch (error) {
       console.error('Error fetching initial data:', error)
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
-        toast.error('Vui lòng mua gói dịch vụ (Subscription) để sử dụng chức năng Outbound!')
+        toast.error("Please purchase a subscription to use the Outbound function!")
       } else {
         toast.error(error.response?.data?.message || 'Failed to load initial data')
       }
@@ -135,10 +135,10 @@ const OutboundPage = () => {
       document.body.appendChild(link)
       link.click()
       link.remove()
-      toast.success('Xuất file thành công')
+      toast.success("Export file successfully")
     } catch (error) {
-      console.error('Lỗi khi xuất file:', error)
-      toast.error('Lỗi khi xuất file')
+      console.error("Error when exporting file:", error)
+      toast.error("Error when exporting file")
     } finally {
       setIsExporting(false)
     }
@@ -147,7 +147,7 @@ const OutboundPage = () => {
   const handleCreateReceipt = async (e) => {
     e.preventDefault()
     if (!formSkuId || !formRackId || !formBinId) {
-      toast.error('Vui lòng chọn đầy đủ sản phẩm và vị trí lấy hàng')
+      toast.error("Please select all products and pickup locations")
       return
     }
 
@@ -167,7 +167,7 @@ const OutboundPage = () => {
         ]
       }
       await receiptApi.createReceipt(payload)
-      toast.success('Tạo phiếu xuất thành công')
+      toast.success("Created export ticket successfully")
       setIsModalOpen(false)
       fetchReceipts()
 
@@ -179,7 +179,7 @@ const OutboundPage = () => {
       setFormNote('')
     } catch (error) {
       console.error('Error creating receipt:', error)
-      toast.error(error.response?.data?.message || 'Lỗi khi tạo phiếu')
+      toast.error(error.response?.data?.message || "Error while creating ticket")
     } finally {
       setIsSubmitting(false)
     }
@@ -188,11 +188,11 @@ const OutboundPage = () => {
   const handleApprove = async (id) => {
     try {
       await receiptApi.approveReceipt(id)
-      toast.success('Duyệt phiếu xuất thành công')
+      toast.success("Export slip approved successfully")
       fetchReceipts()
     } catch (error) {
       console.error('Error approving receipt:', error)
-      toast.error(error.response?.data?.message || 'Lỗi khi duyệt phiếu')
+      toast.error(error.response?.data?.message || "Error when approving votes")
     }
   }
 
@@ -233,7 +233,7 @@ const OutboundPage = () => {
             </Button>
           ) : (
             <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500 italic border border-slate-200">
-              Chờ Tenant duyệt
+              Wait for Tenant to approve
             </span>
           )
         ) : (
@@ -280,7 +280,7 @@ const OutboundPage = () => {
                     value={selectedWarehouseId}
                     onChange={(e) => setSelectedWarehouseId(e.target.value)}
                   >
-                    <option value="">-- Chọn Kho --</option>
+                    <option value="">-- Select Warehouse --</option>
                     {warehouses.map(wh => (
                       <option key={wh.id} value={wh.id}>{wh.name}</option>
                     ))}
@@ -356,7 +356,7 @@ const OutboundPage = () => {
                       value={formSkuId}
                       onChange={(e) => setFormSkuId(e.target.value)}
                     >
-                      <option value="">-- Chọn sản phẩm --</option>
+                      <option value="">-- Select product --</option>
                       {skus.map(sku => (
                         <option key={sku.id} value={sku.id}>[{sku.skuCode}] {sku.productCategory?.name}</option>
                       ))}
@@ -385,7 +385,7 @@ const OutboundPage = () => {
                         setFormBinId('')
                       }}
                     >
-                      <option value="">-- Chọn Rack --</option>
+                      <option value="">-- Select Rack --</option>
                       {layout?.racks?.map(r => (
                         <option key={r.id} value={r.id}>
                           {r.name} {r.zoneName ? `(${r.zoneName})` : ''}
@@ -403,7 +403,7 @@ const OutboundPage = () => {
                         value={formBinId}
                         onChange={(e) => setFormBinId(e.target.value)}
                       >
-                        <option value="">-- Chọn Bin --</option>
+                        <option value="">-- Select Bin --</option>
                         {layout?.racks?.find(r => r.id === formRackId)?.bins?.map(b => (
                           <option key={b.id} value={b.id}>{b.name}</option>
                         ))}
@@ -416,7 +416,7 @@ const OutboundPage = () => {
                     <InputField
                       value={formNote}
                       onChange={(e) => setFormNote(e.target.value)}
-                      placeholder="Ghi chú người nhận..."
+                      placeholder="Note to recipient..."
                     />
                   </div>
 

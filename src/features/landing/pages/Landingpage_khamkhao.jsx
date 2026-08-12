@@ -22,28 +22,28 @@ import warehouseApi from '../../../services/warehouse/warehouseApi'
 const SERVICES = [
   {
     icon: Clock,
-    title: 'Cho Thuê Kho Ngắn Hạn',
-    desc: 'Giải pháp lưu trữ linh hoạt theo mùa vụ, tối ưu hóa diện tích sử dụng ngắn hạn tùy biến theo dòng chảy hàng hóa của doanh nghiệp.',
+    title: 'Short Term Warehouse Rental',
+    desc: "Flexible seasonal storage solution, optimizing short-term usage area customized to the business's goods flow.",
   },
   {
     icon: ProjectManagementIcon,
-    title: 'Cho Thuê Kho Dài Hạn',
-    desc: 'Hệ thống hạ tầng kho bãi kiên cố, diện tích lớn với cam kết vận hành an toàn, ổn định dài lâu cùng chính sách chi phí ưu đãi.',
+    title: 'Long-term Warehouse Rental',
+    desc: 'Solid warehouse infrastructure system, large area with commitment to safe, long-term stable operation and preferential cost policies.',
   },
   {
     icon: Warehouse,
-    title: 'Quản Lý Tồn Kho',
-    desc: 'Kiểm soát số lượng, định vị vị trí và theo dõi sát sao trạng thái đóng gói hàng hóa chính xác tuyệt đối nhờ quy trình tự động hóa.',
+    title: 'Inventory Management',
+    desc: 'Control quantity, locate and closely monitor the packaging status of goods with absolute accuracy thanks to the automation process.',
   },
   {
     icon: Boxes,
-    title: 'Nhập Xuất Hàng Hóa',
-    desc: 'Dịch vụ bốc xếp, phân loại chi tiết và hoàn tất đơn hàng tốc độ cao, hỗ trợ đẩy nhanh hiệu suất vận hành toàn chuỗi cung ứng.',
+    title: 'Import and Export of Goods',
+    desc: 'High-speed loading, unloading, detailed classification and order fulfillment services, helping to accelerate operational efficiency throughout the supply chain.',
   },
   {
     icon: Truck,
-    title: 'Báo Cáo Tồn Kho Realtime',
-    desc: 'Hệ thống cập nhật luồng số liệu tức thời theo thời gian thực, hỗ trợ nhà quản trị đưa ra quyết định tái nhập hàng nhanh chóng.',
+    title: 'Realtime Inventory Report',
+    desc: 'The system updates data streams instantly in real time, supporting administrators in making quick re-import decisions.',
   },
 ]
 
@@ -88,17 +88,16 @@ const LandingPageKhamkhao = () => {
             ? payload
             : []
 
-        const normalized = content
-          .map((item) => ({
-            id: item.id,
-            name: item.name || 'Warehouse',
-            address: item.address || item.location || 'Đang cập nhật địa chỉ',
-            area: Number(item.area ?? item.capacity ?? 0),
-            pricePerMonth: Number(item.pricePerMonth ?? item.price ?? 0),
-            type: item.warehouseType?.name || item.typeName || item.type || 'General',
-            image: item.coverImageUrl || item.thumbnail || item.imageUrls?.[0] || '',
-            isVerified: item.isVerified ?? item.verified ?? false,
-          }))
+        const normalized = content.map((item) => ({
+          id: item.id,
+          name: item.name || 'Warehouse',
+          address: item.address || item.location || 'Updating address',
+          area: Number(item.area ?? item.capacity ?? 0),
+          pricePerMonth: Number(item.pricePerMonth ?? item.price ?? 0),
+          type: item.warehouseType?.name || item.typeName || item.type || 'General',
+          image: item.coverImageUrl || item.thumbnail || item.imageUrls?.[0] || '',
+          isVerified: item.isVerified ?? item.verified ?? false,
+        }))
 
         setApprovedWarehouses(normalized)
       } catch {
@@ -120,24 +119,24 @@ const LandingPageKhamkhao = () => {
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto mb-20 max-w-3xl space-y-4 text-center">
             <h2 className="text-5xl font-extrabold tracking-tight text-stone-900 uppercase sm:text-6xl">
-              Dịch vụ cốt lõi
+              Core services
             </h2>
             <p className="mx-auto max-w-xl text-sm leading-relaxed font-medium text-stone-500">
-              Không gian thông minh. Quản trị tinh gọn. Hệ thống lưu kho toàn diện giải quyết triệt
-              để bài toán vận hành hậu cần sau khi thuê cho doanh nghiệp của bạn.
+              Smart space. Lean management. Comprehensive storage system solves the problem to solve
+              the problem of post-hire logistics operations for your business.
             </p>
             <div className="flex items-center justify-center gap-4 pt-4">
               <a
                 href="#quote"
                 className="rounded-md bg-[#FF5A1F] px-6 py-3 text-xs font-bold tracking-wider text-white uppercase hover:bg-[#e04e19]"
               >
-                Nhận báo giá ngay
+                Get a quote now
               </a>
               <a
                 href="#learn"
                 className="rounded-md border border-stone-300 bg-white px-6 py-3 text-xs font-bold tracking-wider text-stone-800 uppercase hover:bg-stone-50"
               >
-                Tìm hiểu thêm
+                Learn more
               </a>
             </div>
           </div>
@@ -172,7 +171,7 @@ const LandingPageKhamkhao = () => {
                     <span className="flex h-4 w-4 items-center justify-center bg-stone-950 text-[10px] text-white">
                       ➔
                     </span>
-                    Xem chi tiết
+                    See details
                   </a>
                 </div>
               )
@@ -186,14 +185,14 @@ const LandingPageKhamkhao = () => {
           <div className="mb-12 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl space-y-3">
               <p className="text-xs font-bold tracking-[0.25em] text-[#FF5A1F] uppercase">
-                Kho đã được duyệt
+                Warehouse has been approved
               </p>
               <h2 className="text-4xl font-extrabold tracking-tight text-stone-900 uppercase sm:text-5xl">
-                Xem các kho đã được admin phê duyệt
+                View admin-approved repositories
               </h2>
-              <p className="text-sm font-medium leading-relaxed text-stone-500">
-                Danh sách này chỉ hiển thị những kho đã qua bước xác minh và duyệt từ hệ thống
-                quản trị.
+              <p className="text-sm leading-relaxed font-medium text-stone-500">
+                This list only displays warehouses that have passed verification and approval from
+                the system administration.
               </p>
             </div>
 
@@ -201,7 +200,7 @@ const LandingPageKhamkhao = () => {
               to="/warehouses"
               className="inline-flex items-center gap-2 self-start rounded-md border border-stone-300 bg-white px-5 py-3 text-xs font-bold tracking-wider text-stone-900 uppercase transition-all hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
             >
-              Xem tất cả kho
+              View all warehouses
               <ArrowUpRight size={14} />
             </Link>
           </div>
@@ -209,7 +208,10 @@ const LandingPageKhamkhao = () => {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             {isLoadingWarehouses
               ? Array.from({ length: 3 }).map((_, idx) => (
-                  <div key={idx} className="overflow-hidden rounded-3xl border border-stone-200 bg-white">
+                  <div
+                    key={idx}
+                    className="overflow-hidden rounded-3xl border border-stone-200 bg-white"
+                  >
                     <div className="h-56 animate-pulse bg-stone-100" />
                     <div className="space-y-4 p-6">
                       <div className="h-6 w-2/3 animate-pulse rounded bg-stone-100" />
@@ -222,7 +224,7 @@ const LandingPageKhamkhao = () => {
                   <Link
                     key={warehouse.id}
                     to={`/warehouse/${warehouse.id}`}
-                    className="group block overflow-hidden rounded-3xl border border-stone-200 bg-white transition-all hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2"
+                    className="group block overflow-hidden rounded-3xl border border-stone-200 bg-white transition-all hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2 focus-visible:outline-none"
                   >
                     <div className="relative h-56 overflow-hidden bg-stone-100">
                       {warehouse.image ? (
@@ -237,11 +239,11 @@ const LandingPageKhamkhao = () => {
                         </div>
                       )}
                       {warehouse.isVerified ? (
-                        <div className="absolute left-4 top-4 rounded-full bg-emerald-500/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white">
+                        <div className="absolute top-4 left-4 rounded-full bg-emerald-500/90 px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase">
                           Verified
                         </div>
                       ) : (
-                        <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#0f084b]">
+                        <div className="absolute top-4 left-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold tracking-wider text-[#0f084b] uppercase">
                           Approved
                         </div>
                       )}
@@ -253,23 +255,23 @@ const LandingPageKhamkhao = () => {
                           {warehouse.name}
                         </h3>
                         <p className="flex items-center gap-2 text-sm text-stone-500">
-                            <MapPin size={15} className="text-[#FF5A1F]" />
+                          <MapPin size={15} className="text-[#FF5A1F]" />
                           {warehouse.address}
                         </p>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 rounded-2xl bg-stone-50 p-4 text-sm">
                         <div>
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                            Diện tích
+                          <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
+                            Area
                           </p>
                           <p className="mt-1 font-bold text-stone-900">
-                            {warehouse.area.toLocaleString('vi-VN')} m²
+                            {warehouse.area.toLocaleString('en-US')} m²
                           </p>
                         </div>
                         <div>
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                            Loại kho
+                          <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
+                            Warehouse type
                           </p>
                           <p className="mt-1 font-bold text-stone-900">{warehouse.type}</p>
                         </div>
@@ -277,16 +279,16 @@ const LandingPageKhamkhao = () => {
 
                       <div className="flex items-end justify-between gap-4 border-t border-stone-100 pt-4">
                         <div>
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                            Giá / tháng
+                          <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
+                            Price/month
                           </p>
                           <p className="mt-1 text-xl font-extrabold text-[#FF5A1F]">
-                            {warehouse.pricePerMonth.toLocaleString('vi-VN')} đ
+                            {warehouse.pricePerMonth.toLocaleString('en-US')} d
                           </p>
                         </div>
 
                         <span className="inline-flex items-center gap-2 rounded-md bg-stone-900 px-4 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all group-hover:bg-[#FF5A1F]">
-                          Xem chi tiết
+                          See details
                           <ArrowRight size={14} />
                         </span>
                       </div>
@@ -297,7 +299,7 @@ const LandingPageKhamkhao = () => {
 
           {!isLoadingWarehouses && approvedWarehouses.length === 0 ? (
             <div className="mt-8 rounded-3xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center text-sm text-stone-500">
-              Hiện chưa có kho nào được admin phê duyệt để hiển thị trên landing page.
+              There are currently no warehouses available for rent.
             </div>
           ) : null}
         </div>
@@ -308,27 +310,26 @@ const LandingPageKhamkhao = () => {
         <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 lg:grid-cols-12 lg:px-8">
           <div className="z-10 space-y-6 text-left lg:col-span-7">
             <h2 className="text-4xl leading-tight font-extrabold tracking-tight text-stone-900 uppercase sm:text-5xl">
-              Sẵn sàng bứt phá?
+              Ready for a breakthrough?
               <br />
-              Tối ưu vận hành kho bãi ngay hôm nay.
+              Optimize warehouse operations today.
             </h2>
             <p className="max-w-xl text-xs leading-relaxed font-medium text-stone-500">
-              Bàn giao mặt bằng tiêu chuẩn cao kết hợp triển khai hệ thống số hóa quản trị tài sản
-              tức thì. Chúng tôi không chỉ cho thuê diện tích, chúng tôi đồng hành cùng sự tăng
-              trưởng của bạn.
+              High standard site handover combined with implementation of a digital asset management
+              system instant. We don't just rent space, we accompany the growth your chief.
             </p>
             <div className="flex flex-wrap gap-4 pt-4">
               <a
                 href="#cta-quote"
                 className="rounded-md bg-[#FF5A1F] px-6 py-3 text-xs font-bold tracking-wider text-white uppercase hover:bg-[#e04e19]"
               >
-                Yêu cầu tư vấn
+                Ask for advice
               </a>
               <a
                 href="#services"
                 className="rounded-md border border-stone-300 bg-transparent px-6 py-3 text-xs font-bold tracking-wider text-stone-800 uppercase hover:bg-stone-100"
               >
-                Xem toàn bộ dịch vụ
+                See all services
               </a>
             </div>
           </div>
@@ -362,8 +363,9 @@ const LandingPageKhamkhao = () => {
                 </span>
               </div>
               <p className="max-w-sm text-xs leading-relaxed text-stone-500">
-                Giải pháp hạ tầng lưu trữ tích hợp hệ thống số hóa thông minh, giải quyết triệt để
-                bài toán lưu trữ và kiểm soát dữ liệu tồn kho sau khi ký hợp đồng thuê mặt bằng.
+                Storage infrastructure solution that integrates a smart digital system, completely
+                solving the problem The problem of storing and controlling inventory data after
+                signing a lease contract.
               </p>
               <div className="flex gap-3 pt-2">
                 {[Facebook, Youtube, Instagram].map((Icon, i) => (
@@ -381,27 +383,27 @@ const LandingPageKhamkhao = () => {
             <div className="lg:col-span-2">
               <h4 className="mb-4 text-xs font-bold tracking-wider text-white uppercase">Menu</h4>
               <ul className="space-y-2.5 text-xs">
-                {['Trang chủ', 'Về chúng tôi', 'Dịch vụ kho', 'Giải pháp', 'Bảng giá'].map(
-                  (link) => (
-                    <li key={link}>
-                      <a href="#" className="transition-colors hover:text-white">
-                        {link}
-                      </a>
-                    </li>
-                  )
-                )}
+                {['Home page', 'About us', 'Warehouse service', 'Price list'].map((link) => (
+                  <li key={link}>
+                    <a href="#" className="transition-colors hover:text-white">
+                      {link}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
 
             <div className="lg:col-span-2">
-              <h4 className="mb-4 text-xs font-bold tracking-wider text-white uppercase">Hỗ trợ</h4>
+              <h4 className="mb-4 text-xs font-bold tracking-wider text-white uppercase">
+                Support
+              </h4>
               <ul className="space-y-2.5 text-xs">
                 {[
-                  'Điều khoản sử dụng',
-                  'Chính sách bảo mật',
-                  'Trợ giúp 24/7',
-                  'Tài liệu API',
-                  'Quy trình vận hành',
+                  'Terms of use',
+                  'Privacy policy',
+                  '24/7 help',
+                  'API Documentation',
+                  'Operating procedures',
                 ].map((link) => (
                   <li key={link}>
                     <a href="#" className="transition-colors hover:text-white">
@@ -414,14 +416,14 @@ const LandingPageKhamkhao = () => {
 
             <div className="space-y-4 lg:col-span-4">
               <h4 className="mb-4 text-xs font-bold tracking-wider text-white uppercase">
-                Liên hệ
+                Contact
               </h4>
               <div className="flex items-center gap-4 border border-stone-800 bg-[#1a1a1a] p-4 transition-all hover:border-stone-700">
                 <div className="text-[#FF5A1F]">
                   <Phone size={18} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-stone-500 uppercase">Hotline chăm sóc</p>
+                  <p className="text-[10px] font-bold text-stone-500 uppercase">Care hotline</p>
                   <p className="text-xs font-bold text-white">123456789</p>
                 </div>
               </div>
@@ -430,7 +432,7 @@ const LandingPageKhamkhao = () => {
                   <Mail size={18} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-stone-500 uppercase">Hòm thư điện tử</p>
+                  <p className="text-[10px] font-bold text-stone-500 uppercase">Email box</p>
                   <p className="text-xs font-bold text-white">cuongbui10704@gmail.com</p>
                 </div>
               </div>
@@ -438,7 +440,7 @@ const LandingPageKhamkhao = () => {
           </div>
 
           <div className="flex flex-col items-center justify-between pt-8 text-[11px] text-stone-600 sm:flex-row">
-            <p>© {new Date().getFullYear()} StockSpace. Tất cả các quyền được bảo hộ.</p>
+            <p>© {new Date().getFullYear()} StockSpace. All rights reserved.</p>
           </div>
         </div>
       </footer>

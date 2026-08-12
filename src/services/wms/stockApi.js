@@ -18,7 +18,7 @@ const stockApi = {
    */
   getStockByBin: async (warehouseId, binId, { size = 100 } = {}) => {
     if (!warehouseId || !binId) {
-      throw new Error('warehouseId và binId là bắt buộc khi xem tồn kho trong Bin.')
+      throw new Error('warehouseId and binId are required to view inventory in a bin.')
     }
 
     const getPage = (page) =>

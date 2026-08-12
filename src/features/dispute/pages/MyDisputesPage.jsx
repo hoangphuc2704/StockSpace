@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
@@ -24,17 +25,18 @@ import disputeApi from '@/services/disputeApi'
 const STATUS_OPTIONS = ['', 'OPEN', 'RESOLVED']
 
 const STATUS_CONFIG = {
-  OPEN: { label: 'Đang mở', variant: 'warning', icon: AlertCircle },
-  RESOLVED: { label: 'Đã giải quyết', variant: 'success', icon: CheckCircle2 },
+  OPEN: { label: "Open", variant: 'warning', icon: AlertCircle },
+  RESOLVED: { label: "Resolved", variant: 'success', icon: CheckCircle2 },
 }
 
 const formatDate = (dt) =>
-  dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—'
+  dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—'
 
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 // ─── Detail Modal ────────────────────────────────────────────────────────────
 const DetailModal = ({ dispute, onClose }) => {
+  useEscapeKey(true, onClose)
   const StatusIcon = STATUS_CONFIG[dispute.status]?.icon || AlertCircle
 
   // Parse evidence images
@@ -65,7 +67,7 @@ const DetailModal = ({ dispute, onClose }) => {
               <Scale size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Chi tiết tranh chấp</h2>
+              <h2 className="text-lg font-bold text-slate-900">Dispute details</h2>
               <p className="text-xs text-slate-400">{shortId(dispute.id)}</p>
             </div>
           </div>
@@ -79,7 +81,7 @@ const DetailModal = ({ dispute, onClose }) => {
 
         <div className="space-y-4 text-sm">
           <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-            <span className="font-medium text-slate-600">Trạng thái</span>
+            <span className="font-medium text-slate-600">Status</span>
             <Badge
               variant={STATUS_CONFIG[dispute.status]?.variant || 'slate'}
               size="sm"
@@ -92,11 +94,11 @@ const DetailModal = ({ dispute, onClose }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Hợp đồng</p>
+              <p className="mb-1 text-xs text-slate-400">Contract</p>
               <p className="font-mono text-xs font-bold text-slate-700">{shortId(dispute.contractId)}</p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Ngày tạo</p>
+              <p className="mb-1 text-xs text-slate-400">Creation date</p>
               <p className="font-medium text-slate-700">{formatDate(dispute.createdAt)}</p>
             </div>
           </div>
@@ -104,21 +106,21 @@ const DetailModal = ({ dispute, onClose }) => {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-                <User size={11} /> Người khiếu nại
+                <User size={11} /> Complainant
               </p>
               <p className="font-semibold text-slate-800">{dispute.raisedByName || '—'}</p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-                <User size={11} /> Người xử lý
+                <User size={11} /> Handler
               </p>
-              <p className="font-semibold text-slate-800">{dispute.handledByName || 'Chưa có'}</p>
+              <p className="font-semibold text-slate-800">{dispute.handledByName || "Not yet"}</p>
             </div>
           </div>
 
           <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-              <FileText size={11} /> Lý do khiếu nại
+              <FileText size={11} /> Reason for complaint
             </p>
             <p className="text-slate-700">{dispute.reason || '—'}</p>
           </div>
@@ -126,7 +128,7 @@ const DetailModal = ({ dispute, onClose }) => {
           {evidenceImages.length > 0 && (
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-2 flex items-center gap-1 text-xs text-slate-400">
-                <ImageIcon size={11} /> Ảnh bằng chứng
+                <ImageIcon size={11} /> Photo evidence
               </p>
               <div className="flex flex-wrap gap-2">
                 {evidenceImages.map((url, i) => (
@@ -144,7 +146,7 @@ const DetailModal = ({ dispute, onClose }) => {
 
           {dispute.adminNote && (
             <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-              <p className="mb-1.5 text-xs font-medium text-blue-500">Ghi chú Admin / Phán quyết</p>
+              <p className="mb-1.5 text-xs font-medium text-blue-500">Admin Notes / Ruling</p>
               <p className="text-blue-800">{dispute.adminNote}</p>
             </div>
           )}
@@ -155,7 +157,7 @@ const DetailModal = ({ dispute, onClose }) => {
             onClick={onClose}
             className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
           >
-            Đóng
+            Close
           </button>
         </div>
       </div>
@@ -191,7 +193,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
       setTotalPages(paged?.totalPages || 0)
       setTotalElements(paged?.totalElements || 0)
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể tải danh sách tranh chấp.')
+      setError(err.response?.data?.message || "Unable to load dispute list.")
       setDisputes([])
     } finally {
       setLoading(false)
@@ -246,12 +248,12 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
             {/* Page header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Tranh chấp của tôi</h1>
+                <h1 className="text-2xl font-bold text-slate-900">My dispute</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Theo dõi các tranh chấp hợp đồng bạn đã gửi.
+                  Keep track of contract disputes you've submitted.
                   {totalElements > 0 && (
                     <span className="ml-1 font-semibold text-slate-700">
-                      ({totalElements} tổng)
+                      ({totalElements} total)
                     </span>
                   )}
                 </p>
@@ -268,21 +270,21 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
                 {
-                  label: 'Tổng tranh chấp',
+                  label: "Total dispute",
                   value: totalElements,
                   icon: Scale,
                   color: 'text-slate-600',
                   bg: 'bg-slate-100',
                 },
                 {
-                  label: 'Đang mở',
+                  label: "Open",
                   value: openCount,
                   icon: AlertCircle,
                   color: 'text-amber-600',
                   bg: 'bg-amber-50',
                 },
                 {
-                  label: 'Đã giải quyết',
+                  label: "Resolved",
                   value: resolvedCount,
                   icon: CheckCircle2,
                   color: 'text-emerald-600',
@@ -317,7 +319,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
                 />
                 <input
                   type="text"
-                  placeholder="Tìm theo ID, hợp đồng, lý do..."
+                  placeholder="Search by ID, contract, reason..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm transition-all focus:ring-2 focus:ring-blue-200 focus:outline-none"
@@ -333,7 +335,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>
-                      {s ? STATUS_CONFIG[s]?.label || s : 'Tất cả trạng thái'}
+                      {s ? STATUS_CONFIG[s]?.label || s : "All status"}
                     </option>
                   ))}
                 </select>
@@ -345,20 +347,20 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
               {loading ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-400">
                   <Loader2 size={28} className="animate-spin text-blue-400" />
-                  <span className="text-sm">Đang tải dữ liệu...</span>
+                  <span className="text-sm">Loading data...</span>
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="py-20 text-center text-sm text-slate-400">
                   {disputes.length === 0
-                    ? 'Bạn chưa có tranh chấp nào.'
-                    : 'Không có tranh chấp nào phù hợp với bộ lọc.'}
+                    ? "You don't have any disputes yet."
+                    : "There are no disputes that match the filter."}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
-                        {['ID', 'Hợp đồng', 'Lý do', 'Trạng thái', 'Ngày tạo', 'Người xử lý', ''].map(
+                        {['ID', "Contract", "Reason", "Status", "Creation date", "Handler", ''].map(
                           (h) => (
                             <th
                               key={h}
@@ -407,7 +409,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
                             </td>
                             <td className="px-5 py-3.5">
                               <span className="text-slate-600">
-                                {d.handledByName || 'Chưa gán'}
+                                {d.handledByName || "Not assigned yet"}
                               </span>
                             </td>
                             <td className="px-5 py-3.5">
@@ -415,7 +417,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
                                 onClick={() => setSelectedDispute(d)}
                                 className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 opacity-0 transition-all hover:bg-slate-50 group-hover:opacity-100"
                               >
-                                Chi tiết
+                                Details
                               </button>
                             </td>
                           </tr>
@@ -430,7 +432,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
                   <span className="text-sm text-slate-500">
-                    Trang {page + 1} / {totalPages} · {totalElements} tranh chấp
+                    Page {page + 1} / {totalPages} · {totalElements} disputes
                   </span>
                   <div className="flex items-center gap-2">
                     <button

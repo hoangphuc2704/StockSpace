@@ -237,8 +237,8 @@ const BillingPage = () => {
                           <p className="flex justify-between">
                             <span>Price:</span>
                             <span className="font-medium text-slate-900">
-                              {Number(activeSub.servicePackage?.price || 0).toLocaleString('vi-VN')}{' '}
-                              VNĐ / {activeSub.servicePackage?.durationMonths} tháng
+                              {Number(activeSub.servicePackage?.price || 0).toLocaleString('en-US')}{' '}
+                              VND / {activeSub.servicePackage?.durationMonths} month
                             </span>
                           </p>
                         </div>
@@ -246,7 +246,7 @@ const BillingPage = () => {
                     ) : (
                       <div className="py-6 text-center">
                         <p className="mb-4 text-sm text-slate-500">
-                          Bạn chưa đăng ký gói dịch vụ nào.
+                          You have not subscribed to any service package.
                         </p>
                         <Button
                           onClick={() => (window.location.href = '/packages')}
@@ -254,7 +254,7 @@ const BillingPage = () => {
                           size="sm"
                           className="w-full"
                         >
-                          Xem Bảng Giá
+                          See Price List
                         </Button>
                       </div>
                     )}

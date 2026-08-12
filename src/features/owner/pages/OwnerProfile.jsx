@@ -14,12 +14,12 @@ const OwnerProfile = () => {
 
   // Mock data thông tin người dùng ban đầu
   const [formData, setFormData] = useState({
-    fullName: 'Nguyễn Văn A',
+    fullName: "Nguyen Van A",
     email: 'nguyenvana@stockspace.vn',
     phone: '0901234567',
-    role: 'Chủ kho (OWNER)',
-    address: '123 Đường Song Hành, Quận 2, TP. Hồ Chí Minh',
-    bio: 'Quản lý chuỗi kho vận logistics khu vực miền Nam.',
+    role: "Warehouse owner (OWNER)",
+    address: "123 Song Hanh Street, District 2, City. Ho Chi Minh",
+    bio: "Managing the logistics chain in the Southern region.",
   })
 
   const toggleSidebar = () => {
@@ -38,12 +38,12 @@ const OwnerProfile = () => {
   const handleSubmit = (e) => {
     e.preventDefault()
     // Xử lý logic Call API cập nhật thông tin tại đây
-    toast.success('Cập nhật thông tin tài khoản thành công!')
+    toast.success("Updated account information successfully!")
   }
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      1. FIXED GLOBAL HEADER (Đã thay thế bằng Component dùng chung)
+      1. FIXED GLOBAL HEADER (Replaced with shared Component)
       <Header toggleSidebar={toggleSidebar} />
       {/* MOBILE OVERLAY */}
       <div className="md:hidden">
@@ -72,9 +72,9 @@ const OwnerProfile = () => {
           <main className="mx-auto w-full max-w-[1200px] space-y-6 p-6 md:p-8">
             {/* Header Tiêu đề */}
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Thông tin cá nhân</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Personal information</h1>
               <p className="text-sm text-slate-500">
-                Quản lý thông tin hồ sơ tài khoản và các thiết lập bảo mật cơ bản.
+                Manage account profile information and basic security settings.
               </p>
             </div>
 
@@ -98,7 +98,7 @@ const OwnerProfile = () => {
 
                 <div className="mt-6 w-full space-y-2 border-t border-slate-100 pt-4">
                   <Button variant="outline" size="sm" className="w-full justify-center">
-                    <Lock className="mr-2 h-4 w-4" /> Đổi mật khẩu
+                    <Lock className="mr-2 h-4 w-4" /> Change password
                   </Button>
                 </div>
               </div>
@@ -106,14 +106,14 @@ const OwnerProfile = () => {
               {/* CỘT PHẢI: FORM CHỈNH SỬA THÔNG TIN */}
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
                 <h3 className="mb-6 border-b border-slate-100 pb-2 text-base font-bold text-slate-900">
-                  Chi tiết hồ sơ
+                  Profile details
                 </h3>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {/* Họ và tên */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-600">Họ và tên</label>
+                      <label className="text-xs font-semibold text-slate-600">Full name</label>
                       <div className="relative">
                         <User className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
@@ -122,7 +122,7 @@ const OwnerProfile = () => {
                           value={formData.fullName}
                           onChange={handleChange}
                           className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pr-4 pl-10 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                          placeholder="Nhập họ và tên"
+                          placeholder="Enter first and last name"
                           required
                         />
                       </div>
@@ -130,7 +130,7 @@ const OwnerProfile = () => {
 
                     {/* Số điện thoại */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-slate-600">Số điện thoại</label>
+                      <label className="text-xs font-semibold text-slate-600">Phone number</label>
                       <div className="relative">
                         <Phone className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
@@ -139,7 +139,7 @@ const OwnerProfile = () => {
                           value={formData.phone}
                           onChange={handleChange}
                           className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pr-4 pl-10 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                          placeholder="Nhập số điện thoại"
+                          placeholder="Enter phone number"
                         />
                       </div>
                     </div>
@@ -148,7 +148,7 @@ const OwnerProfile = () => {
                   {/* Địa chỉ Email */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-400">
-                      Địa chỉ Email (Không thể thay đổi)
+                      Email Address (Cannot be changed)
                     </label>
                     <div className="relative">
                       <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-300" />
@@ -163,7 +163,7 @@ const OwnerProfile = () => {
 
                   {/* Địa chỉ liên hệ */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-600">Địa chỉ liên hệ</label>
+                    <label className="text-xs font-semibold text-slate-600">Contact address</label>
                     <div className="relative">
                       <MapPin className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <input
@@ -172,28 +172,28 @@ const OwnerProfile = () => {
                         value={formData.address}
                         onChange={handleChange}
                         className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pr-4 pl-10 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                        placeholder="Nhập địa chỉ của bạn"
+                        placeholder="Enter your address"
                       />
                     </div>
                   </div>
 
                   {/* Giới thiệu ngắn */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-600">Giới thiệu ngắn</label>
+                    <label className="text-xs font-semibold text-slate-600">Short introduction</label>
                     <textarea
                       name="bio"
                       value={formData.bio}
                       onChange={handleChange}
                       rows={4}
                       className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                      placeholder="Mô tả một chút về bản thân bạn..."
+                      placeholder="Describe a little about yourself..."
                     />
                   </div>
 
                   {/* Nút submit */}
                   <div className="flex justify-end pt-2">
                     <Button type="submit" size="sm" className="px-6">
-                      <Save className="mr-2 h-4 w-4" /> Lưu thay đổi
+                      <Save className="mr-2 h-4 w-4" /> Save changes
                     </Button>
                   </div>
                 </form>

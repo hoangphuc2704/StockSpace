@@ -32,7 +32,7 @@ const AdminAuditsPage = () => {
       options.hour = '2-digit'
       options.minute = '2-digit'
     }
-    return new Date(dateString).toLocaleDateString('vi-VN', options)
+    return new Date(dateString).toLocaleDateString('en-US', options)
   }
 
   const fetchAudits = async (currentPage = 0) => {
@@ -45,7 +45,7 @@ const AdminAuditsPage = () => {
       setPage(data?.pageNo ?? data?.page ?? 0)
     } catch (error) {
       console.error('Error fetching audits:', error)
-      toast.error(error.response?.data?.message || 'Lỗi khi tải danh sách phiếu kiểm kê')
+      toast.error(error.response?.data?.message || 'Error loading inventory list')
     } finally {
       setLoading(false)
     }
@@ -74,15 +74,31 @@ const AdminAuditsPage = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'PENDING':
-        return <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700 border border-yellow-200">Chờ duyệt</span>
+        return (
+          <span className="rounded-full border border-yellow-200 bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
+            Waiting for approval
+          </span>
+        )
       case 'APPROVED':
       case 'PASSED':
-        return <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 border border-green-200">Đã duyệt</span>
+        return (
+          <span className="rounded-full border border-green-200 bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+            Approved
+          </span>
+        )
       case 'REJECTED':
       case 'FAILED':
-        return <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 border border-red-200">Từ chối</span>
+        return (
+          <span className="rounded-full border border-red-200 bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+            Refuse
+          </span>
+        )
       default:
-        return <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 border border-gray-200">{status}</span>
+        return (
+          <span className="rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
+            {status}
+          </span>
+        )
     }
   }
 
@@ -96,7 +112,9 @@ const AdminAuditsPage = () => {
           </button>
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Admin
@@ -108,27 +126,31 @@ const AdminAuditsPage = () => {
       <div className="flex pt-14">
         <Sidebar currentRole="ADMIN" />
 
-        <div className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]'}`}>
-          <main className="mx-auto w-full max-w-7xl space-y-6 p-6 md:p-8 flex flex-col h-[calc(100vh-3.5rem)]">
+        <div
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]'}`}
+        >
+          <main className="mx-auto flex h-[calc(100vh-3.5rem)] w-full max-w-7xl flex-col space-y-6 p-6 md:p-8">
             {/* Header */}
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between shrink-0">
+            <div className="flex shrink-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">WMS - Quản Lý Phiếu Kiểm Kê</h1>
-                <p className="text-sm text-slate-500">Giám sát hoạt động kiểm kê tồn kho trên toàn hệ thống.</p>
+                <h1 className="text-2xl font-bold text-slate-800">WMS - Inventory Management</h1>
+                <p className="text-sm text-slate-500">
+                  Monitor inventory activities throughout the system.
+                </p>
               </div>
             </div>
 
             {/* Danh sách phiếu kiểm kê */}
-            <div className="flex-1 rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden flex flex-col">
-              <div className="overflow-x-auto flex-1">
+            <div className="flex flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+              <div className="flex-1 overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
-                  <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200 sticky top-0 z-10">
+                  <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs text-slate-500 uppercase">
                     <tr>
-                      <th className="px-6 py-4 font-semibold">Mã Phiếu / Kho</th>
-                      <th className="px-6 py-4 font-semibold">Ngày tạo</th>
-                      <th className="px-6 py-4 font-semibold">Người yêu cầu</th>
-                      <th className="px-6 py-4 font-semibold">Trạng thái</th>
-                      <th className="px-6 py-4 font-semibold text-center">Thao tác</th>
+                      <th className="px-6 py-4 font-semibold">Voucher Code / Warehouse</th>
+                      <th className="px-6 py-4 font-semibold">Creation date</th>
+                      <th className="px-6 py-4 font-semibold">Requester</th>
+                      <th className="px-6 py-4 font-semibold">Status</th>
+                      <th className="px-6 py-4 text-center font-semibold">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -137,24 +159,27 @@ const AdminAuditsPage = () => {
                         <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
                           <div className="flex flex-col items-center justify-center gap-2">
                             <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600"></div>
-                            <span>Đang tải dữ liệu...</span>
+                            <span>Loading data...</span>
                           </div>
                         </td>
                       </tr>
                     ) : audits.length === 0 ? (
                       <tr>
                         <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
-                          Không có phiếu kiểm kê nào trong hệ thống.
+                          There are no inventory sheets in the system.
                         </td>
                       </tr>
                     ) : (
                       audits.map((audit) => (
-                        <tr key={audit.id} className="hover:bg-slate-50 transition-colors">
+                        <tr key={audit.id} className="transition-colors hover:bg-slate-50">
                           <td className="px-6 py-4">
-                            <div className="font-medium text-slate-900 truncate w-48" title={audit.id}>
+                            <div
+                              className="w-48 truncate font-medium text-slate-900"
+                              title={audit.id}
+                            >
                               {audit.id.substring(0, 8)}...
                             </div>
-                            <div className="text-xs text-slate-500 mt-1">{audit.warehouseName}</div>
+                            <div className="mt-1 text-xs text-slate-500">{audit.warehouseName}</div>
                           </td>
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-1.5 text-slate-600">
@@ -172,11 +197,11 @@ const AdminAuditsPage = () => {
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() => openDetailModal(audit)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              title="Xem chi tiết"
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                              title="See details"
                             >
                               <HiOutlineEye className="h-4 w-4 text-blue-600" />
-                              Xem
+                              View
                             </button>
                           </td>
                         </tr>
@@ -190,7 +215,7 @@ const AdminAuditsPage = () => {
               {!loading && totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4">
                   <span className="text-sm text-slate-500">
-                    Trang <span className="font-medium text-slate-900">{page + 1}</span> /{' '}
+                    Page <span className="font-medium text-slate-900">{page + 1}</span> /{' '}
                     <span className="font-medium text-slate-900">{totalPages}</span>
                   </span>
                   <div className="flex items-center gap-2">
@@ -199,14 +224,14 @@ const AdminAuditsPage = () => {
                       disabled={page === 0}
                       className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                     >
-                      Trước
+                      Before
                     </button>
                     <button
                       onClick={() => handlePageChange(page + 1)}
                       disabled={page >= totalPages - 1}
                       className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                     >
-                      Sau
+                      Next
                     </button>
                   </div>
                 </div>
@@ -218,55 +243,77 @@ const AdminAuditsPage = () => {
               <Modal
                 isOpen={isDetailModalOpen}
                 onClose={closeDetailModal}
-                title="Chi Tiết Phiếu Kiểm Kê"
-                className="max-w-4xl w-[90vw]"
+                title="Details of Inventory Form"
+                className="w-[90vw] max-w-4xl"
               >
                 <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4 rounded-xl bg-slate-50 p-4 border border-slate-200">
+                  <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Mã Phiếu</p>
-                      <p className="text-sm font-medium text-slate-900 mt-1">{selectedAudit.id}</p>
+                      <p className="text-xs font-medium tracking-wider text-slate-500 uppercase">
+                        Voucher Code
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">{selectedAudit.id}</p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Kho Bãi</p>
-                      <p className="text-sm font-medium text-slate-900 mt-1">{selectedAudit.warehouseName}</p>
+                      <p className="text-xs font-medium tracking-wider text-slate-500 uppercase">
+                        Warehouse
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">
+                        {selectedAudit.warehouseName}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Trạng Thái</p>
+                      <p className="text-xs font-medium tracking-wider text-slate-500 uppercase">
+                        Status
+                      </p>
                       <div className="mt-1">{getStatusBadge(selectedAudit.status)}</div>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Ghi Chú</p>
-                      <p className="text-sm text-slate-700 mt-1">{selectedAudit.note || 'Không có ghi chú'}</p>
+                      <p className="text-xs font-medium tracking-wider text-slate-500 uppercase">
+                        Notes
+                      </p>
+                      <p className="mt-1 text-sm text-slate-700">
+                        {selectedAudit.note || 'No notes'}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Người tạo</p>
-                      <p className="text-sm font-medium text-slate-900 mt-1">{selectedAudit.requestedByName || 'N/A'}</p>
+                      <p className="text-xs font-medium tracking-wider text-slate-500 uppercase">
+                        Creator
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">
+                        {selectedAudit.requestedByName || 'N/A'}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Người duyệt</p>
-                      <p className="text-sm font-medium text-slate-900 mt-1">{selectedAudit.approvedByName || 'Chưa duyệt'}</p>
+                      <p className="text-xs font-medium tracking-wider text-slate-500 uppercase">
+                        Reviewer
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-slate-900">
+                        {selectedAudit.approvedByName || 'Not approved yet'}
+                      </p>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-3">Danh sách dòng kiểm kê</h3>
-                    <div className="rounded-xl border border-slate-200 overflow-hidden max-h-80 overflow-y-auto">
+                    <h3 className="mb-3 text-sm font-bold tracking-wider text-slate-800 uppercase">
+                      List of inventory lines
+                    </h3>
+                    <div className="max-h-80 overflow-hidden overflow-y-auto rounded-xl border border-slate-200">
                       <table className="w-full text-left text-sm text-slate-600">
-                        <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200 sticky top-0">
+                        <thead className="sticky top-0 border-b border-slate-200 bg-slate-50 text-xs text-slate-500 uppercase">
                           <tr>
                             <th className="px-4 py-3 font-semibold">SKU</th>
-                            <th className="px-4 py-3 font-semibold">Vị trí (Zone/Rack/Bin)</th>
-                            <th className="px-4 py-3 font-semibold text-right">Tồn hệ thống</th>
-                            <th className="px-4 py-3 font-semibold text-right">Đếm thực tế</th>
-                            <th className="px-4 py-3 font-semibold text-right">Chênh lệch</th>
+                            <th className="px-4 py-3 font-semibold">Location (Zone/Rack/Bin)</th>
+                            <th className="px-4 py-3 text-right font-semibold">System Inventory</th>
+                            <th className="px-4 py-3 text-right font-semibold">Actual count</th>
+                            <th className="px-4 py-3 text-right font-semibold">Difference</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                           {!selectedAudit.items || selectedAudit.items.length === 0 ? (
                             <tr>
                               <td colSpan="5" className="px-4 py-8 text-center text-slate-500">
-                                Phiếu không có dòng chi tiết nào.
+                                The ticket does not have any detailed lines.
                               </td>
                             </tr>
                           ) : (
@@ -283,13 +330,22 @@ const AdminAuditsPage = () => {
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-right font-medium">
-                                  {item.expectedQuantity} <span className="text-xs text-slate-400">{item.uomSymbol}</span>
+                                  {item.expectedQuantity}{' '}
+                                  <span className="text-xs text-slate-400">{item.uomSymbol}</span>
                                 </td>
                                 <td className="px-4 py-3 text-right font-medium text-blue-600">
-                                  {item.actualQuantity} <span className="text-xs text-slate-400">{item.uomSymbol}</span>
+                                  {item.actualQuantity}{' '}
+                                  <span className="text-xs text-slate-400">{item.uomSymbol}</span>
                                 </td>
-                                <td className={`px-4 py-3 text-right font-bold ${item.discrepancy < 0 ? 'text-red-600' : item.discrepancy > 0 ? 'text-green-600' : 'text-slate-400'
-                                  }`}>
+                                <td
+                                  className={`px-4 py-3 text-right font-bold ${
+                                    item.discrepancy < 0
+                                      ? 'text-red-600'
+                                      : item.discrepancy > 0
+                                        ? 'text-green-600'
+                                        : 'text-slate-400'
+                                  }`}
+                                >
                                   {item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy}
                                 </td>
                               </tr>
@@ -300,12 +356,12 @@ const AdminAuditsPage = () => {
                     </div>
                   </div>
 
-                  <div className="flex justify-end pt-4 border-t border-slate-100">
+                  <div className="flex justify-end border-t border-slate-100 pt-4">
                     <button
                       onClick={closeDetailModal}
                       className="rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-200"
                     >
-                      Đóng
+                      Close
                     </button>
                   </div>
                 </div>

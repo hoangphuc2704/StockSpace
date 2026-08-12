@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
 import {
@@ -59,6 +60,8 @@ const WalletTenant = () => {
   
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
 
+  useEscapeKey(isDepositModalOpen, () => setIsDepositModalOpen(false))
+
   // --- HÀM LẤY DỮ LIỆU ---
   const fetchWallet = async () => {
     try {
@@ -70,7 +73,7 @@ const WalletTenant = () => {
         setWallet(res?.data || res)
       }
     } catch (error) {
-      console.error('Lỗi lấy dữ liệu ví:', error)
+      console.error("Error retrieving wallet data:", error)
     } finally {
       setLoadingWallet(false)
     }
@@ -91,7 +94,7 @@ const WalletTenant = () => {
         })
       }
     } catch (error) {
-      console.error('Lỗi lấy lịch sử giao dịch:', error)
+      console.error("Error retrieving transaction history:", error)
     } finally {
       setLoadingTransactions(false)
     }
@@ -112,7 +115,7 @@ const WalletTenant = () => {
         })
       }
     } catch (error) {
-      console.error('Lỗi lấy lịch sử rút tiền:', error)
+      console.error("Error retrieving withdrawal history:", error)
     } finally {
       setLoadingWithdrawals(false)
     }
@@ -139,7 +142,7 @@ const WalletTenant = () => {
 
     const amountNumber = Number(inputAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Vui lòng nhập số tiền nạp hợp lệ và lớn hơn 0')
+      toast.error("Please enter a valid deposit amount greater than 0")
       return
     }
 
@@ -156,11 +159,11 @@ const WalletTenant = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-        toast.error(res?.data?.message || 'Không tìm thấy link thanh toán VNPay từ hệ thống!')
+        toast.error(res?.data?.message || "VNPay payment link not found in the system!")
       }
     } catch (error) {
-      console.error('Lỗi nạp tiền:', error)
-      toast.error('Yêu cầu nạp tiền thất bại, vui lòng thử lại!')
+      console.error("Deposit error:", error)
+      toast.error("Deposit request failed, please try again!")
     } finally {
       setDepositLoading(false)
     }
@@ -169,7 +172,7 @@ const WalletTenant = () => {
   // --- HELPER ĐỊNH DẠNG ---
   const formatVND = (value) => {
     if (value === undefined || value === null) return '0 ₫'
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   const getTransactionTypeBadge = (type) => {
@@ -177,31 +180,31 @@ const WalletTenant = () => {
       case 'TOP_UP':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
-            Nạp tiền
+            Top up
           </span>
         )
       case 'DEPOSIT_PAYMENT':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
-            Thanh toán cọc
+            Deposit payment
           </span>
         )
       case 'PACKAGE_PAYMENT':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-purple-700/10 ring-inset">
-            Thanh toán gói DV
+            Pay for DV package
           </span>
         )
       case 'DEPOSIT_REFUND':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-700/10 ring-inset">
-            Hoàn tiền cọc
+            Refund deposit
           </span>
         )
       case 'WITHDRAW':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-700/10 ring-inset">
-            Rút tiền
+            Withdraw money
           </span>
         )
       default:
@@ -214,15 +217,15 @@ const WalletTenant = () => {
   }
 
   const getStatusBadge = (status) => {
-    if (status === 'SUCCESS' || status === 'APPROVED') return <Badge variant="success">Thành công</Badge>
-    if (status === 'PENDING') return <Badge variant="warning">Đang xử lý</Badge>
-    return <Badge variant="danger">Thất bại</Badge>
+    if (status === 'SUCCESS' || status === 'APPROVED') return <Badge variant="success">Success</Badge>
+    if (status === 'PENDING') return <Badge variant="warning">Processing</Badge>
+    return <Badge variant="danger">Failed</Badge>
   }
 
   // --- CỘT BẢNG GIAO DỊCH ---
   const transactionColumns = [
     {
-      header: 'Mã giao dịch',
+      header: "Transaction code",
       render: (row) => (
         <div>
           <p className="text-xs font-semibold text-slate-400">
@@ -237,7 +240,7 @@ const WalletTenant = () => {
       ),
     },
     {
-      header: 'Loại & Phương thức',
+      header: "Type & Method",
       render: (row) => (
         <div className="space-y-1">
           <div>{getTransactionTypeBadge(row.transactionType)}</div>
@@ -248,7 +251,7 @@ const WalletTenant = () => {
       ),
     },
     {
-      header: 'Số tiền',
+      header: "Amount",
       render: (row) => {
         const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_REFUND'
         const isFailed = row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
@@ -260,16 +263,16 @@ const WalletTenant = () => {
       },
     },
     {
-      header: 'Trạng thái',
+      header: "Status",
       render: (row) => getStatusBadge(row.status),
     },
     {
-      header: 'Thời gian',
+      header: "Time",
       render: (row) => (
         <div className="space-y-0.5 text-xs text-slate-600">
-          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('vi-VN')}</p>
+          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('en-US')}</p>
           <p className="text-[11px] text-slate-400">
-            {new Date(row.createdAt).toLocaleTimeString('vi-VN')}
+            {new Date(row.createdAt).toLocaleTimeString('en-US')}
           </p>
         </div>
       ),
@@ -279,7 +282,7 @@ const WalletTenant = () => {
   // --- CỘT BẢNG YÊU CẦU RÚT TIỀN ---
   const withdrawalColumns = [
     {
-      header: 'Mã yêu cầu',
+      header: 'Request ID',
       render: (row) => (
         <p className="text-xs font-semibold text-slate-400">
           <span className="font-sans text-slate-600">{row.id.substring(0, 8)}...</span>
@@ -287,7 +290,7 @@ const WalletTenant = () => {
       ),
     },
     {
-      header: 'Ngân hàng nhận',
+      header: "Receiving bank",
       render: (row) => (
         <div className="space-y-1 text-sm">
           <p className="font-semibold text-slate-700">{row.bankName}</p>
@@ -297,7 +300,7 @@ const WalletTenant = () => {
       ),
     },
     {
-      header: 'Số tiền rút',
+      header: "Withdrawal amount",
       render: (row) => (
         <span className="font-bold text-rose-600">
           - {formatVND(row.amount)}
@@ -305,25 +308,25 @@ const WalletTenant = () => {
       ),
     },
     {
-      header: 'Trạng thái',
+      header: "Status",
       render: (row) => (
         <div className="space-y-1">
           {getStatusBadge(row.status)}
           {row.adminNotes && (
             <p className="text-[11px] text-slate-500 italic max-w-[150px] truncate" title={row.adminNotes}>
-              Ghi chú: {row.adminNotes}
+              Notes: {row.adminNotes}
             </p>
           )}
         </div>
       ),
     },
     {
-      header: 'Thời gian gửi',
+      header: 'Requested At',
       render: (row) => (
         <div className="space-y-0.5 text-xs text-slate-600">
-          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('vi-VN')}</p>
+          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('en-US')}</p>
           <p className="text-[11px] text-slate-400">
-            {new Date(row.createdAt).toLocaleTimeString('vi-VN')}
+            {new Date(row.createdAt).toLocaleTimeString('en-US')}
           </p>
         </div>
       ),
@@ -358,23 +361,23 @@ const WalletTenant = () => {
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-                  <Wallet className="h-7 w-7 text-blue-600" /> Ví của tôi
+                  <Wallet className="h-7 w-7 text-blue-600" /> My wallet
                 </h1>
                 <p className="text-sm text-slate-500">
-                  Quản lý số dư, nạp tiền, rút tiền và theo dõi lịch sử thanh toán của bạn.
+                  Manage your balance, deposit, withdraw and track your payment history.
                 </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleRefresh}>
-                  <RefreshCw className="mr-2 h-4 w-4" /> Làm mới
+                  <RefreshCw className="mr-2 h-4 w-4" /> Refresh
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => setIsWithdrawModalOpen(true)}
                   className="bg-rose-600 text-white hover:bg-rose-700"
                 >
-                  <MinusCircle className="mr-2 h-4 w-4" /> Rút tiền
+                  <MinusCircle className="mr-2 h-4 w-4" /> Withdraw money
                 </Button>
                 <Button
                   size="sm"
@@ -384,7 +387,7 @@ const WalletTenant = () => {
                   }}
                   className="bg-blue-600 text-white hover:bg-blue-700"
                 >
-                  <PlusCircle className="mr-2 h-4 w-4" /> Nạp tiền
+                  <PlusCircle className="mr-2 h-4 w-4" /> Top Up
                 </Button>
               </div>
             </div>
@@ -396,9 +399,9 @@ const WalletTenant = () => {
                   <CircleDollarSign className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Số dư khả dụng</p>
+                  <p className="text-sm font-medium text-slate-500">Available balance</p>
                   <h2 className="text-3xl font-bold text-slate-900">
-                    {loadingWallet ? 'Đang tải...' : formatVND(wallet?.balance)}
+                    {loadingWallet ? "Loading..." : formatVND(wallet?.balance)}
                   </h2>
                 </div>
               </div>
@@ -415,7 +418,7 @@ const WalletTenant = () => {
                   }`}
                   onClick={() => setActiveTab('transactions')}
                 >
-                  Lịch sử giao dịch
+                  Transaction history
                 </button>
                 <button
                   className={`flex-1 px-6 py-4 text-sm font-bold transition-colors ${
@@ -425,7 +428,7 @@ const WalletTenant = () => {
                   }`}
                   onClick={() => setActiveTab('withdrawals')}
                 >
-                  Yêu cầu rút tiền
+                  Request withdrawal
                 </button>
               </div>
 
@@ -438,7 +441,7 @@ const WalletTenant = () => {
                     {pagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Hiển thị <span className="font-semibold text-slate-700">{transactions.length}</span> trên tổng số <span className="font-semibold text-slate-700">{pagination.totalElements}</span>
+                          Showing <span className="font-semibold text-slate-700">{transactions.length}</span> of <span className="font-semibold text-slate-700">{pagination.totalElements}</span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -446,7 +449,7 @@ const WalletTenant = () => {
                             onClick={() => fetchTransactions(pagination.page - 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Trước
+                            Before
                           </button>
                           {[...Array(pagination.totalPages).keys()].map((p) => (
                             <button
@@ -466,7 +469,7 @@ const WalletTenant = () => {
                             onClick={() => fetchTransactions(pagination.page + 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Sau
+                            Next
                           </button>
                         </div>
                       </div>
@@ -480,7 +483,7 @@ const WalletTenant = () => {
                     {withdrawPagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Hiển thị <span className="font-semibold text-slate-700">{withdrawals.length}</span> trên tổng số <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span>
+                          Showing <span className="font-semibold text-slate-700">{withdrawals.length}</span> of <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -488,7 +491,7 @@ const WalletTenant = () => {
                             onClick={() => fetchWithdrawals(withdrawPagination.page - 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Trước
+                            Before
                           </button>
                           {[...Array(withdrawPagination.totalPages).keys()].map((p) => (
                             <button
@@ -508,7 +511,7 @@ const WalletTenant = () => {
                             onClick={() => fetchWithdrawals(withdrawPagination.page + 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Sau
+                            Next
                           </button>
                         </div>
                       </div>
@@ -527,7 +530,7 @@ const WalletTenant = () => {
           <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <Wallet className="h-5 w-5 text-blue-600" /> Nạp tiền qua VNPay
+                <Wallet className="h-5 w-5 text-blue-600" /> Top Up via VNPay
               </h3>
               <button
                 onClick={() => setIsDepositModalOpen(false)}
@@ -540,7 +543,7 @@ const WalletTenant = () => {
             <form onSubmit={handleDepositSubmit} className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-bold text-slate-500 uppercase">
-                  Nhập số tiền cần nạp (VND)
+                  Enter the amount to deposit (VND)
                 </label>
                 <div className="relative">
                   <input
@@ -549,7 +552,7 @@ const WalletTenant = () => {
                     required
                     value={inputAmount}
                     onChange={(e) => setInputAmount(e.target.value)}
-                    placeholder="Ví dụ: 2000000"
+                    placeholder="For example: 2000000"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                   <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
@@ -558,7 +561,7 @@ const WalletTenant = () => {
                 </div>
                 {inputAmount && !isNaN(Number(inputAmount)) && (
                   <p className="mt-2 text-xs font-medium text-emerald-600">
-                    Xem trước: {formatVND(Number(inputAmount))}
+                    Preview: {formatVND(Number(inputAmount))}
                   </p>
                 )}
               </div>
@@ -569,7 +572,7 @@ const WalletTenant = () => {
                   onClick={() => setIsDepositModalOpen(false)}
                   className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
                 >
-                  Hủy bỏ
+                  Cancel
                 </button>
                 <button
                   type="submit"
@@ -579,10 +582,10 @@ const WalletTenant = () => {
                   {depositLoading ? (
                     <>
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      Đang kết nối...
+                      Connecting...
                     </>
                   ) : (
-                    <>Thanh toán ngay</>
+                    <>Pay now</>
                   )}
                 </button>
               </div>

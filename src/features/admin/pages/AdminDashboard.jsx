@@ -84,7 +84,7 @@ const AdminDashboard = () => {
   const stats = [
     {
       title: 'Total Revenue',
-      value: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalRevenue),
+      value: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(totalRevenue),
       icon: HiOutlineCurrencyDollar,
       trend: 'stable',
       trendValue: 0,
@@ -167,7 +167,9 @@ const AdminDashboard = () => {
 
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5 text-white">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Admin
@@ -248,10 +250,10 @@ const AdminDashboard = () => {
                           axisLine={false}
                           tickLine={false}
                           tick={{ fill: '#64748b', fontSize: 12 }}
-                          tickFormatter={(value) => new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(value)}
+                          tickFormatter={(value) => new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value)}
                         />
                         <Tooltip
-                          formatter={(value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)}
+                          formatter={(value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)}
                         />
                         <Area
                           type="monotone"

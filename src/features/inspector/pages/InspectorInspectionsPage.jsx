@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -32,7 +33,7 @@ import {
   submitReport,
 } from '../../../store/inspectorManagement'
 
-const formatDate = (value) => (value ? new Date(value).toLocaleDateString('vi-VN') : '---')
+const formatDate = (value) => (value ? new Date(value).toLocaleDateString('en-US') : '---')
 
 const shortId = (value) => (value ? `#${String(value).slice(0, 8).toUpperCase()}` : '---')
 
@@ -44,31 +45,31 @@ const getInspectionDate = (inspection) =>
   null
 
 const getOwnerName = (inspection) =>
-  inspection?.ownerName || inspection?.warehouseOwnerName || inspection?.createdByName || 'Chua cap nhat'
+  inspection?.ownerName || inspection?.warehouseOwnerName || inspection?.createdByName || 'Not updated'
 
 const getAddress = (inspection) =>
-  inspection?.warehouseAddress || inspection?.address || inspection?.location || 'Chua co dia chi'
+  inspection?.warehouseAddress || inspection?.address || inspection?.location || 'No address available'
 
 const getSummaryText = (inspection) =>
   inspection?.reportNotes ||
   inspection?.notes ||
   inspection?.description ||
   inspection?.inspectionNote ||
-  'Chua co thong tin mo ta bo sung.'
+  'No additional description is available.'
 
 const STATUS_CONFIG = {
-  ALL: { label: 'Tat ca', variant: 'outline' },
-  PENDING: { label: 'Cho kiem dinh', variant: 'warning' },
-  IN_PROGRESS: { label: 'Dang xu ly', variant: 'primary' },
-  PASSED: { label: 'Dat yeu cau', variant: 'success' },
-  FAILED: { label: 'Khong dat', variant: 'danger' },
+  ALL: { label: 'All', variant: 'outline' },
+  PENDING: { label: 'Pending', variant: 'warning' },
+  IN_PROGRESS: { label: 'In Progress', variant: 'primary' },
+  PASSED: { label: 'Passed', variant: 'success' },
+  FAILED: { label: 'Failed', variant: 'danger' },
 }
 
 const CHECKLIST_ITEMS = [
-  { key: 'fireSafety', label: 'He thong PCCC an toan' },
-  { key: 'electrical', label: 'Dien va chieu sang van hanh tot' },
-  { key: 'structure', label: 'Ket cau kho on dinh' },
-  { key: 'cleanliness', label: 'Ve sinh va moi truong dat yeu cau' },
+  { key: 'fireSafety', label: 'Fire safety system is compliant' },
+  { key: 'electrical', label: 'Electrical and lighting systems operate correctly' },
+  { key: 'structure', label: 'Warehouse structure is stable' },
+  { key: 'cleanliness', label: 'Cleanliness and environment meet requirements' },
 ]
 
 const StatCard = ({ title, value, hint, icon: Icon, tone = 'slate' }) => {
@@ -98,6 +99,7 @@ const StatCard = ({ title, value, hint, icon: Icon, tone = 'slate' }) => {
 }
 
 const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
+  useEscapeKey(Boolean(inspection), onClose)
   if (!inspection) return null
 
   const statusConfig = STATUS_CONFIG[inspection.status] || STATUS_CONFIG.ALL
@@ -137,33 +139,33 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
         <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1.35fr_0.95fr]">
           <section className="space-y-5">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Thong tin cong viec</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Inspection Details</h3>
               <div className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
                 <div className="flex items-start gap-3">
                   <Warehouse className="mt-0.5 h-4 w-4 text-slate-400" />
                   <div>
-                    <p className="font-medium text-slate-500">Kho hang</p>
+                    <p className="font-medium text-slate-500">Warehouse</p>
                     <p className="mt-1 font-semibold text-slate-900">{inspection.warehouseName}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <User className="mt-0.5 h-4 w-4 text-slate-400" />
                   <div>
-                    <p className="font-medium text-slate-500">Chu kho</p>
+                    <p className="font-medium text-slate-500">Warehouse Owner</p>
                     <p className="mt-1 font-semibold text-slate-900">{getOwnerName(inspection)}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3 md:col-span-2">
                   <MapPin className="mt-0.5 h-4 w-4 text-slate-400" />
                   <div>
-                    <p className="font-medium text-slate-500">Dia chi</p>
+                    <p className="font-medium text-slate-500">Address</p>
                     <p className="mt-1 font-semibold text-slate-900">{getAddress(inspection)}</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
                   <CalendarDays className="mt-0.5 h-4 w-4 text-slate-400" />
                   <div>
-                    <p className="font-medium text-slate-500">Ngay hen / tao</p>
+                    <p className="font-medium text-slate-500">Scheduled / Created</p>
                     <p className="mt-1 font-semibold text-slate-900">
                       {formatDate(getInspectionDate(inspection))}
                     </p>
@@ -172,7 +174,7 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
                 <div className="flex items-start gap-3">
                   <Clock3 className="mt-0.5 h-4 w-4 text-slate-400" />
                   <div>
-                    <p className="font-medium text-slate-500">Cap nhat lan cuoi</p>
+                    <p className="font-medium text-slate-500">Last Updated</p>
                     <p className="mt-1 font-semibold text-slate-900">
                       {formatDate(inspection.updatedAt || inspection.createdAt)}
                     </p>
@@ -182,7 +184,7 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Mo ta va ghi chu hien co</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Description and Existing Notes</h3>
               <p className="mt-3 text-sm leading-6 text-slate-600">{getSummaryText(inspection)}</p>
             </div>
           </section>
@@ -192,17 +194,17 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
               <div className="flex items-start gap-3">
                 <ShieldCheck className="mt-0.5 h-5 w-5 text-blue-600" />
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Huong dan kiem duyet</h3>
+                  <h3 className="text-sm font-semibold text-slate-900">Inspection Guidelines</h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Xac nhan hien trang kho, doi chieu thong tin dang ky va ghi ro cac van de anh
-                    huong den ket qua kiem dinh.
+                    Verify the warehouse condition, compare it with the registration details, and
+                    document any issues that affect the inspection result.
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Hanh dong</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Actions</h3>
               <div className="mt-4 space-y-3">
                 <button
                   onClick={() => {
@@ -213,10 +215,10 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                 >
                   <FileText className="h-4 w-4" />
-                  {canSubmit ? 'Lap bien ban kiem dinh' : 'Ho so da hoan tat'}
+                  {canSubmit ? 'Create Inspection Report' : 'Inspection Completed'}
                 </button>
                 <p className="text-xs leading-5 text-slate-500">
-                  Sau khi nop ket qua, ho so se duoc cap nhat ve trang thai dat hoac khong dat.
+                  After submission, the inspection will be updated to passed or failed.
                 </p>
               </div>
             </div>
@@ -228,6 +230,7 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
 }
 
 const SubmitReportModal = ({ inspection, onClose }) => {
+  useEscapeKey(Boolean(inspection), onClose)
   const dispatch = useDispatch()
   const { actionLoading, actionError } = useSelector((state) => state.inspectorManagement)
   const [status, setStatus] = useState(inspection.status === 'FAILED' ? 'FAILED' : 'PASSED')
@@ -254,12 +257,12 @@ const SubmitReportModal = ({ inspection, onClose }) => {
     event.preventDefault()
 
     if (!notes.trim()) {
-      setLocalError('Vui long nhap bien ban ket luan de luu ket qua kiem dinh.')
+      setLocalError('Please enter the report conclusion before saving the inspection result.')
       return
     }
 
     if (status === 'PASSED' && passedCount !== CHECKLIST_ITEMS.length) {
-      setLocalError('Trang thai DAT YEU CAU can tat ca hang muc checklist deu dat.')
+      setLocalError('All checklist items must pass before the inspection can be marked as passed.')
       return
     }
 
@@ -294,7 +297,7 @@ const SubmitReportModal = ({ inspection, onClose }) => {
         <div className="border-b border-slate-100 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Lap bien ban kiem duyet</h2>
+              <h2 className="text-xl font-bold text-slate-900">Create Inspection Report</h2>
               <p className="mt-1 text-sm text-slate-500">
                 {inspection.warehouseName} · {shortId(inspection.id)}
               </p>
@@ -313,7 +316,7 @@ const SubmitReportModal = ({ inspection, onClose }) => {
             <div className="space-y-5">
               <div>
                 <label className="mb-3 block text-sm font-semibold text-slate-800">
-                  Ket luan ho so
+                  Inspection Result
                 </label>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <button
@@ -327,10 +330,10 @@ const SubmitReportModal = ({ inspection, onClose }) => {
                   >
                     <div className="flex items-center gap-2 text-sm font-semibold">
                       <CheckCircle2 className="h-4 w-4" />
-                      Dat yeu cau
+                      Passed
                     </div>
                     <p className="mt-2 text-xs leading-5">
-                      Dung khi toan bo hang muc kiem tra deu dat va kho co the duoc thong qua.
+                      Select when every checklist item passes and the warehouse can be approved.
                     </p>
                   </button>
                   <button
@@ -344,10 +347,10 @@ const SubmitReportModal = ({ inspection, onClose }) => {
                   >
                     <div className="flex items-center gap-2 text-sm font-semibold">
                       <XCircle className="h-4 w-4" />
-                      Khong dat
+                      Failed
                     </div>
                     <p className="mt-2 text-xs leading-5">
-                      Dung khi co hang muc khong phu hop va can chu kho bo sung, chinh sua.
+                      Select when an item is noncompliant and the owner must make corrections.
                     </p>
                   </button>
                 </div>
@@ -355,13 +358,13 @@ const SubmitReportModal = ({ inspection, onClose }) => {
 
               <div>
                 <label className="mb-2 block text-sm font-semibold text-slate-800">
-                  Bien ban / nhan xet chi tiet
+                  Report / Detailed Notes
                 </label>
                 <textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
                   rows={7}
-                  placeholder="Mo ta hien trang, thong tin doi chieu, cac diem dat va cac van de can khac phuc..."
+                  placeholder="Describe the current condition, verified details, passed items, and required corrections..."
                   className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition-colors focus:border-blue-400 focus:bg-white"
                 />
               </div>
@@ -370,7 +373,7 @@ const SubmitReportModal = ({ inspection, onClose }) => {
             <div className="space-y-4">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-slate-900">Checklist kiem tra</h3>
+                  <h3 className="text-sm font-semibold text-slate-900">Inspection Checklist</h3>
                   <Badge variant="outline">{passedCount}/{CHECKLIST_ITEMS.length}</Badge>
                 </div>
                 <div className="mt-4 space-y-3">
@@ -392,9 +395,9 @@ const SubmitReportModal = ({ inspection, onClose }) => {
               </div>
 
               <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-600">
-                Neu chon <span className="font-semibold text-slate-900">Dat yeu cau</span>, he
-                thong se yeu cau tat ca checklist deu dat. Neu khong, hay chon{' '}
-                <span className="font-semibold text-slate-900">Khong dat</span> va ghi ro ly do.
+                Selecting <span className="font-semibold text-slate-900">Passed</span> requires
+                every checklist item to pass. Otherwise, select{' '}
+                <span className="font-semibold text-slate-900">Failed</span> and explain why.
               </div>
             </div>
           </div>
@@ -412,7 +415,7 @@ const SubmitReportModal = ({ inspection, onClose }) => {
               onClick={onClose}
               className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
             >
-              Huy bo
+              Cancel
             </button>
             <button
               type="submit"
@@ -420,7 +423,7 @@ const SubmitReportModal = ({ inspection, onClose }) => {
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
               {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Luu ket qua kiem duyet
+              Save Inspection Result
             </button>
           </div>
         </form>
@@ -476,7 +479,9 @@ const InspectorInspectionsPage = () => {
 
           <div className="flex items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
+              </a>
             </div>
             <span className="text-xl font-bold tracking-tight text-slate-950">
               StockSpace Inspector
@@ -511,29 +516,29 @@ const InspectorInspectionsPage = () => {
                     Inspection Workspace
                   </div>
                   <h1 className="mt-4 text-3xl font-bold tracking-tight">
-                    Trang kiem duyet ho so kho bai
+                    Warehouse Inspection Workspace
                   </h1>
                   <p className="mt-3 text-sm leading-6 text-slate-300">
-                    Theo doi ho so duoc giao, xem nhanh thong tin kho va lap bien ban ket qua
-                    kiem dinh ngay trong mot man hinh.
+                    Track assigned inspections, review warehouse details, and submit inspection
+                    reports from one workspace.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Tong ho so</p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Total</p>
                     <p className="mt-2 text-2xl font-bold">{totalElements || inspections.length}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Cho xu ly</p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Pending</p>
                     <p className="mt-2 text-2xl font-bold">{stats.pending}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Dang lam</p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">In Progress</p>
                     <p className="mt-2 text-2xl font-bold">{stats.inProgress}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Hoan tat</p>
+                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Completed</p>
                     <p className="mt-2 text-2xl font-bold">{stats.passed + stats.failed}</p>
                   </div>
                 </div>
@@ -542,30 +547,30 @@ const InspectorInspectionsPage = () => {
 
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-4">
               <StatCard
-                title="Cho kiem dinh"
+                title="Pending"
                 value={stats.pending}
-                hint="Ho so moi can duoc xem xet ban dau."
+                hint="New inspections awaiting initial review."
                 icon={ClipboardCheck}
                 tone="blue"
               />
               <StatCard
-                title="Dang xu ly"
+                title="In Progress"
                 value={stats.inProgress}
-                hint="Cac ho so dang trong qua trinh kiem dinh."
+                hint="Inspections currently being processed."
                 icon={Clock3}
                 tone="slate"
               />
               <StatCard
-                title="Dat yeu cau"
+                title="Passed"
                 value={stats.passed}
-                hint="Kho da du dieu kien thong qua."
+                hint="Warehouses that meet approval requirements."
                 icon={CheckCircle2}
                 tone="emerald"
               />
               <StatCard
-                title="Khong dat"
+                title="Failed"
                 value={stats.failed}
-                hint="Ho so can bo sung hoac khac phuc them."
+                hint="Inspections requiring additional corrections."
                 icon={XCircle}
                 tone="rose"
               />
@@ -574,9 +579,9 @@ const InspectorInspectionsPage = () => {
             <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">Danh sach ho so phan cong</h2>
+                  <h2 className="text-lg font-bold text-slate-900">Assigned Inspections</h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Chon mot ho so de xem chi tiet va lap bien ban kiem duyet.
+                    Select an inspection to view its details and create a report.
                   </p>
                 </div>
 
@@ -611,15 +616,15 @@ const InspectorInspectionsPage = () => {
                 {loading ? (
                   <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-slate-500">
                     <Loader2 className="h-7 w-7 animate-spin text-blue-500" />
-                    <p className="text-sm">Dang tai danh sach kiem dinh...</p>
+                    <p className="text-sm">Loading inspections...</p>
                   </div>
                 ) : filteredInspections.length === 0 ? (
                   <div className="px-6 py-20 text-center">
                     <p className="text-base font-semibold text-slate-900">
-                      Khong co ho so phu hop voi bo loc hien tai.
+                      No inspections match the current filter.
                     </p>
                     <p className="mt-2 text-sm text-slate-500">
-                      Thu chuyen trang thai loc hoac cho them du lieu duoc phan cong.
+                      Try another status filter or wait for new assignments.
                     </p>
                   </div>
                 ) : (
@@ -628,22 +633,22 @@ const InspectorInspectionsPage = () => {
                       <thead className="bg-slate-50 text-slate-500">
                         <tr>
                           <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
-                            Ho so
+                            Inspection
                           </th>
                           <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
-                            Kho bai
+                            Warehouse
                           </th>
                           <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
-                            Chu kho
+                            Owner
                           </th>
                           <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
-                            Lich / Tao
+                            Scheduled / Created
                           </th>
                           <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
-                            Trang thai
+                            Status
                           </th>
                           <th className="px-5 py-4 text-right text-xs font-bold uppercase tracking-wide">
-                            Hanh dong
+                            Actions
                           </th>
                         </tr>
                       </thead>
@@ -666,7 +671,7 @@ const InspectorInspectionsPage = () => {
                                   {shortId(inspection.id)}
                                 </p>
                                 <p className="mt-2 text-sm text-slate-600">
-                                  Cap nhat: {formatDate(inspection.updatedAt || inspection.createdAt)}
+                                  Updated: {formatDate(inspection.updatedAt || inspection.createdAt)}
                                 </p>
                               </td>
                               <td className="px-5 py-4">
@@ -696,7 +701,7 @@ const InspectorInspectionsPage = () => {
                                     className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
                                   >
                                     <Eye className="h-4 w-4" />
-                                    Xem
+                                    View
                                   </button>
                                   <button
                                     onClick={() => openSubmitModal(inspection)}
@@ -704,7 +709,7 @@ const InspectorInspectionsPage = () => {
                                     className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                                   >
                                     <FileText className="h-4 w-4" />
-                                    Bien ban
+                                    Report
                                   </button>
                                 </div>
                               </td>
@@ -720,7 +725,7 @@ const InspectorInspectionsPage = () => {
               {totalPages > 1 && (
                 <div className="mt-5 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-sm text-slate-500">
-                    Trang {page + 1} / {totalPages} · {totalElements.toLocaleString()} ho so
+                    Page {page + 1} / {totalPages} · {totalElements.toLocaleString()} inspections
                   </p>
                   <div className="flex items-center gap-2">
                     <button

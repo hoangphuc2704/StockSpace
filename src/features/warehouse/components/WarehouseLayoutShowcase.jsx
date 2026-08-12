@@ -43,8 +43,8 @@ export default function WarehouseLayoutShowcase({
           </div>
           <p className="mt-1 text-sm text-slate-500">
             {isFallback
-              ? 'Kho chưa có layout được cấu hình. Đây là không gian 3D xem trước theo kích thước kho.'
-              : 'Xem trước không gian kho và vị trí Rack, Bin ở chế độ 3D.'}
+              ? "The warehouse does not have a configured layout. This is a 3D space preview according to warehouse dimensions."
+              : "Preview warehouse space and Rack and Bin locations in 3D mode."}
           </p>
         </div>
         <button
@@ -53,9 +53,9 @@ export default function WarehouseLayoutShowcase({
           className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
         >
           {isOpen ? (
-            <><ChevronUp className="mr-2 h-4 w-4" />Ẩn sơ đồ</>
+            <><ChevronUp className="mr-2 h-4 w-4" />Hide diagram</>
           ) : (
-            <><ChevronDown className="mr-2 h-4 w-4" />Xem sơ đồ 3D</>
+            <><ChevronDown className="mr-2 h-4 w-4" />See 3D diagram</>
           )}
         </button>
       </div>
@@ -84,8 +84,8 @@ export default function WarehouseLayoutShowcase({
                 <WarehouseLayoutPreview3D layout={previewLayout} editable={false} />
                 {!previewLayout.racks.length && (
                   <div className="pointer-events-none absolute right-4 bottom-4 rounded-xl border border-white/80 bg-white/90 px-4 py-3 text-sm shadow-sm backdrop-blur-sm">
-                    <p className="font-semibold text-slate-700">Không gian kho đang trống</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Owner chưa đặt Rack và Bin.</p>
+                    <p className="font-semibold text-slate-700">Warehouse space is empty</p>
+                    <p className="mt-0.5 text-xs text-slate-500">Owner has not set Rack and Bin yet.</p>
                   </div>
                 )}
               </div>

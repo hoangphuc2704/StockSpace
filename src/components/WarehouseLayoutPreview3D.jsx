@@ -122,6 +122,7 @@ function WarehouseShell() {
 function FootprintFloor({ layout }) {
   const cells = Array.isArray(layout?.footprintCells) ? layout.footprintCells : []
   const activeCellSet = new Set(cells.map((cell) => String(cell)))
+  const blockedCellSet = new Set((layout?.blockedCells || []).map((cell) => String(cell)))
   const tileSize = WORLD_SIZE / FOOTPRINT_GRID_SIZE
 
   return (
@@ -130,20 +131,23 @@ function FootprintFloor({ layout }) {
         Array.from({ length: FOOTPRINT_GRID_SIZE }).map((__, col) => {
           const cellKey = `${row}:${col}`
           const isActive = activeCellSet.has(cellKey)
+          const isBlocked = blockedCellSet.has(cellKey)
           const x = -WORLD_SIZE / 2 + col * tileSize + tileSize / 2
           const z = -WORLD_SIZE / 2 + row * tileSize + tileSize / 2
 
           return (
-            <group key={cellKey} position={[x, isActive ? 0.06 : 0.01, z]}>
+            <group key={cellKey} position={[x, isBlocked || isActive ? 0.06 : 0.01, z]}>
               <mesh receiveShadow>
-                <boxGeometry args={[tileSize * 0.94, isActive ? 0.12 : 0.02, tileSize * 0.94]} />
+                <boxGeometry
+                  args={[tileSize * 0.94, isBlocked || isActive ? 0.12 : 0.02, tileSize * 0.94]}
+                />
                 <meshStandardMaterial
-                  color={isActive ? '#bfdbfe' : '#e5e7eb'}
+                  color={isBlocked ? '#0f172a' : isActive ? '#bfdbfe' : '#e5e7eb'}
                   transparent
-                  opacity={isActive ? 0.92 : 0.42}
+                  opacity={isBlocked ? 1 : isActive ? 0.92 : 0.42}
                 />
               </mesh>
-              {isActive ? (
+              {isActive && !isBlocked ? (
                 <mesh position={[0, 0.08, 0]} receiveShadow>
                   <boxGeometry args={[tileSize * 0.88, 0.02, tileSize * 0.88]} />
                   <meshStandardMaterial color="#60a5fa" transparent opacity={0.85} />
@@ -172,7 +176,11 @@ function BinMesh({
   const depth = getWorldSize(bin.length, rack.length, rackWorldDepth)
   const x = getWorldCenter(bin.coordinateX, width, rack.width, rackWorldWidth)
   const z = getWorldCenter(bin.coordinateY, depth, rack.length, rackWorldDepth)
-  const level = clamp(Number(bin.shelfLevel) || getLevelFromCoordinate(rack, bin), 1, getRackLevels(rack))
+  const level = clamp(
+    Number(bin.shelfLevel) || getLevelFromCoordinate(rack, bin),
+    1,
+    getRackLevels(rack)
+  )
   const levels = getRackLevels(rack)
   const y = getShelfY(level - 1, levels, rackHeight) + 0.25
 

@@ -26,15 +26,15 @@ const StaffCareerHistoryPage = () => {
       const res = await staffApi.getMyWorkHistory()
       setHistoryData(res.data?.data)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Không thể tải lịch sử làm việc')
+      toast.error(err.response?.data?.message || "Unable to download work history")
     } finally {
       setIsLoading(false)
     }
   }
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Hiện tại'
-    return new Date(dateString).toLocaleDateString('vi-VN', {
+    if (!dateString) return "Currently"
+    return new Date(dateString).toLocaleDateString('en-US', {
       day: '2-digit', month: '2-digit', year: 'numeric'
     })
   }
@@ -63,10 +63,10 @@ const StaffCareerHistoryPage = () => {
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
                   <Briefcase className="h-8 w-8 text-primary" />
-                  Lịch Sử Sự Nghiệp
+                  Career History
                 </h1>
                 <p className="text-slate-500 mt-1">
-                  Theo dõi quá trình làm việc của bạn qua các công ty và kho bãi
+                  Track your work progress across companies and warehouses
                 </p>
               </div>
             </div>
@@ -81,10 +81,10 @@ const StaffCareerHistoryPage = () => {
                 {/* Thông tin cá nhân */}
                 <div className="lg:col-span-1 space-y-6">
                   <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                    <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Hồ Sơ Nhân Viên</h2>
+                    <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Employee Profile</h2>
                     <div className="space-y-4">
                       <div>
-                        <p className="text-sm text-slate-500">Họ và tên</p>
+                        <p className="text-sm text-slate-500">Full name</p>
                         <p className="font-semibold">{historyData.fullName}</p>
                       </div>
                       <div>
@@ -92,14 +92,14 @@ const StaffCareerHistoryPage = () => {
                         <p className="font-semibold">{historyData.email}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-slate-500">Số điện thoại</p>
-                        <p className="font-semibold">{historyData.phone || 'Chưa cập nhật'}</p>
+                        <p className="text-sm text-slate-500">Phone number</p>
+                        <p className="font-semibold">{historyData.phone || "Not updated yet"}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                    <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Công Ty Đã Làm Việc</h2>
+                    <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Company Worked</h2>
                     <div className="space-y-4">
                       {historyData.tenantTenures?.length > 0 ? (
                         historyData.tenantTenures.map((tenant) => (
@@ -120,7 +120,7 @@ const StaffCareerHistoryPage = () => {
                           </div>
                         ))
                       ) : (
-                        <p className="text-slate-500 italic">Chưa tham gia công ty nào.</p>
+                        <p className="text-slate-500 italic">Haven't joined any company yet.</p>
                       )}
                     </div>
                   </div>
@@ -129,7 +129,7 @@ const StaffCareerHistoryPage = () => {
                 {/* Quá trình phụ trách kho */}
                 <div className="lg:col-span-2">
                   <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                    <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Lịch Sử Phụ Trách Kho Bãi</h2>
+                    <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">History of Warehousing</h2>
                     
                     <div className="space-y-6">
                       {historyData.warehouseAssignments?.length > 0 ? (
@@ -154,21 +154,21 @@ const StaffCareerHistoryPage = () => {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 bg-white p-3 rounded-lg border border-slate-200">
                                   <div>
-                                    <p className="text-xs text-slate-400 font-medium uppercase">Chức danh</p>
+                                    <p className="text-xs text-slate-400 font-medium uppercase">Title</p>
                                     <p className="font-semibold mt-1 flex items-center gap-1">
                                       <ShieldCheck className="h-4 w-4 text-blue-500" />
-                                      {assignment.customTitle || 'Nhân viên kho'}
+                                      {assignment.customTitle || "Warehouse employee"}
                                     </p>
                                   </div>
                                   <div>
-                                    <p className="text-xs text-slate-400 font-medium uppercase">Thời gian</p>
+                                    <p className="text-xs text-slate-400 font-medium uppercase">Time</p>
                                     <p className="text-sm mt-1">
                                       {formatDate(assignment.startDate)} - {formatDate(assignment.endDate)}
                                     </p>
                                   </div>
                                   <div>
-                                    <p className="text-xs text-slate-400 font-medium uppercase">Ghi chú</p>
-                                    <p className="text-sm mt-1">{assignment.notes || 'Không có ghi chú'}</p>
+                                    <p className="text-xs text-slate-400 font-medium uppercase">Notes</p>
+                                    <p className="text-sm mt-1">{assignment.notes || "No notes"}</p>
                                   </div>
                                 </div>
                             </div>
@@ -176,7 +176,7 @@ const StaffCareerHistoryPage = () => {
                         ))
                       ) : (
                         <div className="text-center py-10 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-                          <p className="text-slate-500">Chưa được phân công phụ trách kho nào.</p>
+                          <p className="text-slate-500">Haven't been assigned to any warehouse yet.</p>
                         </div>
                       )}
                     </div>
@@ -186,7 +186,7 @@ const StaffCareerHistoryPage = () => {
               </div>
             ) : (
               <div className="text-center py-20 text-slate-500">
-                Không tìm thấy dữ liệu lịch sử sự nghiệp.
+                No career history data found.
               </div>
             )}
           </div>

@@ -1,4 +1,3 @@
-import React from 'react'
 import { Menu } from 'lucide-react'
 import logoDaidien from '../assets/logoDaidien.png'
 import { useDispatch, useSelector } from 'react-redux'
@@ -12,8 +11,9 @@ const Header = () => {
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
 
-  const displayRole = user?.role 
-    ? user.role.replace('ROLE_', '').charAt(0) + user.role.replace('ROLE_', '').slice(1).toLowerCase()
+  const displayRole = user?.role
+    ? user.role.replace('ROLE_', '').charAt(0) +
+      user.role.replace('ROLE_', '').slice(1).toLowerCase()
     : 'Owner'
 
   return (
@@ -27,24 +27,26 @@ const Header = () => {
           <Menu className="h-6 w-6" />
         </button>
 
-        <div 
-          className={`flex items-center gap-2 ${user?.role === 'ROLE_TENANT' ? 'cursor-pointer' : ''}`}
-          onClick={() => {
-            if (user?.role === 'ROLE_TENANT') {
-              navigate('/')
-            }
+        <div
+          className="flex cursor-pointer items-center gap-2"
+          onClick={() => navigate('/')}
+          role="link"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') navigate('/')
           }}
+          aria-label="Back to landing page"
         >
           <div className="shrink-0 rounded-lg bg-white p-1.5">
             <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
           </div>
-          <span className="font-display text-xl font-bold tracking-tight text-slate-950 hidden sm:inline-block">
+          <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline-block">
             StockSpace {displayRole}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="mr-24 flex items-center gap-2 sm:mr-28">
         <NotificationDropdown />
       </div>
     </header>

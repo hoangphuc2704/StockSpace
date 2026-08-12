@@ -15,10 +15,10 @@ export const parseFeaturesToList = (features) => {
 
   if (typeof parsed === 'object' && parsed !== null) {
     const list = [];
-    if (parsed.wms !== undefined) list.push(`Hỗ trợ WMS: ${parsed.wms ? 'Có' : 'Không'}`);
-    if (parsed.max_staff !== undefined) list.push(`Số nhân viên tối đa: ${parsed.max_staff}`);
-    if (parsed.max_products !== undefined) list.push(`Số sản phẩm tối đa: ${parsed.max_products}`);
-    if (parsed.type === 'POSTING_FEE') list.push(`Loại gói: Phí đăng bài`);
+    if (parsed.wms !== undefined) list.push(`WMS support: ${parsed.wms ? 'Yes' : 'No'}`);
+    if (parsed.max_staff !== undefined) list.push(`Maximum staff: ${parsed.max_staff}`);
+    if (parsed.max_products !== undefined) list.push(`Maximum products: ${parsed.max_products}`);
+    if (parsed.type === 'POSTING_FEE') list.push('Package type: Listing fee');
     
     // Fallback for other keys if there are any we missed
     Object.keys(parsed).forEach(key => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
     fetchInspections,
@@ -38,18 +39,19 @@ import adminApi from '../../../services/admin/adminApi'
 const STATUS_OPTIONS = ['', 'PENDING', 'IN_PROGRESS', 'PASSED', 'FAILED']
 
 const STATUS_CONFIG = {
-    PENDING: { label: 'Chờ phân công', variant: 'warning', icon: Clock },
-    IN_PROGRESS: { label: 'Đang kiểm định', variant: 'info', icon: PlayCircle },
-    PASSED: { label: 'Đạt', variant: 'success', icon: CheckCircle2 },
-    FAILED: { label: 'Không đạt', variant: 'danger', icon: XCircle },
+    PENDING: { label: "Waiting for assignment", variant: 'warning', icon: Clock },
+    IN_PROGRESS: { label: "Inspecting", variant: 'info', icon: PlayCircle },
+    PASSED: { label: 'Passed', variant: 'success', icon: CheckCircle2 },
+    FAILED: { label: "Failed", variant: 'danger', icon: XCircle },
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const formatDate = (dt) => dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—'
+const formatDate = (dt) => dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—'
 const shortId = (id) => id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—'
 
 // ─── Assign Inspector Modal ───────────────────────────────────────────────────
 const AssignModal = ({ inspection, onClose }) => {
+  useEscapeKey(true, onClose)
     const dispatch = useDispatch()
     const { assignLoading, assignError } = useSelector((s) => s.adminInspections)
 
@@ -79,7 +81,7 @@ const AssignModal = ({ inspection, onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!inspectorId.trim()) { setLocalError('Vui lòng chọn Inspector.'); return }
+        if (!inspectorId.trim()) { setLocalError("Please select Inspector."); return }
         setLocalError(null)
         const result = await dispatch(assignInspector({ id: inspection.id, inspectorId: inspectorId.trim() }))
         if (assignInspector.fulfilled.match(result)) onClose()
@@ -94,9 +96,9 @@ const AssignModal = ({ inspection, onClose }) => {
             >
                 <div className="mb-5 flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900">Phân công Inspector</h2>
+                        <h2 className="text-lg font-bold text-slate-900">Assign Inspector</h2>
                         <p className="mt-0.5 text-sm text-slate-500">
-                            Kho: <span className="font-semibold text-slate-700">{inspection.warehouseName || shortId(inspection.warehouseId)}</span>
+                            Warehouse: <span className="font-semibold text-slate-700">{inspection.warehouseName || shortId(inspection.warehouseId)}</span>
                         </p>
                     </div>
                     <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X size={18} /></button>
@@ -105,7 +107,7 @@ const AssignModal = ({ inspection, onClose }) => {
                 {/* Current inspector */}
                 {inspection.inspectorId && (
                     <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm">
-                        <p className="text-xs text-blue-500 font-medium mb-1">Inspector hiện tại</p>
+                        <p className="text-xs text-blue-500 font-medium mb-1">Current Inspector</p>
                         <p className="font-semibold text-blue-800">{inspection.inspectorName || shortId(inspection.inspectorId)}</p>
                     </div>
                 )}
@@ -120,14 +122,14 @@ const AssignModal = ({ inspection, onClose }) => {
                             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100"
                             disabled={loadingInspectors}
                         >
-                            <option value="">-- Chọn Inspector --</option>
+                            <option value="">-- Select Inspector --</option>
                             {inspectors.map(insp => (
                                 <option key={insp.id} value={insp.id}>
                                     {insp.fullName} ({insp.email})
                                 </option>
                             ))}
                         </select>
-                        <p className="mt-1 text-xs text-slate-400">Chọn user có role Inspector trong hệ thống để phân công</p>
+                        <p className="mt-1 text-xs text-slate-400">Select the user with the Inspector role in the system to assign</p>
                     </div>
 
                     {(localError || assignError) && (
@@ -135,11 +137,11 @@ const AssignModal = ({ inspection, onClose }) => {
                     )}
 
                     <div className="flex justify-end gap-3 pt-1">
-                        <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Hủy</button>
+                        <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
                         <button type="submit" disabled={assignLoading}
                             className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
                             {assignLoading && <Loader2 size={14} className="animate-spin" />}
-                            <UserPlus size={14} /> Phân công
+                            <UserPlus size={14} /> Assignment
                         </button>
                     </div>
                 </form>
@@ -150,6 +152,7 @@ const AssignModal = ({ inspection, onClose }) => {
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 const DetailModal = ({ inspection, onClose, onAssignClick }) => {
+  useEscapeKey(true, onClose)
     const cfg = STATUS_CONFIG[inspection.status] || {}
     const StatusIcon = cfg.icon || Clock
 
@@ -166,7 +169,7 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
                             <ClipboardCheck size={20} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900">Chi tiết Kiểm định</h2>
+                            <h2 className="text-lg font-bold text-slate-900">Inspection Details</h2>
                             <p className="text-xs text-slate-400">{shortId(inspection.id)}</p>
                         </div>
                     </div>
@@ -176,7 +179,7 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
                 <div className="space-y-3 text-sm">
                     {/* Status */}
                     <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        <span className="font-medium text-slate-600">Trạng thái</span>
+                        <span className="font-medium text-slate-600">Status</span>
                         <Badge variant={cfg.variant || 'slate'} size="sm" className="rounded-full">
                             <StatusIcon size={12} className="mr-1 inline" />
                             {cfg.label || inspection.status}
@@ -185,7 +188,7 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
 
                     {/* Warehouse */}
                     <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        <p className="mb-1 flex items-center gap-1 text-xs text-slate-400"><MapPin size={11} /> Kho bãi</p>
+                        <p className="mb-1 flex items-center gap-1 text-xs text-slate-400"><MapPin size={11} /> Warehouse</p>
                         <p className="font-semibold text-slate-800">{inspection.warehouseName || '—'}</p>
                         <p className="text-xs text-slate-500 mt-0.5">{inspection.warehouseAddress || '—'}</p>
                         <p className="font-mono text-[10px] text-slate-400 mt-0.5">{shortId(inspection.warehouseId)}</p>
@@ -195,11 +198,11 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
                     <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
                             <p className="mb-1 flex items-center gap-1 text-xs text-slate-400"><User size={11} /> Inspector</p>
-                            <p className="font-semibold text-slate-800">{inspection.inspectorName || 'Chưa có'}</p>
+                            <p className="font-semibold text-slate-800">{inspection.inspectorName || "Not yet"}</p>
                             {inspection.inspectorId && <p className="font-mono text-[10px] text-slate-400">{shortId(inspection.inspectorId)}</p>}
                         </div>
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                            <p className="mb-1 flex items-center gap-1 text-xs text-slate-400"><User size={11} /> Chủ kho</p>
+                            <p className="mb-1 flex items-center gap-1 text-xs text-slate-400"><User size={11} /> Warehouse owner</p>
                             <p className="font-semibold text-slate-800">{inspection.ownerName || '—'}</p>
                             {inspection.ownerId && <p className="font-mono text-[10px] text-slate-400">{shortId(inspection.ownerId)}</p>}
                         </div>
@@ -208,11 +211,11 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
                     {/* Dates */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                            <p className="mb-1 text-xs text-slate-400">Ngày tạo</p>
+                            <p className="mb-1 text-xs text-slate-400">Creation date</p>
                             <p className="text-slate-700">{formatDate(inspection.createdAt)}</p>
                         </div>
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                            <p className="mb-1 text-xs text-slate-400">Kiểm định lúc</p>
+                            <p className="mb-1 text-xs text-slate-400">Check time</p>
                             <p className="text-slate-700">{formatDate(inspection.inspectedAt)}</p>
                         </div>
                     </div>
@@ -220,7 +223,7 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
                     {/* Notes */}
                     {inspection.notes && (
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                            <p className="mb-1.5 flex items-center gap-1 text-xs text-slate-400"><FileText size={11} /> Ghi chú</p>
+                            <p className="mb-1.5 flex items-center gap-1 text-xs text-slate-400"><FileText size={11} /> Notes</p>
                             <p className="text-slate-700">{inspection.notes}</p>
                         </div>
                     )}
@@ -236,7 +239,7 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
                     {/* Images */}
                     {inspection.images && inspection.images.length > 0 && (
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                            <p className="mb-2 flex items-center gap-1 text-xs text-slate-400"><ImageIcon size={11} /> Ảnh ({inspection.images.length})</p>
+                            <p className="mb-2 flex items-center gap-1 text-xs text-slate-400"><ImageIcon size={11} /> Photo ({inspection.images.length})</p>
                             <div className="flex flex-wrap gap-2">
                                 {inspection.images.map((url, i) => (
                                     <a key={i} href={url} target="_blank" rel="noreferrer"
@@ -250,11 +253,11 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
                 </div>
 
                 <div className="mt-5 flex justify-end gap-3">
-                    <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Đóng</button>
+                    <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Close</button>
                     {(inspection.status === 'PENDING' || inspection.status === 'IN_PROGRESS') && (
                         <button onClick={() => { onClose(); onAssignClick(inspection) }}
                             className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-                            <UserPlus size={15} /> Phân công Inspector
+                            <UserPlus size={15} /> Assign Inspector
                         </button>
                     )}
                 </div>
@@ -316,7 +319,11 @@ const InspectionsManagementPage = () => {
                 <div className="flex items-center gap-4">
                     <button className="rounded-full p-2 text-slate-700 hover:bg-slate-100 active:bg-slate-200"><HiBars3 className="h-6 w-6" /></button>
                     <div className="flex cursor-pointer items-center gap-2">
-                        <div className="shrink-0 rounded-lg bg-white p-1.5"><img src={logoDaidien} alt="Logo" className="h-10 w-17" /></div>
+                        <div className="shrink-0 rounded-lg bg-white p-1.5">
+                            <a href="/" aria-label="Back to landing page">
+                                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+                            </a>
+                        </div>
                         <span className="font-display text-xl font-bold tracking-tight text-slate-950">StockSpace Admin</span>
                     </div>
                 </div>
@@ -330,10 +337,10 @@ const InspectionsManagementPage = () => {
                         {/* Page header */}
                         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                             <div>
-                                <h1 className="text-2xl font-bold text-slate-900">Quản lý Kiểm định</h1>
+                                <h1 className="text-2xl font-bold text-slate-900">Inspection Management</h1>
                                 <p className="mt-1 text-sm text-slate-500">
-                                    Phân công Inspector và theo dõi tiến trình kiểm định kho bãi.
-                                    {totalElements > 0 && <span className="ml-1 font-semibold text-slate-700">({totalElements.toLocaleString()} tổng)</span>}
+                                    Assign Inspector and monitor warehouse inspection process.
+                                    {totalElements > 0 && <span className="ml-1 font-semibold text-slate-700">({totalElements.toLocaleString()} total)</span>}
                                 </p>
                             </div>
                         </div>
@@ -348,10 +355,10 @@ const InspectionsManagementPage = () => {
                         {/* Summary cards — 4 trạng thái */}
                         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                             {[
-                                { label: 'Chờ phân công', value: pendingCount, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-                                { label: 'Đang kiểm định', value: inProgressCount, icon: PlayCircle, color: 'text-blue-600', bg: 'bg-blue-50' },
-                                { label: 'Đạt', value: passedCount, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                                { label: 'Không đạt', value: failedCount, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50' },
+                                { label: "Waiting for assignment", value: pendingCount, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
+                                { label: "Inspecting", value: inProgressCount, icon: PlayCircle, color: 'text-blue-600', bg: 'bg-blue-50' },
+                                { label: 'Passed', value: passedCount, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                                { label: "Failed", value: failedCount, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50' },
                             ].map((item, i) => (
                                 <div key={i} className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.bg} ${item.color}`}>
@@ -369,7 +376,7 @@ const InspectionsManagementPage = () => {
                         <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 md:flex-row">
                             <div className="relative w-full md:w-96">
                                 <Search className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" size={16} />
-                                <input type="text" placeholder="Tìm theo ID, tên kho, địa chỉ, inspector..."
+                                <input type="text" placeholder="Search by ID, warehouse name, address, inspector..."
                                     value={searchText} onChange={(e) => setSearchText(e.target.value)}
                                     className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
                             </div>
@@ -378,7 +385,7 @@ const InspectionsManagementPage = () => {
                                 <select value={statusFilter} onChange={(e) => dispatch(setStatusFilter(e.target.value))}
                                     className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:outline-none">
                                     {STATUS_OPTIONS.map((s) => (
-                                        <option key={s} value={s}>{s ? STATUS_CONFIG[s]?.label || s : 'Tất cả trạng thái'}</option>
+                                        <option key={s} value={s}>{s ? STATUS_CONFIG[s]?.label || s : "All status"}</option>
                                     ))}
                                 </select>
                             </div>
@@ -389,16 +396,16 @@ const InspectionsManagementPage = () => {
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-400">
                                     <Loader2 size={28} className="animate-spin text-blue-400" />
-                                    <span className="text-sm">Đang tải dữ liệu...</span>
+                                    <span className="text-sm">Loading data...</span>
                                 </div>
                             ) : filtered.length === 0 ? (
-                                <div className="py-20 text-center text-sm text-slate-400">Không có kết quả phù hợp.</div>
+                                <div className="py-20 text-center text-sm text-slate-400">No matching results.</div>
                             ) : (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b border-slate-100 bg-slate-50">
-                                                {['ID', 'Kho bãi', 'Địa chỉ', 'Inspector', 'Chủ kho', 'Trạng thái', 'Ngày tạo', ''].map((h) => (
+                                                {['ID', "Warehouse", "Address", 'Inspector', "Warehouse owner", "Status", "Creation date", ''].map((h) => (
                                                     <th key={h} className="px-5 py-3.5 text-left text-xs font-bold tracking-wide text-slate-500 uppercase">{h}</th>
                                                 ))}
                                             </tr>
@@ -426,7 +433,7 @@ const InspectionsManagementPage = () => {
                                                                     <p className="font-mono text-[10px] text-slate-400">{shortId(item.inspectorId)}</p>
                                                                 </div>
                                                             ) : (
-                                                                <span className="italic text-xs text-slate-400">Chưa phân công</span>
+                                                                <span className="italic text-xs text-slate-400">Not assigned yet</span>
                                                             )}
                                                         </td>
                                                         <td className="px-5 py-3.5">
@@ -444,12 +451,12 @@ const InspectionsManagementPage = () => {
                                                             <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                                                                 <button onClick={() => setSelectedItem(item)}
                                                                     className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
-                                                                    Chi tiết
+                                                                    Details
                                                                 </button>
                                                                 {(item.status === 'PENDING' || item.status === 'IN_PROGRESS') && (
                                                                     <button onClick={() => setAssignTarget(item)} disabled={assignLoading}
                                                                         className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
-                                                                        <UserPlus size={12} /> Phân công
+                                                                        <UserPlus size={12} /> Assignment
                                                                     </button>
                                                                 )}
                                                             </div>
@@ -466,7 +473,7 @@ const InspectionsManagementPage = () => {
                             {totalPages > 1 && (
                                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
                                     <span className="text-sm text-slate-500">
-                                        Trang {page + 1} / {totalPages} · {totalElements.toLocaleString()} yêu cầu
+                                        Page {page + 1} / {totalPages} · {totalElements.toLocaleString()} requests
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => dispatch(setPage(page - 1))} disabled={page === 0 || loading}

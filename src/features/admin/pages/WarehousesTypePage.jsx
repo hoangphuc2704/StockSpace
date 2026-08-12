@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
+import TranslatableText from '@/components/TranslatableText'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchWarehouseTypes,
@@ -32,6 +34,7 @@ const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—'
 
 // ─── Modal Thêm / Sửa ────────────────────────────────────────────────────────
 const WarehouseTypeFormModal = ({ item, onClose }) => {
+  useEscapeKey(true, onClose)
   const dispatch = useDispatch()
   const { actionLoading, actionError } = useSelector((s) => s.adminWarehouseType)
   const isEdit = !!item
@@ -46,7 +49,7 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!name.trim()) return setLocalError('Vui lòng nhập tên loại kho.')
+    if (!name.trim()) return setLocalError('Please enter the warehouse type name.')
 
     setLocalError(null)
 
@@ -86,7 +89,7 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
         <div className="mb-5 flex items-start justify-between border-b border-slate-100 pb-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
-              {isEdit ? 'Cập nhật Loại Kho' : 'Thêm Loại Kho Mới'}
+              {isEdit ? 'Update Warehouse Type' : 'Add New Warehouse Type'}
             </h2>
             {isEdit && (
               <p className="mt-0.5 font-mono text-xs text-slate-500">ID: {shortId(item.id)}</p>
@@ -103,26 +106,26 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-              Tên Loại Kho <span className="text-rose-500">*</span>
+              Warehouse Type Name <span className="text-rose-500">*</span>
             </label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={100}
-              placeholder="Ví dụ: Kho mát, Kho lạnh, Kho ngoài trời..."
+              placeholder="For example: Cool storage, Cold storage, Outdoor storage..."
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
             />
           </div>
 
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-              Mô tả chi tiết
+              Detailed description
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              placeholder="Mô tả đặc điểm của loại kho này..."
+              placeholder="Describe the characteristics of this type of warehouse..."
               className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm leading-relaxed focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
             />
           </div>
@@ -139,7 +142,7 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
               onClick={onClose}
               className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
@@ -147,7 +150,7 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
               className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
             >
               {actionLoading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              {isEdit ? 'Cập nhật' : 'Thêm mới'}
+              {isEdit ? 'Update' : 'Add new'}
             </button>
           </div>
         </form>
@@ -158,6 +161,7 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
 
 // ─── Modal Xóa ───────────────────────────────────────────────────────────────
 const DeleteConfirmModal = ({ item, onClose }) => {
+  useEscapeKey(true, onClose)
   const dispatch = useDispatch()
   const { actionLoading, actionError } = useSelector((s) => s.adminWarehouseType)
 
@@ -186,10 +190,10 @@ const DeleteConfirmModal = ({ item, onClose }) => {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600">
           <AlertCircle size={24} />
         </div>
-        <h2 className="text-lg font-bold text-slate-900">Xóa loại kho này?</h2>
+        <h2 className="text-lg font-bold text-slate-900">Delete this type of warehouse?</h2>
         <p className="mt-2 text-sm text-slate-500">
-          Bạn có chắc chắn muốn xóa loại kho <strong className="text-slate-800">{item.name}</strong>{' '}
-          không? Hành động này không thể hoàn tác.
+          Are you sure you want to delete the warehouse type{' '}
+          <strong className="text-slate-800">{item.name}</strong>? This action cannot be undone.
         </p>
 
         {actionError && (
@@ -204,7 +208,7 @@ const DeleteConfirmModal = ({ item, onClose }) => {
             disabled={actionLoading}
             className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
           >
-            Hủy
+            Cancel
           </button>
           <button
             onClick={handleDelete}
@@ -212,7 +216,7 @@ const DeleteConfirmModal = ({ item, onClose }) => {
             className="flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
           >
             {actionLoading ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}{' '}
-            Xóa
+            Delete
           </button>
         </div>
       </motion.div>
@@ -263,7 +267,9 @@ const WarehousesTypePage = () => {
           </button>
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Admin
@@ -291,10 +297,10 @@ const WarehousesTypePage = () => {
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-                  <Layers className="text-blue-500" size={24} /> Phân Loại Kho
+                  <Layers className="text-blue-500" size={24} /> Warehouse Classification
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Quản lý danh mục các loại hình kho bãi mà hệ thống hỗ trợ.
+                  Manage the list of warehouse types that the system supports.
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -305,7 +311,7 @@ const WarehousesTypePage = () => {
                   />
                   <input
                     type="text"
-                    placeholder="Tìm kiếm..."
+                    placeholder="Search..."
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}
                     className="w-full min-w-[240px] rounded-xl border border-slate-200 bg-white py-2.5 pr-4 pl-9 text-sm shadow-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none"
@@ -315,7 +321,7 @@ const WarehousesTypePage = () => {
                   onClick={() => setShowCreate(true)}
                   className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold whitespace-nowrap text-white shadow-sm hover:bg-blue-700"
                 >
-                  <Plus size={16} /> Thêm Loại Kho
+                  <Plus size={16} /> Add Type
                 </button>
               </div>
             </div>
@@ -332,18 +338,18 @@ const WarehousesTypePage = () => {
               {loading ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-400">
                   <Loader2 size={28} className="animate-spin text-blue-400" />
-                  <span className="text-sm font-medium">Đang tải dữ liệu...</span>
+                  <span className="text-sm font-medium">Loading data...</span>
                 </div>
               ) : data.length === 0 ? (
                 <div className="py-20 text-center text-sm text-slate-400">
-                  Không tìm thấy loại kho nào trong hệ thống.
+                  No warehouse types found in the system.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
-                        {['Tên Loại Kho / ID', 'Mô tả', ''].map((h) => (
+                        {['Warehouse Type Name / ID', 'Description', ''].map((h) => (
                           <th
                             key={h}
                             className="px-5 py-3.5 text-left text-xs font-bold tracking-wide text-slate-500 uppercase"
@@ -368,25 +374,28 @@ const WarehousesTypePage = () => {
                             </p>
                           </td>
                           <td className="px-5 py-4">
-                            <p className="max-w-2xl leading-relaxed text-slate-600">
-                              {item.description || (
-                                <span className="text-slate-400 italic">Không có mô tả</span>
-                              )}
-                            </p>
+                            {item.description ? (
+                              <TranslatableText
+                                text={item.description}
+                                className="max-w-2xl leading-relaxed whitespace-pre-line text-slate-600"
+                              />
+                            ) : (
+                              <p className="text-slate-400 italic">No description available</p>
+                            )}
                           </td>
                           <td className="w-32 px-5 py-4 text-right">
                             <div className="inline-flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                               <button
                                 onClick={() => setEditingItem(item)}
                                 className="rounded-lg p-2 text-blue-600 transition-colors hover:bg-blue-50"
-                                title="Chỉnh sửa"
+                                title="Edit"
                               >
                                 <Edit3 size={18} />
                               </button>
                               <button
                                 onClick={() => setDeletingItem(item)}
                                 className="rounded-lg p-2 text-rose-600 transition-colors hover:bg-rose-50"
-                                title="Xóa"
+                                title="Delete"
                               >
                                 <Trash2 size={18} />
                               </button>
@@ -403,7 +412,7 @@ const WarehousesTypePage = () => {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
                   <span className="text-sm font-medium text-slate-500">
-                    Trang {page + 1} / {totalPages} · Tổng cộng {totalElements.toLocaleString()} mục
+                    Page {page + 1} / {totalPages} · {totalElements.toLocaleString()} items total
                   </span>
                   <div className="flex items-center gap-2">
                     <button

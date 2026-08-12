@@ -41,7 +41,7 @@ const AdminInventoryPage = () => {
       options.hour = '2-digit'
       options.minute = '2-digit'
     }
-    return new Date(dateString).toLocaleDateString('vi-VN', options)
+    return new Date(dateString).toLocaleDateString('en-US', options)
   }
 
   useEffect(() => {
@@ -70,7 +70,7 @@ const AdminInventoryPage = () => {
       }
     } catch (error) {
       console.error('Error fetching warehouses:', error)
-      toast.error('Lỗi khi tải danh sách kho')
+      toast.error("Error loading inventory list")
     } finally {
       setLoadingWarehouses(false)
     }
@@ -87,7 +87,7 @@ const AdminInventoryPage = () => {
       setStockPage(data?.pageNo ?? data?.page ?? 0)
     } catch (error) {
       console.error('Error fetching stock:', error)
-      toast.error(error.response?.data?.message || 'Lỗi khi tải dữ liệu tồn kho')
+      toast.error(error.response?.data?.message || "Error loading inventory data")
     } finally {
       setLoading(false)
     }
@@ -109,7 +109,7 @@ const AdminInventoryPage = () => {
       setReceiptPage(data?.pageNo ?? data?.page ?? 0)
     } catch (error) {
       console.error('Error fetching receipts:', error)
-      toast.error(error.response?.data?.message || 'Lỗi khi tải dữ liệu phiếu nhập/xuất')
+      toast.error(error.response?.data?.message || "Error when loading import/export ticket data")
     } finally {
       setLoading(false)
     }
@@ -124,11 +124,11 @@ const AdminInventoryPage = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'PENDING':
-        return <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700 border border-yellow-200">Chờ duyệt</span>
+        return <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700 border border-yellow-200">Waiting for approval</span>
       case 'APPROVED':
-        return <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 border border-green-200">Đã duyệt</span>
+        return <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 border border-green-200">Approved</span>
       case 'REJECTED':
-        return <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 border border-red-200">Từ chối</span>
+        return <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 border border-red-200">Refuse</span>
       default:
         return <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700 border border-gray-200">{status}</span>
     }
@@ -144,7 +144,9 @@ const AdminInventoryPage = () => {
           </button>
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Admin
@@ -161,11 +163,11 @@ const AdminInventoryPage = () => {
             {/* Header & Warehouse Selector */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-2xl shadow-sm border border-slate-200 shrink-0">
               <div>
-                <h1 className="text-2xl font-bold text-slate-800">Tồn Kho & Nhập/Xuất</h1>
-                <p className="text-sm text-slate-500">Xem và đối chiếu tồn kho chi tiết của từng kho.</p>
+                <h1 className="text-2xl font-bold text-slate-800">Inventory &amp; Import/Export</h1>
+                <p className="text-sm text-slate-500">View and compare detailed inventory of each warehouse.</p>
               </div>
               <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-slate-700">Chọn Kho:</label>
+                <label className="text-sm font-medium text-slate-700">Choose Warehouse:</label>
                 <select
                   value={selectedWarehouseId}
                   onChange={(e) => setSelectedWarehouseId(e.target.value)}
@@ -173,9 +175,9 @@ const AdminInventoryPage = () => {
                   className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 min-w-[200px]"
                 >
                   {loadingWarehouses ? (
-                    <option value="">Đang tải danh sách kho...</option>
+                    <option value="">Loading inventory list...</option>
                   ) : warehouses.length === 0 ? (
-                    <option value="">Chưa có kho nào</option>
+                    <option value="">There are no warehouses yet</option>
                   ) : (
                     warehouses.map((w) => (
                       <option key={w.id} value={w.id}>
@@ -191,7 +193,7 @@ const AdminInventoryPage = () => {
               <div className="flex flex-1 items-center justify-center rounded-2xl bg-white border border-slate-200 border-dashed">
                 <div className="text-center text-slate-500">
                   <HiOutlineBuildingStorefront className="mx-auto h-12 w-12 text-slate-300 mb-2" />
-                  <p>Vui lòng chọn một kho bãi để xem dữ liệu</p>
+                  <p>Please select a warehouse to view data</p>
                 </div>
               </div>
             ) : (
@@ -206,7 +208,7 @@ const AdminInventoryPage = () => {
                       }`}
                   >
                     <HiOutlineArchiveBox className="h-5 w-5" />
-                    Tồn kho hiện tại
+                    Current inventory
                   </button>
                   <button
                     onClick={() => setActiveTab('RECEIPTS')}
@@ -216,7 +218,7 @@ const AdminInventoryPage = () => {
                       }`}
                   >
                     <HiOutlineDocumentArrowDown className="h-5 w-5" />
-                    Phiếu Nhập / Xuất
+                    Import/Export Form
                   </button>
                 </div>
 
@@ -228,20 +230,20 @@ const AdminInventoryPage = () => {
                         <table className="w-full text-left text-sm text-slate-600">
                           <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200 sticky top-0 z-10">
                             <tr>
-                              <th className="px-6 py-4 font-semibold">Sản phẩm (SKU)</th>
-                              <th className="px-6 py-4 font-semibold">Vị trí (Zone/Rack/Bin)</th>
-                              <th className="px-6 py-4 font-semibold text-right">Số lượng tồn</th>
-                              <th className="px-6 py-4 font-semibold">Ngày nhập kho</th>
+                              <th className="px-6 py-4 font-semibold">Product (SKU)</th>
+                              <th className="px-6 py-4 font-semibold">Location (Zone/Rack/Bin)</th>
+                              <th className="px-6 py-4 font-semibold text-right">Quantity in stock</th>
+                              <th className="px-6 py-4 font-semibold">Warehouse entry date</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200">
                             {loading ? (
                               <tr>
-                                <td colSpan="4" className="px-6 py-12 text-center text-slate-500">Đang tải dữ liệu tồn kho...</td>
+                                <td colSpan="4" className="px-6 py-12 text-center text-slate-500">Loading inventory data...</td>
                               </tr>
                             ) : stocks.length === 0 ? (
                               <tr>
-                                <td colSpan="4" className="px-6 py-12 text-center text-slate-500">Kho này chưa có hàng tồn kho.</td>
+                                <td colSpan="4" className="px-6 py-12 text-center text-slate-500">This warehouse has no inventory yet.</td>
                               </tr>
                             ) : (
                               stocks.map((stock) => (
@@ -274,10 +276,10 @@ const AdminInventoryPage = () => {
                       {/* Phân trang Stock */}
                       {!loading && stockTotalPages > 1 && (
                         <div className="flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4">
-                          <span className="text-sm text-slate-500">Trang <span className="font-medium text-slate-900">{stockPage + 1}</span> / <span className="font-medium text-slate-900">{stockTotalPages}</span></span>
+                          <span className="text-sm text-slate-500">Page <span className="font-medium text-slate-900">{stockPage + 1}</span> / <span className="font-medium text-slate-900">{stockTotalPages}</span></span>
                           <div className="flex items-center gap-2">
-                            <button onClick={() => fetchStock(stockPage - 1)} disabled={stockPage === 0} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">Trước</button>
-                            <button onClick={() => fetchStock(stockPage + 1)} disabled={stockPage >= stockTotalPages - 1} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">Sau</button>
+                            <button onClick={() => fetchStock(stockPage - 1)} disabled={stockPage === 0} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">Before</button>
+                            <button onClick={() => fetchStock(stockPage + 1)} disabled={stockPage >= stockTotalPages - 1} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">Next</button>
                           </div>
                         </div>
                       )}
@@ -288,15 +290,15 @@ const AdminInventoryPage = () => {
                     <div className="flex-1 flex flex-col">
                       <div className="border-b border-slate-200 p-4 bg-slate-50/50 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-slate-600 font-medium">Lọc theo loại:</span>
+                          <span className="text-sm text-slate-600 font-medium">Filter by type:</span>
                           <select
                             value={receiptType}
                             onChange={(e) => setReceiptType(e.target.value)}
                             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           >
-                            <option value="">Tất cả (Inbound & Outbound)</option>
-                            <option value="INBOUND">Nhập kho (INBOUND)</option>
-                            <option value="OUTBOUND">Xuất kho (OUTBOUND)</option>
+                            <option value="">All (Inbound &amp; Outbound)</option>
+                            <option value="INBOUND">Enter warehouse (INBOUND)</option>
+                            <option value="OUTBOUND">OUTBOUND</option>
                           </select>
                         </div>
                       </div>
@@ -304,21 +306,21 @@ const AdminInventoryPage = () => {
                         <table className="w-full text-left text-sm text-slate-600">
                           <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200 sticky top-0 z-10">
                             <tr>
-                              <th className="px-6 py-4 font-semibold">Mã Phiếu</th>
-                              <th className="px-6 py-4 font-semibold">Loại Phiếu</th>
-                              <th className="px-6 py-4 font-semibold">Ngày tạo</th>
-                              <th className="px-6 py-4 font-semibold">Người lập</th>
-                              <th className="px-6 py-4 font-semibold">Trạng thái</th>
+                              <th className="px-6 py-4 font-semibold">Voucher Code</th>
+                              <th className="px-6 py-4 font-semibold">Voucher Type</th>
+                              <th className="px-6 py-4 font-semibold">Creation date</th>
+                              <th className="px-6 py-4 font-semibold">Founder</th>
+                              <th className="px-6 py-4 font-semibold">Status</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-200">
                             {loading ? (
                               <tr>
-                                <td colSpan="5" className="px-6 py-12 text-center text-slate-500">Đang tải dữ liệu phiếu...</td>
+                                <td colSpan="5" className="px-6 py-12 text-center text-slate-500">Loading ticket data...</td>
                               </tr>
                             ) : receipts.length === 0 ? (
                               <tr>
-                                <td colSpan="5" className="px-6 py-12 text-center text-slate-500">Chưa có phiếu nhập/xuất nào.</td>
+                                <td colSpan="5" className="px-6 py-12 text-center text-slate-500">There are no import/export tickets yet.</td>
                               </tr>
                             ) : (
                               receipts.map((receipt) => (
@@ -349,10 +351,10 @@ const AdminInventoryPage = () => {
                       {/* Phân trang Receipts */}
                       {!loading && receiptTotalPages > 1 && (
                         <div className="flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4">
-                          <span className="text-sm text-slate-500">Trang <span className="font-medium text-slate-900">{receiptPage + 1}</span> / <span className="font-medium text-slate-900">{receiptTotalPages}</span></span>
+                          <span className="text-sm text-slate-500">Page <span className="font-medium text-slate-900">{receiptPage + 1}</span> / <span className="font-medium text-slate-900">{receiptTotalPages}</span></span>
                           <div className="flex items-center gap-2">
-                            <button onClick={() => fetchReceipts(receiptPage - 1)} disabled={receiptPage === 0} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">Trước</button>
-                            <button onClick={() => fetchReceipts(receiptPage + 1)} disabled={receiptPage >= receiptTotalPages - 1} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">Sau</button>
+                            <button onClick={() => fetchReceipts(receiptPage - 1)} disabled={receiptPage === 0} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">Before</button>
+                            <button onClick={() => fetchReceipts(receiptPage + 1)} disabled={receiptPage >= receiptTotalPages - 1} className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">Next</button>
                           </div>
                         </div>
                       )}

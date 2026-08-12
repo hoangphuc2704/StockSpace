@@ -17,6 +17,7 @@ import {
 } from 'react-icons/hi2'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import useEscapeKey from '../hooks/useEscapeKey'
 
 // ✅ [HEAD] Dùng logoutThunk từ authSlice để logout đúng cách
 import { logoutThunk } from '../store/authSlice'
@@ -56,23 +57,23 @@ const SIDEBAR_MENUS = {
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/tenant/outbound' },
     { text: 'My Bookings', icon: HiOutlineHomeModern, path: '/tenant/warehouses' },
     { text: 'My Contracts', icon: HiOutlineDocumentText, path: '/tenant/contracts' },
-    { text: 'Tranh chấp', icon: HiOutlineExclamationCircle, path: '/tenant/disputes' },
+    { text: 'Dispute', icon: HiOutlineExclamationCircle, path: '/tenant/disputes' },
     { text: 'Billing', icon: HiOutlineCurrencyDollar, path: '/tenant/payments' },
-    { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
-    { text: 'Hàng trong Bin', icon: HiOutlineCircleStack, path: '/tenant/bin-stock' },
+    { text: 'Warehouse Layout', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
+    { text: 'Goods in Bin', icon: HiOutlineCircleStack, path: '/tenant/bin-stock' },
     { text: 'Wallet', icon: HiOutlineCurrencyDollar, path: '/tenant/wallet' },
-    { text: 'Nhân Viên', icon: HiOutlineUserGroup, path: '/tenant/staff' },
+    { text: 'Staff', icon: HiOutlineUserGroup, path: '/tenant/staff' },
   ],
   OWNER: [
-    { text: 'Đăng Tin', icon: HiOutlineHomeModern, path: '/owner/postwarehouse' },
-    { text: 'Tổng Quan', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
-    { text: 'Cài đặt', icon: HiOutlineCog6Tooth, path: '/owner/profile' },
-    { text: 'Danh sách kho', icon: HiOutlineHomeModern, path: '/owner/listwarehouse' },
-    { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/owner/layoutwarehouses' },
-    { text: 'Hợp đồng', icon: HiOutlineDocumentText, path: '/owner/contracts' },
-    { text: 'Tranh chấp', icon: HiOutlineExclamationCircle, path: '/owner/disputes' },
+    { text: 'Post Warehouse', icon: HiOutlineHomeModern, path: '/owner/postwarehouse' },
+    { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
+    { text: 'Settings', icon: HiOutlineCog6Tooth, path: '/owner/profile' },
+    { text: 'Warehouse List', icon: HiOutlineHomeModern, path: '/owner/listwarehouse' },
+    { text: 'Warehouse Layout', icon: HiOutlineSquaresPlus, path: '/owner/layoutwarehouses' },
+    { text: 'Contracts', icon: HiOutlineDocumentText, path: '/owner/contracts' },
+    { text: 'Dispute', icon: HiOutlineExclamationCircle, path: '/owner/disputes' },
     {
-      text: 'Lịch sử giao dịch',
+      text: 'Transaction history',
       icon: HiOutlineCurrencyDollar,
       path: '/owner/wallet/withdraws',
     },
@@ -100,6 +101,7 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
 
   // Lấy trạng thái đóng mở Sidebar từ Redux Global State
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  useEscapeKey(isMobileOpen, () => dispatch(closeMobileSidebar()))
   const menuItems = SIDEBAR_MENUS[currentRole] || []
 
   const handleNavigation = (path) => {

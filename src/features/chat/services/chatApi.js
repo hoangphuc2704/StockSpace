@@ -10,14 +10,14 @@ const refreshAccessToken = async () => {
   const authData = response.data?.data
   const accessToken = authData?.accessToken
 
-  if (!accessToken) throw new Error('Không thể làm mới phiên đăng nhập.')
+  if (!accessToken) throw new Error('Unable to refresh your sign-in session.')
 
   localStorage.setItem('token', accessToken)
   let currentUser = {}
   try {
     currentUser = JSON.parse(localStorage.getItem('user') || '{}')
   } catch {
-    // Dữ liệu local cũ bị lỗi không được phép làm hỏng quá trình refresh token.
+    // Invalid legacy local data must not interrupt the token refresh flow.
   }
   localStorage.setItem(
     'user',
@@ -98,7 +98,7 @@ export const chatApi = {
         const refreshedToken = await refreshAccessToken()
         response = await sendRequest(refreshedToken)
       } catch {
-        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+        throw new Error('Your sign-in session has expired. Please sign in again.')
       }
     }
 
@@ -108,17 +108,17 @@ export const chatApi = {
         if (!isAuthenticatedChat) guestChatStorage.clear()
         throw new Error(
           isAuthenticatedChat
-            ? 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
-            : 'Phiên chat đã hết hạn.'
+            ? 'Your sign-in session has expired. Please sign in again.'
+            : 'Your chat session has expired.'
         )
       }
       if (response.status === 429) {
-        throw new Error('Bạn đang gửi tin nhắn quá nhanh. Vui lòng thử lại sau ít phút.')
+        throw new Error('You are sending messages too quickly. Please try again in a few minutes.')
       }
       if (response.status === 403) {
-        throw new Error('Tài khoản của bạn chưa được cấp quyền sử dụng chatbot.')
+        throw new Error('Your account does not have permission to use the chatbot.')
       }
-      throw new Error(apiMessage || 'Không thể kết nối với trợ lý AI.')
+      throw new Error(apiMessage || 'Unable to connect to the AI assistant.')
     }
 
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
@@ -148,10 +148,10 @@ export const chatApi = {
         }
       }
 
-      throw new Error('Kết nối tới trợ lý AI bị ngắt trước khi hoàn tất phản hồi.')
+      throw new Error('The connection to the AI assistant closed before the response was complete.')
     } catch (error) {
-      // Một số proxy đóng TCP ngay sau frame complete. Khi terminal event đã
-      // tới client thì câu trả lời hợp lệ và lỗi đóng transport không còn ý nghĩa.
+      // Some proxies close TCP immediately after the complete frame. Once the client
+      // receives the terminal event, the response is valid and the transport error is irrelevant.
       if (terminalEvent === 'complete') return
       throw error
     } finally {

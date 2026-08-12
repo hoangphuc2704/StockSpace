@@ -30,7 +30,7 @@ const normalizeWarehouse = (warehouse) => ({
   rating: Number(warehouse.rating ?? 4.8),
   type: warehouse.warehouseType?.name || warehouse.typeName || warehouse.type || 'General',
   thumbnail: warehouse.coverImageUrl || warehouse.thumbnail || warehouse.imageUrls?.[0] || '',
-  description: warehouse.description || 'Warehouse information is being updated.',
+  description: warehouse.description || '',
   isVerified: warehouse.isVerified ?? warehouse.verified ?? false,
   imageUrls: warehouse.imageUrls || [],
   ownerName: warehouse.ownerName || 'Warehouse Owner',
@@ -49,9 +49,7 @@ const normalizePublicLayout = (payload = {}) => ({
   width: Math.max(ensureNumber(payload.width, 100), 20),
   length: Math.max(ensureNumber(payload.length, 100), 20),
   height: Math.max(ensureNumber(payload.height, 100), 20),
-  footprintCells: Array.isArray(payload.footprintCells)
-    ? payload.footprintCells.map(String)
-    : null,
+  footprintCells: Array.isArray(payload.footprintCells) ? payload.footprintCells.map(String) : null,
   racks: Array.isArray(payload.racks)
     ? payload.racks.map((rack) => ({
         clientKey: createClientKey('rack'),

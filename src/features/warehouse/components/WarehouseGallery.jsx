@@ -64,7 +64,7 @@ export default function WarehouseGallery({ images = [] }) {
               {showsMore && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 text-white">
                   <Images className="mb-2 h-7 w-7" />
-                  <span className="text-base font-bold">Xem thêm {hiddenCount} ảnh</span>
+                  <span className="text-base font-bold">See more {hiddenCount} photo</span>
                 </div>
               )}
             </button>
@@ -77,12 +77,12 @@ export default function WarehouseGallery({ images = [] }) {
           className="fixed inset-0 z-[100] flex flex-col bg-slate-950/95 p-3 sm:p-6"
           role="dialog"
           aria-modal="true"
-          aria-label="Thư viện ảnh warehouse"
+          aria-label="Warehouse photo gallery"
           onClick={() => setActiveIndex(null)}
         >
           <div className="mb-3 flex items-center justify-between text-white">
             <span className="text-sm font-semibold">{activeIndex + 1} / {validImages.length}</span>
-            <button type="button" onClick={() => setActiveIndex(null)} className="rounded-full bg-white/10 p-2 hover:bg-white/20" aria-label="Đóng thư viện ảnh">
+            <button type="button" onClick={() => setActiveIndex(null)} className="rounded-full bg-white/10 p-2 hover:bg-white/20" aria-label="Close the photo gallery">
               <X className="h-6 w-6" />
             </button>
           </div>
@@ -90,10 +90,10 @@ export default function WarehouseGallery({ images = [] }) {
             <img src={validImages[activeIndex]} alt={`Warehouse ${activeIndex + 1}`} className="h-full w-full object-contain" />
             {validImages.length > 1 && (
               <>
-                <button type="button" onClick={openPrevious} className="absolute top-1/2 left-2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white hover:bg-black/70" aria-label="Ảnh trước">
+                <button type="button" onClick={openPrevious} className="absolute top-1/2 left-2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white hover:bg-black/70" aria-label="Previous photo">
                   <ChevronLeft className="h-6 w-6" />
                 </button>
-                <button type="button" onClick={openNext} className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white hover:bg-black/70" aria-label="Ảnh tiếp theo">
+                <button type="button" onClick={openNext} className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white hover:bg-black/70" aria-label="Next photo">
                   <ChevronRight className="h-6 w-6" />
                 </button>
               </>

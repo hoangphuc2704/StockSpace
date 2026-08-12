@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Check } from 'lucide-react'
@@ -7,32 +7,31 @@ import PublicHeader from '../../../components/PublicHeader'
 import packageApi from '../../../services/packageApi'
 import subscriptionApi from '../../../services/subscriptionApi'
 import { parseFeaturesToList } from '../../../utils/formatFeatures'
+import TranslatableText from '@/components/TranslatableText'
 
 const PackageList = () => {
   const [packages, setPackages] = useState([])
   const [activeSub, setActiveSub] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
-  
+
   const { user, isAuthenticated } = useSelector((state) => state.auth)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true)
-        const [pkgRes] = await Promise.all([
-          packageApi.getPackages()
-        ])
-        
+        const [pkgRes] = await Promise.all([packageApi.getPackages()])
+
         const payload = pkgRes?.data?.data || pkgRes?.data
         const content = Array.isArray(payload?.content)
           ? payload.content
           : Array.isArray(payload)
             ? payload
             : []
-            
+
         // Filter out warehouse posting fees, keep only SaaS subscriptions for Tenant
         const subscriptionPackages = content.filter(
-          pkg => !pkg.name.toLowerCase().includes('đăng bài')
+          (pkg) => !pkg.name.toLowerCase().includes('post')
         )
         setPackages(subscriptionPackages)
 
@@ -41,7 +40,7 @@ const PackageList = () => {
           try {
             const subRes = await subscriptionApi.getActiveSubscription()
             setActiveSub(subRes?.data?.data)
-          } catch (err) {
+          } catch {
             // Ignore 404 or errors if tenant doesn't have an active sub
           }
         }
@@ -57,21 +56,22 @@ const PackageList = () => {
   return (
     <div className="min-h-screen bg-[#faf7f4] font-sans text-stone-900 antialiased">
       <PublicHeader />
-      
+
       <main className="py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="mx-auto mb-16 max-w-3xl space-y-4 text-center">
             <h2 className="text-4xl font-extrabold tracking-tight text-stone-900 uppercase sm:text-5xl">
-              Bảng giá dịch vụ
+              Service price list
             </h2>
             <p className="mx-auto max-w-xl text-sm leading-relaxed font-medium text-stone-500">
-              Lựa chọn gói dịch vụ phù hợp với nhu cầu lưu trữ và quản lý kho bãi của doanh nghiệp bạn.
+              Choose a service package that suits your business's storage and warehouse management
+              needs.
             </p>
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FF5A1F]"></div>
+            <div className="flex h-64 items-center justify-center">
+              <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-[#FF5A1F]"></div>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
@@ -87,42 +87,44 @@ const PackageList = () => {
                     <h3 className="mb-2 text-2xl font-bold tracking-tight text-stone-900">
                       {pkg.name}
                     </h3>
-                    <p className="mb-6 text-sm text-stone-500 min-h-[40px]">
-                      {pkg.description || 'Gói dịch vụ cao cấp dành cho doanh nghiệp.'}
-                    </p>
+                    <TranslatableText
+                      text={pkg.description}
+                      fallback="Premium service package for businesses."
+                      className="mb-6 min-h-[40px] text-sm text-stone-500"
+                    />
                     <div className="mb-6 flex items-baseline text-stone-900">
                       <span className="text-4xl font-extrabold tracking-tight">
-                        {Number(pkg.price || 0).toLocaleString('vi-VN')}
+                        {Number(pkg.price || 0).toLocaleString('en-US')}
                       </span>
-                      <span className="ml-1 text-sm font-medium text-stone-500">VNĐ</span>
+                      <span className="ml-1 text-sm font-medium text-stone-500">VND</span>
                     </div>
                     {activeSub?.servicePackage?.id === pkg.id ? (
-                      <div className="block w-full rounded-md bg-emerald-500 py-3 text-center text-xs font-bold tracking-wider text-white uppercase cursor-default">
-                        Đang sử dụng
+                      <div className="block w-full cursor-default rounded-md bg-emerald-500 py-3 text-center text-xs font-bold tracking-wider text-white uppercase">
+                        In use
                       </div>
                     ) : (
                       <Link
                         to={`/packages/${pkg.id}`}
                         className="block w-full rounded-md bg-[#FF5A1F] py-3 text-center text-xs font-bold tracking-wider text-white uppercase transition-colors hover:bg-[#e04e19]"
                       >
-                        Xem chi tiết
+                        See details
                       </Link>
                     )}
                   </div>
                   <div className="flex-1 bg-stone-50 p-8">
                     <p className="mb-4 text-xs font-bold tracking-wider text-stone-900 uppercase">
-                      Tính năng bao gồm
+                      Features included
                     </p>
                     <ul className="space-y-4">
                       <li className="flex items-start">
                         <Check className="mr-3 h-5 w-5 shrink-0 text-[#FF5A1F]" />
                         <span className="text-sm font-bold text-stone-700">
-                          {pkg.maxStaff > 0 ? `Tối đa ${pkg.maxStaff} nhân viên` : 'Không giới hạn nhân viên'}
+                          {pkg.maxStaff > 0 ? `Max ${pkg.maxStaff} staff` : 'Unlimited employees'}
                         </span>
                       </li>
                       {(() => {
-                        const featuresList = parseFeaturesToList(pkg.features);
-                        
+                        const featuresList = parseFeaturesToList(pkg.features)
+
                         if (featuresList.length > 0) {
                           return featuresList.map((feature, i) => (
                             <li key={i} className="flex items-start">
@@ -135,11 +137,15 @@ const PackageList = () => {
                             <>
                               <li className="flex items-start">
                                 <Check className="mr-3 h-5 w-5 shrink-0 text-emerald-500" />
-                                <span className="text-sm text-stone-600">Truy cập đầy đủ tính năng hệ thống</span>
+                                <span className="text-sm text-stone-600">
+                                  Access full system features
+                                </span>
                               </li>
                               <li className="flex items-start">
                                 <Check className="mr-3 h-5 w-5 shrink-0 text-emerald-500" />
-                                <span className="text-sm text-stone-600">Hỗ trợ khách hàng ưu tiên 24/7</span>
+                                <span className="text-sm text-stone-600">
+                                  24/7 priority customer support
+                                </span>
                               </li>
                             </>
                           )
@@ -149,10 +155,10 @@ const PackageList = () => {
                   </div>
                 </motion.div>
               ))}
-              
+
               {!isLoading && packages.length === 0 && (
-                <div className="col-span-full py-20 text-center text-stone-500 bg-white border border-dashed border-stone-300 rounded-3xl">
-                  Hiện chưa có gói dịch vụ nào được cấu hình.
+                <div className="col-span-full rounded-3xl border border-dashed border-stone-300 bg-white py-20 text-center text-stone-500">
+                  There are currently no service packs configured.
                 </div>
               )}
             </div>

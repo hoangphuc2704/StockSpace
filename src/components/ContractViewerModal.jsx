@@ -27,7 +27,7 @@ const ContractViewerModal = ({ isOpen, onClose, images = [] }) => {
         setPolicy(data)
       }
     } catch (error) {
-      console.error('Lỗi tải policy', error)
+      console.error("Error loading policy", error)
     } finally {
       setLoadingPolicy(false)
     }
@@ -55,7 +55,7 @@ const ContractViewerModal = ({ isOpen, onClose, images = [] }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Bản Phụ Lục Hợp Đồng"
+      title="Contract Addendum"
       className="max-w-6xl w-[95vw]"
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -101,18 +101,18 @@ const ContractViewerModal = ({ isOpen, onClose, images = [] }) => {
             ) : (
               <div className="flex flex-col items-center justify-center text-slate-400">
                 <FileText className="h-12 w-12 mb-2 opacity-30" />
-                <p>Không có ảnh hợp đồng</p>
+                <p>There are no contract photos</p>
               </div>
             )}
           </div>
 
           <div className="flex justify-between items-center px-1">
             <p className="text-sm text-slate-500">
-              Bạn có thể click vào ảnh để tải xuống hoặc xem kích thước đầy đủ.
+              You can click on the image to download or view full size.
             </p>
             {contractImages.length > 0 && (
               <Button variant="outline" size="sm" onClick={() => downloadImage(contractImages[currentIndex])}>
-                <Download className="h-4 w-4 mr-2" /> Tải ảnh này
+                <Download className="h-4 w-4 mr-2" /> Download this photo
               </Button>
             )}
           </div>
@@ -122,31 +122,31 @@ const ContractViewerModal = ({ isOpen, onClose, images = [] }) => {
         <div className="flex flex-col border border-slate-200 rounded-xl overflow-hidden bg-white max-h-[500px]">
           <div className="bg-slate-50 p-4 border-b border-slate-200 flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-blue-600" />
-            <h3 className="font-semibold text-slate-800">Cam Kết Ràng Buộc</h3>
+            <h3 className="font-semibold text-slate-800">Binding Commitment</h3>
           </div>
           <div className="p-4 overflow-y-auto flex-1 text-sm text-slate-600 prose prose-sm max-w-none">
             {loadingPolicy ? (
               <div className="flex flex-col items-center justify-center py-10">
                 <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-2" />
-                <p className="text-slate-400">Đang tải chính sách...</p>
+                <p className="text-slate-400">Loading policy...</p>
               </div>
             ) : policy ? (
               <div dangerouslySetInnerHTML={{ __html: policy.content.replace(/\n/g, '<br/>') }} />
             ) : (
-              <p className="text-slate-400 italic text-center py-10">Không thể tải thông tin cam kết.</p>
+              <p className="text-slate-400 italic text-center py-10">Unable to load commit information.</p>
             )}
           </div>
           {policy && (
             <div className="bg-slate-50 p-3 border-t border-slate-200 text-xs text-slate-400 flex justify-between">
-              <span>Phiên bản: {policy.version}</span>
-              <span>Ngày cập nhật: {new Date(policy.updatedAt || policy.createdAt).toLocaleDateString('vi-VN')}</span>
+              <span>Version: {policy.version}</span>
+              <span>Update date: {new Date(policy.updatedAt || policy.createdAt).toLocaleDateString('en-US')}</span>
             </div>
           )}
         </div>
       </div>
       
       <div className="mt-6 flex justify-end">
-        <Button onClick={onClose} variant="outline">Đóng</Button>
+        <Button onClick={onClose} variant="outline">Close</Button>
       </div>
     </Modal>
   )

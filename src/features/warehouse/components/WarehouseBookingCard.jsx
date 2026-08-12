@@ -26,7 +26,7 @@ const WarehouseBookingCard = ({
                 Rental Price
               </p>
               <span className="text-primary text-3xl font-black">
-                {warehouse.price.toLocaleString()}vnđ
+                {warehouse.price.toLocaleString()}VND
               </span>
               <span className="font-medium text-slate-500"> / mo</span>
             </div>
@@ -50,7 +50,7 @@ const WarehouseBookingCard = ({
             <div className="space-y-2.5 text-sm">
               <div className="flex justify-between text-slate-600">
                 <span>Monthly Rental</span>
-                <span className="font-semibold">{warehouse.price.toLocaleString()}VNĐ</span>
+                <span className="font-semibold">{warehouse.price.toLocaleString()}VND</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Security Deposit ({depositPercentage}%)</span>

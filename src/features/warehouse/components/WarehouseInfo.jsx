@@ -2,6 +2,7 @@ import { MapPin, Maximize2, Shield, Clock, Star, CheckCircle2, Truck } from 'luc
 import Badge from '@/components/atoms/Badge'
 import Avatar from '@/components/atoms/Avatar'
 import Button from '@/components/atoms/Button'
+import TranslatableText from '@/components/TranslatableText'
 
 const WarehouseInfo = ({ warehouse, extendedData }) => {
   return (
@@ -9,19 +10,17 @@ const WarehouseInfo = ({ warehouse, extendedData }) => {
       <section>
         <div className="mb-4 flex items-center gap-2">
           <Badge variant="success">Verified Listing</Badge>
-          <Badge variant="primary" className="border-none bg-primary/10 text-primary">
+          <Badge variant="primary" className="bg-primary/10 text-primary border-none">
             {warehouse.type}
           </Badge>
         </div>
-        <h1 className="mb-4 text-4xl font-black tracking-tight text-slate-900">
-          {warehouse.name}
-        </h1>
+        <h1 className="mb-4 text-4xl font-black tracking-tight text-slate-900">{warehouse.name}</h1>
         <div className="flex items-center gap-6 text-slate-500">
           <div className="flex items-center gap-1.5 font-medium">
             <MapPin size={18} className="text-primary" />
             <span>{warehouse.location}</span>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full bg-warning/5 px-3 py-1 font-bold text-warning">
+          <div className="bg-warning/5 text-warning flex items-center gap-1.5 rounded-full px-3 py-1 font-bold">
             <Star size={16} className="fill-current" />
             <span>
               {warehouse.rating} ({extendedData.reviews} reviews)
@@ -45,11 +44,11 @@ const WarehouseInfo = ({ warehouse, extendedData }) => {
             { icon: Truck, label: 'Loading', value: 'Supported' },
           ].map((item, idx) => (
             <div key={idx} className="flex flex-col gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-100 bg-slate-50 text-primary">
+              <div className="text-primary flex h-10 w-10 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
                 <item.icon size={20} />
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
                   {item.label}
                 </p>
                 <p className="text-sm font-bold text-slate-900">{item.value}</p>
@@ -73,9 +72,7 @@ const WarehouseInfo = ({ warehouse, extendedData }) => {
             <div>
               <div className="flex items-center gap-2">
                 <p className="text-lg font-bold text-slate-900">{extendedData.owner.name}</p>
-                {extendedData.owner.verified && (
-                  <CheckCircle2 size={16} className="text-success" />
-                )}
+                {extendedData.owner.verified && <CheckCircle2 size={16} className="text-success" />}
               </div>
               <p className="text-sm text-slate-500">
                 {extendedData.owner.company} • Member since {extendedData.owner.since}
@@ -90,12 +87,16 @@ const WarehouseInfo = ({ warehouse, extendedData }) => {
 
       <section className="space-y-6">
         <h3 className="text-xl font-bold text-slate-900">About this space</h3>
-        <p className="text-lg leading-relaxed text-slate-600">{warehouse.description}</p>
+        <TranslatableText
+          text={warehouse.description}
+          fallback="Warehouse information is being updated."
+          className="text-lg leading-relaxed whitespace-pre-line text-slate-600"
+        />
 
         <div className="grid grid-cols-1 gap-4 pt-4 sm:grid-cols-2">
           {extendedData.features.map((feature) => (
             <div key={feature} className="flex items-center gap-3 font-medium text-slate-700">
-              <CheckCircle2 size={18} className="shrink-0 text-primary" />
+              <CheckCircle2 size={18} className="text-primary shrink-0" />
               <span>{feature}</span>
             </div>
           ))}

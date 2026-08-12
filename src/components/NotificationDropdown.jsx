@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import notificationApi from '../services/notificationApi'
 import { toast } from 'react-hot-toast'
+import useEscapeKey from '@/hooks/useEscapeKey'
 
 const timeAgo = (dateString) => {
   const date = new Date(dateString)
@@ -11,25 +12,26 @@ const timeAgo = (dateString) => {
   const seconds = Math.floor((now - date) / 1000)
 
   let interval = seconds / 31536000
-  if (interval > 1) return Math.floor(interval) + ' năm trước'
+  if (interval > 1) return Math.floor(interval) + "last year"
   
   interval = seconds / 2592000
-  if (interval > 1) return Math.floor(interval) + ' tháng trước'
+  if (interval > 1) return Math.floor(interval) + "last month"
   
   interval = seconds / 86400
-  if (interval > 1) return Math.floor(interval) + ' ngày trước'
+  if (interval > 1) return Math.floor(interval) + "days ago"
   
   interval = seconds / 3600
-  if (interval > 1) return Math.floor(interval) + ' giờ trước'
+  if (interval > 1) return Math.floor(interval) + "hours ago"
   
   interval = seconds / 60
-  if (interval > 1) return Math.floor(interval) + ' phút trước'
+  if (interval > 1) return Math.floor(interval) + "minutes ago"
   
-  return 'Vài giây trước'
+  return "A few seconds ago"
 }
 
 const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false)
+  useEscapeKey(isOpen, () => setIsOpen(false))
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState([])
   const [isLoading, setIsLoading] = useState(false)
@@ -134,7 +136,7 @@ const NotificationDropdown = () => {
         setUnreadCount(res.data)
       }
     } catch (error) {
-      console.error('Lỗi khi lấy số lượng thông báo:', error)
+      console.error("Error getting number of notifications:", error)
     }
   }
 
@@ -157,8 +159,8 @@ const NotificationDropdown = () => {
         setHasMore(!res.data.last)
       }
     } catch (error) {
-      console.error('Lỗi khi tải thông báo:', error)
-      toast.error('Không thể tải thông báo lúc này.')
+      console.error("Error loading notification:", error)
+      toast.error("Notifications cannot be loaded at this time.")
     } finally {
       setIsLoading(false)
       setIsLoadingMore(false)
@@ -185,7 +187,7 @@ const NotificationDropdown = () => {
           setUnreadCount(prev => Math.max(0, prev - 1))
         }
       } catch (error) {
-        console.error('Lỗi khi đánh dấu đã đọc:', error)
+        console.error("Error when marking read:", error)
       }
     }
 
@@ -205,11 +207,11 @@ const NotificationDropdown = () => {
       if (res.success) {
         setNotifications(prev => prev.map(notif => ({ ...notif, read: true })))
         setUnreadCount(0)
-        toast.success('Đã đánh dấu tất cả là đã đọc.')
+        toast.success("Marked all as read.")
       }
     } catch (error) {
-      console.error('Lỗi khi đánh dấu đọc tất cả:', error)
-      toast.error('Lỗi khi cập nhật trạng thái.')
+      console.error("Error when marking read all:", error)
+      toast.error("Error updating status.")
     }
   }
 
@@ -233,14 +235,14 @@ const NotificationDropdown = () => {
         <div className="absolute right-0 mt-2 w-80 sm:w-96 origin-top-right rounded-xl bg-white shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none flex flex-col overflow-hidden max-h-[85vh]">
           {/* Header của Dropdown */}
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
-            <h3 className="text-sm font-bold text-slate-800">Thông báo</h3>
+            <h3 className="text-sm font-bold text-slate-800">Notice</h3>
             {unreadCount > 0 && (
               <button 
                 onClick={handleMarkAllAsRead}
                 className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-dark hover:underline"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Đánh dấu tất cả
+                Mark them all
               </button>
             )}
           </div>
@@ -250,15 +252,15 @@ const NotificationDropdown = () => {
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-10 space-y-3">
                 <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
-                <p className="text-xs text-slate-400">Đang tải thông báo...</p>
+                <p className="text-xs text-slate-400">Loading notification...</p>
               </div>
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
                 <div className="rounded-full bg-slate-50 p-3 mb-3">
                   <Bell className="h-6 w-6 text-slate-300" />
                 </div>
-                <p className="text-sm font-medium text-slate-600">Chưa có thông báo nào</p>
-                <p className="text-xs text-slate-400 mt-1">Khi có thông báo mới, chúng sẽ xuất hiện ở đây.</p>
+                <p className="text-sm font-medium text-slate-600">There are no announcements yet</p>
+                <p className="text-xs text-slate-400 mt-1">When there are new announcements, they will appear here.</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-50">
@@ -307,7 +309,7 @@ const NotificationDropdown = () => {
                       className="w-full rounded-md bg-slate-50 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {isLoadingMore ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                      {isLoadingMore ? 'Đang tải...' : 'Xem thông báo cũ hơn'}
+                      {isLoadingMore ? "Loading..." : "View older announcements"}
                     </button>
                   </div>
                 )}
