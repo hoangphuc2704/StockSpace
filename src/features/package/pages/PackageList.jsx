@@ -9,6 +9,33 @@ import subscriptionApi from '../../../services/subscriptionApi'
 import { parseFeaturesToList } from '../../../utils/formatFeatures'
 import TranslatableText from '@/components/TranslatableText'
 
+const normalizePackageText = (value = '') =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+
+const isInternalFeePackage = (pkg = {}) => {
+  const name = normalizePackageText(pkg.name)
+  const featureType = (() => {
+    if (typeof pkg.features !== 'string') return normalizePackageText(pkg.features?.type)
+    try {
+      return normalizePackageText(JSON.parse(pkg.features)?.type)
+    } catch {
+      return normalizePackageText(pkg.features)
+    }
+  })()
+
+  return (
+    featureType.includes('posting_fee') ||
+    featureType.includes('inspection_fee') ||
+    name.includes('posting fee') ||
+    name.includes('inspection fee') ||
+    name.includes('phi dang bai') ||
+    name.includes('phi kiem dinh')
+  )
+}
+
 const PackageList = () => {
   const [packages, setPackages] = useState([])
   const [activeSub, setActiveSub] = useState(null)
@@ -29,10 +56,8 @@ const PackageList = () => {
             ? payload
             : []
 
-        // Filter out warehouse posting fees, keep only SaaS subscriptions for Tenant
-        const subscriptionPackages = content.filter(
-          (pkg) => !pkg.name.toLowerCase().includes('post')
-        )
+        // Internal one-time fees are not Tenant subscription plans.
+        const subscriptionPackages = content.filter((pkg) => !isInternalFeePackage(pkg))
         setPackages(subscriptionPackages)
 
         // Fetch active subscription if user is a TENANT
