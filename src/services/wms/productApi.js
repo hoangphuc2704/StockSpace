@@ -7,8 +7,8 @@ const productApi = {
   },
 
   // Lấy danh sách UOM
-  getUOMs: () => {
-    return api.get('/tenant/products/uoms')
+  getUOMs: ({ page = 0, size = 100 } = {}) => {
+    return api.get('/tenant/products/uoms', { params: { page, size } })
   },
 
   // Tạo danh mục mới
@@ -22,9 +22,9 @@ const productApi = {
   },
 
   // Lấy danh sách SKU sản phẩm (có phân trang)
-  getSKUs: ({ page, size } = {}) => {
+  getSKUs: ({ page = 0, size = 10 } = {}) => {
     return api.get('/tenant/products/skus', {
-      params: { page, size }
+      params: { page, size },
     })
   },
 
@@ -46,7 +46,7 @@ const productApi = {
   // Xóa SKU
   deleteSKU: (id) => {
     return api.delete(`/tenant/products/skus/${id}`)
-  }
+  },
 }
 
 export default productApi

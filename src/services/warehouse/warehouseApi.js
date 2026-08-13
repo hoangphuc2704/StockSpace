@@ -91,6 +91,10 @@ const onwerwarehouseApi = {
     return api.post(`/owner/inspections`, {}, { params: { warehouseId } })
   },
 
+  getOwnerInspections: ({ page = 0, size = 100 } = {}) => {
+    return api.get('/owner/inspections', { params: { page, size } })
+  },
+
   // --- API Xét duyệt Booking của Owner ---
 
   // Lấy danh sách yêu cầu thuê kho gửi đến (phân trang)

@@ -14,6 +14,7 @@ import {
   HiOutlineArrowRightOnRectangle,
   HiOutlineUserGroup,
   HiOutlineArchiveBox,
+  HiOutlineTag,
 } from 'react-icons/hi2'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
@@ -53,6 +54,7 @@ const SIDEBAR_MENUS = {
   TENANT: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/tenant/dashboard' },
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/tenant/inventory' },
+    { text: 'Categories & SKU', icon: HiOutlineTag, path: '/tenant/products' },
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/tenant/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/tenant/outbound' },
     { text: 'My Bookings', icon: HiOutlineHomeModern, path: '/tenant/warehouses' },

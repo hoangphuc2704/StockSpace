@@ -50,6 +50,7 @@ const normalizePublicLayout = (payload = {}) => ({
   length: Math.max(ensureNumber(payload.length, 100), 20),
   height: Math.max(ensureNumber(payload.height, 100), 20),
   footprintCells: Array.isArray(payload.footprintCells) ? payload.footprintCells.map(String) : null,
+  positions: Array.isArray(payload.positions) ? payload.positions.map(String) : [],
   racks: Array.isArray(payload.racks)
     ? payload.racks.map((rack) => ({
         clientKey: createClientKey('rack'),

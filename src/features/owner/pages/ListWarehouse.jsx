@@ -39,13 +39,15 @@ const WarehouseManagement = () => {
 
   // State quản lý phân trang đồng bộ từ API thực tế
   const [currentPage, setCurrentPage] = useState(0) // API trả về "page": 0 ở trang đầu tiên
-  const [pageSize, setPageSize] = useState(5) // API trả về "size": 5
+  const pageSize = 5 // API trả về "size": 5
   const [totalPages, setTotalPages] = useState(0) // API trả về "totalPages": 1
   const [totalElements, setTotalElements] = useState(0) // API trả về "totalElements": 2
 
   // Các trạng thái phục vụ tính năng yêu cầu kiểm duyệt & tải lại dữ liệu
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [requestingIds, setRequestingIds] = useState([])
+  const [inspectionsByWarehouse, setInspectionsByWarehouse] = useState({})
+  const [inspectionConfirm, setInspectionConfirm] = useState(null)
 
   // Xử lý gửi yêu cầu kiểm định kho qua API
   const handleRequestInspection = async (warehouseId) => {
@@ -57,12 +59,21 @@ const WarehouseManagement = () => {
 
       if (res?.data?.success || res?.success || res?.status === 200 || res?.status === 201) {
         toast.success('Submitted inspection request successfully!')
+        const inspection = res?.data?.data ?? res?.data
+        if (inspection?.warehouseId) {
+          setInspectionsByWarehouse((current) => ({
+            ...current,
+            [String(inspection.warehouseId)]: inspection,
+          }))
+        }
+        setInspectionConfirm(null)
         setRefreshTrigger((prev) => prev + 1)
       } else {
         toast.error(res?.data?.message || res?.message || 'Audit request failed.')
       }
     } catch (error) {
       console.error('Error when sending inspection request:', error)
+      toast.error(error.response?.data?.message || 'Unable to submit inspection request.')
     } finally {
       setRequestingIds((prev) => prev.filter((id) => id !== warehouseId))
     }
@@ -72,12 +83,15 @@ const WarehouseManagement = () => {
   useEffect(() => {
     const fetchWarehouses = async () => {
       try {
-        const response = await warehouseApi.getOwnerWarehouses({
-          page: currentPage,
-          size: pageSize,
-          sortBy: 'createdAt',
-          sortDir: 'desc',
-        })
+        const [response, inspectionResponse] = await Promise.all([
+          warehouseApi.getOwnerWarehouses({
+            page: currentPage,
+            size: pageSize,
+            sortBy: 'createdAt',
+            sortDir: 'desc',
+          }),
+          warehouseApi.getOwnerInspections({ page: 0, size: 200 }),
+        ])
 
         let apiResult = null
         if (response?.success && response?.data) {
@@ -94,6 +108,18 @@ const WarehouseManagement = () => {
         } else {
           setWarehouses([])
         }
+
+        const inspectionPage = inspectionResponse?.data?.data ?? inspectionResponse?.data
+        const inspectionList = Array.isArray(inspectionPage?.content) ? inspectionPage.content : []
+        const latestByWarehouse = {}
+        inspectionList.forEach((inspection) => {
+          const key = String(inspection.warehouseId)
+          const current = latestByWarehouse[key]
+          const timestamp = new Date(inspection.updatedAt || inspection.createdAt || 0).getTime()
+          const currentTimestamp = new Date(current?.updatedAt || current?.createdAt || 0).getTime()
+          if (!current || timestamp > currentTimestamp) latestByWarehouse[key] = inspection
+        })
+        setInspectionsByWarehouse(latestByWarehouse)
       } catch (error) {
         console.error('Error getting inventory list:', error)
         setWarehouses([])
@@ -145,6 +171,21 @@ const WarehouseManagement = () => {
           text: status || 'Unknown',
         }
     }
+  }
+
+  const getInspectionBadge = (warehouse, inspection) => {
+    const status = warehouse.verified ? 'PASSED' : inspection?.status
+    const configs = {
+      PENDING: ['bg-amber-50 text-amber-700 border-amber-200', 'Waiting for assignment'],
+      IN_PROGRESS: ['bg-blue-50 text-blue-700 border-blue-200', 'Inspection in progress'],
+      PASSED: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Inspection passed'],
+      FAILED: ['bg-red-50 text-red-700 border-red-200', 'Inspection failed'],
+    }
+    const [className, text] = configs[status] || [
+      'bg-slate-100 text-slate-600 border-slate-200',
+      'Not requested',
+    ]
+    return { status, className, text }
   }
 
   // Bộ lọc kết hợp Client-side hỗ trợ tìm kiếm nhanh theo dữ liệu hiển thị hiện tại
@@ -268,6 +309,11 @@ const WarehouseManagement = () => {
                       filteredWarehouses.map((wh) => {
                         const badge = getStatusBadge(wh.status)
                         const isCurrentlyRequesting = requestingIds.includes(wh.id)
+                        const inspection = inspectionsByWarehouse[String(wh.id)]
+                        const inspectionBadge = getInspectionBadge(wh, inspection)
+                        const requestPending = ['PENDING', 'IN_PROGRESS'].includes(
+                          inspectionBadge.status
+                        )
 
                         return (
                           <tr key={wh.id} className="transition-colors hover:bg-slate-50/60">
@@ -330,29 +376,40 @@ const WarehouseManagement = () => {
                             {/* Cột 6: Kiểm định */}
                             <td className="px-6 py-4 text-center">
                               <div className="flex flex-col items-center justify-center gap-1.5">
-                                {wh.verified ? (
-                                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${inspectionBadge.className}`}
+                                >
+                                  {inspectionBadge.status === 'PASSED' ? (
                                     <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                                    Tested
-                                  </span>
-                                ) : (
+                                  ) : inspectionBadge.status === 'IN_PROGRESS' ? (
+                                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <AlertTriangle className="mr-1 h-3.5 w-3.5" />
+                                  )}
+                                  {inspectionBadge.text}
+                                </span>
+                                {!wh.verified && (
                                   <div className="flex flex-col items-center gap-1">
-                                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                                      <AlertTriangle className="mr-1 h-3.5 w-3.5 text-amber-500" />
-                                      Not tested yet
-                                    </span>
                                     <button
-                                      onClick={() => handleRequestInspection(wh.id)}
-                                      disabled={isCurrentlyRequesting}
-                                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400"
+                                      onClick={() => setInspectionConfirm(wh)}
+                                      disabled={isCurrentlyRequesting || requestPending}
+                                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
                                     >
                                       {isCurrentlyRequesting ? (
                                         <>
                                           <Loader2 className="h-3 w-3 animate-spin" />
                                           Sending...
                                         </>
+                                      ) : requestPending ? (
+                                        inspectionBadge.status === 'PENDING' ? (
+                                          'Request submitted'
+                                        ) : (
+                                          'Being inspected'
+                                        )
+                                      ) : inspectionBadge.status === 'FAILED' ? (
+                                        'Request re-inspection'
                                       ) : (
-                                        'Requires moderation'
+                                        'Request inspection'
                                       )}
                                     </button>
                                   </div>
@@ -433,6 +490,42 @@ const WarehouseManagement = () => {
           </main>
         </div>
       </div>
+
+      {inspectionConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <h2 className="mt-4 text-xl font-bold text-slate-900">Confirm inspection request</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Submit <strong>{inspectionConfirm.name}</strong> for inspection? An inspection fee may
+              be charged according to the current system policy. The request button will be disabled
+              while this request is pending or in progress.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setInspectionConfirm(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={requestingIds.includes(inspectionConfirm.id)}
+                onClick={() => handleRequestInspection(inspectionConfirm.id)}
+                className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {requestingIds.includes(inspectionConfirm.id) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Confirm request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

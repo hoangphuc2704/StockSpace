@@ -62,7 +62,7 @@ const normalizeLayout = (payload = {}) => ({
   length: Math.max(numberOf(payload.length, 100), 20),
   height: Math.max(numberOf(payload.height, 100), 20),
   footprintCells: Array.isArray(payload.footprintCells) ? payload.footprintCells.map(String) : null,
-  blockedCells: Array.isArray(payload.blockedCells) ? payload.blockedCells.map(String) : [],
+  positions: Array.isArray(payload.positions) ? payload.positions.map(String) : [],
   racks: Array.isArray(payload.racks)
     ? payload.racks.map((rack, rackIndex) => ({
         ...rack,
