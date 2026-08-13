@@ -85,8 +85,8 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
               <span className="text-sm text-slate-400 font-medium">/mo</span>
             </p>
           </div>
-          <div className="relative z-20 text-black">
-            <span className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-5 py-1.5 text-sm font-medium text-black shadow-lg shadow-primary/20 transition-colors group-hover:bg-primary/90">
+          <div className="relative z-20">
+            <span className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-5 py-1.5 text-sm font-medium text-white shadow-lg shadow-primary/20 transition-colors group-hover:bg-primary/90">
               Details <ArrowRight size={14} className="ml-2 " />
             </span>
           </div>

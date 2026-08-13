@@ -341,14 +341,14 @@ const InventoryPage = () => {
           </div>
           <div>
             <p className="font-bold text-slate-900">{row.name}</p>
-            <p className="text-xs text-slate-500">{row.sku}</p>
+            <p className="text-xs text-slate-500">{row.skuCode || row.sku}</p>
           </div>
         </div>
       ),
     },
     {
       header: 'Category',
-      render: (row) => row.categoryName || 'Uncategorized',
+      render: (row) => row.categoryName || row.category || 'Uncategorized',
     },
     {
       header: 'Quantity',
@@ -381,18 +381,22 @@ const InventoryPage = () => {
           >
             <Eye className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => handleEditProductClick(row)}
-            className="rounded p-1.5 text-slate-500 hover:bg-slate-100"
-          >
-            <Edit className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDeleteProduct(row.id)}
-            className="text-danger/10 text-danger rounded p-1.5 hover:bg-slate-100"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          {currentRole === 'TENANT' && (
+            <>
+              <button
+                onClick={() => handleEditProductClick(row)}
+                className="rounded p-1.5 text-slate-500 hover:bg-slate-100"
+              >
+                <Edit className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteProduct(row.id)}
+                className="text-danger/10 text-danger rounded p-1.5 hover:bg-slate-100"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       ),
     },
@@ -433,21 +437,23 @@ const InventoryPage = () => {
                   <Button variant="outline" size="sm" className="hidden sm:flex">
                     <Download className="mr-2 h-4 w-4" /> Export
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setIsEditing(false)
-                      setEditingProductId(null)
-                      setFormName('')
-                      setFormSkuCode('')
-                      setFormCategoryId('')
-                      setFormUomId('')
-                      setFormSpecs([])
-                      setIsModalOpen(true)
-                    }}
-                  >
-                    <Plus className="mr-2 h-4 w-4" /> Add Product
-                  </Button>
+                  {currentRole === 'TENANT' && (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setIsEditing(false)
+                        setEditingProductId(null)
+                        setFormName('')
+                        setFormSkuCode('')
+                        setFormCategoryId('')
+                        setFormUomId('')
+                        setFormSpecs([])
+                        setIsModalOpen(true)
+                      }}
+                    >
+                      <Plus className="mr-2 h-4 w-4" /> Add Product
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -548,12 +554,12 @@ const InventoryPage = () => {
                         </div>
                         <div>
                           <p className="text-xs text-slate-400">SKU</p>
-                          <p className="text-sm font-bold text-slate-900">{selectedProduct.sku}</p>
+                          <p className="text-sm font-bold text-slate-900">{selectedProduct.skuCode || selectedProduct.sku}</p>
                         </div>
                         <div>
                           <p className="text-xs text-slate-400">Category</p>
                           <p className="text-sm font-bold text-slate-900">
-                            {selectedProduct.category}
+                            {selectedProduct.categoryName || selectedProduct.category || 'Uncategorized'}
                           </p>
                         </div>
                         <div>
@@ -578,7 +584,7 @@ const InventoryPage = () => {
                             >
                               <div>
                                 <p className="text-sm font-bold text-slate-900">
-                                  Zone {loc.zoneName} - Rack {loc.rackName}
+                                  {loc.warehouseName ? `Kho ${loc.warehouseName}` : 'Unknown Warehouse'} - Rack {loc.rackName}
                                 </p>
                                 <p className="text-[10px] text-slate-400">
                                   Bin: {loc.binName} | Batch ID: {loc.batchId?.substring(0, 8)}...

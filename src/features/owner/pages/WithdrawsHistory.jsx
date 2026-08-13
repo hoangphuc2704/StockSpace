@@ -37,6 +37,7 @@ const WithdrawHistory = () => {
     size: 10,
     totalElements: 0,
     totalPages: 1,
+    last: false,
   })
 
   const [withdrawals, setWithdrawals] = useState([])
@@ -46,6 +47,7 @@ const WithdrawHistory = () => {
     size: 10,
     totalElements: 0,
     totalPages: 1,
+    last: false,
   })
 
   // --- HÀM LẤY DỮ LIỆU ---
@@ -74,6 +76,7 @@ const WithdrawHistory = () => {
           size: res.data.data.size,
           totalElements: res.data.data.totalElements,
           totalPages: res.data.data.totalPages,
+          last: res.data.data.last,
         })
       }
     } catch (error) {
@@ -95,6 +98,7 @@ const WithdrawHistory = () => {
           size: res.data.data.size,
           totalElements: res.data.data.totalElements,
           totalPages: res.data.data.totalPages,
+          last: res.data.data.last,
         })
       }
     } catch (error) {
@@ -393,7 +397,7 @@ const WithdrawHistory = () => {
                           >
                             Before
                           </button>
-                          {[...Array(pagination.totalPages).keys()].map((p) => (
+                          {[...Array(pagination.totalPages).keys()].filter(p => p >= pagination.page - 2 && p <= pagination.page + 2).map((p) => (
                             <button
                               key={p}
                               onClick={() => fetchTransactions(p)}
@@ -407,7 +411,7 @@ const WithdrawHistory = () => {
                             </button>
                           ))}
                           <button
-                            disabled={pagination.page === pagination.totalPages - 1}
+                            disabled={pagination.last}
                             onClick={() => fetchTransactions(pagination.page + 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
@@ -435,7 +439,7 @@ const WithdrawHistory = () => {
                           >
                             Before
                           </button>
-                          {[...Array(withdrawPagination.totalPages).keys()].map((p) => (
+                          {[...Array(withdrawPagination.totalPages).keys()].filter(p => p >= withdrawPagination.page - 2 && p <= withdrawPagination.page + 2).map((p) => (
                             <button
                               key={p}
                               onClick={() => fetchWithdrawals(p)}
@@ -449,7 +453,7 @@ const WithdrawHistory = () => {
                             </button>
                           ))}
                           <button
-                            disabled={withdrawPagination.page === withdrawPagination.totalPages - 1}
+                            disabled={withdrawPagination.last}
                             onClick={() => fetchWithdrawals(withdrawPagination.page + 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >

@@ -189,6 +189,88 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
   )
 }
 
+// ─── Report Failed Modal ────────────────────────────────────────────────────────
+const ReportFailedModal = ({ contractId, onClose, onSuccess }) => {
+  useEscapeKey(true, onClose)
+  const [reason, setReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!reason.trim()) {
+      setError('Please enter the reason.')
+      return
+    }
+    setError(null)
+    setSubmitting(true)
+    try {
+      await contractApi.tenantReportFailed(contractId, { reason: reason.trim() })
+      toast.success('Reported failure successfully! Dispute ticket has been opened.')
+      onSuccess?.()
+      onClose()
+    } catch (err) {
+      setError(err.response?.data?.message || 'Submit failed. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <X className="h-5 w-5 text-rose-600" /> Report Failure / Reject
+          </h3>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+          <strong>Note:</strong> By rejecting this contract, it will be marked as disputed and sent to the Admin.
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-2 block text-xs font-bold text-slate-500">
+              Reason <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={4}
+              placeholder="Describe why you are rejecting this contract..."
+              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800 transition-colors focus:border-rose-400 focus:bg-white focus:ring-2 focus:ring-rose-100 focus:outline-none"
+            />
+          </div>
+          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-rose-700 disabled:bg-slate-300"
+            >
+              {submitting ? (
+                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Sending...</>
+              ) : "Report & Reject"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Detail Modal ────────────────────────────────────────────────────────────
 const DetailModal = ({ dispute, onClose }) => {
   useEscapeKey(true, onClose)
@@ -333,6 +415,9 @@ const TenantContractsPage = () => {
   // Dispute modal state
   const [disputeContractId, setDisputeContractId] = useState(null)
 
+  // Report Failed modal state
+  const [reportFailedId, setReportFailedId] = useState(null)
+
   const [viewDispute, setViewDispute] = useState(null)
   const [loadingDispute, setLoadingDispute] = useState(false)
 
@@ -372,6 +457,25 @@ const TenantContractsPage = () => {
       fetchContracts()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Contract validation failed')
+    }
+  }
+
+  const handleRespondCancel = async (id, agree) => {
+    const confirmed = await confirmDialog({
+      title: agree ? 'Agree to Cancel' : 'Reject Cancel Request',
+      message: agree 
+        ? 'Are you sure you want to AGREE to cancel this deal? Your deposit will be refunded.' 
+        : 'Are you sure you want to REJECT this cancel request? This will escalate to a dispute.',
+      confirmText: 'Confirm',
+    })
+    if (!confirmed) return
+
+    try {
+      await contractApi.tenantRespondCancel(id, { agree })
+      toast.success(agree ? 'Deal cancelled.' : 'Deal disputed.')
+      fetchContracts()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Action failed')
     }
   }
 
@@ -499,6 +603,35 @@ const TenantContractsPage = () => {
             </Button>
           )}
 
+          {(row.status === 'UNDER_NEGOTIATION' || row.status === 'PENDING_TENANT_CONFIRM') && (
+            <Button
+              size="sm"
+              className="bg-rose-100 text-rose-700 hover:bg-rose-200"
+              onClick={() => setReportFailedId(row.id)}
+            >
+              <X className="mr-1.5 h-4 w-4" /> Reject & Report
+            </Button>
+          )}
+
+          {row.status === 'PENDING_CANCEL' && (
+            <>
+              <Button
+                size="sm"
+                className="bg-success-100 text-success-700 hover:bg-success-200"
+                onClick={() => handleRespondCancel(row.id, true)}
+              >
+                <CheckCircle className="mr-1.5 h-4 w-4" /> Agree Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="bg-rose-100 text-rose-700 hover:bg-rose-200"
+                onClick={() => handleRespondCancel(row.id, false)}
+              >
+                <X className="mr-1.5 h-4 w-4" /> Reject Cancel
+              </Button>
+            </>
+          )}
+
           {/* Nút Tranh chấp — hiện khi status phù hợp & trong vòng 7 ngày */}
           {DISPUTABLE_STATUSES.includes(row.status) && isWithin7Days(row.createdAt) && (
             <Button
@@ -575,6 +708,15 @@ const TenantContractsPage = () => {
         <DisputeModal
           contractId={disputeContractId}
           onClose={() => setDisputeContractId(null)}
+          onSuccess={fetchContracts}
+        />
+      )}
+
+      {/* Report Failed Modal */}
+      {reportFailedId && (
+        <ReportFailedModal
+          contractId={reportFailedId}
+          onClose={() => setReportFailedId(null)}
           onSuccess={fetchContracts}
         />
       )}
