@@ -17,6 +17,8 @@ import {
 import { chatApi, guestChatStorage } from '../services/chatApi'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 const CHAT_ROLE_CONFIG = {
   guest: {
@@ -488,18 +490,36 @@ const AIChatPanel = ({ chatRole }) => {
                             className={`max-w-[82%] ${fromUser ? 'items-end' : 'items-start'} flex flex-col`}
                           >
                             <div
-                              className={`rounded-2xl px-3.5 py-2.5 text-sm leading-6 break-words whitespace-pre-line ${
+                              className={`rounded-2xl px-4 py-3 text-sm leading-relaxed break-words ${
                                 fromUser
-                                  ? 'rounded-br-md bg-orange-500 text-white shadow-sm'
+                                  ? 'rounded-br-md bg-orange-500 text-white shadow-sm whitespace-pre-line'
                                   : 'rounded-bl-md border border-slate-200 bg-white text-slate-700 shadow-sm'
                               }`}
                             >
-                              {normalizeChatContent(item.content) || (
+                              {!item.content ? (
                                 <span className="flex items-center gap-1 py-1 text-slate-400">
                                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.2s]" />
                                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.1s]" />
                                   <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current" />
                                 </span>
+                              ) : fromUser ? (
+                                normalizeChatContent(item.content)
+                              ) : (
+                                <div className="markdown-chat">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                                      ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                                      ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                                      li: ({ children }) => <li>{children}</li>,
+                                      strong: ({ children }) => <strong className="font-bold text-slate-900">{children}</strong>,
+                                      a: ({ href, children }) => <a href={href} className="text-orange-600 hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                                    }}
+                                  >
+                                    {item.content}
+                                  </ReactMarkdown>
+                                </div>
                               )}
                             </div>
                             {item.createdAt && (

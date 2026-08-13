@@ -17,12 +17,8 @@ import Button from '@/components/atoms/Button'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import PublicHeader from '@/components/PublicHeader'
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   { id: 'all', label: 'All Spaces', icon: WarehouseIcon },
-  { id: 'cold', label: 'Cold Storage', icon: ThermometerSnowflake },
-  { id: 'fulfillment', label: 'Fulfillment', icon: Box },
-  { id: 'high-security', label: 'High Security', icon: Shield },
-  { id: 'last-mile', label: 'Last Mile', icon: Zap },
 ]
 
 const WarehouseSkeleton = () => (
@@ -80,7 +76,33 @@ const WarehouseListingPage = () => {
   const [activeCategory, setActiveCategory] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [warehouses, setWarehouses] = useState([])
+  const [categories, setCategories] = useState(DEFAULT_CATEGORIES)
   const [error, setError] = useState('')
+  const [apiFilters, setApiFilters] = useState({
+    minPrice: '',
+    maxPrice: '',
+    minCapacity: '',
+  })
+
+  // Fetch categories (Warehouse Types)
+  useEffect(() => {
+    const fetchTypes = async () => {
+      try {
+        const response = await warehouseApi.getWarehouseTypesByOwner()
+        if (response?.data?.success && Array.isArray(response.data.data)) {
+          const fetchedCategories = response.data.data.map((type) => ({
+            id: type.name.toLowerCase(),
+            label: type.name,
+            icon: Box // default icon for dynamic types
+          }))
+          setCategories([...DEFAULT_CATEGORIES, ...fetchedCategories])
+        }
+      } catch (err) {
+        console.error('Failed to load warehouse types', err)
+      }
+    }
+    fetchTypes()
+  }, [])
 
   useEffect(() => {
     const fetchWarehouses = async () => {
@@ -88,13 +110,20 @@ const WarehouseListingPage = () => {
         setIsLoading(true)
         setError('')
 
-        const response = await warehouseApi.getPublicWarehouses({
+        const params = {
           page: 0,
           size: 24,
           status: 'AVAILABLE',
           sortBy: 'createdAt',
           sortDir: 'desc',
-        })
+          keyword: searchTerm.trim() || undefined,
+        }
+
+        if (apiFilters.minPrice) params.minPrice = apiFilters.minPrice
+        if (apiFilters.maxPrice) params.maxPrice = apiFilters.maxPrice
+        if (apiFilters.minCapacity) params.minCapacity = apiFilters.minCapacity
+
+        const response = await warehouseApi.getPublicWarehouses(params)
 
         const payload = response?.data?.data
         const content = Array.isArray(payload?.content)
@@ -113,22 +142,19 @@ const WarehouseListingPage = () => {
       }
     }
 
-    fetchWarehouses()
-  }, [])
+    // Debounce the API call slightly if searching by keyword
+    const timer = setTimeout(() => {
+      fetchWarehouses()
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [apiFilters, searchTerm])
 
   const filteredWarehouses = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase()
-
     return warehouses.filter((warehouse) => {
-      const matchesSearch =
-        !keyword ||
-        warehouse.name.toLowerCase().includes(keyword) ||
-        warehouse.location.toLowerCase().includes(keyword) ||
-        warehouse.type.toLowerCase().includes(keyword)
-
-      return matchesSearch && matchesCategory(warehouse, activeCategory)
+      return matchesCategory(warehouse, activeCategory)
     })
-  }, [activeCategory, searchTerm, warehouses])
+  }, [activeCategory, warehouses])
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -138,7 +164,7 @@ const WarehouseListingPage = () => {
           <div className="container mx-auto px-4 py-4">
             <div className="flex flex-col items-center gap-6 lg:flex-row">
               <div className="flex flex-1 items-center gap-8 overflow-x-auto pb-1 no-scrollbar">
-                {CATEGORIES.map((cat) => (
+                {categories.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
@@ -215,13 +241,14 @@ const WarehouseListingPage = () => {
                     onClick={() => {
                       setSearchTerm('')
                       setActiveCategory('all')
+                      setApiFilters({ minPrice: '', maxPrice: '', minCapacity: '' })
                     }}
                     className="text-xs font-bold text-primary hover:underline"
                   >
                     Clear all
                   </button>
                 </div>
-                <WarehouseFilters />
+                <WarehouseFilters onFilterChange={setApiFilters} />
               </div>
             </aside>
 

@@ -57,7 +57,7 @@ const ConfirmDepositModal = ({
             Cancel
           </Button>
           <Button
-            className="flex-1 text-black"
+            className="flex-1 text-white"
             disabled={walletBalance - depositAmount < 0 || isBooking}
             onClick={onConfirm}
           >

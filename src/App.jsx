@@ -42,6 +42,8 @@ import TenantDashboard from './features/tenant/pages/TenantDashboard'
 import InventoryPage from './features/inventory/pages/InventoryPage'
 import InboundPage from './features/inbound/pages/InboundPage'
 import OutboundPage from './features/outbound/pages/OutboundPage'
+import InventoryAuditPage from './features/inventory/pages/InventoryAuditPage'
+import InventoryAuditDetailPage from './features/inventory/pages/InventoryAuditDetailPage'
 import MyBookingsPage from './features/tenant/pages/MyBookingsPage'
 import BillingPage from './features/tenant/pages/BillingPage'
 import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
@@ -145,6 +147,8 @@ const App = () => {
         <Route element={<RoleGuard allowedRoles={['ROLE_TENANT']} />}>
           <Route path="/tenant/dashboard" element={<TenantDashboard />} />
           <Route path="/tenant/inventory" element={<InventoryPage />} />
+          <Route path="/tenant/inventory-audits" element={<InventoryAuditPage currentRole="TENANT" />} />
+          <Route path="/tenant/inventory-audits/:id" element={<InventoryAuditDetailPage currentRole="TENANT" />} />
           <Route path="/tenant/inbound" element={<InboundPage />} />
           <Route path="/tenant/outbound" element={<OutboundPage />} />
           <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
@@ -188,6 +192,8 @@ const App = () => {
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
           <Route path="/staff/inventory" element={<InventoryPage />} />
+          <Route path="/staff/inventory-audits" element={<InventoryAuditPage currentRole="STAFF" />} />
+          <Route path="/staff/inventory-audits/:id" element={<InventoryAuditDetailPage currentRole="STAFF" />} />
           <Route path="/staff/inbound" element={<InboundPage />} />
           <Route path="/staff/outbound" element={<OutboundPage />} />
           <Route path="/staff/career-history" element={<StaffCareerHistoryPage />} />

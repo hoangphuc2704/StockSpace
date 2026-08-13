@@ -57,6 +57,7 @@ const SIDEBAR_MENUS = {
     { text: 'Categories & SKU', icon: HiOutlineTag, path: '/tenant/products' },
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/tenant/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/tenant/outbound' },
+    { text: 'Audits', icon: HiOutlineClipboardDocumentList, path: '/tenant/inventory-audits' },
     { text: 'My Bookings', icon: HiOutlineHomeModern, path: '/tenant/warehouses' },
     { text: 'My Contracts', icon: HiOutlineDocumentText, path: '/tenant/contracts' },
     { text: 'Dispute', icon: HiOutlineExclamationCircle, path: '/tenant/disputes' },
@@ -86,6 +87,7 @@ const SIDEBAR_MENUS = {
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/staff/inventory' },
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/staff/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/staff/outbound' },
+    { text: 'Audits', icon: HiOutlineClipboardDocumentList, path: '/staff/inventory-audits' },
   ],
   INSPECTOR: [
     {

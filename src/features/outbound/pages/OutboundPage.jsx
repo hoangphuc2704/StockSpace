@@ -96,7 +96,9 @@ const OutboundPage = () => {
 
   const fetchLayout = async () => {
     try {
-      const res = await warehouseApi.getTenantWarehouseLayout(selectedWarehouseId)
+      const res = currentRole === 'STAFF'
+        ? await warehouseApi.getPublicWarehouseLayout(selectedWarehouseId)
+        : await warehouseApi.getTenantWarehouseLayout(selectedWarehouseId)
       setLayout(res.data?.data)
     } catch (error) {
       setLayout(null)
@@ -358,7 +360,7 @@ const OutboundPage = () => {
                     >
                       <option value="">-- Select product --</option>
                       {skus.map(sku => (
-                        <option key={sku.id} value={sku.id}>[{sku.skuCode}] {sku.productCategory?.name}</option>
+                        <option key={sku.id} value={sku.id}>[{sku.skuCode}] {sku.name}</option>
                       ))}
                     </select>
                   </div>

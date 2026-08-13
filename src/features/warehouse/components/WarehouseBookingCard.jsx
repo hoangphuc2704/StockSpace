@@ -54,23 +54,19 @@ const WarehouseBookingCard = ({
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Security Deposit ({depositPercentage}%)</span>
-                <span className="font-semibold">${extendedData.deposit.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Service Fee</span>
-                <span className="font-semibold">$99.00</span>
+                <span className="font-semibold">{extendedData.deposit.toLocaleString()} VND</span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-3 text-lg font-black text-slate-900">
-                <span>Total to Book</span>
+                <span>Total to Book (Deposit)</span>
                 <span className="text-primary">
-                  ${(warehouse.price + extendedData.deposit + 99).toLocaleString()}
+                  {extendedData.deposit.toLocaleString()} VND
                 </span>
               </div>
             </div>
           </div>
 
           <Button
-            className="group shadow-primary/30 text-blackshadow-xl h-14 w-full rounded-2xl text-lg font-bold"
+            className="group shadow-primary/30 text-white shadow-xl h-14 w-full rounded-2xl text-lg font-bold"
             disabled={isCheckingWallet || hasBooked}
             onClick={onDepositClick}
           >

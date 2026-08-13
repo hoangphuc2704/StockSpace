@@ -52,7 +52,7 @@ const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—'
 
 // ─── Reject Modal ─────────────────────────────────────────────────────────────
 const RejectModal = ({ withdrawal, onClose }) => {
-  useEscapeKey(true, onClose)
+    useEscapeKey(true, onClose)
     const dispatch = useDispatch()
     const { actionLoading, actionError } = useSelector((state) => state.adminWithdrawals)
 
@@ -156,7 +156,7 @@ const RejectModal = ({ withdrawal, onClose }) => {
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
-  useEscapeKey(true, onClose)
+    useEscapeKey(true, onClose)
     const { actionLoading } = useSelector((state) => state.adminWithdrawals)
     const StatusIcon = STATUS_CONFIG[withdrawal.status]?.icon || Clock
 
@@ -351,9 +351,9 @@ const AdminWithdrawalsPage = () => {
                     </button>
                     <div className="flex cursor-pointer items-center gap-2">
                         <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <a href="/" aria-label="Back to landing page">
-                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
-              </a>
+                            <a href="/" aria-label="Back to landing page">
+                                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+                            </a>
                         </div>
                         <span className="font-display text-xl font-bold tracking-tight text-slate-950">
                             StockSpace Admin
@@ -526,7 +526,7 @@ const AdminWithdrawalsPage = () => {
                                                             {formatDate(w.createdAt)}
                                                         </td>
                                                         <td className="px-5 py-3.5">
-                                                            <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                                            <div className="flex items-center gap-2 transition-opacity">
                                                                 <button
                                                                     onClick={() => setSelectedItem(w)}
                                                                     className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"

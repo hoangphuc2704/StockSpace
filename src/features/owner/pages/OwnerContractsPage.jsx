@@ -180,6 +180,85 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
   )
 }
 
+// ─── Cancel Deal Modal ────────────────────────────────────────────────────────
+const CancelDealModal = ({ contractId, onClose, onSuccess }) => {
+  useEscapeKey(true, onClose)
+  const [reason, setReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!reason.trim()) {
+      setError("Please enter the reason.")
+      return
+    }
+    setError(null)
+    setSubmitting(true)
+    try {
+      await contractApi.ownerRequestCancel(contractId, { reason: reason.trim() })
+      toast.success("Cancellation request sent successfully! Waiting for Tenant to respond.")
+      onSuccess?.()
+      onClose()
+    } catch (err) {
+      setError(err.response?.data?.message || "Action failed.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <X className="h-5 w-5 text-rose-600" /> Cancel Contract
+          </h3>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-2 block text-xs font-bold text-slate-500">
+              Reason <span className="text-rose-500">*</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="Enter reason for cancelling this deal..."
+              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800 transition-colors focus:border-rose-400 focus:bg-white focus:ring-2 focus:ring-rose-100 focus:outline-none"
+            />
+          </div>
+          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+            >
+              Back
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-rose-700 disabled:bg-slate-300"
+            >
+              {submitting ? (
+                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Sending...</>
+              ) : "Cancel Contract"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ─── Detail Modal ────────────────────────────────────────────────────────────
 const DetailModal = ({ dispute, onClose }) => {
   useEscapeKey(true, onClose)
@@ -314,6 +393,9 @@ const OwnerContractsPage = () => {
   // Dispute modal state
   const [disputeContractId, setDisputeContractId] = useState(null)
 
+  // Cancel Deal modal state
+  const [cancelContractId, setCancelContractId] = useState(null)
+
   const [viewDispute, setViewDispute] = useState(null)
   const [loadingDispute, setLoadingDispute] = useState(false)
 
@@ -385,18 +467,13 @@ const OwnerContractsPage = () => {
     try {
       setSubmitLoading(true)
       
-      // Upload multiple files using Promise.all
-      const uploadPromises = contractFiles.map(file => uploadApi.uploadImage(file))
-      const uploadResponses = await Promise.all(uploadPromises)
-      
-      const uploadedUrls = []
-      for (const res of uploadResponses) {
-        if (res?.data?.success) {
-          uploadedUrls.push(res.data.data)
-        } else {
-          throw new Error(res?.data?.message || "Upload photo failed")
-        }
+      // Upload multiple files using bulk API
+      const res = await uploadApi.uploadImages(contractFiles)
+      if (!res?.data?.success) {
+        throw new Error(res?.data?.message || "Upload photo failed")
       }
+      
+      const uploadedUrls = res.data.data
 
       const payload = {
         startDate,
@@ -488,6 +565,12 @@ const OwnerContractsPage = () => {
           {row.status === 'UNDER_NEGOTIATION' && (
             <Button size="sm" className="text-black bg-blue-100 hover:bg-blue-200" onClick={() => openUploadModal(row.id)}>
               <Upload className="mr-2 h-4 w-4 text-black" /> Upload
+            </Button>
+          )}
+
+          {(row.status === 'UNDER_NEGOTIATION' || row.status === 'PENDING_TENANT_CONFIRM') && (
+            <Button size="sm" className="bg-rose-100 text-rose-700 hover:bg-rose-200" onClick={() => setCancelContractId(row.id)}>
+              <X className="mr-1.5 h-4 w-4" /> Cancel Request
             </Button>
           )}
 
@@ -674,6 +757,15 @@ const OwnerContractsPage = () => {
         <DisputeModal
           contractId={disputeContractId}
           onClose={() => setDisputeContractId(null)}
+          onSuccess={fetchContracts}
+        />
+      )}
+
+      {/* Cancel Deal Modal */}
+      {cancelContractId && (
+        <CancelDealModal
+          contractId={cancelContractId}
+          onClose={() => setCancelContractId(null)}
           onSuccess={fetchContracts}
         />
       )}
