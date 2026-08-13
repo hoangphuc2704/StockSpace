@@ -251,13 +251,12 @@ function BinStockMiniMap({ layout, selection, onSelectBin }) {
               return (
                 <div
                   key={cellKey(row, column)}
-                  className={`border border-slate-200/70 ${
-                    blockedCells.has(cellKey(row, column))
+                  className={`border border-slate-200/70 ${blockedCells.has(cellKey(row, column))
                       ? 'bg-slate-900'
                       : activeCells.has(cellKey(row, column))
                         ? 'bg-blue-50'
                         : 'bg-slate-300/80'
-                  }`}
+                    }`}
                 />
               )
             })}
@@ -287,11 +286,10 @@ function BinStockMiniMap({ layout, selection, onSelectBin }) {
                     event.stopPropagation()
                     onSelectBin(bin.clientKey)
                   }}
-                  className={`pointer-events-auto absolute min-h-3.5 min-w-3.5 cursor-pointer rounded-sm border bg-emerald-500/95 shadow transition hover:z-30 hover:scale-110 hover:bg-emerald-400 ${
-                    selection.type === 'bin' && selection.key === bin.clientKey
+                  className={`pointer-events-auto absolute min-h-3.5 min-w-3.5 cursor-pointer rounded-sm border bg-emerald-500/95 shadow transition hover:z-30 hover:scale-110 hover:bg-emerald-400 ${selection.type === 'bin' && selection.key === bin.clientKey
                       ? 'z-20 border-white ring-2 ring-emerald-200'
                       : 'z-10 border-emerald-900'
-                  }`}
+                    }`}
                   style={{
                     left: `${(bin.coordinateX / rack.width) * 100}%`,
                     top: `${(bin.coordinateY / rack.length) * 100}%`,
@@ -802,30 +800,30 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const propertyFields =
     selection.type === 'layout'
       ? [
+        ['width', 'Wide', 'm'],
+        ['length', 'Long', 'm'],
+        ['height', 'Height', 'm'],
+      ]
+      : selection.type === 'rack'
+        ? [
+          ['name', 'Name'],
+          ['code', 'Code'],
           ['width', 'Wide', 'm'],
           ['length', 'Long', 'm'],
           ['height', 'Height', 'm'],
+          ['maxWeight', 'Maximum load', 'kg'],
+          ['maxVolume', 'Maximum volume', 'm³'],
         ]
-      : selection.type === 'rack'
-        ? [
-            ['name', 'Name'],
-            ['code', 'Code'],
-            ['width', 'Wide', 'm'],
-            ['length', 'Long', 'm'],
-            ['height', 'Height', 'm'],
-            ['maxWeight', 'Maximum load', 'kg'],
-            ['maxVolume', 'Maximum volume', 'm³'],
-          ]
         : [
-            ['name', 'Name'],
-            ['code', 'Code'],
-            ['width', 'Wide', 'm'],
-            ['length', 'Long', 'm'],
-            ['height', 'Height', 'm'],
-            ['shelfLevel', 'Floor'],
-            ['maxWeight', 'Maximum load', 'kg'],
-            ['maxVolume', 'Maximum volume', 'm³'],
-          ]
+          ['name', 'Name'],
+          ['code', 'Code'],
+          ['width', 'Wide', 'm'],
+          ['length', 'Long', 'm'],
+          ['height', 'Height', 'm'],
+          ['shelfLevel', 'Floor'],
+          ['maxWeight', 'Maximum load', 'kg'],
+          ['maxVolume', 'Maximum volume', 'm³'],
+        ]
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -841,9 +839,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       <div className="flex pt-14">
         <Sidebar currentRole={currentRole} />
         <div
-          className={`min-w-0 flex-1 transition-all duration-150 ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`min-w-0 flex-1 transition-all duration-150 ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-425 space-y-4 p-3 sm:p-5 lg:p-7">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

@@ -6,7 +6,7 @@ import Header from '@/components/HeaderDashboard'
 import {
   ArrowDownLeft, Package, Truck, Search,
   Plus, History, BarChart2, ShieldCheck,
-  FileText, Download, Loader2
+  FileText, Download, Loader2, PlusCircle, Trash2
 } from 'lucide-react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -18,6 +18,7 @@ import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
 import receiptApi from '@/services/wms/receiptApi'
+import stockApi from '@/services/wms/stockApi'
 import productApi from '../../../services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
@@ -53,10 +54,51 @@ const InboundPage = () => {
 
   // Form states
   const [formSkuId, setFormSkuId] = useState('')
-  const [formQuantity, setFormQuantity] = useState(1)
-  const [formRackId, setFormRackId] = useState('')
-  const [formBinId, setFormBinId] = useState('')
+  const [formTotalQuantity, setFormTotalQuantity] = useState(1)
+  const [allocations, setAllocations] = useState({}) // { binId: quantity }
+  const [binCapacities, setBinCapacities] = useState({})
   const [formNote, setFormNote] = useState('')
+
+  useEffect(() => {
+    const fetchCapacities = async () => {
+      if (!selectedWarehouseId || !layout) return;
+      const binIds = layout.racks?.flatMap(r => r.bins?.map(b => b.id)) || [];
+      const newCapacities = { ...binCapacities };
+      let changed = false;
+      
+      for (const binId of binIds) {
+        if (!newCapacities[binId]) {
+          try {
+            let targetBin = null;
+            layout.racks?.forEach(r => {
+              const b = r.bins?.find(b => b.id === binId);
+              if (b) targetBin = b;
+            });
+            if (!targetBin) continue;
+            
+            const stockRes = await stockApi.getStockByBin(selectedWarehouseId, binId);
+            const currentStock = stockRes.totalQuantity || 0;
+            const maxWeight = targetBin.maxWeight ? Number(targetBin.maxWeight) : Infinity;
+            const maxVolume = targetBin.maxVolume ? Number(targetBin.maxVolume) : Infinity;
+            const maxCapacity = Math.min(maxWeight, maxVolume);
+            
+            newCapacities[binId] = {
+              max: maxCapacity === Infinity ? 'Unlimited' : maxCapacity,
+              current: currentStock,
+              available: maxCapacity === Infinity ? 'Unlimited' : Math.max(maxCapacity - currentStock, 0)
+            };
+            changed = true;
+          } catch (e) {
+            console.error('Error fetching bin capacity', e);
+          }
+        }
+      }
+      if (changed) {
+        setBinCapacities(newCapacities);
+      }
+    };
+    fetchCapacities();
+  }, [selectedWarehouseId, layout]);
 
   useEffect(() => {
     fetchInitialData()
@@ -147,11 +189,51 @@ const InboundPage = () => {
     }
   }
 
-  const handleCreateReceipt = async (e) => {
+      const handleCreateReceipt = async (e) => {
     e.preventDefault()
-    if (!formSkuId || !formRackId || !formBinId) {
-      toast.error("Please select complete product and location")
+    if (!formSkuId) {
+      toast.error("Please select a product")
       return
+    }
+    
+    // Filter out bins with 0 or empty quantity
+    const activeAllocations = Object.entries(allocations).filter(([binId, qty]) => Number(qty) > 0);
+    
+    if (activeAllocations.length === 0) {
+      toast.error("Please allocate quantity to at least one bin")
+      return
+    }
+    
+    let totalAllocated = 0;
+    const payloadItems = [];
+
+    for (const [binId, qtyStr] of activeAllocations) {
+      const qty = Number(qtyStr);
+      totalAllocated += qty;
+      
+      let rackId = null;
+      layout?.racks?.forEach(r => {
+        if (r.bins?.some(b => b.id === binId)) rackId = r.id;
+      });
+      
+      const cap = binCapacities[binId];
+      if (cap && cap.available !== 'Unlimited' && qty > cap.available) {
+        toast.error(`Bin exceeds capacity! (Available: ${cap.available}, Allocated: ${qty}). Please adjust.`)
+        return
+      }
+      
+      payloadItems.push({
+        skuId: formSkuId,
+        quantity: qty,
+        rackId: rackId,
+        binId: binId,
+        note: formNote
+      });
+    }
+    
+    if (totalAllocated !== Number(formTotalQuantity)) {
+      toast.error(`Total allocated (${totalAllocated}) must equal the total quantity (${formTotalQuantity})`);
+      return;
     }
 
     setIsSubmitting(true)
@@ -159,26 +241,17 @@ const InboundPage = () => {
       const payload = {
         warehouseId: selectedWarehouseId,
         type: 'INBOUND',
-        items: [
-          {
-            skuId: formSkuId,
-            quantity: Number(formQuantity),
-            rackId: formRackId,
-            binId: formBinId,
-            note: formNote
-          }
-        ]
+        items: payloadItems
       }
       await receiptApi.createReceipt(payload)
       toast.success("Created successful entry form")
       setIsModalOpen(false)
       fetchReceipts()
 
-      // Reset form
       setFormSkuId('')
-      setFormQuantity(1)
-      setFormRackId('')
-      setFormBinId('')
+      setFormTotalQuantity(1)
+      setAllocations({})
+      setBinCapacities({})
       setFormNote('')
     } catch (error) {
       console.error('Error creating receipt:', error)
@@ -350,70 +423,85 @@ const InboundPage = () => {
                 onClose={() => setIsModalOpen(false)}
                 title="Register New Inbound Shipment"
               >
-                <form onSubmit={handleCreateReceipt} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Select Product (SKU)</label>
-                    <select
-                      required
-                      className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
-                      value={formSkuId}
-                      onChange={(e) => setFormSkuId(e.target.value)}
-                    >
-                      <option value="">-- Select product --</option>
-                      {skus.map(sku => (
-                        <option key={sku.id} value={sku.id}>[{sku.skuCode}] {sku.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Quantity</label>
-                    <InputField
-                      type="number"
-                      min="1"
-                      required
-                      value={formQuantity}
-                      onChange={(e) => setFormQuantity(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Select Rack</label>
-                    <select
-                      required
-                      className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
-                      value={formRackId}
-                      onChange={(e) => {
-                        setFormRackId(e.target.value)
-                        setFormBinId('')
-                      }}
-                    >
-                      <option value="">-- Select Rack --</option>
-                      {layout?.racks?.map(r => (
-                        <option key={r.id} value={r.id}>
-                          {r.name} {r.zoneName ? `(${r.zoneName})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {formRackId && (
+                                                <form onSubmit={handleCreateReceipt} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">Select Bin</label>
+                      <label className="text-sm font-medium text-slate-700">Select Product (SKU)</label>
                       <select
                         required
-                        className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
-                        value={formBinId}
-                        onChange={(e) => setFormBinId(e.target.value)}
+                        className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                        value={formSkuId}
+                        onChange={(e) => setFormSkuId(e.target.value)}
                       >
-                        <option value="">-- Select Bin --</option>
-                        {layout?.racks?.find(r => r.id === formRackId)?.bins?.map(b => (
-                          <option key={b.id} value={b.id}>{b.name}</option>
+                        <option value="">-- Select product --</option>
+                        {skus.map(sku => (
+                          <option key={sku.id} value={sku.id}>[{sku.skuCode}] {sku.name}</option>
                         ))}
                       </select>
                     </div>
-                  )}
-
+  
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700">Total Quantity</label>
+                      <InputField
+                        type="number"
+                        min="1"
+                        required
+                        value={formTotalQuantity}
+                        onChange={(e) => setFormTotalQuantity(e.target.value)}
+                      />
+                    </div>
+                  </div>
+  
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-slate-700">Allocate into Bins</label>
+                      <span className="text-xs font-semibold px-2 py-1 bg-slate-100 rounded text-slate-600">
+                        Total Allocated: {Object.values(allocations).reduce((acc, val) => acc + (Number(val) || 0), 0)} / {formTotalQuantity}
+                      </span>
+                    </div>
+                    
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 max-h-[400px] overflow-y-auto">
+                      {!layout?.racks?.length ? (
+                         <div className="text-center text-sm text-slate-500 py-4">No Racks found in this warehouse.</div>
+                      ) : (
+                        <div className="space-y-4">
+                          {layout.racks.map(rack => (
+                            <div key={rack.id} className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm">
+                              <h4 className="font-semibold text-slate-800 text-sm mb-2">{rack.name}</h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {rack.bins?.map(bin => {
+                                  const cap = binCapacities[bin.id];
+                                  return (
+                                    <div key={bin.id} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-100">
+                                      <div>
+                                        <div className="text-sm font-medium text-slate-700">{bin.name}</div>
+                                        {cap && (
+                                          <div className="text-[10px] text-slate-500">
+                                            Avail: <span className="font-semibold text-emerald-600">{cap.available}</span> / Max: {cap.max}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        placeholder="0"
+                                        className="w-20 rounded-md border border-slate-200 bg-white p-1 text-sm text-center focus:ring-2 focus:ring-primary focus:outline-none"
+                                        value={allocations[bin.id] || ''}
+                                        onChange={(e) => {
+                                          setAllocations(prev => ({ ...prev, [bin.id]: e.target.value }));
+                                        }}
+                                      />
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+  
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-700">Note (Optional)</label>
                     <InputField
@@ -422,8 +510,8 @@ const InboundPage = () => {
                       placeholder="Enter notes..."
                     />
                   </div>
-
-                  <div className="pt-6 flex justify-end gap-3">
+  
+                  <div className="pt-6 flex justify-end gap-3 border-t border-slate-200">
                     <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                     <Button type="submit" isLoading={isSubmitting}>Confirm Inbound</Button>
                   </div>

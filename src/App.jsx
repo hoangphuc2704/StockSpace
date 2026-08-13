@@ -40,12 +40,14 @@ import WalletAdmin from './features/admin/pages/WalletAdmin'
 // Tenant Pages
 import TenantDashboard from './features/tenant/pages/TenantDashboard'
 import InventoryPage from './features/inventory/pages/InventoryPage'
+import SkuPage from './features/inventory/pages/SkuPage'
+import CategoryPage from './features/inventory/pages/CategoryPage'
 import InboundPage from './features/inbound/pages/InboundPage'
 import OutboundPage from './features/outbound/pages/OutboundPage'
 import InventoryAuditPage from './features/inventory/pages/InventoryAuditPage'
 import InventoryAuditDetailPage from './features/inventory/pages/InventoryAuditDetailPage'
 import MyBookingsPage from './features/tenant/pages/MyBookingsPage'
-import BillingPage from './features/tenant/pages/BillingPage'
+import SubscriptionPage from './features/tenant/pages/SubscriptionPage'
 import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
 import WalletTenant from './features/tenant/pages/WalletTenant'
 import WalletCallback from './features/tenant/pages/WalletCallback'
@@ -146,12 +148,14 @@ const App = () => {
         <Route element={<RoleGuard allowedRoles={['ROLE_TENANT']} />}>
           <Route path="/tenant/dashboard" element={<TenantDashboard />} />
           <Route path="/tenant/inventory" element={<InventoryPage />} />
+          <Route path="/tenant/categories" element={<CategoryPage />} />
+          <Route path="/tenant/skus" element={<SkuPage />} />
           <Route path="/tenant/inventory-audits" element={<InventoryAuditPage currentRole="TENANT" />} />
           <Route path="/tenant/inventory-audits/:id" element={<InventoryAuditDetailPage currentRole="TENANT" />} />
           <Route path="/tenant/inbound" element={<InboundPage />} />
           <Route path="/tenant/outbound" element={<OutboundPage />} />
           <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
-          <Route path="/tenant/payments" element={<BillingPage />} />
+          <Route path="/tenant/subscription" element={<SubscriptionPage />} />
           <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse currentRole="TENANT" />} />
           <Route
             path="/tenant/bin-stock"
@@ -187,6 +191,8 @@ const App = () => {
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
           <Route path="/staff/inventory" element={<InventoryPage />} />
+          <Route path="/staff/categories" element={<CategoryPage />} />
+          <Route path="/staff/skus" element={<SkuPage />} />
           <Route path="/staff/inventory-audits" element={<InventoryAuditPage currentRole="STAFF" />} />
           <Route path="/staff/inventory-audits/:id" element={<InventoryAuditDetailPage currentRole="STAFF" />} />
           <Route path="/staff/inbound" element={<InboundPage />} />

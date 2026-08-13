@@ -6,7 +6,7 @@ import Header from '@/components/HeaderDashboard'
 import {
   ArrowUpRight, Package, Truck, Search,
   Minus, History, PieChart, ShieldAlert,
-  FileText, Share2, Loader2, Download
+  FileText, Share2, Loader2, Download, PlusCircle, Trash2
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -17,8 +17,9 @@ import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
-import receiptApi from '../../../services/wms/receiptApi'
-import productApi from '../../../services/wms/productApi'
+import receiptApi from '@/services/wms/receiptApi'
+import stockApi from '@/services/wms/stockApi'
+import productApi from '@/services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 
@@ -52,10 +53,46 @@ const OutboundPage = () => {
 
   // Form states
   const [formSkuId, setFormSkuId] = useState('')
-  const [formQuantity, setFormQuantity] = useState(1)
-  const [formRackId, setFormRackId] = useState('')
-  const [formBinId, setFormBinId] = useState('')
+  const [formTotalQuantity, setFormTotalQuantity] = useState(1)
+  const [allocations, setAllocations] = useState({}) // { binId: quantity }
+  const [skuLocations, setSkuLocations] = useState([])
   const [formNote, setFormNote] = useState('')
+
+  useEffect(() => {
+    const fetchLocations = async () => {
+      if (!formSkuId || !selectedWarehouseId || !layout) {
+        setSkuLocations([]);
+        return;
+      }
+      try {
+        const res = await stockApi.getStockBySku(formSkuId);
+        const locations = res.data?.data?.locations || [];
+        
+        // Match Rack/Bin names with Layout to get IDs
+        const matchedLocations = locations
+          .filter(loc => loc.warehouseId === selectedWarehouseId)
+          .map(loc => {
+            const rack = layout.racks?.find(r => r.name === loc.rackName);
+            const bin = rack?.bins?.find(b => b.name === loc.binName);
+            return {
+              ...loc,
+              rackId: rack?.id,
+              binId: bin?.id
+            };
+          })
+          .filter(loc => loc.rackId && loc.binId);
+          
+        setSkuLocations(matchedLocations);
+        
+        // Reset allocations if previous selected bins are no longer valid
+        setAllocations({});
+      } catch (error) {
+        console.error("Failed to fetch SKU stock locations", error);
+        setSkuLocations([]);
+      }
+    };
+    fetchLocations();
+  }, [formSkuId, selectedWarehouseId, layout]);
 
   useEffect(() => {
     fetchInitialData()
@@ -146,11 +183,49 @@ const OutboundPage = () => {
     }
   }
 
-  const handleCreateReceipt = async (e) => {
+      const handleCreateReceipt = async (e) => {
     e.preventDefault()
-    if (!formSkuId || !formRackId || !formBinId) {
-      toast.error("Please select all products and pickup locations")
+    if (!formSkuId) {
+      toast.error("Please select a product")
       return
+    }
+
+    const activeAllocations = Object.entries(allocations).filter(([binId, qty]) => Number(qty) > 0);
+
+    if (activeAllocations.length === 0) {
+      toast.error("Please allocate quantity to at least one bin")
+      return
+    }
+
+    let totalAllocated = 0;
+    const payloadItems = [];
+
+    for (const [binId, qtyStr] of activeAllocations) {
+      const qty = Number(qtyStr);
+      
+      const loc = skuLocations.find(l => l.binId === binId);
+      if (!loc) {
+        toast.error(`Bin ${binId.substring(0,6)} does not contain this SKU.`);
+        return;
+      }
+      if (qty > loc.quantity) {
+        toast.error(`Bin ${loc.binName} doesn't have enough stock! (Current: ${loc.quantity}, Taken: ${qty}).`)
+        return
+      }
+      
+      totalAllocated += qty;
+      payloadItems.push({
+        skuId: formSkuId,
+        quantity: qty,
+        rackId: loc.rackId,
+        binId: loc.binId,
+        note: formNote
+      });
+    }
+    
+    if (totalAllocated !== Number(formTotalQuantity)) {
+      toast.error(`Total allocated (${totalAllocated}) must equal the total quantity (${formTotalQuantity})`);
+      return;
     }
 
     setIsSubmitting(true)
@@ -158,27 +233,18 @@ const OutboundPage = () => {
       const payload = {
         warehouseId: selectedWarehouseId,
         type: 'OUTBOUND',
-        items: [
-          {
-            skuId: formSkuId,
-            quantity: Number(formQuantity),
-            rackId: formRackId,
-            binId: formBinId,
-            note: formNote
-          }
-        ]
+        items: payloadItems
       }
       await receiptApi.createReceipt(payload)
       toast.success("Created export ticket successfully")
       setIsModalOpen(false)
       fetchReceipts()
 
-      // Reset form
       setFormSkuId('')
-      setFormQuantity(1)
-      setFormRackId('')
-      setFormBinId('')
+      setFormTotalQuantity(1)
+      setAllocations({})
       setFormNote('')
+      setSkuLocations([])
     } catch (error) {
       console.error('Error creating receipt:', error)
       toast.error(error.response?.data?.message || "Error while creating ticket")
@@ -349,82 +415,94 @@ const OutboundPage = () => {
                 onClose={() => setIsModalOpen(false)}
                 title="Create New Outbound Shipment"
               >
-                <form onSubmit={handleCreateReceipt} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Select Product (SKU)</label>
-                    <select
-                      required
-                      className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
-                      value={formSkuId}
-                      onChange={(e) => setFormSkuId(e.target.value)}
-                    >
-                      <option value="">-- Select product --</option>
-                      {skus.map(sku => (
-                        <option key={sku.id} value={sku.id}>[{sku.skuCode}] {sku.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Quantity to Ship</label>
-                    <InputField
-                      type="number"
-                      min="1"
-                      required
-                      value={formQuantity}
-                      onChange={(e) => setFormQuantity(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Select Rack (Picking)</label>
-                    <select
-                      required
-                      className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
-                      value={formRackId}
-                      onChange={(e) => {
-                        setFormRackId(e.target.value)
-                        setFormBinId('')
-                      }}
-                    >
-                      <option value="">-- Select Rack --</option>
-                      {layout?.racks?.map(r => (
-                        <option key={r.id} value={r.id}>
-                          {r.name} {r.zoneName ? `(${r.zoneName})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {formRackId && (
+                                                <form onSubmit={handleCreateReceipt} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">Select Bin</label>
+                      <label className="text-sm font-medium text-slate-700">Select Product (SKU)</label>
                       <select
                         required
-                        className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm"
-                        value={formBinId}
-                        onChange={(e) => setFormBinId(e.target.value)}
+                        className="w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                        value={formSkuId}
+                        onChange={(e) => setFormSkuId(e.target.value)}
                       >
-                        <option value="">-- Select Bin --</option>
-                        {layout?.racks?.find(r => r.id === formRackId)?.bins?.map(b => (
-                          <option key={b.id} value={b.id}>{b.name}</option>
+                        <option value="">-- Select product --</option>
+                        {skus.map(sku => (
+                          <option key={sku.id} value={sku.id}>[{sku.skuCode}] {sku.name}</option>
                         ))}
                       </select>
                     </div>
-                  )}
+
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700">Total Quantity</label>
+                      <InputField
+                        type="number"
+                        min="1"
+                        required
+                        value={formTotalQuantity}
+                        onChange={(e) => setFormTotalQuantity(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-slate-700">Pick from Bins</label>
+                      <span className="text-xs font-semibold px-2 py-1 bg-slate-100 rounded text-slate-600">
+                        Total Picked: {Object.values(allocations).reduce((acc, val) => acc + (Number(val) || 0), 0)} / {formTotalQuantity}
+                      </span>
+                    </div>
+                    
+                    {!formSkuId ? (
+                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                        Please select an SKU first to see available locations.
+                      </div>
+                    ) : skuLocations.length === 0 ? (
+                      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600">
+                        This SKU is currently not in stock at this warehouse.
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 max-h-[400px] overflow-y-auto">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {skuLocations.map(loc => (
+                            <div key={loc.binId} className="flex flex-col gap-2 p-3 bg-white rounded-lg border border-slate-200 shadow-sm relative">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <div className="text-xs font-medium text-slate-500">{loc.rackName}</div>
+                                  <div className="text-sm font-bold text-slate-800">{loc.binName}</div>
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="0"
+                                  className="w-20 rounded-md border border-slate-200 bg-slate-50 p-1 text-sm text-center focus:ring-2 focus:ring-primary focus:outline-none"
+                                  value={allocations[loc.binId] || ''}
+                                  onChange={(e) => {
+                                    setAllocations(prev => ({ ...prev, [loc.binId]: e.target.value }));
+                                  }}
+                                />
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                Current Stock: <span className="font-semibold text-emerald-600">{loc.quantity}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Note / Customer</label>
+                    <label className="text-sm font-medium text-slate-700">Note (Optional)</label>
                     <InputField
                       value={formNote}
                       onChange={(e) => setFormNote(e.target.value)}
-                      placeholder="Note to recipient..."
+                      placeholder="Enter notes..."
                     />
                   </div>
 
-                  <div className="pt-6 flex justify-end gap-3">
+                  <div className="pt-6 flex justify-end gap-3 border-t border-slate-200">
                     <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                    <Button type="submit" isLoading={isSubmitting} className="bg-primary">Create Order</Button>
+                    <Button type="submit" isLoading={isSubmitting} disabled={!formSkuId || skuLocations.length === 0}>Confirm Outbound</Button>
                   </div>
                 </form>
               </Modal>
