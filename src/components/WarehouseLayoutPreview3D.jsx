@@ -122,7 +122,9 @@ function WarehouseShell() {
 function FootprintFloor({ layout }) {
   const cells = Array.isArray(layout?.footprintCells) ? layout.footprintCells : []
   const activeCellSet = new Set(cells.map((cell) => String(cell)))
-  const blockedCellSet = new Set((layout?.blockedCells || []).map((cell) => String(cell)))
+  const blockedCellSet = new Set(
+    (layout?.positions ?? layout?.blockedCells ?? []).map((cell) => String(cell))
+  )
   const tileSize = WORLD_SIZE / FOOTPRINT_GRID_SIZE
 
   return (

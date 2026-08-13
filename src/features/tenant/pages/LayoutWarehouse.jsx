@@ -143,7 +143,9 @@ const normalizeLayout = (payload = {}) => ({
   length: Math.max(numberOf(payload.length, DEFAULT_LAYOUT_SIZE), 20),
   height: Math.max(numberOf(payload.height, DEFAULT_LAYOUT_SIZE), 20),
   footprintCells: normalizeFootprint(payload.footprintCells),
-  blockedCells: normalizeBlockedCells(payload.blockedCells),
+  // `positions` is the BE field that stores the painted/locked grid cells.
+  // Keep the legacy fallback so layouts returned by an older deployment still render correctly.
+  blockedCells: normalizeBlockedCells(payload.positions ?? payload.blockedCells),
   racks: Array.isArray(payload.racks) ? payload.racks.map(normalizeRack) : [],
 })
 
@@ -201,8 +203,7 @@ const toPayload = (layout) => {
     width,
     length,
     height: Math.max(integerOf(layout.height, DEFAULT_LAYOUT_SIZE), 20),
-    footprintCells: layout.footprintCells,
-    blockedCells: normalizeBlockedCells(layout.blockedCells),
+    positions: normalizeBlockedCells(layout.blockedCells),
     racks: layout.racks.map((rack, rackIndex) => serializeRack(rack, rackIndex, width, length)),
   }
 }

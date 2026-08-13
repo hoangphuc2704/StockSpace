@@ -14,6 +14,7 @@ import {
   HiOutlineArrowRightOnRectangle,
   HiOutlineUserGroup,
   HiOutlineArchiveBox,
+  HiOutlineTag,
 } from 'react-icons/hi2'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
@@ -53,8 +54,12 @@ const SIDEBAR_MENUS = {
   TENANT: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/tenant/dashboard' },
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/tenant/inventory' },
+    // <<<<<<< HEAD
     { text: 'Category Mgt', icon: HiOutlineSquaresPlus, path: '/tenant/categories' },
     { text: 'SKU Mgt', icon: HiOutlineArchiveBox, path: '/tenant/skus' },
+    // =======
+    //     { text: 'Categories & SKU', icon: HiOutlineTag, path: '/tenant/products' },
+    // >>>>>>> d40fad7adaa86ada5f5ce70c1028c65295711262
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/tenant/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/tenant/outbound' },
     { text: 'Audits', icon: HiOutlineClipboardDocumentList, path: '/tenant/inventory-audits' },
@@ -117,11 +122,9 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
 
   return (
     <aside
-      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${
-        isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'
-      } ${
-        isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
-      } `}
+      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'
+        } ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
+        } `}
     >
       {/* Danh sách Menu điều hướng */}
       <nav className="flex-1 space-y-1 py-3">
@@ -132,26 +135,22 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
             <button
               key={idx}
               onClick={() => handleNavigation(item.path)}
-              className={`group flex w-full items-center rounded-xl transition-all ${
-                isSidebarExpanded
-                  ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-                  : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
-              } ${
-                isActive
+              className={`group flex w-full items-center rounded-xl transition-all ${isSidebarExpanded
+                ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
+                : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
+                } ${isActive
                   ? 'bg-slate-100 font-semibold text-slate-950'
                   : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
-              } `}
+                } `}
             >
               <item.icon
-                className={`shrink-0 transition-transform group-hover:scale-105 ${
-                  isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'
-                } ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
+                className={`shrink-0 transition-transform group-hover:scale-105 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'
+                  } ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
               />
 
               <span
-                className={`overflow-hidden text-ellipsis whitespace-nowrap ${
-                  !isSidebarExpanded && 'tracking-tight'
-                }`}
+                className={`overflow-hidden text-ellipsis whitespace-nowrap ${!isSidebarExpanded && 'tracking-tight'
+                  }`}
               >
                 {item.text}
               </span>
@@ -174,11 +173,10 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
           //   navigate('/login')
           // }}
 
-          className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${
-            isSidebarExpanded
-              ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-              : 'flex-col justify-center gap-1 py-3 text-[10px]'
-          } `}
+          className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${isSidebarExpanded
+            ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
+            : 'flex-col justify-center gap-1 py-3 text-[10px]'
+            } `}
         >
           <HiOutlineArrowRightOnRectangle
             className={`shrink-0 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'}`}

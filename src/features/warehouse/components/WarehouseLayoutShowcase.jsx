@@ -17,6 +17,7 @@ const createPreviewLayout = (layout, warehouse) => ({
   footprintCells: Array.isArray(layout?.footprintCells)
     ? layout.footprintCells
     : fullFootprint(),
+  positions: Array.isArray(layout?.positions) ? layout.positions : [],
   racks: Array.isArray(layout?.racks) ? layout.racks : [],
 })
 

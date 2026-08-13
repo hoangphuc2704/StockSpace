@@ -54,6 +54,7 @@ import WalletCallback from './features/tenant/pages/WalletCallback'
 import TenantContractsPage from './features/tenant/pages/TenantContractsPage'
 import MyDisputesPage from './features/dispute/pages/MyDisputesPage'
 import TenantStaffManagementPage from './features/tenant/pages/TenantStaffManagementPage'
+import ProductManagementPage from './features/tenant/pages/ProductManagementPage'
 import StaffAcceptInvitationPage from './features/auth/pages/StaffAcceptInvitationPage'
 
 // Owner Pages
@@ -155,8 +156,16 @@ const App = () => {
           <Route path="/tenant/inbound" element={<InboundPage />} />
           <Route path="/tenant/outbound" element={<OutboundPage />} />
           <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
+<<<<<<< HEAD
           <Route path="/tenant/subscription" element={<SubscriptionPage />} />
           <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse currentRole="TENANT" />} />
+=======
+          <Route path="/tenant/payments" element={<BillingPage />} />
+          <Route
+            path="/tenant/layoutwarehouses"
+            element={<LayoutWarehouse currentRole="TENANT" />}
+          />
+>>>>>>> d40fad7adaa86ada5f5ce70c1028c65295711262
           <Route
             path="/tenant/bin-stock"
             element={
@@ -172,6 +181,7 @@ const App = () => {
           <Route path="/tenant/contracts" element={<TenantContractsPage />} />
           <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
           <Route path="/tenant/staff" element={<TenantStaffManagementPage />} />
+          <Route path="/tenant/products" element={<ProductManagementPage />} />
         </Route>
 
         {/* Owner Routes */}
