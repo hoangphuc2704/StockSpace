@@ -345,7 +345,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   </Button>
                 )}
 
-                {isSubmitted && (
+                {isSubmitted && currentRole === 'TENANT' && (
                   <>
                     <Button 
                       variant="outline" 
@@ -364,6 +364,12 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                       Duyệt & Cập nhật tồn kho
                     </Button>
                   </>
+                )}
+
+                {isSubmitted && currentRole === 'STAFF' && (
+                  <span className="text-sm italic text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                    Đang chờ Tenant duyệt kết quả
+                  </span>
                 )}
               </div>
 

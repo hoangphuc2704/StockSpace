@@ -16,6 +16,8 @@ const Header = () => {
       user.role.replace('ROLE_', '').slice(1).toLowerCase()
     : 'Owner'
 
+  const isOwner = user?.role === 'ROLE_OWNER'
+
   return (
     <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
       <div className="flex items-center gap-4">
@@ -28,14 +30,16 @@ const Header = () => {
         </button>
 
         <div
-          className="flex cursor-pointer items-center gap-2"
-          onClick={() => navigate('/')}
-          role="link"
-          tabIndex={0}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ' ') navigate('/')
+          className={`flex items-center gap-2 ${!isOwner ? 'cursor-pointer' : ''}`}
+          onClick={() => {
+            if (!isOwner) navigate('/')
           }}
-          aria-label="Back to landing page"
+          role={!isOwner ? "link" : "presentation"}
+          tabIndex={!isOwner ? 0 : undefined}
+          onKeyDown={(event) => {
+            if (!isOwner && (event.key === 'Enter' || event.key === ' ')) navigate('/')
+          }}
+          aria-label={!isOwner ? "Back to landing page" : undefined}
         >
           <div className="shrink-0 rounded-lg bg-white p-1.5">
             <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />

@@ -156,16 +156,16 @@ const App = () => {
           <Route path="/tenant/inbound" element={<InboundPage />} />
           <Route path="/tenant/outbound" element={<OutboundPage />} />
           <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
-<<<<<<< HEAD
+
           <Route path="/tenant/subscription" element={<SubscriptionPage />} />
           <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse currentRole="TENANT" />} />
-=======
-          <Route path="/tenant/payments" element={<BillingPage />} />
-          <Route
+
+          {/* <Route path="/tenant/payments" element={<BillingPage />} /> */}
+          {/* <Route
             path="/tenant/layoutwarehouses"
             element={<LayoutWarehouse currentRole="TENANT" />}
-          />
->>>>>>> d40fad7adaa86ada5f5ce70c1028c65295711262
+          /> */}
+
           <Route
             path="/tenant/bin-stock"
             element={
@@ -182,10 +182,10 @@ const App = () => {
           <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
           <Route path="/tenant/staff" element={<TenantStaffManagementPage />} />
           <Route path="/tenant/products" element={<ProductManagementPage />} />
-        </Route>
+        </Route >
 
         {/* Owner Routes */}
-        <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}>
+        < Route element={< RoleGuard allowedRoles={['ROLE_OWNER']} />}>
           <Route path="/owner/dashboard" element={<OwnerDashboard />} />
           <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
           <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
@@ -194,10 +194,10 @@ const App = () => {
           <Route path="/owner/profile" element={<OwnerProfile />} />
           <Route path="/owner/contracts" element={<OwnerContractsPage />} />
           <Route path="/owner/disputes" element={<MyDisputesPage currentRole="OWNER" />} />
-        </Route>
+        </Route >
 
         {/* Staff Routes */}
-        <Route element={<RoleGuard allowedRoles={['ROLE_STAFF']} />}>
+        < Route element={< RoleGuard allowedRoles={['ROLE_STAFF']} />}>
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
           <Route path="/staff/inventory" element={<InventoryPage />} />
@@ -208,18 +208,18 @@ const App = () => {
           <Route path="/staff/inbound" element={<InboundPage />} />
           <Route path="/staff/outbound" element={<OutboundPage />} />
           <Route path="/staff/career-history" element={<StaffCareerHistoryPage />} />
-        </Route>
+        </Route >
 
         {/* Inspector Routes */}
-        <Route element={<RoleGuard allowedRoles={['ROLE_INSPECTOR']} />}>
+        < Route element={< RoleGuard allowedRoles={['ROLE_INSPECTOR']} />}>
           <Route path="/inspector/inspections" element={<InspectorInspectionsPage />} />
-        </Route>
+        </Route >
 
         {/* Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        < Route path="*" element={< Navigate to="/" replace />} />
+      </Routes >
       <AIChatWidget />
-    </BrowserRouter>
+    </BrowserRouter >
   )
   //check config mail
 }

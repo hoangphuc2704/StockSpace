@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Package, Edit, Trash2, Loader2, Filter } from 'lucide-react'
+import { Plus, Package, Edit, Trash2, Loader2, Eye, X, Tag, Ruler, Hash } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
@@ -23,13 +23,18 @@ const SkuPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editingProductId, setEditingProductId] = useState(null)
-  
+
   const [formName, setFormName] = useState('')
   const [formSkuCode, setFormSkuCode] = useState('')
   const [formCategoryId, setFormCategoryId] = useState('')
   const [formUomId, setFormUomId] = useState('')
   const [formSpecs, setFormSpecs] = useState([]) // [{key: '', value: ''}]
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Detail modal states
+  const [isDetailOpen, setIsDetailOpen] = useState(false)
+  const [detailData, setDetailData] = useState(null)
+  const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -44,22 +49,22 @@ const SkuPage = () => {
         productApi.getCategories(),
         productApi.getUOMs(),
       ])
-      
+
       const categoryMap = {}
       if (catRes.data?.data) {
         catRes.data.data.forEach((c) => {
           categoryMap[c.id] = c.name
         })
       }
-      
+
       const enrichedSkus = (skuRes.data?.data?.content || []).map((sku) => ({
         ...sku,
         categoryName: categoryMap[sku.categoryId] || 'Unknown Category',
       }))
-      
+
       setProducts(enrichedSkus)
       setCategories(catRes.data?.data || [])
-      
+
       // Safely extract UOMs array from response
       let uomsList = []
       if (Array.isArray(uomRes.data)) {
@@ -100,20 +105,46 @@ const SkuPage = () => {
     setFormSkuCode(product.skuCode)
     setFormCategoryId(product.categoryId)
     setFormUomId(product.uomId)
-    
+
     let parsedSpecs = []
     try {
       parsedSpecs = typeof product.specs === 'string' ? JSON.parse(product.specs) : product.specs || []
     } catch (e) {
       parsedSpecs = []
     }
-    
+
     if (typeof parsedSpecs === 'object' && !Array.isArray(parsedSpecs)) {
-       parsedSpecs = Object.entries(parsedSpecs).map(([key, value]) => ({ key, value }))
+      parsedSpecs = Object.entries(parsedSpecs).map(([key, value]) => ({ key, value }))
     }
 
     setFormSpecs(parsedSpecs)
     setIsModalOpen(true)
+  }
+
+  const handleViewDetail = async (id) => {
+    setIsDetailOpen(true)
+    setDetailData(null)
+    setIsDetailLoading(true)
+    try {
+      const res = await productApi.getSKUDetail(id)
+      const raw = res.data?.data ?? res.data
+      // Normalize specs
+      let specs = raw?.specs || {}
+      if (typeof specs === 'string') {
+        try { specs = JSON.parse(specs) } catch { specs = {} }
+      }
+      if (Array.isArray(specs)) {
+        const obj = {}
+        specs.forEach(s => { if (s.key) obj[s.key] = s.value })
+        specs = obj
+      }
+      setDetailData({ ...raw, specsObj: specs })
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to load SKU detail')
+      setIsDetailOpen(false)
+    } finally {
+      setIsDetailLoading(false)
+    }
   }
 
   const handleDelete = (id) => {
@@ -137,7 +168,7 @@ const SkuPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
+
     const specsObj = {}
     formSpecs.forEach(s => {
       if (s.key && s.value) {
@@ -194,14 +225,23 @@ const SkuPage = () => {
       render: (row) => (
         <div className="flex justify-end gap-2">
           <button
+            onClick={() => handleViewDetail(row.id)}
+            className="rounded p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-500 transition-colors"
+            title="View detail"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+          <button
             onClick={() => handleOpenEdit(row)}
             className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            title="Edit"
           >
             <Edit className="h-4 w-4" />
           </button>
           <button
             onClick={() => handleDelete(row.id)}
             className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
+            title="Delete"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -224,7 +264,7 @@ const SkuPage = () => {
 
       <div className="flex pt-14">
         <Sidebar currentRole={currentRole} />
-        
+
         <div className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}>
           <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -235,12 +275,8 @@ const SkuPage = () => {
                   </div>
                   SKU Management
                 </h1>
-                <p className="text-sm text-slate-500">Manage your product definitions and variants.</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 md:flex-none">
-                  <Filter className="mr-2 h-4 w-4" /> Filters
-                </Button>
                 <Button onClick={handleOpenCreate} className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" /> Add SKU
                 </Button>
@@ -361,6 +397,117 @@ const SkuPage = () => {
                 </div>
               </form>
             </Modal>
+
+            {/* SKU Detail Modal */}
+            {isDetailOpen && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+                onClick={() => setIsDetailOpen(false)}
+              >
+                <div
+                  className="animate-in fade-in zoom-in-95 w-full max-w-lg rounded-2xl border border-slate-200 bg-white shadow-2xl duration-150"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50">
+                        <Package className="h-5 w-5 text-emerald-600" />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-bold text-slate-900">SKU Detail</h2>
+                        {detailData && (
+                          <p className="text-xs text-slate-400 font-mono">{detailData.skuCode}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsDetailOpen(false)}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div className="p-6">
+                    {isDetailLoading ? (
+                      <div className="flex items-center justify-center py-10">
+                        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                      </div>
+                    ) : detailData ? (
+                      <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-400 uppercase">
+                              <Package className="h-3 w-3" /> Product Name
+                            </p>
+                            <p className="text-sm font-bold text-slate-800">{detailData.name || '—'}</p>
+                          </div>
+                          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-400 uppercase">
+                              <Hash className="h-3 w-3" /> SKU Code
+                            </p>
+                            <p className="text-sm font-mono font-bold text-slate-800">{detailData.skuCode || '—'}</p>
+                          </div>
+                          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-400 uppercase">
+                              <Tag className="h-3 w-3" /> Category
+                            </p>
+                            <p className="text-sm font-semibold text-slate-800">
+                              {categories.find(c => c.id === detailData.categoryId)?.name ||
+                                detailData.categoryName || '—'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-400 uppercase">
+                              <Ruler className="h-3 w-3" /> Unit of Measure
+                            </p>
+                            <p className="text-sm font-semibold text-slate-800">
+                              {uoms.find(u => u.id === detailData.uomId)?.name ||
+                                detailData.uomName || '—'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Specs */}
+                        <div>
+                          <p className="mb-2 text-xs font-bold text-slate-500 uppercase">Specifications</p>
+                          {detailData.specsObj && Object.keys(detailData.specsObj).length > 0 ? (
+                            <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
+                              {Object.entries(detailData.specsObj).map(([key, value]) => (
+                                <div key={key} className="flex items-center justify-between px-4 py-2.5">
+                                  <span className="text-xs font-semibold text-slate-500">{key}</span>
+                                  <span className="text-xs font-bold text-slate-800">{String(value)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs italic text-slate-400">No specifications.</p>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
+                    <button
+                      onClick={() => { setIsDetailOpen(false); if (detailData) handleOpenEdit(detailData) }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      <Edit className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <button
+                      onClick={() => setIsDetailOpen(false)}
+                      className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-700 transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           </main>
         </div>

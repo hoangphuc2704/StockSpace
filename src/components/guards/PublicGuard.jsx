@@ -5,8 +5,13 @@ const PublicGuard = () => {
   const { user, isAuthenticated } = useSelector((state) => state.auth)
   const location = useLocation()
 
-  // Landing page is available to every role. Dashboard logos always return here.
-  if (location.pathname === '/') return <Outlet />
+  // Landing page is available to most roles, but OWNER is redirected to dashboard
+  if (location.pathname === '/') {
+    if (isAuthenticated && user?.role === 'ROLE_OWNER') {
+      return <Navigate to="/owner/dashboard" replace />
+    }
+    return <Outlet />
+  }
 
   // Other public pages keep the existing role-based redirect behavior.
   if (isAuthenticated && user?.role && user.role !== 'ROLE_TENANT') {

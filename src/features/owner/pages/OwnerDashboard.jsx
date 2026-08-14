@@ -69,6 +69,10 @@ const OwnerDashboard = () => {
   const [incomingRequests, setIncomingRequests] = useState([])
   const [loadingRequests, setLoadingRequests] = useState(true)
 
+  // --- STATE KIỂM ĐỊNH KHO ---
+  const [inspections, setInspections] = useState([])
+  const [loadingInspections, setLoadingInspections] = useState(true)
+
   // --- STATE THỐNG KÊ ---
   const [revenueData, setRevenueData] = useState(defaultRevenueData)
   const [occupancyData, setOccupancyData] = useState(defaultOccupancyData)
@@ -110,6 +114,19 @@ const OwnerDashboard = () => {
       console.error("Error getting list of rental requests:", error)
     } finally {
       setLoadingRequests(false)
+    }
+  }
+
+  const fetchInspections = async () => {
+    try {
+      setLoadingInspections(true)
+      const res = await warehouseApi.getOwnerInspections({ page: 0, size: 5 })
+      const data = res?.data?.data?.content || res?.data?.content || []
+      setInspections(data)
+    } catch (error) {
+      console.error("Error getting list of inspections:", error)
+    } finally {
+      setLoadingInspections(false)
     }
   }
 
@@ -155,6 +172,7 @@ const OwnerDashboard = () => {
   useEffect(() => {
     fetchWallet()
     fetchRequests()
+    fetchInspections()
     fetchStats()
   }, [])
 
@@ -447,25 +465,30 @@ const OwnerDashboard = () => {
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-6 font-bold text-slate-900">Pending Inspections</h3>
                 <div className="space-y-4">
-                  {[
-                    { warehouse: 'Saigon Hub A', date: 'May 15, 2026', type: 'Safety' },
-                    { warehouse: 'Tan Binh Cold', date: 'May 18, 2026', type: 'Sanitary' },
-                  ].map((insp, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4"
-                    >
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-blue-600">
-                        <Clock className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{insp.warehouse}</p>
-                        <p className="text-xs text-slate-500">
-                          {insp.type} Inspection • {insp.date}
-                        </p>
-                      </div>
+                  {loadingInspections ? (
+                    <div className="flex justify-center p-4">
+                      <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
                     </div>
-                  ))}
+                  ) : inspections.length === 0 ? (
+                    <p className="text-sm text-slate-500">No pending inspections.</p>
+                  ) : (
+                    inspections.map((insp, i) => (
+                      <div
+                        key={insp.id || i}
+                        className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4"
+                      >
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-blue-600">
+                          <Clock className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900">{insp.warehouseName || 'Unknown Warehouse'}</p>
+                          <p className="text-xs text-slate-500">
+                            Status: <Badge variant="warning">{insp.status || 'PENDING'}</Badge> • {insp.createdAt ? new Date(insp.createdAt).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                   <Button variant="outline" className="mt-4 w-full">
                     View All Schedule
                   </Button>

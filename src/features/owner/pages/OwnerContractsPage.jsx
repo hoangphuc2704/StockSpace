@@ -55,7 +55,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
     try {
       await disputeApi.createDispute(
         { contractId, reason: reason.trim() },
-        files
+        files.map(f => f.file)
       )
       toast.success("Dispute request sent successfully! Admin will handle it soon.")
       onSuccess?.()
@@ -68,13 +68,22 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
   }
 
   const handleFileChange = (e) => {
-    if (e.target.files) {
-      setFiles(Array.from(e.target.files))
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files).map(file => ({
+        file,
+        preview: URL.createObjectURL(file)
+      }));
+      setFiles((prev) => [...prev, ...newFiles])
+      e.target.value = null;
     }
   }
 
   const removeFile = (index) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index))
+    setFiles((prev) => {
+      const updated = [...prev];
+      URL.revokeObjectURL(updated[index].preview);
+      return updated.filter((_, i) => i !== index);
+    });
   }
 
   return (
@@ -111,32 +120,40 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
             />
           </div>
 
-          <div>
-            <label className="mb-2 block text-xs font-bold text-slate-500">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700">
               Photo evidence (optional)
             </label>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFileChange}
-              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-1.5 file:text-xs file:font-bold file:text-blue-600 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-            />
+            <label className="flex h-20 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200">
+              <ImageIcon className="h-4 w-4 text-slate-400" />
+              <span className="text-xs text-slate-500">Add photos of evidence</span>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleFileChange}
+              />
+            </label>
+
             {files.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {files.map((file, i) => (
+              <div className="grid grid-cols-4 gap-2 pt-1">
+                {files.map((item, idx) => (
                   <div
-                    key={i}
-                    className="flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-600"
+                    key={idx}
+                    className="relative aspect-square overflow-hidden rounded-lg border"
                   >
-                    <ImageIcon size={12} />
-                    <span className="max-w-[120px] truncate">{file.name}</span>
+                    <img
+                      src={item.preview}
+                      alt="evidence"
+                      className="h-full w-full object-cover"
+                    />
                     <button
                       type="button"
-                      onClick={() => removeFile(i)}
-                      className="text-slate-400 hover:text-rose-500"
+                      onClick={() => removeFile(idx)}
+                      className="absolute top-0.5 right-0.5 rounded-full bg-slate-900/60 p-0.5 text-white hover:bg-rose-600"
                     >
-                      <X size={12} />
+                      <X className="h-2.5 w-2.5" />
                     </button>
                   </div>
                 ))}
@@ -468,7 +485,7 @@ const OwnerContractsPage = () => {
       setSubmitLoading(true)
       
       // Upload multiple files using bulk API
-      const res = await uploadApi.uploadImages(contractFiles)
+      const res = await uploadApi.uploadImages(contractFiles.map(f => f.file))
       if (!res?.data?.success) {
         throw new Error(res?.data?.message || "Upload photo failed")
       }
@@ -684,42 +701,53 @@ const OwnerContractsPage = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="mb-2 block text-xs font-bold text-slate-500">Photo of Paper Contract (Can choose multiple)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setContractFiles(prev => [...prev, ...Array.from(e.target.files)])
-                      // Reset value so user can select again
-                      e.target.value = null
-                    }
-                  }}
-                  className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
-                />
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-700">Photo of Paper Contract (Can choose multiple)</label>
+                <label className="flex h-20 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200">
+                  <ImageIcon className="h-4 w-4 text-slate-400" />
+                  <span className="text-xs text-slate-500">Add photos of contract</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        const newFiles = Array.from(e.target.files).map(file => ({
+                          file,
+                          preview: URL.createObjectURL(file)
+                        }));
+                        setContractFiles(prev => [...prev, ...newFiles])
+                        e.target.value = null
+                      }
+                    }}
+                  />
+                </label>
                 
                 {contractFiles.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-xs font-medium text-slate-500 mb-2">Selected {contractFiles.length} photo:</p>
-                    <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
-                      {contractFiles.map((file, index) => (
-                        <div key={index} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-                          <div className="flex items-center gap-2 overflow-hidden">
-                            <ImageIcon size={14} className="text-blue-500 shrink-0" />
-                            <span className="text-xs text-slate-700 truncate">{file.name}</span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setContractFiles(prev => prev.filter((_, i) => i !== index))}
-                            className="text-slate-400 hover:text-red-500 shrink-0 p-1"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="grid grid-cols-4 gap-2 pt-1">
+                    {contractFiles.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="relative aspect-square overflow-hidden rounded-lg border"
+                      >
+                        <img
+                          src={item.preview}
+                          alt="contract"
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            URL.revokeObjectURL(item.preview);
+                            setContractFiles(prev => prev.filter((_, i) => i !== idx));
+                          }}
+                          className="absolute top-0.5 right-0.5 rounded-full bg-slate-900/60 p-0.5 text-white hover:bg-rose-600"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

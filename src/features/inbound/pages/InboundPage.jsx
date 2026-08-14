@@ -39,6 +39,9 @@ const InboundPage = () => {
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
 
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectingReceiptId, setRejectingReceiptId] = useState(null)
 
   // Data states
   const [receipts, setReceipts] = useState([])
@@ -261,6 +264,29 @@ const InboundPage = () => {
     }
   }
 
+
+  const handleReject = async (e) => {
+    e.preventDefault()
+    if (!rejectReason.trim()) {
+      toast.error("Please enter a reject reason")
+      return
+    }
+    setIsSubmitting(true)
+    try {
+      await receiptApi.rejectReceipt(rejectingReceiptId, rejectReason)
+      toast.success("Rejected receipt successfully")
+      setIsRejectModalOpen(false)
+      setRejectReason('')
+      setRejectingReceiptId(null)
+      fetchReceipts()
+    } catch (error) {
+      console.error('Error rejecting receipt:', error)
+      toast.error(error.response?.data?.message || "Error when rejecting receipt")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleApprove = async (id) => {
     try {
       await receiptApi.approveReceipt(id)
@@ -303,20 +329,25 @@ const InboundPage = () => {
       header: 'Actions',
       render: (row) => (
         row.status === 'PENDING' ? (
-          currentRole === 'TENANT' ? (
-            <Button size="sm" onClick={() => handleApprove(row.id)}>
-              Approve
-            </Button>
-          ) : (
+            currentRole === 'TENANT' ? (
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => handleApprove(row.id)}>
+                  Approve
+                </Button>
+                <Button size="sm" variant="danger" onClick={() => { setRejectingReceiptId(row.id); setIsRejectModalOpen(true); }}>
+                  Reject
+                </Button>
+              </div>
+            ) : (
             <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500 italic border border-slate-200">
               Wait for Tenant to approve
             </span>
           )
         ) : (
-          <Button size="sm" variant="ghost" disabled>
-            Approved
-          </Button>
-        )
+            <Button size="sm" variant="ghost" disabled>
+              {row.status === 'REJECTED' ? 'Rejected' : 'Approved'}
+            </Button>
+          )
       )
     }
   ]
@@ -517,7 +548,29 @@ const InboundPage = () => {
                   </div>
                 </form>
               </Modal>
-            </div>
+
+                <Modal
+                  isOpen={isRejectModalOpen}
+                  onClose={() => setIsRejectModalOpen(false)}
+                  title="Reject Receipt"
+                >
+                  <form onSubmit={handleReject} className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700">Reason for rejection *</label>
+                      <InputField
+                        placeholder="Enter reason..."
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="pt-6 flex justify-end gap-3 border-t border-slate-200">
+                      <Button type="button" variant="outline" onClick={() => setIsRejectModalOpen(false)}>Cancel</Button>
+                      <Button type="submit" variant="danger" isLoading={isSubmitting}>Confirm Reject</Button>
+                    </div>
+                  </form>
+                </Modal>
+              </div>
           </main>
         </div>
       </div>

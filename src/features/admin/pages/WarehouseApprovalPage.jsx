@@ -254,32 +254,36 @@ const WarehouseApprovalPage = () => {
           >
             <Eye size={16} className="mr-2" /> Details
           </Button>
-          <button
-            type="button"
-            onClick={() => runApprovalAction(row, 'approve')}
-            disabled={pendingAction.id === row.id}
-            title="Approve warehouse"
-            className="text-success hover:bg-success/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors disabled:cursor-wait disabled:opacity-50"
-          >
-            {pendingAction.id === row.id && pendingAction.type === 'approve' ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <CheckCircle size={18} />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => runApprovalAction(row, 'reject')}
-            disabled={pendingAction.id === row.id}
-            title="Refuse warehouse"
-            className="text-danger hover:bg-danger/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors disabled:cursor-wait disabled:opacity-50"
-          >
-            {pendingAction.id === row.id && pendingAction.type === 'reject' ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <XCircle size={18} />
-            )}
-          </button>
+          {(row.status === 'PENDING' || row.status === 'PENDING_APPROVAL' || row.status === 'UNDER_REVIEW') && (
+            <>
+              <button
+                type="button"
+                onClick={() => runApprovalAction(row, 'approve')}
+                disabled={pendingAction.id === row.id}
+                title="Approve warehouse"
+                className="text-success hover:bg-success/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors disabled:cursor-wait disabled:opacity-50"
+              >
+                {pendingAction.id === row.id && pendingAction.type === 'approve' ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <CheckCircle size={18} />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => runApprovalAction(row, 'reject')}
+                disabled={pendingAction.id === row.id}
+                title="Refuse warehouse"
+                className="text-danger hover:bg-danger/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors disabled:cursor-wait disabled:opacity-50"
+              >
+                {pendingAction.id === row.id && pendingAction.type === 'reject' ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <XCircle size={18} />
+                )}
+              </button>
+            </>
+          )}
         </div>
       ),
     },

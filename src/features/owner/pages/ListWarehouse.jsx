@@ -16,9 +16,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Loader2, // Import thêm icon Loading để làm UI xoay xoay đẹp mắt
+  Loader2,
+  Eye,
 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
+import Modal from '@/components/organisms/Modal'
 
 // Import Sidebar và Logo từ hệ thống của bạn
 import Sidebar from '../../../components/SideBar'
@@ -48,6 +50,9 @@ const WarehouseManagement = () => {
   const [requestingIds, setRequestingIds] = useState([])
   const [inspectionsByWarehouse, setInspectionsByWarehouse] = useState({})
   const [inspectionConfirm, setInspectionConfirm] = useState(null)
+  
+  // State quản lý xem chi tiết kho bằng Modal
+  const [selectedWarehouse, setSelectedWarehouse] = useState(null)
 
   // Xử lý gửi yêu cầu kiểm định kho qua API
   const handleRequestInspection = async (warehouseId) => {
@@ -191,14 +196,14 @@ const WarehouseManagement = () => {
   // Bộ lọc kết hợp Client-side hỗ trợ tìm kiếm nhanh theo dữ liệu hiển thị hiện tại
   const filteredWarehouses = Array.isArray(warehouses)
     ? warehouses.filter((wh) => {
-        const name = wh?.name ? wh.name.toLowerCase() : ''
-        const address = wh?.address ? wh.address.toLowerCase() : ''
+      const name = wh?.name ? wh.name.toLowerCase() : ''
+      const address = wh?.address ? wh.address.toLowerCase() : ''
 
-        const matchesSearch =
-          name.includes(searchTerm.toLowerCase()) || address.includes(searchTerm.toLowerCase())
-        const matchesStatus = statusFilter === 'ALL' || wh.status === statusFilter
-        return matchesSearch && matchesStatus
-      })
+      const matchesSearch =
+        name.includes(searchTerm.toLowerCase()) || address.includes(searchTerm.toLowerCase())
+      const matchesStatus = statusFilter === 'ALL' || wh.status === statusFilter
+      return matchesSearch && matchesStatus
+    })
     : []
 
   return (
@@ -301,7 +306,7 @@ const WarehouseManagement = () => {
                       <th className="px-6 py-4">Rental price / Month</th>
                       <th className="px-6 py-4 text-center">Status</th>
                       <th className="px-6 py-4 text-center">Inspection</th>
-                      <th className="px-6 py-4 text-right">Quick update</th>
+                      <th className="px-6 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -417,18 +422,18 @@ const WarehouseManagement = () => {
                               </div>
                             </td>
 
-                            {/* Cột 7: Cập nhật trạng thái */}
-                            <td className="px-6 py-4 text-right">
-                              <select
-                                value={wh.status}
-                                onChange={(e) => handleStatusChange(wh.id, e.target.value)}
-                                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:border-slate-300 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                            {/* Cột 7: Nút Action xem chi tiết */}
+                            <td className="px-6 py-4 text-center">
+                              <button
+                                onClick={() => setSelectedWarehouse(wh)}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                title="View details"
                               >
-                                <option value="AVAILABLE">🟢 Available</option>
-                                <option value="FULL">🔴 Full (Full)</option>
-                                <option value="MAINTENANCE">🟡 Maintenance</option>
-                              </select>
+                                <Eye className="h-4 w-4" />
+                              </button>
                             </td>
+
+
                           </tr>
                         )
                       })
@@ -466,11 +471,10 @@ const WarehouseManagement = () => {
                       <button
                         key={index}
                         onClick={() => setCurrentPage(index)}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-all ${
-                          currentPage === index
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                        }`}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition-all ${currentPage === index
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                          }`}
                       >
                         {index + 1}
                       </button>
@@ -526,6 +530,72 @@ const WarehouseManagement = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL XEM CHI TIẾT KHO */}
+      <Modal
+        isOpen={!!selectedWarehouse}
+        onClose={() => setSelectedWarehouse(null)}
+        title="Warehouse Details"
+        className="max-w-3xl"
+      >
+        {selectedWarehouse && (
+          <div className="space-y-6">
+            <div className="flex gap-4">
+              <img
+                src={selectedWarehouse.coverImageUrl}
+                alt={selectedWarehouse.name}
+                className="h-32 w-48 rounded-lg object-cover border border-slate-200"
+                onError={(e) => {
+                  e.target.src = 'https://placehold.co/300x200?text=Warehouse'
+                }}
+              />
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">{selectedWarehouse.name}</h3>
+                <p className="flex items-center gap-1 text-sm text-slate-500 mt-1">
+                  <MapPin className="h-4 w-4" /> {selectedWarehouse.address}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                    {selectedWarehouse.typeName || 'Type unknown'}
+                  </span>
+                  <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    {selectedWarehouse.capacity ? selectedWarehouse.capacity.toLocaleString() : 0} m²
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 rounded-xl bg-slate-50 p-4 border border-slate-100">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase">Rental price / month</p>
+                <p className="mt-1 font-bold text-slate-900 text-lg">
+                  {selectedWarehouse.pricePerMonth ? selectedWarehouse.pricePerMonth.toLocaleString() : 0} ₫
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase">Status</p>
+                <p className="mt-1 font-bold text-slate-900">
+                  {selectedWarehouse.status}
+                </p>
+              </div>
+            </div>
+
+            {selectedWarehouse.description && (
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase mb-2">Description</p>
+                <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                  {selectedWarehouse.description}
+                </p>
+              </div>
+            )}
+            
+            <div className="flex justify-end pt-4 border-t border-slate-100">
+              <Button onClick={() => setSelectedWarehouse(null)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
     </div>
   )
 }

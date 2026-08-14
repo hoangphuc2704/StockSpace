@@ -61,7 +61,7 @@ const InventoryPage = () => {
         productApi.getSKUs({ page: 0, size: 50 }),
         productApi.getCategories()
       ])
-      
+
       const categoryMap = {}
       if (catRes.data?.data) {
         catRes.data.data.forEach((c) => {
@@ -70,7 +70,7 @@ const InventoryPage = () => {
       }
 
       const skus = skuRes.data?.data?.content || []
-      
+
       // Fetch stock for each SKU
       const enrichedSkus = await Promise.all(skus.map(async (sku) => {
         let qty = 0
@@ -78,8 +78,22 @@ const InventoryPage = () => {
         let batches = []
         try {
           const stockRes = await stockApi.getStockBySku(sku.id)
-          qty = stockRes.data?.data?.totalQuantity || 0
-          batches = stockRes.data?.data?.batches || []
+          console.log('[DEBUG] stockBySku response for', sku.id, ':', JSON.stringify(stockRes.data, null, 2))
+          const stockData = stockRes.data?.data
+          // Hỗ trợ các cấu trúc trả về khác nhau từ API
+          qty = stockData?.totalQuantity ?? stockData?.totalQty ?? 0
+          
+          if (Array.isArray(stockData)) {
+            batches = stockData
+          } else {
+            batches = stockData?.locations || stockData?.batches || stockData?.stockBatches || stockData?.content || []
+          }
+          
+          if (!Array.isArray(batches)) batches = []
+          // Tính lại qty từ batches nếu totalQuantity không có
+          if (!qty && batches.length > 0) {
+            qty = batches.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0)
+          }
           if (qty > 0) status = qty > 10 ? 'IN_STOCK' : 'LOW_STOCK'
         } catch (e) {
           console.error("Error fetching stock for SKU", sku.id)
@@ -92,7 +106,7 @@ const InventoryPage = () => {
           batches
         }
       }))
-      
+
       setProducts(enrichedSkus)
     } catch (error) {
       console.error('Error fetching inventory data:', error)
@@ -172,23 +186,29 @@ const InventoryPage = () => {
     },
     {
       header: 'Type',
-      render: (row) => (
-        <Badge variant={row.type === 'IN' ? 'success' : 'danger'}>
-          {row.type}
-        </Badge>
-      ),
+      render: (row) => {
+        const isPositive = Number(row.quantityChanged) > 0;
+        return (
+          <Badge variant={isPositive ? 'success' : 'danger'}>
+            {isPositive ? 'IN' : 'OUT'}
+          </Badge>
+        )
+      },
     },
     {
       header: 'Quantity',
-      render: (row) => (
-        <span className={row.type === 'IN' ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>
-          {row.type === 'IN' ? '+' : '-'}{row.quantity}
-        </span>
-      ),
+      render: (row) => {
+        const isPositive = Number(row.quantityChanged) > 0;
+        return (
+          <span className={isPositive ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>
+            {isPositive ? '+' : ''}{row.quantityChanged}
+          </span>
+        )
+      },
     },
     {
-      header: 'Reference',
-      render: (row) => <span className="text-sm font-mono text-slate-500">{row.referenceId ? row.referenceId.substring(0,8) : 'N/A'}</span>,
+      header: 'Receipt ID',
+      render: (row) => <span className="text-sm font-mono text-slate-500">{row.receiptId ? String(row.receiptId).substring(0, 8) : 'N/A'}</span>,
     },
   ]
 
@@ -209,9 +229,8 @@ const InventoryPage = () => {
         <Sidebar currentRole={currentRole} />
 
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -224,14 +243,7 @@ const InventoryPage = () => {
                 </h1>
                 <p className="text-sm text-slate-500">Monitor stock levels and warehouse inventory in real-time.</p>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 md:flex-none">
-                  <Download className="mr-2 h-4 w-4" /> Export
-                </Button>
-                <Button variant="outline" className="flex-1 md:flex-none">
-                  <Filter className="mr-2 h-4 w-4" /> Filters
-                </Button>
-              </div>
+
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -327,8 +339,10 @@ const InventoryPage = () => {
                           {selectedProduct.batches.map(batch => (
                             <div key={batch.batchId} className="flex items-center justify-between p-3 rounded-lg border border-slate-200">
                               <div>
-                                <p className="font-medium text-sm text-slate-900">Batch: {batch.batchId.substring(0,8)}...</p>
-                                <p className="text-xs text-slate-500">Expires: {batch.expiryDate ? new Date(batch.expiryDate).toLocaleDateString() : 'N/A'}</p>
+                                <p className="font-medium text-sm text-slate-900">Batch: {batch.batchId ? String(batch.batchId).substring(0, 8) : 'N/A'}...</p>
+                                <p className="text-xs text-slate-500">
+                                  Location: {batch.warehouseName ? `${batch.warehouseName} / ${batch.rackName} / ${batch.binName}` : 'N/A'}
+                                </p>
                               </div>
                               <div className="flex items-center gap-4">
                                 <span className="font-bold text-slate-900">{batch.quantity} units</span>
