@@ -62,7 +62,7 @@ const CreatePermissionModal = ({ onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -166,7 +166,7 @@ const RoleModal = ({ role, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -275,7 +275,7 @@ const AssignPermModal = ({ role, allPermissions, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -391,7 +391,7 @@ const DeleteRoleModal = ({ role, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -703,7 +703,7 @@ const PermissionManagementPage = () => {
                                 <span className="font-semibold text-slate-800">{r.name}</span>
                               </div>
                             </td>
-                            <td className="max-w-[200px] px-5 py-3.5">
+                            <td className="max-w-50 px-5 py-3.5">
                               <p className="truncate text-xs text-slate-500" title={r.description}>
                                 {r.description || '—'}
                               </p>

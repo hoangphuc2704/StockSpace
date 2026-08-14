@@ -9,7 +9,7 @@ import PublicHeader from '@/components/PublicHeader'
 
 const WarehouseSkeleton = () => (
   <div className="animate-pulse overflow-hidden rounded-2xl border border-slate-200 bg-white">
-    <div className="aspect-[4/3] bg-slate-100" />
+    <div className="aspect-4/3 bg-slate-100" />
     <div className="space-y-4 p-6">
       <div className="flex justify-between">
         <div className="h-6 w-2/3 rounded-lg bg-slate-100" />

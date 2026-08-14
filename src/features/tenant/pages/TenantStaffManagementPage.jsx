@@ -207,7 +207,7 @@ const TenantStaffManagementPage = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1400px] space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-350 space-y-6 p-6 md:p-8">
             {/* Header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
@@ -289,7 +289,7 @@ const TenantStaffManagementPage = () => {
                         <tr key={staff.memberId} className="transition-colors hover:bg-slate-50">
                           <td className="px-4 py-4">
                             <div className="flex items-center gap-3">
-                              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-semibold text-white">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-indigo-600 text-sm font-semibold text-white">
                                 {staff.fullName?.charAt(0)?.toUpperCase() || '?'}
                               </div>
                               <div>
@@ -343,9 +343,9 @@ const TenantStaffManagementPage = () => {
                                 {
                                   label: 'Assignment',
                                   icon: Briefcase,
-                                  disabled: !(
-                                    staff.active !== undefined ? staff.active : staff.isActive
-                                  ),
+                                  disabled: !(staff.active !== undefined
+                                    ? staff.active
+                                    : staff.isActive),
                                   onClick: () => handleOpenAssign(staff),
                                 },
                                 {

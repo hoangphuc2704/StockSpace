@@ -114,18 +114,22 @@ const CategoryPage = () => {
 
       <div className="flex pt-14">
         <Sidebar currentRole={currentRole} />
-        
-        <div className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}>
-          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+
+        <div
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
+        >
+          <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-600">
+                <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
+                  <div className="rounded-lg bg-indigo-500/10 p-2 text-indigo-600">
                     <LayoutGrid className="h-6 w-6" />
                   </div>
                   Category Management
                 </h1>
-                <p className="text-sm text-slate-500">Organize and manage your product categories.</p>
+                <p className="text-sm text-slate-500">
+                  Organize and manage your product categories.
+                </p>
               </div>
               <Button onClick={() => setIsCategoryModalOpen(true)} className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" /> Add Category
@@ -134,13 +138,19 @@ const CategoryPage = () => {
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               {isLoading ? (
-                <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+                <div className="flex justify-center p-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                </div>
               ) : (
                 <DataTable columns={columns} data={categories} />
               )}
             </div>
 
-            <Modal isOpen={isCategoryModalOpen} onClose={() => setIsCategoryModalOpen(false)} title="Add New Category">
+            <Modal
+              isOpen={isCategoryModalOpen}
+              onClose={() => setIsCategoryModalOpen(false)}
+              title="Add New Category"
+            >
               <form onSubmit={handleCreateCategory} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Category name *</label>
@@ -151,13 +161,20 @@ const CategoryPage = () => {
                     required
                   />
                 </div>
-                <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
-                  <Button type="button" variant="outline" onClick={() => setIsCategoryModalOpen(false)}>Cancel</Button>
-                  <Button type="submit" isLoading={isCreatingCategory}>Save Category</Button>
+                <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCategoryModalOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" isLoading={isCreatingCategory}>
+                    Save Category
+                  </Button>
                 </div>
               </form>
             </Modal>
-
           </main>
         </div>
       </div>

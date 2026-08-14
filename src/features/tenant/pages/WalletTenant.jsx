@@ -308,7 +308,7 @@ const WalletTenant = () => {
           {getStatusBadge(row.status)}
           {row.adminNotes && (
             <p
-              className="max-w-[150px] truncate text-[11px] text-slate-500 italic"
+              className="max-w-37.5 truncate text-[11px] text-slate-500 italic"
               title={row.adminNotes}
             >
               Notes: {row.adminNotes}

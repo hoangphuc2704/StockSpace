@@ -129,7 +129,7 @@ const PublicHeader = () => {
                       {user?.role && (
                         <button
                           onClick={() => navigate(getDashboardInfo(user.role).url)}
-                          className="block w-full px-4 py-2 text-left text-sm font-medium text-[#FF5A1F] text-stone-700 hover:bg-stone-100"
+                          className="block w-full px-4 py-2 text-left text-sm font-medium text-stone-700 hover:bg-stone-100"
                         >
                           {getDashboardInfo(user.role).label}
                         </button>

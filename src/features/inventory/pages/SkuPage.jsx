@@ -109,7 +109,8 @@ const SkuPage = () => {
 
     let parsedSpecs = []
     try {
-      parsedSpecs = typeof product.specs === 'string' ? JSON.parse(product.specs) : product.specs || []
+      parsedSpecs =
+        typeof product.specs === 'string' ? JSON.parse(product.specs) : product.specs || []
     } catch (e) {
       parsedSpecs = []
     }
@@ -132,11 +133,17 @@ const SkuPage = () => {
       // Normalize specs
       let specs = raw?.specs || {}
       if (typeof specs === 'string') {
-        try { specs = JSON.parse(specs) } catch { specs = {} }
+        try {
+          specs = JSON.parse(specs)
+        } catch {
+          specs = {}
+        }
       }
       if (Array.isArray(specs)) {
         const obj = {}
-        specs.forEach(s => { if (s.key) obj[s.key] = s.value })
+        specs.forEach((s) => {
+          if (s.key) obj[s.key] = s.value
+        })
         specs = obj
       }
       setDetailData({ ...raw, specsObj: specs })
@@ -171,7 +178,7 @@ const SkuPage = () => {
     setIsSubmitting(true)
 
     const specsObj = {}
-    formSpecs.forEach(s => {
+    formSpecs.forEach((s) => {
       if (s.key && s.value) {
         specsObj[s.key] = s.value
       }
@@ -256,12 +263,14 @@ const SkuPage = () => {
       <div className="flex pt-14">
         <Sidebar currentRole={currentRole} />
 
-        <div className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}>
-          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+        <div
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
+        >
+          <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
+                <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
+                  <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600">
                     <Package className="h-6 w-6" />
                   </div>
                   SKU Management
@@ -276,13 +285,20 @@ const SkuPage = () => {
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               {isLoading ? (
-                <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+                <div className="flex justify-center p-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                </div>
               ) : (
                 <DataTable columns={columns} data={products} />
               )}
             </div>
 
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={isEditing ? 'Edit SKU' : 'Add New SKU'} size="lg">
+            <Modal
+              isOpen={isModalOpen}
+              onClose={() => setIsModalOpen(false)}
+              title={isEditing ? 'Edit SKU' : 'Add New SKU'}
+              size="lg"
+            >
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
@@ -313,7 +329,9 @@ const SkuPage = () => {
                     >
                       <option value="">-- Select category --</option>
                       {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -327,7 +345,9 @@ const SkuPage = () => {
                     >
                       <option value="">-- Select UOM --</option>
                       {uoms.map((uom) => (
-                        <option key={uom.id} value={uom.id}>{uom.name}</option>
+                        <option key={uom.id} value={uom.id}>
+                          {uom.name}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -339,7 +359,7 @@ const SkuPage = () => {
                     <button
                       type="button"
                       onClick={() => setFormSpecs([...formSpecs, { key: '', value: '' }])}
-                      className="text-xs text-primary font-medium hover:underline"
+                      className="text-primary text-xs font-medium hover:underline"
                     >
                       + Add Specs
                     </button>
@@ -382,9 +402,13 @@ const SkuPage = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
-                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                  <Button type="submit" isLoading={isSubmitting}>{isEditing ? 'Save Changes' : 'Create SKU'}</Button>
+                <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-6">
+                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" isLoading={isSubmitting}>
+                    {isEditing ? 'Save Changes' : 'Create SKU'}
+                  </Button>
                 </div>
               </form>
             </Modal>
@@ -408,13 +432,13 @@ const SkuPage = () => {
                       <div>
                         <h2 className="text-base font-bold text-slate-900">SKU Detail</h2>
                         {detailData && (
-                          <p className="text-xs text-slate-400 font-mono">{detailData.skuCode}</p>
+                          <p className="font-mono text-xs text-slate-400">{detailData.skuCode}</p>
                         )}
                       </div>
                     </div>
                     <button
                       onClick={() => setIsDetailOpen(false)}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+                      className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -433,21 +457,26 @@ const SkuPage = () => {
                             <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-400 uppercase">
                               <Package className="h-3 w-3" /> Product Name
                             </p>
-                            <p className="text-sm font-bold text-slate-800">{detailData.name || '—'}</p>
+                            <p className="text-sm font-bold text-slate-800">
+                              {detailData.name || '—'}
+                            </p>
                           </div>
                           <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
                             <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-400 uppercase">
                               <Hash className="h-3 w-3" /> SKU Code
                             </p>
-                            <p className="text-sm font-mono font-bold text-slate-800">{detailData.skuCode || '—'}</p>
+                            <p className="font-mono text-sm font-bold text-slate-800">
+                              {detailData.skuCode || '—'}
+                            </p>
                           </div>
                           <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
                             <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-400 uppercase">
                               <Tag className="h-3 w-3" /> Category
                             </p>
                             <p className="text-sm font-semibold text-slate-800">
-                              {categories.find(c => c.id === detailData.categoryId)?.name ||
-                                detailData.categoryName || '—'}
+                              {categories.find((c) => c.id === detailData.categoryId)?.name ||
+                                detailData.categoryName ||
+                                '—'}
                             </p>
                           </div>
                           <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
@@ -455,26 +484,36 @@ const SkuPage = () => {
                               <Ruler className="h-3 w-3" /> Unit of Measure
                             </p>
                             <p className="text-sm font-semibold text-slate-800">
-                              {uoms.find(u => u.id === detailData.uomId)?.name ||
-                                detailData.uomName || '—'}
+                              {uoms.find((u) => u.id === detailData.uomId)?.name ||
+                                detailData.uomName ||
+                                '—'}
                             </p>
                           </div>
                         </div>
 
                         {/* Specs */}
                         <div>
-                          <p className="mb-2 text-xs font-bold text-slate-500 uppercase">Specifications</p>
+                          <p className="mb-2 text-xs font-bold text-slate-500 uppercase">
+                            Specifications
+                          </p>
                           {detailData.specsObj && Object.keys(detailData.specsObj).length > 0 ? (
-                            <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
+                            <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
                               {Object.entries(detailData.specsObj).map(([key, value]) => (
-                                <div key={key} className="flex items-center justify-between px-4 py-2.5">
-                                  <span className="text-xs font-semibold text-slate-500">{key}</span>
-                                  <span className="text-xs font-bold text-slate-800">{String(value)}</span>
+                                <div
+                                  key={key}
+                                  className="flex items-center justify-between px-4 py-2.5"
+                                >
+                                  <span className="text-xs font-semibold text-slate-500">
+                                    {key}
+                                  </span>
+                                  <span className="text-xs font-bold text-slate-800">
+                                    {String(value)}
+                                  </span>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-xs italic text-slate-400">No specifications.</p>
+                            <p className="text-xs text-slate-400 italic">No specifications.</p>
                           )}
                         </div>
                       </div>
@@ -484,14 +523,17 @@ const SkuPage = () => {
                   {/* Footer */}
                   <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
                     <button
-                      onClick={() => { setIsDetailOpen(false); if (detailData) handleOpenEdit(detailData) }}
-                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                      onClick={() => {
+                        setIsDetailOpen(false)
+                        if (detailData) handleOpenEdit(detailData)
+                      }}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
                     >
                       <Edit className="h-3.5 w-3.5" /> Edit
                     </button>
                     <button
                       onClick={() => setIsDetailOpen(false)}
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-700 transition-colors"
+                      className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-slate-700"
                     >
                       Close
                     </button>
@@ -499,7 +541,6 @@ const SkuPage = () => {
                 </div>
               </div>
             )}
-
           </main>
         </div>
       </div>

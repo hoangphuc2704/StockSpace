@@ -61,7 +61,7 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => (
           </div>
           {receipt.items?.length ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-[680px] text-left text-sm">
+              <table className="w-full min-w-170 text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase">
                   <tr>
                     <th className="px-4 py-3">SKU</th>

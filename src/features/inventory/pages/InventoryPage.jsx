@@ -247,7 +247,7 @@ const InventoryPage = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">

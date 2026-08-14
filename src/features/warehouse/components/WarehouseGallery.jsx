@@ -34,7 +34,7 @@ export default function WarehouseGallery({ images = [] }) {
   return (
     <>
       <div
-        className={`mb-10 grid gap-3 overflow-hidden sm:h-[500px] ${
+        className={`mb-10 grid gap-3 overflow-hidden sm:h-125 ${
           surroundingImages.length
             ? 'sm:grid-cols-[minmax(0,2fr)_minmax(240px,1fr)]'
             : 'sm:grid-cols-1'
@@ -93,7 +93,7 @@ export default function WarehouseGallery({ images = [] }) {
 
       {activeIndex != null && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col bg-slate-950/95 p-3 sm:p-6"
+          className="fixed inset-0 z-100 flex flex-col bg-slate-950/95 p-3 sm:p-6"
           role="dialog"
           aria-modal="true"
           aria-label="Warehouse photo gallery"

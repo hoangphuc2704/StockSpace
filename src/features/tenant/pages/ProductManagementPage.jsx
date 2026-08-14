@@ -5,7 +5,6 @@ import {
   ChevronRight,
   Edit3,
   Loader2,
-  MoreVertical,
   PackageSearch,
   Plus,
   Search,
@@ -43,7 +42,7 @@ const parseJsonObject = (value, fieldName) => {
 
 function Modal({ title, children, onClose }) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4">
+    <div className="fixed inset-0 z-70 flex items-center justify-center bg-slate-950/45 p-4">
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-bold text-slate-900">{title}</h2>
@@ -74,7 +73,6 @@ export default function ProductManagementPage() {
   const [categoryAttributes, setCategoryAttributes] = useState('{}')
   const [skuForm, setSkuForm] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [openActionMenu, setOpenActionMenu] = useState(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -197,14 +195,6 @@ export default function ProductManagementPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Header />
-      {openActionMenu && (
-        <button
-          type="button"
-          aria-label="Close action menu"
-          onClick={() => setOpenActionMenu(null)}
-          className="fixed inset-0 z-[55] cursor-default"
-        />
-      )}
       {isMobileOpen && (
         <button
           type="button"
@@ -214,7 +204,7 @@ export default function ProductManagementPage() {
         />
       )}
       <Sidebar currentRole="TENANT" />
-      <main className={`pt-20 transition-all ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]'}`}>
+      <main className={`pt-20 transition-all ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}>
         <div className="mx-auto max-w-7xl space-y-6 px-4 pb-10 sm:px-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -288,37 +278,16 @@ export default function ProductManagementPage() {
                           </td>
                           <td className="px-5 py-3 text-right">
                             {category.tenantId && (
-                              <div className="relative z-[60] inline-flex flex-col items-end">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setOpenActionMenu((current) =>
-                                      current === `category-${category.id}`
-                                        ? null
-                                        : `category-${category.id}`
-                                    )
-                                  }
-                                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                                  aria-label={`Actions for ${category.name}`}
-                                  aria-expanded={openActionMenu === `category-${category.id}`}
-                                >
-                                  <MoreVertical className="h-5 w-5" />
-                                </button>
-                                {openActionMenu === `category-${category.id}` && (
-                                  <div className="mt-1 min-w-32 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-lg">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenActionMenu(null)
-                                        setDeleteTarget({ type: 'category', item: category })
-                                      }}
-                                      className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setDeleteTarget({ type: 'category', item: category })
+                                }
+                                className="rounded-lg p-2 text-red-600 hover:bg-red-50"
+                                aria-label={`Delete ${category.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
                             )}
                           </td>
                         </tr>
@@ -336,7 +305,7 @@ export default function ProductManagementPage() {
                   </p>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] text-left text-sm">
+                  <table className="w-full min-w-180 text-left text-sm">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                       <tr>
                         <th className="px-5 py-3">SKU code</th>
@@ -367,44 +336,23 @@ export default function ProductManagementPage() {
                           </td>
                           <td className="px-5 py-3 text-right">
                             {sku.tenantId && (
-                              <div className="relative z-[60] inline-flex flex-col items-end">
+                              <div className="inline-flex gap-1">
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    setOpenActionMenu((current) =>
-                                      current === `sku-${sku.id}` ? null : `sku-${sku.id}`
-                                    )
-                                  }
-                                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                                  aria-label={`Actions for ${sku.name}`}
-                                  aria-expanded={openActionMenu === `sku-${sku.id}`}
+                                  onClick={() => openEditSku(sku)}
+                                  className="rounded-lg p-2 text-blue-600 hover:bg-blue-50"
+                                  aria-label={`Edit ${sku.name}`}
                                 >
-                                  <MoreVertical className="h-5 w-5" />
+                                  <Edit3 className="h-4 w-4" />
                                 </button>
-                                {openActionMenu === `sku-${sku.id}` && (
-                                  <div className="mt-1 min-w-32 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-lg">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenActionMenu(null)
-                                        openEditSku(sku)
-                                      }}
-                                      className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
-                                    >
-                                      <Edit3 className="mr-2 h-4 w-4" /> Edit
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setOpenActionMenu(null)
-                                        setDeleteTarget({ type: 'sku', item: sku })
-                                      }}
-                                      className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                    </button>
-                                  </div>
-                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteTarget({ type: 'sku', item: sku })}
+                                  className="rounded-lg p-2 text-red-600 hover:bg-red-50"
+                                  aria-label={`Delete ${sku.name}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
                               </div>
                             )}
                           </td>

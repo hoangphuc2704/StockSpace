@@ -199,7 +199,7 @@ const AdminDashboard = () => {
         {/* 3. MAIN CONTENT CONTAINER - Tự động co giãn đồng nhất */}
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // Thống nhất khoảng cách pl-[72px] giống owner
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18' // Thống nhất khoảng cách pl-[72px] giống owner
           }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">

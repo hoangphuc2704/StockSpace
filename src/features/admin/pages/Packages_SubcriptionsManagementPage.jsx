@@ -98,7 +98,7 @@ const PackageFormModal = ({ pkg, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -240,7 +240,7 @@ const DeleteConfirmModal = ({ pkg, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -442,7 +442,7 @@ const Packages_SubcriptionsManagementPage = () => {
                               </div>
                             </td>
                             <td className="px-5 py-4">
-                              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-100 bg-emerald-50 px-2 py-1 text-base font-bold whitespace-nowrap text-emerald-700 text-slate-800">
+                              <span className="inline-flex items-center gap-1 rounded-md border border-emerald-100 bg-emerald-50 px-2 py-1 text-base font-bold whitespace-nowrap text-slate-800">
                                 <DollarSign size={14} /> {formatVND(pkg.price)}
                               </span>
                             </td>

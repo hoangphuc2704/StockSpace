@@ -83,7 +83,7 @@ const TableActionMenu = ({ label = 'Row actions', items = [] }) => {
               top: position?.top ?? -9999,
               visibility: position ? 'visible' : 'hidden',
             }}
-            className="fixed z-[1000] max-w-64 min-w-40 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-xl"
+            className="fixed z-1000 max-w-64 min-w-40 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-xl"
           >
             {availableItems.map((item) => {
               const Icon = item.icon

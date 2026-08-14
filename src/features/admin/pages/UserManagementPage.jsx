@@ -520,11 +520,8 @@ const UserManagementPage = () => {
 
         {/* MAIN CONTENT CONTAINER */}
         <div
-          // className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          //   }`}
-
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // ✅ Đồng bộ pl-[72px] thống nhất với Owner
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">

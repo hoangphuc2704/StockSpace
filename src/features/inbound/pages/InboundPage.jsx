@@ -429,7 +429,7 @@ const InboundPage = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
             <div className="space-y-6">
               <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
@@ -586,7 +586,7 @@ const InboundPage = () => {
                       </span>
                     </div>
 
-                    <div className="max-h-[400px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="max-h-100 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
                       {!layout?.racks?.length ? (
                         <div className="py-4 text-center text-sm text-slate-500">
                           No Racks found in this warehouse.

@@ -315,7 +315,7 @@ const WarehouseApprovalPage = () => {
         {/* 3. MAIN CONTENT CONTAINER */}
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // ✅ Đồng bộ pl-[72px] chuẩn xác của toàn bộ dự án
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18' // ✅ Đồng bộ pl-[72px] chuẩn xác của toàn bộ dự án
           }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
@@ -512,7 +512,7 @@ const WarehouseApprovalPage = () => {
                   {binCount} bins
                 </span>
               </div>
-              <div className="h-[520px] overflow-hidden rounded-2xl border border-slate-200 bg-sky-50">
+              <div className="h-130 overflow-hidden rounded-2xl border border-slate-200 bg-sky-50">
                 <WarehouseLayoutPreview3D layout={layout} editable={false} />
               </div>
               <p className="text-xs text-slate-500">

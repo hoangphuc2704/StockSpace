@@ -137,7 +137,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
                     className="flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-600"
                   >
                     <ImageIcon size={12} />
-                    <span className="max-w-[120px] truncate">{file.name}</span>
+                    <span className="max-w-30 truncate">{file.name}</span>
                     <button
                       type="button"
                       onClick={() => removeFile(i)}
@@ -295,7 +295,7 @@ const DetailModal = ({ dispute, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div

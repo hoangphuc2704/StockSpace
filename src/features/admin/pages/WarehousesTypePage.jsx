@@ -76,7 +76,7 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -177,7 +177,7 @@ const DeleteConfirmModal = ({ item, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -315,7 +315,7 @@ const WarehousesTypePage = () => {
                     placeholder="Search..."
                     value={keyword}
                     onChange={(e) => setKeyword(e.target.value)}
-                    className="w-full min-w-[240px] rounded-xl border border-slate-200 bg-white py-2.5 pr-4 pl-9 text-sm shadow-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                    className="w-full min-w-60 rounded-xl border border-slate-200 bg-white py-2.5 pr-4 pl-9 text-sm shadow-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 focus:outline-none"
                   />
                 </div>
                 <button

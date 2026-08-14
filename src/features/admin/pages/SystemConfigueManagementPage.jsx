@@ -82,7 +82,7 @@ const EditConfigModal = ({ configItem, packages, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -296,7 +296,7 @@ const SystemConfigueManagementPage = () => {
                               </p>
                             </td>
                             <td className="px-5 py-4">
-                              <span className="rounded-md border border-blue-100 bg-blue-50 px-2 py-1 text-base font-bold whitespace-nowrap text-blue-700 text-slate-800">
+                              <span className="rounded-md border border-blue-100 bg-blue-50 px-2 py-1 text-base font-bold whitespace-nowrap text-slate-800">
                                 {formatConfigValue(cfg.configKey, cfg.configValue, packages)}
                               </span>
                             </td>

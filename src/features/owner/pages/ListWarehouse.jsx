@@ -247,9 +247,9 @@ const WarehouseManagement = () => {
 
         {/* MAIN CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]'}`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-[1250px] space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-312.5 space-y-6 p-6 md:p-8">
             {/* TIÊU ĐỀ TRANG */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -339,7 +339,7 @@ const WarehouseManagement = () => {
                                     {wh.name}
                                     <ExternalLink className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
                                   </p>
-                                  <p className="flex max-w-[200px] items-center gap-0.5 truncate text-xs text-slate-400">
+                                  <p className="flex max-w-50 items-center gap-0.5 truncate text-xs text-slate-400">
                                     <MapPin className="h-3 w-3 shrink-0" /> {wh.address}
                                   </p>
                                 </div>
@@ -498,7 +498,7 @@ const WarehouseManagement = () => {
       </div>
 
       {inspectionConfirm && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4">
+        <div className="fixed inset-0 z-70 flex items-center justify-center bg-slate-950/45 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-700">
               <AlertTriangle className="h-6 w-6" />

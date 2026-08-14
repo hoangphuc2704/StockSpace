@@ -51,7 +51,7 @@ const DetailModal = ({ dispute, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-60 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -234,7 +234,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1600px] space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Page header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
@@ -365,7 +365,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
                         const cfg = STATUS_CONFIG[d.status] || {}
                         return (
                           <tr key={d.id} className="group transition-colors hover:bg-slate-50/60">
-                            <td className="max-w-[200px] px-5 py-3.5">
+                            <td className="max-w-50 px-5 py-3.5">
                               <p className="truncate text-slate-600" title={d.reason}>
                                 {d.reason || '—'}
                               </p>

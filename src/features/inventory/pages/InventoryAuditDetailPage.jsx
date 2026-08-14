@@ -233,7 +233,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
           return (
             <input
               type="text"
-              className="focus:border-brand-500 focus:ring-brand-500 w-full min-w-[120px] rounded-lg border border-slate-300 px-2 py-1 outline-none focus:ring-1"
+              className="focus:border-brand-500 focus:ring-brand-500 w-full min-w-30 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:ring-1"
               value={row.note || ''}
               placeholder="Ghi chú..."
               onChange={(e) => handleNoteChange(row.batchId, e.target.value)}
@@ -263,7 +263,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
             <div className="mx-auto max-w-7xl space-y-6">
               <div className="flex items-center gap-4">
                 <button
