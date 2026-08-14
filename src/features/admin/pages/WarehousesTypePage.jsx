@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import TranslatableText from '@/components/TranslatableText'
+import TableActionMenu from '@/components/TableActionMenu'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchWarehouseTypes,
@@ -384,22 +385,17 @@ const WarehousesTypePage = () => {
                             )}
                           </td>
                           <td className="w-32 px-5 py-4 text-right">
-                            <div className="inline-flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                              <button
-                                onClick={() => setEditingItem(item)}
-                                className="rounded-lg p-2 text-blue-600 transition-colors hover:bg-blue-50"
-                                title="Edit"
-                              >
-                                <Edit3 size={18} />
-                              </button>
-                              <button
-                                onClick={() => setDeletingItem(item)}
-                                className="rounded-lg p-2 text-rose-600 transition-colors hover:bg-rose-50"
-                                title="Delete"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
+                            <TableActionMenu
+                              items={[
+                                { label: 'Edit', icon: Edit3, onClick: () => setEditingItem(item) },
+                                {
+                                  label: 'Delete',
+                                  icon: Trash2,
+                                  onClick: () => setDeletingItem(item),
+                                  danger: true,
+                                },
+                              ]}
+                            />
                           </td>
                         </motion.tr>
                       ))}

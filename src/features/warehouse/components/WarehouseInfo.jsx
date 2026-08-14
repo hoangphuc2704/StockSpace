@@ -1,10 +1,9 @@
-import { MapPin, Maximize2, Shield, Clock, Star, CheckCircle2, Truck } from 'lucide-react'
+import { MapPin, Maximize2, Shield, Clock, Star, CheckCircle2, Truck, Phone } from 'lucide-react'
 import Badge from '@/components/atoms/Badge'
 import Avatar from '@/components/atoms/Avatar'
-import Button from '@/components/atoms/Button'
 import TranslatableText from '@/components/TranslatableText'
 
-const WarehouseInfo = ({ warehouse, extendedData }) => {
+const WarehouseInfo = ({ warehouse, extendedData, isAuthenticated = false }) => {
   return (
     <div className="flex-1 space-y-12">
       <section>
@@ -79,9 +78,19 @@ const WarehouseInfo = ({ warehouse, extendedData }) => {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" className="bg-white">
-            Contact Owner
-          </Button>
+          {isAuthenticated && extendedData.owner.phone ? (
+            <a
+              href={`tel:${extendedData.owner.phone}`}
+              className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700"
+            >
+              <Phone className="mr-2 h-4 w-4" />
+              {extendedData.owner.phone}
+            </a>
+          ) : (
+            <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
+              Sign in to view phone number
+            </span>
+          )}
         </div>
       </section>
 

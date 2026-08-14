@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
@@ -25,14 +25,11 @@ import disputeApi from '@/services/disputeApi'
 const STATUS_OPTIONS = ['', 'OPEN', 'RESOLVED']
 
 const STATUS_CONFIG = {
-  OPEN: { label: "Open", variant: 'warning', icon: AlertCircle },
-  RESOLVED: { label: "Resolved", variant: 'success', icon: CheckCircle2 },
+  OPEN: { label: 'Open', variant: 'warning', icon: AlertCircle },
+  RESOLVED: { label: 'Resolved', variant: 'success', icon: CheckCircle2 },
 }
 
-const formatDate = (dt) =>
-  dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—'
-
-const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
+const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 
 // ─── Detail Modal ────────────────────────────────────────────────────────────
 const DetailModal = ({ dispute, onClose }) => {
@@ -58,7 +55,7 @@ const DetailModal = ({ dispute, onClose }) => {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl animate-in fade-in zoom-in-95 rounded-2xl bg-white p-6 shadow-2xl duration-150"
+        className="animate-in fade-in zoom-in-95 w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-start justify-between">
@@ -68,7 +65,6 @@ const DetailModal = ({ dispute, onClose }) => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Dispute details</h2>
-              <p className="text-xs text-slate-400">{shortId(dispute.id)}</p>
             </div>
           </div>
           <button
@@ -92,11 +88,7 @@ const DetailModal = ({ dispute, onClose }) => {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Contract</p>
-              <p className="font-mono text-xs font-bold text-slate-700">{shortId(dispute.contractId)}</p>
-            </div>
+          <div className="grid grid-cols-1 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 text-xs text-slate-400">Creation date</p>
               <p className="font-medium text-slate-700">{formatDate(dispute.createdAt)}</p>
@@ -114,7 +106,7 @@ const DetailModal = ({ dispute, onClose }) => {
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
                 <User size={11} /> Handler
               </p>
-              <p className="font-semibold text-slate-800">{dispute.handledByName || "Not yet"}</p>
+              <p className="font-semibold text-slate-800">{dispute.handledByName || 'Not yet'}</p>
             </div>
           </div>
 
@@ -193,7 +185,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
       setTotalPages(paged?.totalPages || 0)
       setTotalElements(paged?.totalElements || 0)
     } catch (err) {
-      setError(err.response?.data?.message || "Unable to load dispute list.")
+      setError(err.response?.data?.message || 'Unable to load dispute list.')
       setDisputes([])
     } finally {
       setLoading(false)
@@ -210,8 +202,6 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
     if (searchText.trim()) {
       const q = searchText.toLowerCase().trim()
       return (
-        (d.id && d.id.toLowerCase().includes(q)) ||
-        (d.contractId && d.contractId.toLowerCase().includes(q)) ||
         (d.reason && d.reason.toLowerCase().includes(q)) ||
         (d.raisedByName && d.raisedByName.toLowerCase().includes(q))
       )
@@ -270,21 +260,21 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
                 {
-                  label: "Total dispute",
+                  label: 'Total dispute',
                   value: totalElements,
                   icon: Scale,
                   color: 'text-slate-600',
                   bg: 'bg-slate-100',
                 },
                 {
-                  label: "Open",
+                  label: 'Open',
                   value: openCount,
                   icon: AlertCircle,
                   color: 'text-amber-600',
                   bg: 'bg-amber-50',
                 },
                 {
-                  label: "Resolved",
+                  label: 'Resolved',
                   value: resolvedCount,
                   icon: CheckCircle2,
                   color: 'text-emerald-600',
@@ -319,7 +309,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
                 />
                 <input
                   type="text"
-                  placeholder="Search by ID, contract, reason..."
+                  placeholder="Search by reason or complainant..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm transition-all focus:ring-2 focus:ring-blue-200 focus:outline-none"
@@ -335,7 +325,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>
-                      {s ? STATUS_CONFIG[s]?.label || s : "All status"}
+                      {s ? STATUS_CONFIG[s]?.label || s : 'All status'}
                     </option>
                   ))}
                 </select>
@@ -353,43 +343,28 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
                 <div className="py-20 text-center text-sm text-slate-400">
                   {disputes.length === 0
                     ? "You don't have any disputes yet."
-                    : "There are no disputes that match the filter."}
+                    : 'There are no disputes that match the filter.'}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
-                        {['ID', "Contract", "Reason", "Status", "Creation date", "Handler", ''].map(
-                          (h) => (
-                            <th
-                              key={h}
-                              className="px-5 py-3.5 text-left text-xs font-bold tracking-wide text-slate-500 uppercase"
-                            >
-                              {h}
-                            </th>
-                          )
-                        )}
+                        {['Reason', 'Status', 'Creation date', 'Handler', ''].map((h) => (
+                          <th
+                            key={h}
+                            className="px-5 py-3.5 text-left text-xs font-bold tracking-wide text-slate-500 uppercase"
+                          >
+                            {h}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {filtered.map((d) => {
                         const cfg = STATUS_CONFIG[d.status] || {}
                         return (
-                          <tr
-                            key={d.id}
-                            className="group transition-colors hover:bg-slate-50/60"
-                          >
-                            <td className="px-5 py-3.5">
-                              <span className="font-mono text-xs font-bold text-slate-500" title={d.id}>
-                                {shortId(d.id)}
-                              </span>
-                            </td>
-                            <td className="px-5 py-3.5">
-                              <span className="font-mono text-xs text-slate-500" title={d.contractId}>
-                                {shortId(d.contractId)}
-                              </span>
-                            </td>
+                          <tr key={d.id} className="group transition-colors hover:bg-slate-50/60">
                             <td className="max-w-[200px] px-5 py-3.5">
                               <p className="truncate text-slate-600" title={d.reason}>
                                 {d.reason || '—'}
@@ -404,18 +379,18 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
                                 {cfg.label || d.status}
                               </Badge>
                             </td>
-                            <td className="whitespace-nowrap px-5 py-3.5 text-slate-500">
+                            <td className="px-5 py-3.5 whitespace-nowrap text-slate-500">
                               {formatDate(d.createdAt)}
                             </td>
                             <td className="px-5 py-3.5">
                               <span className="text-slate-600">
-                                {d.handledByName || "Not assigned yet"}
+                                {d.handledByName || 'Not assigned yet'}
                               </span>
                             </td>
                             <td className="px-5 py-3.5">
                               <button
                                 onClick={() => setSelectedDispute(d)}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 opacity-0 transition-all hover:bg-slate-50 group-hover:opacity-100"
+                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 opacity-0 transition-all group-hover:opacity-100 hover:bg-slate-50"
                               >
                                 Details
                               </button>
@@ -459,10 +434,7 @@ const MyDisputesPage = ({ currentRole = 'TENANT' }) => {
 
       {/* Detail Modal */}
       {selectedDispute && (
-        <DetailModal
-          dispute={selectedDispute}
-          onClose={() => setSelectedDispute(null)}
-        />
+        <DetailModal dispute={selectedDispute} onClose={() => setSelectedDispute(null)} />
       )}
     </div>
   )

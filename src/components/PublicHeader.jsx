@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { logoutThunk } from '../store/authSlice'
 import { Menu, X, ArrowRight } from 'lucide-react'
@@ -45,6 +45,16 @@ const PublicHeader = () => {
     setIsLoginOpen(true)
   }
 
+  const scrollToSection = (event, sectionId) => {
+    if (location.pathname !== '/') return
+    const section = document.getElementById(sectionId)
+    if (!section) return
+    event.preventDefault()
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    window.history.replaceState(null, '', `#${sectionId}`)
+    setIsMenuOpen(false)
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-stone-200 bg-white/95 backdrop-blur-sm">
@@ -62,9 +72,8 @@ const PublicHeader = () => {
             {['Home', 'About', 'Contact'].map((item) => (
               <a
                 key={item}
-                href={
-                  location.pathname === '/' ? `#${item.toLowerCase()}` : `/#${item.toLowerCase()}`
-                }
+                href={`/#${item.toLowerCase()}`}
+                onClick={(event) => scrollToSection(event, item.toLowerCase())}
                 className="text-sm font-medium text-stone-600 transition-colors hover:text-[#FF5A1F]"
               >
                 {item}

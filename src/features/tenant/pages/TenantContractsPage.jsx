@@ -6,15 +6,14 @@ import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
-import Button from '@/components/atoms/Button'
 import ContractViewerModal from '@/components/ContractViewerModal'
+import TableActionMenu from '@/components/TableActionMenu'
 import {
   FileText,
   CheckCircle,
   Loader2,
   Scale,
   X,
-  Upload,
   ImageIcon,
   AlertCircle,
   CheckCircle2,
@@ -44,7 +43,6 @@ const STATUS_CONFIG = {
   RESOLVED: { label: 'Resolved', variant: 'success', icon: CheckCircle2 },
 }
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
-const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 // ─── Dispute Modal ───────────────────────────────────────────────────────────
 const DisputeModal = ({ contractId, onClose, onSuccess }) => {
@@ -231,7 +229,8 @@ const ReportFailedModal = ({ contractId, onClose, onSuccess }) => {
           </button>
         </div>
         <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
-          <strong>Note:</strong> By rejecting this contract, it will be marked as disputed and sent to the Admin.
+          <strong>Note:</strong> By rejecting this contract, it will be marked as disputed and sent
+          to the Admin.
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -246,7 +245,9 @@ const ReportFailedModal = ({ contractId, onClose, onSuccess }) => {
               className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800 transition-colors focus:border-rose-400 focus:bg-white focus:ring-2 focus:ring-rose-100 focus:outline-none"
             />
           </div>
-          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
+          {error && (
+            <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>
+          )}
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
@@ -261,8 +262,12 @@ const ReportFailedModal = ({ contractId, onClose, onSuccess }) => {
               className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-rose-700 disabled:bg-slate-300"
             >
               {submitting ? (
-                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Sending...</>
-              ) : "Report & Reject"}
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Sending...
+                </>
+              ) : (
+                'Report & Reject'
+              )}
             </button>
           </div>
         </form>
@@ -304,7 +309,6 @@ const DetailModal = ({ dispute, onClose }) => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Dispute details</h2>
-              <p className="text-xs text-slate-400">{shortId(dispute.id)}</p>
             </div>
           </div>
           <button
@@ -328,13 +332,7 @@ const DetailModal = ({ dispute, onClose }) => {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Contract</p>
-              <p className="font-mono text-xs font-bold text-slate-700">
-                {shortId(dispute.contractId)}
-              </p>
-            </div>
+          <div className="grid grid-cols-1 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 text-xs text-slate-400">Creation date</p>
               <p className="font-medium text-slate-700">{formatDate(dispute.createdAt)}</p>
@@ -463,8 +461,8 @@ const TenantContractsPage = () => {
   const handleRespondCancel = async (id, agree) => {
     const confirmed = await confirmDialog({
       title: agree ? 'Agree to Cancel' : 'Reject Cancel Request',
-      message: agree 
-        ? 'Are you sure you want to AGREE to cancel this deal? Your deposit will be refunded.' 
+      message: agree
+        ? 'Are you sure you want to AGREE to cancel this deal? Your deposit will be refunded.'
         : 'Are you sure you want to REJECT this cancel request? This will escalate to a dispute.',
       confirmText: 'Confirm',
     })
@@ -580,88 +578,50 @@ const TenantContractsPage = () => {
     {
       header: 'Actions',
       render: (row) => (
-        <div className="flex items-center gap-2">
-          {/* Luôn hiện nút Xem nếu có link ảnh */}
-          {row.paperContractImages && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-black"
-              onClick={() => handleViewContract(row.paperContractImages)}
-            >
-              <FileText className="mr-2 h-4 w-4" /> View
-            </Button>
-          )}
-
-          {row.status === 'PENDING_TENANT_CONFIRM' && (
-            <Button
-              size="sm"
-              className="bg-blue-100 text-black hover:bg-blue-200"
-              onClick={() => handleConfirmContract(row.id)}
-            >
-              <CheckCircle className="mr-2 h-4 w-4" /> Confirmation
-            </Button>
-          )}
-
-          {(row.status === 'UNDER_NEGOTIATION' || row.status === 'PENDING_TENANT_CONFIRM') && (
-            <Button
-              size="sm"
-              className="bg-rose-100 text-rose-700 hover:bg-rose-200"
-              onClick={() => setReportFailedId(row.id)}
-            >
-              <X className="mr-1.5 h-4 w-4" /> Reject & Report
-            </Button>
-          )}
-
-          {row.status === 'PENDING_CANCEL' && (
-            <>
-              <Button
-                size="sm"
-                className="bg-success-100 text-success-700 hover:bg-success-200"
-                onClick={() => handleRespondCancel(row.id, true)}
-              >
-                <CheckCircle className="mr-1.5 h-4 w-4" /> Agree Cancel
-              </Button>
-              <Button
-                size="sm"
-                className="bg-rose-100 text-rose-700 hover:bg-rose-200"
-                onClick={() => handleRespondCancel(row.id, false)}
-              >
-                <X className="mr-1.5 h-4 w-4" /> Reject Cancel
-              </Button>
-            </>
-          )}
-
-          {/* Nút Tranh chấp — hiện khi status phù hợp & trong vòng 7 ngày */}
-          {DISPUTABLE_STATUSES.includes(row.status) && isWithin7Days(row.createdAt) && (
-            <Button
-              size="sm"
-              className="bg-amber-100 text-amber-700 hover:bg-amber-200"
-              onClick={() => setDisputeContractId(row.id)}
-            >
-              <Scale className="mr-1.5 h-4 w-4" /> Dispute
-            </Button>
-          )}
-
-          {/* Trạng thái DISPUTED — đã có tranh chấp */}
-          {row.status === 'DISPUTED' && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-600">
-              <Scale size={12} /> In dispute
-            </span>
-          )}
-
-          {/* Nút Xem kết quả tranh chấp (khi đã DISPUTED hoặc CANCELLED) */}
-          {(row.status === 'DISPUTED' || row.status === 'CANCELLED') && (
-            <Button
-              size="sm"
-              className="bg-slate-100 text-slate-700 hover:bg-slate-200"
-              onClick={() => handleViewDispute(row.id)}
-              disabled={loadingDispute}
-            >
-              <Scale className="mr-1.5 h-4 w-4" /> Dispute details
-            </Button>
-          )}
-        </div>
+        <TableActionMenu
+          items={[
+            row.paperContractImages && {
+              label: 'View contract',
+              icon: FileText,
+              onClick: () => handleViewContract(row.paperContractImages),
+            },
+            row.status === 'PENDING_TENANT_CONFIRM' && {
+              label: 'Confirm contract',
+              icon: CheckCircle,
+              onClick: () => handleConfirmContract(row.id),
+            },
+            (row.status === 'UNDER_NEGOTIATION' || row.status === 'PENDING_TENANT_CONFIRM') && {
+              label: 'Reject & report',
+              icon: X,
+              onClick: () => setReportFailedId(row.id),
+              danger: true,
+            },
+            row.status === 'PENDING_CANCEL' && {
+              label: 'Agree cancellation',
+              icon: CheckCircle,
+              onClick: () => handleRespondCancel(row.id, true),
+            },
+            row.status === 'PENDING_CANCEL' && {
+              label: 'Reject cancellation',
+              icon: X,
+              onClick: () => handleRespondCancel(row.id, false),
+              danger: true,
+            },
+            DISPUTABLE_STATUSES.includes(row.status) &&
+              isWithin7Days(row.createdAt) && {
+                label: 'Open dispute',
+                icon: Scale,
+                onClick: () => setDisputeContractId(row.id),
+              },
+            row.status === 'DISPUTED' && { label: 'In dispute', icon: Scale, disabled: true },
+            (row.status === 'DISPUTED' || row.status === 'CANCELLED') && {
+              label: 'Dispute details',
+              icon: Scale,
+              onClick: () => handleViewDispute(row.id),
+              disabled: loadingDispute,
+            },
+          ]}
+        />
       ),
     },
   ]

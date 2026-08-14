@@ -27,11 +27,11 @@ import {
 import { HiBars3 } from 'react-icons/hi2'
 import DataTable from '../../../components/organisms/DataTable'
 import Badge from '../../../components/atoms/Badge'
-import Button from '../../../components/atoms/Button'
 import Avatar from '../../../components/atoms/Avatar'
 import Sidebar from '../../../components/SideBar'
 import Modal from '../../../components/organisms/Modal'
 import WarehouseLayoutPreview3D from '../../../components/WarehouseLayoutPreview3D'
+import TableActionMenu from '@/components/TableActionMenu'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
@@ -244,47 +244,28 @@ const WarehouseApprovalPage = () => {
     {
       header: 'Actions',
       render: (row) => (
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 px-3"
-            onClick={() => openDetails(row)}
-          >
-            <Eye size={16} className="mr-2" /> Details
-          </Button>
-          {(row.status === 'PENDING' || row.status === 'PENDING_APPROVAL' || row.status === 'UNDER_REVIEW') && (
-            <>
-              <button
-                type="button"
-                onClick={() => runApprovalAction(row, 'approve')}
-                disabled={pendingAction.id === row.id}
-                title="Approve warehouse"
-                className="text-success hover:bg-success/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors disabled:cursor-wait disabled:opacity-50"
-              >
-                {pendingAction.id === row.id && pendingAction.type === 'approve' ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <CheckCircle size={18} />
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => runApprovalAction(row, 'reject')}
-                disabled={pendingAction.id === row.id}
-                title="Refuse warehouse"
-                className="text-danger hover:bg-danger/10 flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 transition-colors disabled:cursor-wait disabled:opacity-50"
-              >
-                {pendingAction.id === row.id && pendingAction.type === 'reject' ? (
-                  <Loader2 size={18} className="animate-spin" />
-                ) : (
-                  <XCircle size={18} />
-                )}
-              </button>
-            </>
-          )}
-        </div>
+        <TableActionMenu
+          items={[
+            { label: 'Details', icon: Eye, onClick: () => openDetails(row) },
+            (row.status === 'PENDING' ||
+              row.status === 'PENDING_APPROVAL' ||
+              row.status === 'UNDER_REVIEW') && {
+              label: 'Approve',
+              icon: CheckCircle,
+              onClick: () => runApprovalAction(row, 'approve'),
+              disabled: pendingAction.id === row.id,
+            },
+            (row.status === 'PENDING' ||
+              row.status === 'PENDING_APPROVAL' ||
+              row.status === 'UNDER_REVIEW') && {
+              label: 'Reject',
+              icon: XCircle,
+              onClick: () => runApprovalAction(row, 'reject'),
+              disabled: pendingAction.id === row.id,
+              danger: true,
+            },
+          ]}
+        />
       ),
     },
   ]

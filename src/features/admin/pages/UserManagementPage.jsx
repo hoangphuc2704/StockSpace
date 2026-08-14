@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
+import TableActionMenu from '@/components/TableActionMenu'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchUsers,
@@ -68,11 +69,11 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
 
   const validate = () => {
     const e = {}
-    if (!form.fullName.trim()) e.fullName = "Full name cannot be empty"
+    if (!form.fullName.trim()) e.fullName = 'Full name cannot be empty'
     if (!isEdit) {
-      if (!form.email.trim()) e.email = "Email cannot be empty"
-      if (!form.password) e.password = "Password cannot be empty"
-      else if (form.password.length < 8) e.password = "Password minimum 8 characters"
+      if (!form.email.trim()) e.email = 'Email cannot be empty'
+      if (!form.password) e.password = 'Password cannot be empty'
+      else if (form.password.length < 8) e.password = 'Password minimum 8 characters'
     }
     setErrors(e)
     return Object.keys(e).length === 0
@@ -105,7 +106,7 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
           <h3 className="text-lg font-bold text-slate-900">
-            {isEdit ? "Edit users" : "Create a new user"}
+            {isEdit ? 'Edit users' : 'Create a new user'}
           </h3>
           <button
             onClick={onClose}
@@ -192,7 +193,7 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
               Cancel
             </Button>
             <Button type="submit" isLoading={loading}>
-              {isEdit ? "Save changes" : "Create users"}
+              {isEdit ? 'Save changes' : 'Create users'}
             </Button>
           </div>
         </form>
@@ -209,10 +210,10 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
 
   const validate = () => {
     const e = {}
-    if (!form.newPassword) e.newPassword = "Password cannot be empty"
-    else if (form.newPassword.length < 8) e.newPassword = "Minimum 8 characters"
+    if (!form.newPassword) e.newPassword = 'Password cannot be empty'
+    else if (form.newPassword.length < 8) e.newPassword = 'Minimum 8 characters'
     if (form.newPassword !== form.confirmPassword)
-      e.confirmPassword = "Confirmation password does not match"
+      e.confirmPassword = 'Confirmation password does not match'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -298,36 +299,36 @@ const DeleteConfirmModal = ({ user, onClose, onConfirm, loading }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl"
-    >
-      <div className="p-6 text-center">
-        <div className="bg-danger/10 text-danger mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full">
-          <AlertCircle size={28} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl"
+      >
+        <div className="p-6 text-center">
+          <div className="bg-danger/10 text-danger mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full">
+            <AlertCircle size={28} />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900">Confirm user deletion</h3>
+          <p className="mt-2 text-sm text-slate-500">
+            You are about to permanently delete your account{' '}
+            <strong className="text-slate-800">{user?.fullName}</strong>. This action cannot be
+            undone work.
+          </p>
+          <div className="mt-6 flex gap-3">
+            <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-danger hover:bg-danger/90 flex-1 border-0 text-black"
+              onClick={onConfirm}
+              isLoading={loading}
+            >
+              Delete
+            </Button>
+          </div>
         </div>
-        <h3 className="text-lg font-bold text-slate-900">Confirm user deletion</h3>
-        <p className="mt-2 text-sm text-slate-500">
-          You are about to permanently delete your account{' '}
-          <strong className="text-slate-800">{user?.fullName}</strong>. This action cannot be undone
-          work.
-        </p>
-        <div className="mt-6 flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button
-            className="bg-danger hover:bg-danger/90 flex-1 border-0 text-black"
-            onClick={onConfirm}
-            isLoading={loading}
-          >
-            Delete
-          </Button>
-        </div>
-      </div>
-    </motion.div>
+      </motion.div>
     </div>
   )
 }
@@ -399,7 +400,7 @@ const UserManagementPage = () => {
   // ==================== COLUMNS ====================
   const columns = [
     {
-      header: "User",
+      header: 'User',
       render: (row) => (
         <div className="flex items-center gap-3 py-1">
           <Avatar alt={row.fullName} size="sm" />
@@ -411,11 +412,11 @@ const UserManagementPage = () => {
       ),
     },
     {
-      header: "Phone number",
+      header: 'Phone number',
       render: (row) => <span className="text-sm text-slate-600">{row.phone || '—'}</span>,
     },
     {
-      header: "Role",
+      header: 'Role',
       render: (row) => (
         <div className="flex flex-wrap gap-1">
           {row.roles?.length > 0 ? (
@@ -432,63 +433,47 @@ const UserManagementPage = () => {
       ),
     },
     {
-      header: "Status",
+      header: 'Status',
       render: (row) => (
-        <Badge variant={(row.active !== undefined ? row.active : row.isActive) ? 'success' : 'danger'} size="sm" className="rounded-full">
-          {(row.active !== undefined ? row.active : row.isActive) ? "Activities" : "Locked"}
+        <Badge
+          variant={(row.active !== undefined ? row.active : row.isActive) ? 'success' : 'danger'}
+          size="sm"
+          className="rounded-full"
+        >
+          {(row.active !== undefined ? row.active : row.isActive) ? 'Activities' : 'Locked'}
         </Badge>
       ),
     },
     {
-      header: "Creation date",
+      header: 'Creation date',
       render: (row) => (row.createdAt ? new Date(row.createdAt).toLocaleDateString('en-US') : '—'),
     },
     {
       header: 'Actions',
       render: (row) => (
-        <div className="flex items-center gap-1.5">
-          <button
-            title="Edit"
-            onClick={() => setFormModal(row)}
-            className="hover:bg-primary/10 hover:text-primary flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
-          >
-            <Edit2 size={15} />
-          </button>
-
-          {(row.active !== undefined ? row.active : row.isActive) ? (
-            <button
-              title="Lock account"
-              onClick={() => dispatch(deactivateUser(row.id))}
-              className="hover:bg-danger/10 hover:text-danger flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
-            >
-              <UserX size={15} />
-            </button>
-          ) : (
-            <button
-            title="Activate account"
-              onClick={() => dispatch(activateUser(row.id))}
-              className="hover:bg-success/10 hover:text-success flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
-            >
-              <UserCheck size={15} />
-            </button>
-          )}
-
-          <button
-            title="Reset password"
-            onClick={() => setResetModal(row)}
-            className="hover:bg-warning/10 hover:text-warning flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
-          >
-            <KeyRound size={15} />
-          </button>
-
-          <button
-            title="Delete user"
-            onClick={() => setDeleteModal(row)}
-            className="hover:bg-danger/10 hover:text-danger flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors"
-          >
-            <Trash2 size={15} />
-          </button>
-        </div>
+        <TableActionMenu
+          items={[
+            { label: 'Edit', icon: Edit2, onClick: () => setFormModal(row) },
+            (row.active !== undefined ? row.active : row.isActive)
+              ? {
+                  label: 'Lock account',
+                  icon: UserX,
+                  onClick: () => dispatch(deactivateUser(row.id)),
+                }
+              : {
+                  label: 'Activate account',
+                  icon: UserCheck,
+                  onClick: () => dispatch(activateUser(row.id)),
+                },
+            { label: 'Reset password', icon: KeyRound, onClick: () => setResetModal(row) },
+            {
+              label: 'Delete user',
+              icon: Trash2,
+              onClick: () => setDeleteModal(row),
+              danger: true,
+            },
+          ]}
+        />
       ),
     },
   ]
@@ -535,13 +520,12 @@ const UserManagementPage = () => {
 
         {/* MAIN CONTENT CONTAINER */}
         <div
-
           // className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           //   }`}
 
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // ✅ Đồng bộ pl-[72px] thống nhất với Owner
-            }`}
-
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // ✅ Đồng bộ pl-[72px] thống nhất với Owner
+          }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Page Header */}
@@ -549,8 +533,8 @@ const UserManagementPage = () => {
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">User management</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Total <span className="font-semibold text-slate-700">{totalElements}</span>{' '}
-                  users in the system.
+                  Total <span className="font-semibold text-slate-700">{totalElements}</span> users
+                  in the system.
                 </p>
               </div>
               <Button onClick={() => setFormModal('create')}>
@@ -588,40 +572,37 @@ const UserManagementPage = () => {
               <div className="flex w-full items-center gap-2 md:w-auto">
                 <button
                   onClick={() => dispatch(setFilters({ isActive: undefined }))}
-
                   // className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${filters.isActive === undefined
 
-                  className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors ${filters.isActive === undefined
-
-                    ? 'bg-slate-800 text-white'
-                    : 'text-slate-600 hover:bg-slate-100'
-                    }`}
+                  className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors ${
+                    filters.isActive === undefined
+                      ? 'bg-slate-800 text-white'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => handleFilterStatus(true)}
-
                   // className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${filters.isActive === true
 
-                  className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors ${filters.isActive === true
-
-                    ? 'bg-emerald-600 text-white'
-                    : 'text-slate-600 hover:bg-slate-100'
-                    }`}
+                  className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors ${
+                    filters.isActive === true
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
                 >
                   Activities
                 </button>
                 <button
                   onClick={() => handleFilterStatus(false)}
-
                   // className={`whitespace-nowrap rounded-full px-3 py-1 text-sm font-medium transition-colors ${filters.isActive === false
 
-                  className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors ${filters.isActive === false
-
+                  className={`rounded-full px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors ${
+                    filters.isActive === false
                       ? 'bg-red-500 text-white'
                       : 'text-slate-600 hover:bg-slate-100'
-                    }`}
+                  }`}
                 >
                   Locked
                 </button>

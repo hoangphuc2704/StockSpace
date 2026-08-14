@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Package, Edit, Trash2, Loader2, Eye, X, Tag, Ruler, Hash } from 'lucide-react'
+import TableActionMenu from '@/components/TableActionMenu'
 import DataTable from '@/components/organisms/DataTable'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
@@ -223,29 +224,19 @@ const SkuPage = () => {
     {
       header: 'Actions',
       render: (row) => (
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => handleViewDetail(row.id)}
-            className="rounded p-1.5 text-slate-400 hover:bg-blue-50 hover:text-blue-500 transition-colors"
-            title="View detail"
-          >
-            <Eye className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleOpenEdit(row)}
-            className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-            title="Edit"
-          >
-            <Edit className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => handleDelete(row.id)}
-            className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-            title="Delete"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+        <TableActionMenu
+          label={`Actions for ${row.name}`}
+          items={[
+            { label: 'View details', icon: Eye, onClick: () => handleViewDetail(row.id) },
+            { label: 'Edit', icon: Edit, onClick: () => handleOpenEdit(row) },
+            {
+              label: 'Delete',
+              icon: Trash2,
+              danger: true,
+              onClick: () => handleDelete(row.id),
+            },
+          ]}
+        />
       ),
     },
   ]

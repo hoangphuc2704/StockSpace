@@ -4,6 +4,7 @@ import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import Modal from '@/components/organisms/Modal'
+import TableActionMenu from '@/components/TableActionMenu'
 import Header from '@/components/HeaderDashboard'
 import Sidebar from '@/components/SideBar'
 import { useNavigate } from 'react-router-dom'
@@ -19,7 +20,7 @@ const STATUS_CONFIG = {
   APPROVED: { label: 'Đã duyệt', type: 'success' },
   REJECTED: { label: 'Đã từ chối', type: 'error' },
   SUBMITTED: { label: 'Chờ duyệt', type: 'info' },
-  COMPLETED: { label: 'Hoàn tất', type: 'success' }
+  COMPLETED: { label: 'Hoàn tất', type: 'success' },
 }
 
 const InventoryAuditPage = ({ currentRole }) => {
@@ -81,7 +82,7 @@ const InventoryAuditPage = ({ currentRole }) => {
       setCreating(true)
       const payload = {
         warehouseId: formWarehouseId,
-        note: formNote
+        note: formNote,
       }
       const res = await auditApi.createAudit(payload)
       if (res.data?.success) {
@@ -113,11 +114,15 @@ const InventoryAuditPage = ({ currentRole }) => {
   }
 
   const columns = [
-    {
-      accessor: 'id',
-      header: 'Mã Phiếu',
-      render: (row) => <span className="font-medium text-slate-900">#{row.id}</span>
-    },
+    ...(currentRole === 'TENANT'
+      ? []
+      : [
+          {
+            accessor: 'id',
+            header: 'Mã Phiếu',
+            render: (row) => <span className="font-medium text-slate-900">#{row.id}</span>,
+          },
+        ]),
     {
       accessor: 'warehouseName',
       header: 'Kho',
@@ -128,7 +133,7 @@ const InventoryAuditPage = ({ currentRole }) => {
       render: (row) => {
         const config = STATUS_CONFIG[row.status] || { label: row.status, type: 'default' }
         return <Badge type={config.type}>{config.label}</Badge>
-      }
+      },
     },
     {
       accessor: 'requestedByName',
@@ -137,24 +142,17 @@ const InventoryAuditPage = ({ currentRole }) => {
     {
       accessor: 'createdAt',
       header: 'Ngày tạo',
-      render: (row) => moment(row.createdAt).format('DD/MM/YYYY HH:mm')
+      render: (row) => moment(row.createdAt).format('DD/MM/YYYY HH:mm'),
     },
     {
       accessor: 'actions',
       header: 'Thao tác',
       render: (row) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleViewDetail(row.id)}
-            className="flex items-center gap-1"
-          >
-            <Eye className="h-4 w-4" /> Chi tiết
-          </Button>
-        </div>
-      )
-    }
+        <TableActionMenu
+          items={[{ label: 'Chi tiết', icon: Eye, onClick: () => handleViewDetail(row.id) }]}
+        />
+      ),
+    },
   ]
 
   return (
@@ -188,7 +186,7 @@ const InventoryAuditPage = ({ currentRole }) => {
                 </Button>
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <DataTable
                   columns={columns}
                   data={audits}
@@ -198,7 +196,7 @@ const InventoryAuditPage = ({ currentRole }) => {
                     pageSize,
                     totalPages,
                     onPageChange: setPage,
-                    onPageSizeChange: setPageSize
+                    onPageSizeChange: setPageSize,
                   }}
                 />
               </div>
@@ -215,23 +213,27 @@ const InventoryAuditPage = ({ currentRole }) => {
       >
         <form onSubmit={handleCreateAudit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Chọn kho <span className="text-red-500">*</span></label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Chọn kho <span className="text-red-500">*</span>
+            </label>
             <select
-              className="w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
               value={formWarehouseId}
               onChange={(e) => setFormWarehouseId(e.target.value)}
               required
             >
               <option value="">-- Chọn kho --</option>
               {warehouses.map((w) => (
-                <option key={w.id} value={w.id}>{w.name}</option>
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
               ))}
             </select>
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">Ghi chú</label>
             <textarea
-              className="w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
               rows={3}
               placeholder="Nhập ghi chú hoặc lý do kiểm kê..."
               value={formNote}
@@ -239,8 +241,12 @@ const InventoryAuditPage = ({ currentRole }) => {
             />
           </div>
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>Hủy</Button>
-            <Button type="submit" isLoading={creating}>Tạo phiếu</Button>
+            <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button type="submit" isLoading={creating}>
+              Tạo phiếu
+            </Button>
           </div>
         </form>
       </Modal>

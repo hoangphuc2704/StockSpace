@@ -5,13 +5,34 @@ import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
-import Button from '@/components/atoms/Button'
+import TableActionMenu from '@/components/TableActionMenu'
 import { ListTodo, CheckCircle2, Clock } from 'lucide-react'
 
 const MOCK_TASKS = [
-  { id: 'TSK-001', title: 'Audit Zone A', type: 'INVENTORY_AUDIT', priority: 'HIGH', status: 'PENDING', dueDate: '2026-07-24' },
-  { id: 'TSK-002', title: 'Putaway Shipment #1022', type: 'PUTAWAY', priority: 'MEDIUM', status: 'IN_PROGRESS', dueDate: '2026-07-24' },
-  { id: 'TSK-003', title: 'Pick Order #551', type: 'PICKING', priority: 'HIGH', status: 'COMPLETED', dueDate: '2026-07-23' },
+  {
+    id: 'TSK-001',
+    title: 'Audit Zone A',
+    type: 'INVENTORY_AUDIT',
+    priority: 'HIGH',
+    status: 'PENDING',
+    dueDate: '2026-07-24',
+  },
+  {
+    id: 'TSK-002',
+    title: 'Putaway Shipment #1022',
+    type: 'PUTAWAY',
+    priority: 'MEDIUM',
+    status: 'IN_PROGRESS',
+    dueDate: '2026-07-24',
+  },
+  {
+    id: 'TSK-003',
+    title: 'Pick Order #551',
+    type: 'PICKING',
+    priority: 'HIGH',
+    status: 'COMPLETED',
+    dueDate: '2026-07-23',
+  },
 ]
 
 const StaffTasksPage = () => {
@@ -21,43 +42,58 @@ const StaffTasksPage = () => {
 
   const columns = [
     { header: 'Task ID', accessor: 'id' },
-    { 
-      header: 'Title', 
-      render: (row) => <span className="font-bold text-slate-900">{row.title}</span> 
+    {
+      header: 'Title',
+      render: (row) => <span className="font-bold text-slate-900">{row.title}</span>,
     },
-    { 
-      header: 'Type', 
+    {
+      header: 'Type',
       render: (row) => (
-        <Badge variant="primary" size="sm">{row.type}</Badge>
-      )
+        <Badge variant="primary" size="sm">
+          {row.type}
+        </Badge>
+      ),
     },
-    { 
-      header: 'Priority', 
+    {
+      header: 'Priority',
       render: (row) => (
-        <span className={`text-xs font-bold ${row.priority === 'HIGH' ? 'text-danger' : 'text-warning'}`}>
+        <span
+          className={`text-xs font-bold ${row.priority === 'HIGH' ? 'text-danger' : 'text-warning'}`}
+        >
           {row.priority}
         </span>
-      )
+      ),
     },
-    { 
-      header: 'Status', 
+    {
+      header: 'Status',
       render: (row) => (
-        <Badge 
-          variant={row.status === 'COMPLETED' ? 'success' : row.status === 'IN_PROGRESS' ? 'warning' : 'primary'}
+        <Badge
+          variant={
+            row.status === 'COMPLETED'
+              ? 'success'
+              : row.status === 'IN_PROGRESS'
+                ? 'warning'
+                : 'primary'
+          }
         >
           {row.status}
         </Badge>
-      )
+      ),
     },
     { header: 'Due Date', accessor: 'dueDate' },
     {
       header: 'Actions',
       render: (row) => (
-        <Button size="sm" variant={row.status === 'COMPLETED' ? 'ghost' : 'outline'} disabled={row.status === 'COMPLETED'}>
-          {row.status === 'COMPLETED' ? 'Done' : 'Update Status'}
-        </Button>
-      )
-    }
+        <TableActionMenu
+          items={[
+            {
+              label: row.status === 'COMPLETED' ? 'Done' : 'Update Status',
+              disabled: row.status === 'COMPLETED',
+            },
+          ]}
+        />
+      ),
+    },
   ]
 
   return (
@@ -80,19 +116,21 @@ const StaffTasksPage = () => {
         >
           <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
             <div className="space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>
-                  <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
+                    <div className="bg-primary/10 text-primary rounded-lg p-2">
                       <ListTodo className="h-6 w-6" />
                     </div>
                     My Tasks
                   </h1>
-                  <p className="text-sm text-slate-500">Manage your assigned warehouse tasks and operations.</p>
+                  <p className="text-sm text-slate-500">
+                    Manage your assigned warehouse tasks and operations.
+                  </p>
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <DataTable columns={columns} data={tasks} />
               </div>
             </div>

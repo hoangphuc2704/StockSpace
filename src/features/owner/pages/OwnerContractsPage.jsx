@@ -5,10 +5,20 @@ import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/HeaderDashboard'
 import ContractViewerModal from '@/components/ContractViewerModal'
+import TableActionMenu from '@/components/TableActionMenu'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
-import Button from '@/components/atoms/Button'
-import { FileText, Upload, X, Loader2, Scale, ImageIcon, AlertCircle, CheckCircle2, User } from 'lucide-react'
+import {
+  FileText,
+  Upload,
+  X,
+  Loader2,
+  Scale,
+  ImageIcon,
+  AlertCircle,
+  CheckCircle2,
+  User,
+} from 'lucide-react'
 import contractApi from '@/services/contractApi'
 import uploadApi from '@/services/uploadApi'
 import disputeApi from '@/services/disputeApi'
@@ -29,8 +39,8 @@ const isWithin7Days = (createdAt) => {
 const DISPUTABLE_STATUSES = ['ACTIVE', 'PENDING_HANDOVER', 'PENDING_CANCEL']
 
 const STATUS_CONFIG = {
-  OPEN: { label: "Open", variant: 'warning', icon: AlertCircle },
-  RESOLVED: { label: "Resolved", variant: 'success', icon: CheckCircle2 },
+  OPEN: { label: 'Open', variant: 'warning', icon: AlertCircle },
+  RESOLVED: { label: 'Resolved', variant: 'success', icon: CheckCircle2 },
 }
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
@@ -46,7 +56,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!reason.trim()) {
-      setError("Please enter the reason for the dispute.")
+      setError('Please enter the reason for the dispute.')
       return
     }
     setError(null)
@@ -55,13 +65,13 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
     try {
       await disputeApi.createDispute(
         { contractId, reason: reason.trim() },
-        files.map(f => f.file)
+        files.map((f) => f.file)
       )
-      toast.success("Dispute request sent successfully! Admin will handle it soon.")
+      toast.success('Dispute request sent successfully! Admin will handle it soon.')
       onSuccess?.()
       onClose()
     } catch (err) {
-      setError(err.response?.data?.message || "Submit dispute failed. Please try again.")
+      setError(err.response?.data?.message || 'Submit dispute failed. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -69,21 +79,21 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).map(file => ({
+      const newFiles = Array.from(e.target.files).map((file) => ({
         file,
-        preview: URL.createObjectURL(file)
-      }));
+        preview: URL.createObjectURL(file),
+      }))
       setFiles((prev) => [...prev, ...newFiles])
-      e.target.value = null;
+      e.target.value = null
     }
   }
 
   const removeFile = (index) => {
     setFiles((prev) => {
-      const updated = [...prev];
-      URL.revokeObjectURL(updated[index].preview);
-      return updated.filter((_, i) => i !== index);
-    });
+      const updated = [...prev]
+      URL.revokeObjectURL(updated[index].preview)
+      return updated.filter((_, i) => i !== index)
+    })
   }
 
   return (
@@ -102,8 +112,9 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
         </div>
 
         <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-700">
-          <strong>Note:</strong> Disputes will be sent to system Admin. Inspector will be assigned to
-          examine and make a judgment. Admin will be the final decision maker on deposit processing.
+          <strong>Note:</strong> Disputes will be sent to system Admin. Inspector will be assigned
+          to examine and make a judgment. Admin will be the final decision maker on deposit
+          processing.
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -143,11 +154,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
                     key={idx}
                     className="relative aspect-square overflow-hidden rounded-lg border"
                   >
-                    <img
-                      src={item.preview}
-                      alt="evidence"
-                      className="h-full w-full object-cover"
-                    />
+                    <img src={item.preview} alt="evidence" className="h-full w-full object-cover" />
                     <button
                       type="button"
                       onClick={() => removeFile(idx)}
@@ -207,18 +214,18 @@ const CancelDealModal = ({ contractId, onClose, onSuccess }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!reason.trim()) {
-      setError("Please enter the reason.")
+      setError('Please enter the reason.')
       return
     }
     setError(null)
     setSubmitting(true)
     try {
       await contractApi.ownerRequestCancel(contractId, { reason: reason.trim() })
-      toast.success("Cancellation request sent successfully! Waiting for Tenant to respond.")
+      toast.success('Cancellation request sent successfully! Waiting for Tenant to respond.')
       onSuccess?.()
       onClose()
     } catch (err) {
-      setError(err.response?.data?.message || "Action failed.")
+      setError(err.response?.data?.message || 'Action failed.')
     } finally {
       setSubmitting(false)
     }
@@ -251,7 +258,9 @@ const CancelDealModal = ({ contractId, onClose, onSuccess }) => {
               className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800 transition-colors focus:border-rose-400 focus:bg-white focus:ring-2 focus:ring-rose-100 focus:outline-none"
             />
           </div>
-          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>}
+          {error && (
+            <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{error}</p>
+          )}
           <div className="flex items-center justify-end gap-2 pt-2">
             <button
               type="button"
@@ -266,8 +275,12 @@ const CancelDealModal = ({ contractId, onClose, onSuccess }) => {
               className="inline-flex items-center justify-center rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-rose-700 disabled:bg-slate-300"
             >
               {submitting ? (
-                <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Sending...</>
-              ) : "Cancel Contract"}
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Sending...
+                </>
+              ) : (
+                'Cancel Contract'
+              )}
             </button>
           </div>
         </form>
@@ -294,8 +307,14 @@ const DetailModal = ({ dispute, onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-xl animate-in fade-in zoom-in-95 rounded-2xl bg-white p-6 shadow-2xl duration-150" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="animate-in fade-in zoom-in-95 w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl duration-150"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-5 flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600">
@@ -306,7 +325,10 @@ const DetailModal = ({ dispute, onClose }) => {
               <p className="text-xs text-slate-400">{shortId(dispute.id)}</p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
             <X size={18} />
           </button>
         </div>
@@ -314,7 +336,11 @@ const DetailModal = ({ dispute, onClose }) => {
         <div className="space-y-4 text-sm">
           <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <span className="font-medium text-slate-600">Status</span>
-            <Badge variant={STATUS_CONFIG[dispute.status]?.variant || 'slate'} size="sm" className="rounded-full">
+            <Badge
+              variant={STATUS_CONFIG[dispute.status]?.variant || 'slate'}
+              size="sm"
+              className="rounded-full"
+            >
               <StatusIcon size={12} className="mr-1 inline" />
               {STATUS_CONFIG[dispute.status]?.label || dispute.status}
             </Badge>
@@ -323,7 +349,9 @@ const DetailModal = ({ dispute, onClose }) => {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 text-xs text-slate-400">Contract</p>
-              <p className="font-mono text-xs font-bold text-slate-700">{shortId(dispute.contractId)}</p>
+              <p className="font-mono text-xs font-bold text-slate-700">
+                {shortId(dispute.contractId)}
+              </p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 text-xs text-slate-400">Creation date</p>
@@ -342,7 +370,7 @@ const DetailModal = ({ dispute, onClose }) => {
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
                 <User size={11} /> Handler
               </p>
-              <p className="font-semibold text-slate-800">{dispute.handledByName || "Not yet"}</p>
+              <p className="font-semibold text-slate-800">{dispute.handledByName || 'Not yet'}</p>
             </div>
           </div>
 
@@ -361,7 +389,11 @@ const DetailModal = ({ dispute, onClose }) => {
               <div className="flex flex-wrap gap-2">
                 {evidenceImages.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                    <img src={url} alt={`Evidence ${i + 1}`} className="h-20 w-20 rounded-lg border border-slate-200 object-cover transition-transform hover:scale-105" />
+                    <img
+                      src={url}
+                      alt={`Evidence ${i + 1}`}
+                      className="h-20 w-20 rounded-lg border border-slate-200 object-cover transition-transform hover:scale-105"
+                    />
                   </a>
                 ))}
               </div>
@@ -377,7 +409,10 @@ const DetailModal = ({ dispute, onClose }) => {
         </div>
 
         <div className="mt-5 flex justify-end">
-          <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
+          >
             Close
           </button>
         </div>
@@ -424,7 +459,7 @@ const OwnerContractsPage = () => {
         setContracts(res.data.data.content || [])
       }
     } catch (error) {
-      console.error("Error getting list of contracts:", error)
+      console.error('Error getting list of contracts:', error)
     } finally {
       setLoading(false)
     }
@@ -444,66 +479,66 @@ const OwnerContractsPage = () => {
 
   const handleViewContract = (imageUrlRaw) => {
     try {
-      if (!imageUrlRaw) throw new Error('No image');
-      
-      let imageArray = [];
-      
+      if (!imageUrlRaw) throw new Error('No image')
+
+      let imageArray = []
+
       if (Array.isArray(imageUrlRaw)) {
-        imageArray = imageUrlRaw;
+        imageArray = imageUrlRaw
       } else if (typeof imageUrlRaw === 'string') {
         if (imageUrlRaw.startsWith('[')) {
           try {
-            imageArray = JSON.parse(imageUrlRaw);
+            imageArray = JSON.parse(imageUrlRaw)
           } catch (e) {
             // Fallback for Java List.toString()
-            const content = imageUrlRaw.slice(1, -1);
+            const content = imageUrlRaw.slice(1, -1)
             if (content) {
-              imageArray = content.split(',').map(url => url.trim());
+              imageArray = content.split(',').map((url) => url.trim())
             }
           }
         } else {
-          imageArray = [imageUrlRaw];
+          imageArray = [imageUrlRaw]
         }
       }
 
-      if (!imageArray || imageArray.length === 0) throw new Error('Invalid URL');
-      setViewerImages(imageArray);
-      setViewerOpen(true);
+      if (!imageArray || imageArray.length === 0) throw new Error('Invalid URL')
+      setViewerImages(imageArray)
+      setViewerOpen(true)
     } catch (error) {
-      toast.error("No valid contract photo yet!")
+      toast.error('No valid contract photo yet!')
     }
   }
 
   const handleSubmitContract = async (e) => {
     e.preventDefault()
     if (!startDate || !endDate || contractFiles.length === 0) {
-      toast.error("Please fill in all information and select the contract file!")
+      toast.error('Please fill in all information and select the contract file!')
       return
     }
 
     try {
       setSubmitLoading(true)
-      
+
       // Upload multiple files using bulk API
-      const res = await uploadApi.uploadImages(contractFiles.map(f => f.file))
+      const res = await uploadApi.uploadImages(contractFiles.map((f) => f.file))
       if (!res?.data?.success) {
-        throw new Error(res?.data?.message || "Upload photo failed")
+        throw new Error(res?.data?.message || 'Upload photo failed')
       }
-      
+
       const uploadedUrls = res.data.data
 
       const payload = {
         startDate,
         endDate,
-        paperContractImages: uploadedUrls
+        paperContractImages: uploadedUrls,
       }
       await contractApi.submitOnlineContract(selectedContractId, payload)
-      
-      toast.success("Contract uploaded successfully! Waiting for Tenant to confirm.")
+
+      toast.success('Contract uploaded successfully! Waiting for Tenant to confirm.')
       setIsModalOpen(false)
       fetchContracts()
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || "Uploading the contract failed")
+      toast.error(error.response?.data?.message || error.message || 'Uploading the contract failed')
     } finally {
       setSubmitLoading(false)
     }
@@ -515,14 +550,16 @@ const OwnerContractsPage = () => {
       const res = await disputeApi.getMyDisputes({ size: 100 })
       const myDisputes = res?.data?.data?.content || []
       const dispute = myDisputes.find((d) => d.contractId === contractId)
-      
+
       if (dispute) {
         setViewDispute(dispute)
       } else {
-        toast.error("No details of the dispute you opened for this contract were found.\n\n(Note: You can only view it if you are the person who directly opened the dispute).")
+        toast.error(
+          'No details of the dispute you opened for this contract were found.\n\n(Note: You can only view it if you are the person who directly opened the dispute).'
+        )
       }
     } catch (err) {
-      toast.error("Error when retrieving dispute information.")
+      toast.error('Error when retrieving dispute information.')
     } finally {
       setLoadingDispute(false)
     }
@@ -541,28 +578,39 @@ const OwnerContractsPage = () => {
     { header: 'Warehouse', accessor: 'warehouseName' },
     {
       header: 'Deposit',
-      render: (row) => <span className="font-semibold text-primary">{row.depositAmount?.toLocaleString()} ₫</span>
+      render: (row) => (
+        <span className="text-primary font-semibold">{row.depositAmount?.toLocaleString()} ₫</span>
+      ),
     },
     {
-      header: "Term",
+      header: 'Term',
       render: (row) => (
         <div className="grid grid-cols-[max-content_1fr] gap-x-2 gap-y-1 text-xs whitespace-nowrap">
           <span className="text-slate-400">Start:</span>
-          <span className="font-medium">{row.startDate ? new Date(row.startDate).toLocaleDateString('en-US') : 'N/A'}</span>
+          <span className="font-medium">
+            {row.startDate ? new Date(row.startDate).toLocaleDateString('en-US') : 'N/A'}
+          </span>
           <span className="text-slate-400">Finish:</span>
-          <span className="font-medium">{row.endDate ? new Date(row.endDate).toLocaleDateString('en-US') : 'N/A'}</span>
+          <span className="font-medium">
+            {row.endDate ? new Date(row.endDate).toLocaleDateString('en-US') : 'N/A'}
+          </span>
         </div>
-      )
+      ),
     },
     {
       header: 'Status',
       render: (row) => (
         <Badge
           variant={
-            row.status === 'ACTIVE' ? 'success' :
-            row.status === 'DISPUTED' ? 'danger' :
-              row.status === 'UNDER_NEGOTIATION' ? 'warning' :
-                row.status === 'PENDING_TENANT_CONFIRM' ? 'primary' : 'secondary'
+            row.status === 'ACTIVE'
+              ? 'success'
+              : row.status === 'DISPUTED'
+                ? 'danger'
+                : row.status === 'UNDER_NEGOTIATION'
+                  ? 'warning'
+                  : row.status === 'PENDING_TENANT_CONFIRM'
+                    ? 'primary'
+                    : 'secondary'
           }
         >
           {row.status}
@@ -572,55 +620,39 @@ const OwnerContractsPage = () => {
     {
       header: 'Actions',
       render: (row) => (
-        <div className="flex items-center gap-2">
-          {row.paperContractImages && (
-            <Button size="sm" variant="outline" className="text-black" onClick={() => handleViewContract(row.paperContractImages)}>
-              <FileText className="mr-2 h-4 w-4 text-black" /> View
-            </Button>
-          )}
-
-          {row.status === 'UNDER_NEGOTIATION' && (
-            <Button size="sm" className="text-black bg-blue-100 hover:bg-blue-200" onClick={() => openUploadModal(row.id)}>
-              <Upload className="mr-2 h-4 w-4 text-black" /> Upload
-            </Button>
-          )}
-
-          {(row.status === 'UNDER_NEGOTIATION' || row.status === 'PENDING_TENANT_CONFIRM') && (
-            <Button size="sm" className="bg-rose-100 text-rose-700 hover:bg-rose-200" onClick={() => setCancelContractId(row.id)}>
-              <X className="mr-1.5 h-4 w-4" /> Cancel Request
-            </Button>
-          )}
-
-          {/* Nút Tranh chấp — hiện khi status phù hợp & trong vòng 7 ngày */}
-          {DISPUTABLE_STATUSES.includes(row.status) && isWithin7Days(row.createdAt) && (
-            <Button
-              size="sm"
-              className="bg-amber-100 text-amber-700 hover:bg-amber-200"
-              onClick={() => setDisputeContractId(row.id)}
-            >
-              <Scale className="mr-1.5 h-4 w-4" /> Dispute
-            </Button>
-          )}
-
-          {/* Trạng thái DISPUTED — đã có tranh chấp */}
-          {row.status === 'DISPUTED' && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-600">
-              <Scale size={12} /> In dispute
-            </span>
-          )}
-
-          {/* Nút Xem kết quả tranh chấp (khi đã DISPUTED hoặc CANCELLED) */}
-          {(row.status === 'DISPUTED' || row.status === 'CANCELLED') && (
-             <Button
-               size="sm"
-               className="bg-slate-100 text-slate-700 hover:bg-slate-200"
-               onClick={() => handleViewDispute(row.id)}
-               disabled={loadingDispute}
-             >
-               <Scale className="mr-1.5 h-4 w-4" /> Dispute details
-             </Button>
-          )}
-        </div>
+        <TableActionMenu
+          items={[
+            row.paperContractImages && {
+              label: 'View contract',
+              icon: FileText,
+              onClick: () => handleViewContract(row.paperContractImages),
+            },
+            row.status === 'UNDER_NEGOTIATION' && {
+              label: 'Upload contract',
+              icon: Upload,
+              onClick: () => openUploadModal(row.id),
+            },
+            (row.status === 'UNDER_NEGOTIATION' || row.status === 'PENDING_TENANT_CONFIRM') && {
+              label: 'Cancel request',
+              icon: X,
+              onClick: () => setCancelContractId(row.id),
+              danger: true,
+            },
+            DISPUTABLE_STATUSES.includes(row.status) &&
+              isWithin7Days(row.createdAt) && {
+                label: 'Open dispute',
+                icon: Scale,
+                onClick: () => setDisputeContractId(row.id),
+              },
+            row.status === 'DISPUTED' && { label: 'In dispute', icon: Scale, disabled: true },
+            (row.status === 'DISPUTED' || row.status === 'CANCELLED') && {
+              label: 'Dispute details',
+              icon: Scale,
+              onClick: () => handleViewDispute(row.id),
+              disabled: loadingDispute,
+            },
+          ]}
+        />
       ),
     },
   ]
@@ -643,8 +675,9 @@ const OwnerContractsPage = () => {
         <Sidebar currentRole="OWNER" />
 
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-            }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
         >
           <main className="mx-auto w-full max-w-4000 space-y-6 p-6 md:p-8">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -686,23 +719,27 @@ const OwnerContractsPage = () => {
                     required
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-bold text-slate-500">Closing Date</label>
+                  <label className="mb-2 block text-xs font-bold text-slate-500">
+                    Closing Date
+                  </label>
                   <input
                     type="date"
                     required
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-700">Photo of Paper Contract (Can choose multiple)</label>
+                <label className="text-xs font-semibold text-slate-700">
+                  Photo of Paper Contract (Can choose multiple)
+                </label>
                 <label className="flex h-20 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200">
                   <ImageIcon className="h-4 w-4 text-slate-400" />
                   <span className="text-xs text-slate-500">Add photos of contract</span>
@@ -713,17 +750,17 @@ const OwnerContractsPage = () => {
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files && e.target.files.length > 0) {
-                        const newFiles = Array.from(e.target.files).map(file => ({
+                        const newFiles = Array.from(e.target.files).map((file) => ({
                           file,
-                          preview: URL.createObjectURL(file)
-                        }));
-                        setContractFiles(prev => [...prev, ...newFiles])
+                          preview: URL.createObjectURL(file),
+                        }))
+                        setContractFiles((prev) => [...prev, ...newFiles])
                         e.target.value = null
                       }
                     }}
                   />
                 </label>
-                
+
                 {contractFiles.length > 0 && (
                   <div className="grid grid-cols-4 gap-2 pt-1">
                     {contractFiles.map((item, idx) => (
@@ -739,8 +776,8 @@ const OwnerContractsPage = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            URL.revokeObjectURL(item.preview);
-                            setContractFiles(prev => prev.filter((_, i) => i !== idx));
+                            URL.revokeObjectURL(item.preview)
+                            setContractFiles((prev) => prev.filter((_, i) => i !== idx))
                           }}
                           className="absolute top-0.5 right-0.5 rounded-full bg-slate-900/60 p-0.5 text-white hover:bg-rose-600"
                         >
@@ -771,7 +808,7 @@ const OwnerContractsPage = () => {
                       Uploading...
                     </>
                   ) : (
-                    "Send to Tenant"
+                    'Send to Tenant'
                   )}
                 </button>
               </div>
@@ -799,12 +836,7 @@ const OwnerContractsPage = () => {
       )}
 
       {/* View Dispute Modal */}
-      {viewDispute && (
-        <DetailModal
-          dispute={viewDispute}
-          onClose={() => setViewDispute(null)}
-        />
-      )}
+      {viewDispute && <DetailModal dispute={viewDispute} onClose={() => setViewDispute(null)} />}
       {/* Viewer Modal */}
       <ContractViewerModal
         isOpen={viewerOpen}

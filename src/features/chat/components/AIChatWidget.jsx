@@ -339,7 +339,11 @@ const AIChatPanel = ({ chatRole }) => {
   }
 
   return (
-    <div className="fixed right-4 bottom-4 z-[100] sm:right-6 sm:bottom-6">
+    <div
+      className={`fixed right-4 z-[100] transition-[bottom] duration-200 sm:right-6 ${
+        isOpen ? 'bottom-4 sm:bottom-6' : 'bottom-24 sm:bottom-24'
+      }`}
+    >
       {isOpen ? (
         <section
           aria-label="StockSpace AI assistant"
@@ -492,7 +496,7 @@ const AIChatPanel = ({ chatRole }) => {
                             <div
                               className={`rounded-2xl px-4 py-3 text-sm leading-relaxed break-words ${
                                 fromUser
-                                  ? 'rounded-br-md bg-orange-500 text-white shadow-sm whitespace-pre-line'
+                                  ? 'rounded-br-md bg-orange-500 whitespace-pre-line text-white shadow-sm'
                                   : 'rounded-bl-md border border-slate-200 bg-white text-slate-700 shadow-sm'
                               }`}
                             >
@@ -509,12 +513,35 @@ const AIChatPanel = ({ chatRole }) => {
                                   <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
                                     components={{
-                                      p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                                      ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
-                                      ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                                      p: ({ children }) => (
+                                        <p className="mb-2 last:mb-0">{children}</p>
+                                      ),
+                                      ul: ({ children }) => (
+                                        <ul className="mb-2 list-disc space-y-1 pl-4">
+                                          {children}
+                                        </ul>
+                                      ),
+                                      ol: ({ children }) => (
+                                        <ol className="mb-2 list-decimal space-y-1 pl-4">
+                                          {children}
+                                        </ol>
+                                      ),
                                       li: ({ children }) => <li>{children}</li>,
-                                      strong: ({ children }) => <strong className="font-bold text-slate-900">{children}</strong>,
-                                      a: ({ href, children }) => <a href={href} className="text-orange-600 hover:underline" target="_blank" rel="noopener noreferrer">{children}</a>,
+                                      strong: ({ children }) => (
+                                        <strong className="font-bold text-slate-900">
+                                          {children}
+                                        </strong>
+                                      ),
+                                      a: ({ href, children }) => (
+                                        <a
+                                          href={href}
+                                          className="text-orange-600 hover:underline"
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                        >
+                                          {children}
+                                        </a>
+                                      ),
                                     }}
                                   >
                                     {item.content}

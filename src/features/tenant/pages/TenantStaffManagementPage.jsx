@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
+import TableActionMenu from '@/components/TableActionMenu'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import {
@@ -336,33 +337,26 @@ const TenantStaffManagementPage = () => {
                             )}
                           </td>
                           <td className="px-4 py-4 text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-primary border-primary/20 hover:bg-primary/5"
-                                disabled={
-                                  !(staff.active !== undefined ? staff.active : staff.isActive)
-                                }
-                                onClick={() => handleOpenAssign(staff)}
-                              >
-                                <Briefcase className="mr-1 h-4 w-4" />
-                                Assignment
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-red-200 text-red-600 hover:bg-red-50"
-                                disabled={removingId === staff.memberId}
-                                onClick={() => handleRemove(staff.memberId, staff.fullName)}
-                              >
-                                {removingId === staff.memberId ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="h-4 w-4" />
-                                )}
-                              </Button>
-                            </div>
+                            <TableActionMenu
+                              label={`Actions for ${staff.fullName}`}
+                              items={[
+                                {
+                                  label: 'Assignment',
+                                  icon: Briefcase,
+                                  disabled: !(
+                                    staff.active !== undefined ? staff.active : staff.isActive
+                                  ),
+                                  onClick: () => handleOpenAssign(staff),
+                                },
+                                {
+                                  label: removingId === staff.memberId ? 'Removing...' : 'Remove',
+                                  icon: Trash2,
+                                  danger: true,
+                                  disabled: removingId === staff.memberId,
+                                  onClick: () => handleRemove(staff.memberId, staff.fullName),
+                                },
+                              ]}
+                            />
                           </td>
                         </tr>
                       ))}

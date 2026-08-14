@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
+import TableActionMenu from '@/components/TableActionMenu'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchPackages,
@@ -457,22 +458,17 @@ const Packages_SubcriptionsManagementPage = () => {
                               </span>
                             </td>
                             <td className="px-5 py-4 text-right">
-                              <div className="inline-flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-                                <button
-                                  onClick={() => setEditingPkg(pkg)}
-                                  className="rounded-lg p-2 text-blue-600 transition-colors hover:bg-blue-50"
-                                  title="Edit"
-                                >
-                                  <Edit3 size={16} />
-                                </button>
-                                <button
-                                  onClick={() => setDeletingPkg(pkg)}
-                                  className="rounded-lg p-2 text-rose-600 transition-colors hover:bg-rose-50"
-                                  title="Delete"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
+                              <TableActionMenu
+                                items={[
+                                  { label: 'Edit', icon: Edit3, onClick: () => setEditingPkg(pkg) },
+                                  {
+                                    label: 'Delete',
+                                    icon: Trash2,
+                                    onClick: () => setDeletingPkg(pkg),
+                                    danger: true,
+                                  },
+                                ]}
+                              />
                             </td>
                           </motion.tr>
                         ))}

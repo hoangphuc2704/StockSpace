@@ -31,6 +31,7 @@ import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import StatCard from '@/components/molecules/StatCard'
+import TableActionMenu from '@/components/TableActionMenu'
 
 // Import Sidebar và Header
 import Sidebar from '../../../components/SideBar'
@@ -52,8 +53,8 @@ const defaultRevenueData = [
 ]
 
 const defaultOccupancyData = [
-  { name: "Currently renting", value: 0, color: '#2563eb' },
-  { name: "Still empty", value: 0, color: '#e2e8f0' },
+  { name: 'Currently renting', value: 0, color: '#2563eb' },
+  { name: 'Still empty', value: 0, color: '#e2e8f0' },
 ]
 
 const OwnerDashboard = () => {
@@ -97,7 +98,7 @@ const OwnerDashboard = () => {
         setWallet(res?.data || res)
       }
     } catch (error) {
-      console.error("Error retrieving wallet data:", error)
+      console.error('Error retrieving wallet data:', error)
     } finally {
       setLoadingWallet(false)
     }
@@ -111,7 +112,7 @@ const OwnerDashboard = () => {
         setIncomingRequests(res.data.data.content || [])
       }
     } catch (error) {
-      console.error("Error getting list of rental requests:", error)
+      console.error('Error getting list of rental requests:', error)
     } finally {
       setLoadingRequests(false)
     }
@@ -124,7 +125,7 @@ const OwnerDashboard = () => {
       const data = res?.data?.data?.content || res?.data?.content || []
       setInspections(data)
     } catch (error) {
-      console.error("Error getting list of inspections:", error)
+      console.error('Error getting list of inspections:', error)
     } finally {
       setLoadingInspections(false)
     }
@@ -134,7 +135,7 @@ const OwnerDashboard = () => {
     try {
       const [revenueRes, occupancyRes] = await Promise.all([
         ownerStatsApi.getRevenueSummary(),
-        ownerStatsApi.getOccupancyRate()
+        ownerStatsApi.getOccupancyRate(),
       ])
 
       // Map Revenue Data (xử lý tùy xem BE trả về bọc ApiResponse hay không)
@@ -144,9 +145,9 @@ const OwnerDashboard = () => {
           setTotalRevenue(revData.totalRevenue || 0)
         }
         if (revData?.monthlyRevenue) {
-          const formatted = revData.monthlyRevenue.map(item => ({
+          const formatted = revData.monthlyRevenue.map((item) => ({
             name: `T${item.month}`,
-            value: item.revenue
+            value: item.revenue,
           }))
           setRevenueData(formatted)
         }
@@ -157,15 +158,15 @@ const OwnerDashboard = () => {
         const occData = occupancyRes.data.data || occupancyRes.data
         if (occData) {
           setOccupancyData([
-            { name: "Currently renting", value: occData.rentedWarehousesCount, color: '#2563eb' },
-            { name: "Still empty", value: occData.availableWarehousesCount, color: '#e2e8f0' },
+            { name: 'Currently renting', value: occData.rentedWarehousesCount, color: '#2563eb' },
+            { name: 'Still empty', value: occData.availableWarehousesCount, color: '#e2e8f0' },
           ])
           setOccupancyRate(occData.occupancyRatePercentage)
           setTotalWarehouses(occData.totalWarehouses)
         }
       }
     } catch (error) {
-      console.error("Error retrieving Owner statistics data:", error)
+      console.error('Error retrieving Owner statistics data:', error)
     }
   }
 
@@ -182,7 +183,7 @@ const OwnerDashboard = () => {
 
     const amountNumber = Number(inputAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error("Please enter a valid deposit amount greater than 0")
+      toast.error('Please enter a valid deposit amount greater than 0')
       return
     }
 
@@ -201,11 +202,11 @@ const OwnerDashboard = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl // Chuyển hướng sang VNPay
       } else {
-        toast.error(res?.data?.message || "VNPay payment link not found in the system!")
+        toast.error(res?.data?.message || 'VNPay payment link not found in the system!')
       }
     } catch (error) {
-      console.error("Deposit error:", error)
-      toast.error("Deposit request failed, please try again!")
+      console.error('Deposit error:', error)
+      toast.error('Deposit request failed, please try again!')
     } finally {
       setDepositLoading(false)
     }
@@ -219,7 +220,13 @@ const OwnerDashboard = () => {
 
   // Khối Thẻ Thống kê hiển thị số dư thực tế và dòng tiền tổng
   const stats = [
-    { title: 'My Warehouses', value: totalWarehouses.toString(), icon: Warehouse, trend: 'stable', trendValue: 0 },
+    {
+      title: 'My Warehouses',
+      value: totalWarehouses.toString(),
+      icon: Warehouse,
+      trend: 'stable',
+      trendValue: 0,
+    },
     {
       title: 'Total Revenue',
       value: formatVND(totalRevenue),
@@ -229,34 +236,40 @@ const OwnerDashboard = () => {
     },
     {
       title: 'Wallet Balance',
-      value: loadingWallet ? "Loading..." : formatVND(wallet?.balance),
+      value: loadingWallet ? 'Loading...' : formatVND(wallet?.balance),
       icon: Wallet,
       trend: 'stable',
       trendValue: 0,
     },
-    { title: 'Pending Requests', value: incomingRequests.length.toString(), icon: FileCheck, trend: 'stable', trendValue: 0 },
+    {
+      title: 'Pending Requests',
+      value: incomingRequests.length.toString(),
+      icon: FileCheck,
+      trend: 'stable',
+      trendValue: 0,
+    },
   ]
 
   const handleApprove = async (id) => {
     try {
       await warehouseApi.approveBooking(id)
-      toast.success("Warehouse rental request successfully accepted!")
+      toast.success('Warehouse rental request successfully accepted!')
       fetchRequests() // Refresh data
     } catch (error) {
-      toast.error(error.response?.data?.message || "Accept failed request")
+      toast.error(error.response?.data?.message || 'Accept failed request')
     }
   }
 
   const handleReject = async (id) => {
-    const reason = prompt("Enter reason for rejection:")
+    const reason = prompt('Enter reason for rejection:')
     if (!reason) return
-    
+
     try {
       await warehouseApi.rejectBooking(id, { reason })
-      toast.error("Rejected warehouse rental request!")
+      toast.error('Rejected warehouse rental request!')
       fetchRequests() // Refresh data
     } catch (error) {
-      toast.error(error.response?.data?.message || "Reject failed request")
+      toast.error(error.response?.data?.message || 'Reject failed request')
     }
   }
 
@@ -271,47 +284,41 @@ const OwnerDashboard = () => {
       ),
     },
     { header: 'Warehouse', accessor: 'warehouseName' },
-    { 
-      header: 'Deposit', 
-      render: (row) => <span className="font-semibold text-primary">{formatVND(row.depositAmount)}</span> 
+    {
+      header: 'Deposit',
+      render: (row) => (
+        <span className="text-primary font-semibold">{formatVND(row.depositAmount)}</span>
+      ),
     },
     {
       header: 'Status',
       render: (row) => (
-        <Badge variant={row.status === 'APPROVED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'warning'}>{row.status}</Badge>
+        <Badge
+          variant={
+            row.status === 'APPROVED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'warning'
+          }
+        >
+          {row.status}
+        </Badge>
       ),
     },
-    { 
-      header: 'Date', 
-      render: (row) => <span>{new Date(row.createdAt).toLocaleDateString('en-US')}</span>
+    {
+      header: 'Date',
+      render: (row) => <span>{new Date(row.createdAt).toLocaleDateString('en-US')}</span>,
     },
     {
       header: 'Actions',
       render: (row) => (
-        <div className="flex items-center gap-2">
-          {row.status === 'PENDING' ? (
-            <>
-              <button 
-                onClick={() => handleApprove(row.id)}
-                className="rounded-lg bg-emerald-50 p-1.5 text-emerald-600 transition-colors hover:bg-emerald-100"
-                title="Approve"
-              >
-                <Check className="h-4 w-4" />
-              </button>
-              <button 
-                onClick={() => handleReject(row.id)}
-                className="rounded-lg bg-rose-50 p-1.5 text-rose-600 transition-colors hover:bg-rose-100"
-                title="Reject"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </>
-          ) : (
-            <button className="rounded-lg bg-slate-100 p-1.5 text-slate-500 transition-colors hover:bg-slate-200">
-              <Eye className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+        <TableActionMenu
+          items={
+            row.status === 'PENDING'
+              ? [
+                  { label: 'Approve', icon: Check, onClick: () => handleApprove(row.id) },
+                  { label: 'Reject', icon: X, onClick: () => handleReject(row.id), danger: true },
+                ]
+              : [{ label: 'View', icon: Eye }]
+          }
+        />
       ),
     },
   ]
@@ -481,9 +488,12 @@ const OwnerDashboard = () => {
                           <Clock className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-slate-900">{insp.warehouseName || 'Unknown Warehouse'}</p>
+                          <p className="text-sm font-bold text-slate-900">
+                            {insp.warehouseName || 'Unknown Warehouse'}
+                          </p>
                           <p className="text-xs text-slate-500">
-                            Status: <Badge variant="warning">{insp.status || 'PENDING'}</Badge> • {insp.createdAt ? new Date(insp.createdAt).toLocaleDateString() : 'N/A'}
+                            Status: <Badge variant="warning">{insp.status || 'PENDING'}</Badge> •{' '}
+                            {insp.createdAt ? new Date(insp.createdAt).toLocaleDateString() : 'N/A'}
                           </p>
                         </div>
                       </div>

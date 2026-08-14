@@ -1,18 +1,10 @@
 import { useState, useEffect } from 'react'
-import {
-  Search,
-  Filter,
-  Download,
-  Upload,
-  Eye,
-  ArrowUpDown,
-  Package,
-  FileText,
-} from 'lucide-react'
+import { Search, Filter, Download, Upload, Eye, ArrowUpDown, Package, FileText } from 'lucide-react'
 import { motion } from 'framer-motion'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
+import TableActionMenu from '@/components/TableActionMenu'
 import InputField from '@/components/atoms/InputField'
 import Drawer from '@/components/organisms/Drawer'
 import Modal from '@/components/organisms/Modal'
@@ -59,7 +51,7 @@ const InventoryPage = () => {
       setIsLoading(true)
       const [skuRes, catRes] = await Promise.all([
         productApi.getSKUs({ page: 0, size: 50 }),
-        productApi.getCategories()
+        productApi.getCategories(),
       ])
 
       const categoryMap = {}
@@ -72,40 +64,52 @@ const InventoryPage = () => {
       const skus = skuRes.data?.data?.content || []
 
       // Fetch stock for each SKU
-      const enrichedSkus = await Promise.all(skus.map(async (sku) => {
-        let qty = 0
-        let status = 'OUT_OF_STOCK'
-        let batches = []
-        try {
-          const stockRes = await stockApi.getStockBySku(sku.id)
-          console.log('[DEBUG] stockBySku response for', sku.id, ':', JSON.stringify(stockRes.data, null, 2))
-          const stockData = stockRes.data?.data
-          // Hỗ trợ các cấu trúc trả về khác nhau từ API
-          qty = stockData?.totalQuantity ?? stockData?.totalQty ?? 0
-          
-          if (Array.isArray(stockData)) {
-            batches = stockData
-          } else {
-            batches = stockData?.locations || stockData?.batches || stockData?.stockBatches || stockData?.content || []
+      const enrichedSkus = await Promise.all(
+        skus.map(async (sku) => {
+          let qty = 0
+          let status = 'OUT_OF_STOCK'
+          let batches = []
+          try {
+            const stockRes = await stockApi.getStockBySku(sku.id)
+            console.log(
+              '[DEBUG] stockBySku response for',
+              sku.id,
+              ':',
+              JSON.stringify(stockRes.data, null, 2)
+            )
+            const stockData = stockRes.data?.data
+            // Hỗ trợ các cấu trúc trả về khác nhau từ API
+            qty = stockData?.totalQuantity ?? stockData?.totalQty ?? 0
+
+            if (Array.isArray(stockData)) {
+              batches = stockData
+            } else {
+              batches =
+                stockData?.locations ||
+                stockData?.batches ||
+                stockData?.stockBatches ||
+                stockData?.content ||
+                []
+            }
+
+            if (!Array.isArray(batches)) batches = []
+            // Tính lại qty từ batches nếu totalQuantity không có
+            if (!qty && batches.length > 0) {
+              qty = batches.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0)
+            }
+            if (qty > 0) status = qty > 10 ? 'IN_STOCK' : 'LOW_STOCK'
+          } catch (e) {
+            console.error('Error fetching stock for SKU', sku.id)
           }
-          
-          if (!Array.isArray(batches)) batches = []
-          // Tính lại qty từ batches nếu totalQuantity không có
-          if (!qty && batches.length > 0) {
-            qty = batches.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0)
+          return {
+            ...sku,
+            categoryName: categoryMap[sku.categoryId] || 'Unknown Category',
+            qty,
+            status,
+            batches,
           }
-          if (qty > 0) status = qty > 10 ? 'IN_STOCK' : 'LOW_STOCK'
-        } catch (e) {
-          console.error("Error fetching stock for SKU", sku.id)
-        }
-        return {
-          ...sku,
-          categoryName: categoryMap[sku.categoryId] || 'Unknown Category',
-          qty,
-          status,
-          batches
-        }
-      }))
+        })
+      )
 
       setProducts(enrichedSkus)
     } catch (error) {
@@ -167,14 +171,15 @@ const InventoryPage = () => {
     {
       header: 'Actions',
       render: (row) => (
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => handleViewDetails(row)}
-            className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-          >
-            <Eye className="h-4 w-4" />
-          </button>
-        </div>
+        <TableActionMenu
+          items={[
+            {
+              label: 'View details',
+              icon: Eye,
+              onClick: () => handleViewDetails(row),
+            },
+          ]}
+        />
       ),
     },
   ]
@@ -187,29 +192,38 @@ const InventoryPage = () => {
     {
       header: 'Type',
       render: (row) => {
-        const isPositive = Number(row.quantityChanged) > 0;
+        const isPositive = Number(row.quantityChanged) > 0
         return (
-          <Badge variant={isPositive ? 'success' : 'danger'}>
-            {isPositive ? 'IN' : 'OUT'}
-          </Badge>
+          <Badge variant={isPositive ? 'success' : 'danger'}>{isPositive ? 'IN' : 'OUT'}</Badge>
         )
       },
     },
     {
       header: 'Quantity',
       render: (row) => {
-        const isPositive = Number(row.quantityChanged) > 0;
+        const isPositive = Number(row.quantityChanged) > 0
         return (
-          <span className={isPositive ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>
-            {isPositive ? '+' : ''}{row.quantityChanged}
+          <span
+            className={isPositive ? 'font-medium text-emerald-600' : 'font-medium text-red-600'}
+          >
+            {isPositive ? '+' : ''}
+            {row.quantityChanged}
           </span>
         )
       },
     },
-    {
-      header: 'Receipt ID',
-      render: (row) => <span className="text-sm font-mono text-slate-500">{row.receiptId ? String(row.receiptId).substring(0, 8) : 'N/A'}</span>,
-    },
+    ...(currentRole === 'TENANT'
+      ? []
+      : [
+          {
+            header: 'Receipt ID',
+            render: (row) => (
+              <span className="font-mono text-sm text-slate-500">
+                {row.receiptId ? String(row.receiptId).substring(0, 8) : 'N/A'}
+              </span>
+            ),
+          },
+        ]),
   ]
 
   return (
@@ -229,48 +243,69 @@ const InventoryPage = () => {
         <Sidebar currentRole={currentRole} />
 
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-            }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
         >
           <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+                <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
+                  <div className="rounded-lg bg-blue-500/10 p-2 text-blue-600">
                     <Package className="h-6 w-6" />
                   </div>
                   Inventory Overview
                 </h1>
-                <p className="text-sm text-slate-500">Monitor stock levels and warehouse inventory in real-time.</p>
+                <p className="text-sm text-slate-500">
+                  Monitor stock levels and warehouse inventory in real-time.
+                </p>
               </div>
-
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <motion.div whileHover={{ y: -2 }} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <motion.div
+                whileHover={{ y: -2 }}
+                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              >
                 <div className="flex items-center gap-4">
-                  <div className="rounded-xl bg-blue-50 p-3 text-blue-600"><Package className="h-6 w-6" /></div>
+                  <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
+                    <Package className="h-6 w-6" />
+                  </div>
                   <div>
                     <p className="text-sm font-medium text-slate-500">Total Products</p>
                     <p className="text-2xl font-bold text-slate-900">{products.length}</p>
                   </div>
                 </div>
               </motion.div>
-              <motion.div whileHover={{ y: -2 }} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <motion.div
+                whileHover={{ y: -2 }}
+                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              >
                 <div className="flex items-center gap-4">
-                  <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600"><ArrowUpDown className="h-6 w-6" /></div>
+                  <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600">
+                    <ArrowUpDown className="h-6 w-6" />
+                  </div>
                   <div>
                     <p className="text-sm font-medium text-slate-500">In Stock</p>
-                    <p className="text-2xl font-bold text-slate-900">{products.filter(p => p.status === 'IN_STOCK').length}</p>
+                    <p className="text-2xl font-bold text-slate-900">
+                      {products.filter((p) => p.status === 'IN_STOCK').length}
+                    </p>
                   </div>
                 </div>
               </motion.div>
-              <motion.div whileHover={{ y: -2 }} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <motion.div
+                whileHover={{ y: -2 }}
+                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+              >
                 <div className="flex items-center gap-4">
-                  <div className="rounded-xl bg-amber-50 p-3 text-amber-600"><FileText className="h-6 w-6" /></div>
+                  <div className="rounded-xl bg-amber-50 p-3 text-amber-600">
+                    <FileText className="h-6 w-6" />
+                  </div>
                   <div>
                     <p className="text-sm font-medium text-slate-500">Low Stock</p>
-                    <p className="text-2xl font-bold text-slate-900">{products.filter(p => p.status === 'LOW_STOCK').length}</p>
+                    <p className="text-2xl font-bold text-slate-900">
+                      {products.filter((p) => p.status === 'LOW_STOCK').length}
+                    </p>
                   </div>
                 </div>
               </motion.div>
@@ -279,11 +314,11 @@ const InventoryPage = () => {
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative max-w-md flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
                     placeholder="Search products by name or SKU..."
-                    className="w-full rounded-lg border border-slate-200 py-2 pl-10 pr-4 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="focus:border-primary focus:ring-primary w-full rounded-lg border border-slate-200 py-2 pr-4 pl-10 text-sm focus:ring-1 focus:outline-none"
                   />
                 </div>
               </div>
@@ -304,7 +339,9 @@ const InventoryPage = () => {
                       </div>
                       <div>
                         <h3 className="text-lg font-bold text-slate-900">{selectedProduct.name}</h3>
-                        <p className="font-mono text-sm text-slate-500">{selectedProduct.skuCode}</p>
+                        <p className="font-mono text-sm text-slate-500">
+                          {selectedProduct.skuCode}
+                        </p>
                         <div className="mt-2">
                           <Badge
                             variant={
@@ -324,7 +361,9 @@ const InventoryPage = () => {
                     <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
                       <div>
                         <p className="text-xs font-medium text-slate-500">Category</p>
-                        <p className="font-semibold text-slate-900">{selectedProduct.categoryName}</p>
+                        <p className="font-semibold text-slate-900">
+                          {selectedProduct.categoryName}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs font-medium text-slate-500">Current Stock</p>
@@ -334,19 +373,37 @@ const InventoryPage = () => {
 
                     {selectedProduct.batches && selectedProduct.batches.length > 0 && (
                       <div>
-                        <h4 className="font-semibold text-slate-900 mb-4">Stock Batches</h4>
+                        <h4 className="mb-4 font-semibold text-slate-900">Stock Batches</h4>
                         <div className="space-y-3">
-                          {selectedProduct.batches.map(batch => (
-                            <div key={batch.batchId} className="flex items-center justify-between p-3 rounded-lg border border-slate-200">
+                          {selectedProduct.batches.map((batch) => (
+                            <div
+                              key={batch.batchId}
+                              className="flex items-center justify-between rounded-lg border border-slate-200 p-3"
+                            >
                               <div>
-                                <p className="font-medium text-sm text-slate-900">Batch: {batch.batchId ? String(batch.batchId).substring(0, 8) : 'N/A'}...</p>
+                                <p className="text-sm font-medium text-slate-900">
+                                  {currentRole === 'STAFF'
+                                    ? `Batch: ${batch.batchId ? String(batch.batchId).substring(0, 8) : 'N/A'}...`
+                                    : 'Stock batch'}
+                                </p>
                                 <p className="text-xs text-slate-500">
-                                  Location: {batch.warehouseName ? `${batch.warehouseName} / ${batch.rackName} / ${batch.binName}` : 'N/A'}
+                                  Location:{' '}
+                                  {batch.warehouseName
+                                    ? `${batch.warehouseName} / ${batch.rackName} / ${batch.binName}`
+                                    : 'N/A'}
                                 </p>
                               </div>
                               <div className="flex items-center gap-4">
-                                <span className="font-bold text-slate-900">{batch.quantity} units</span>
-                                <Button size="sm" variant="outline" onClick={() => handleViewHistory(batch.batchId)}>History</Button>
+                                <span className="font-bold text-slate-900">
+                                  {batch.quantity} units
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleViewHistory(batch.batchId)}
+                                >
+                                  History
+                                </Button>
                               </div>
                             </div>
                           ))}
@@ -357,12 +414,21 @@ const InventoryPage = () => {
                 )}
               </Drawer>
 
-              <Modal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} title="Batch Transaction History" size="lg">
+              <Modal
+                isOpen={isHistoryModalOpen}
+                onClose={() => setIsHistoryModalOpen(false)}
+                title="Batch Transaction History"
+                size="lg"
+              >
                 <div className="space-y-4">
                   {isHistoryLoading ? (
-                    <div className="py-8 flex justify-center text-slate-400">Loading history...</div>
+                    <div className="flex justify-center py-8 text-slate-400">
+                      Loading history...
+                    </div>
                   ) : batchHistory.length === 0 ? (
-                    <div className="py-8 flex justify-center text-slate-500">No transaction history found for this batch.</div>
+                    <div className="flex justify-center py-8 text-slate-500">
+                      No transaction history found for this batch.
+                    </div>
                   ) : (
                     <DataTable columns={historyColumns} data={batchHistory} />
                   )}
@@ -371,7 +437,6 @@ const InventoryPage = () => {
                   </div>
                 </div>
               </Modal>
-
             </div>
           </main>
         </div>

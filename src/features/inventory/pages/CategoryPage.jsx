@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, LayoutGrid, Loader2 } from 'lucide-react'
+import TableActionMenu from '@/components/TableActionMenu'
 import DataTable from '@/components/organisms/DataTable'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
@@ -84,14 +85,17 @@ const CategoryPage = () => {
     {
       header: 'Actions',
       render: (row) => (
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={() => handleDeleteCategory(row.id)}
-            className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
+        <TableActionMenu
+          label={`Actions for ${row.name}`}
+          items={[
+            {
+              label: 'Delete',
+              icon: Trash2,
+              danger: true,
+              onClick: () => handleDeleteCategory(row.id),
+            },
+          ]}
+        />
       ),
     },
   ]

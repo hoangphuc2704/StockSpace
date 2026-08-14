@@ -24,8 +24,8 @@ import {
   Area,
 } from 'recharts'
 import DataTable from '../../../components/organisms/DataTable'
-import Button from '../../../components/atoms/Button'
 import StatCard from '../../../components/molecules/StatCard'
+import TableActionMenu from '@/components/TableActionMenu'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
@@ -84,12 +84,20 @@ const AdminDashboard = () => {
   const stats = [
     {
       title: 'Total Revenue',
-      value: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(totalRevenue),
+      value: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
+        totalRevenue
+      ),
       icon: HiOutlineCurrencyDollar,
       trend: 'stable',
       trendValue: 0,
     },
-    { title: 'Platform Users', value: summary.totalUsers.toLocaleString(), icon: HiOutlineUsers, trend: 'stable', trendValue: 0 },
+    {
+      title: 'Platform Users',
+      value: summary.totalUsers.toLocaleString(),
+      icon: HiOutlineUsers,
+      trend: 'stable',
+      trendValue: 0,
+    },
     {
       title: 'Warehouses',
       value: summary.totalWarehouses.toLocaleString(),
@@ -97,7 +105,13 @@ const AdminDashboard = () => {
       trend: 'stable',
       trendValue: 0,
     },
-    { title: 'Contracts', value: summary.totalContracts.toLocaleString(), icon: HiOutlineChartBar, trend: 'stable', trendValue: 0 },
+    {
+      title: 'Contracts',
+      value: summary.totalContracts.toLocaleString(),
+      icon: HiOutlineChartBar,
+      trend: 'stable',
+      trendValue: 0,
+    },
   ]
 
   const pendingApprovals = [
@@ -136,18 +150,7 @@ const AdminDashboard = () => {
     {
       header: 'Actions',
       render: () => (
-        <div className="flex gap-2">
-          <Button size="sm" className="h-8 px-3">
-            Approve
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-danger border-danger hover:bg-danger/5 h-8 px-3"
-          >
-            Reject
-          </Button>
-        </div>
+        <TableActionMenu items={[{ label: 'Approve' }, { label: 'Reject', danger: true }]} />
       ),
     },
   ]
@@ -195,8 +198,9 @@ const AdminDashboard = () => {
 
         {/* 3. MAIN CONTENT CONTAINER - Tự động co giãn đồng nhất */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // Thống nhất khoảng cách pl-[72px] giống owner
-            }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]' // Thống nhất khoảng cách pl-[72px] giống owner
+          }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             <div>
@@ -229,7 +233,9 @@ const AdminDashboard = () => {
                 </div>
                 <div className="h-80">
                   {loading ? (
-                    <div className="flex h-full items-center justify-center">Loading chart data...</div>
+                    <div className="flex h-full items-center justify-center">
+                      Loading chart data...
+                    </div>
                   ) : (
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={revenueData}>
@@ -250,10 +256,17 @@ const AdminDashboard = () => {
                           axisLine={false}
                           tickLine={false}
                           tick={{ fill: '#64748b', fontSize: 12 }}
-                          tickFormatter={(value) => new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value)}
+                          tickFormatter={(value) =>
+                            new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value)
+                          }
                         />
                         <Tooltip
-                          formatter={(value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)}
+                          formatter={(value) =>
+                            new Intl.NumberFormat('en-US', {
+                              style: 'currency',
+                              currency: 'VND',
+                            }).format(value)
+                          }
                         />
                         <Area
                           type="monotone"

@@ -252,12 +252,13 @@ function BinStockMiniMap({ layout, selection, onSelectBin }) {
               return (
                 <div
                   key={cellKey(row, column)}
-                  className={`border border-slate-200/70 ${blockedCells.has(cellKey(row, column))
+                  className={`border border-slate-200/70 ${
+                    blockedCells.has(cellKey(row, column))
                       ? 'bg-slate-900'
                       : activeCells.has(cellKey(row, column))
                         ? 'bg-blue-50'
                         : 'bg-slate-300/80'
-                    }`}
+                  }`}
                 />
               )
             })}
@@ -287,10 +288,11 @@ function BinStockMiniMap({ layout, selection, onSelectBin }) {
                     event.stopPropagation()
                     onSelectBin(bin.clientKey)
                   }}
-                  className={`pointer-events-auto absolute min-h-3.5 min-w-3.5 cursor-pointer rounded-sm border bg-emerald-500/95 shadow transition hover:z-30 hover:scale-110 hover:bg-emerald-400 ${selection.type === 'bin' && selection.key === bin.clientKey
+                  className={`pointer-events-auto absolute min-h-3.5 min-w-3.5 cursor-pointer rounded-sm border bg-emerald-500/95 shadow transition hover:z-30 hover:scale-110 hover:bg-emerald-400 ${
+                    selection.type === 'bin' && selection.key === bin.clientKey
                       ? 'z-20 border-white ring-2 ring-emerald-200'
                       : 'z-10 border-emerald-900'
-                    }`}
+                  }`}
                   style={{
                     left: `${(bin.coordinateX / rack.width) * 100}%`,
                     top: `${(bin.coordinateY / rack.length) * 100}%`,
@@ -358,7 +360,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         .filter((warehouse) => warehouse?.id)
         .map((warehouse) => ({
           id: String(warehouse.id),
-          name: warehouse.name || `Warehouse ${warehouse.id}`,
+          name: warehouse.name || 'Warehouse',
           width: warehouse.width ?? warehouse.warehouseWidth,
           length: warehouse.length ?? warehouse.warehouseLength ?? warehouse.height,
           height: warehouse.height ?? warehouse.warehouseHeight,
@@ -368,7 +370,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       .filter((warehouse) => warehouse?.id)
       .map((warehouse) => ({
         id: String(warehouse.id),
-        name: warehouse.name || `Warehouse ${warehouse.id}`,
+        name: warehouse.name || 'Warehouse',
         width: warehouse.width ?? warehouse.warehouseWidth,
         length: warehouse.length ?? warehouse.warehouseLength ?? warehouse.height,
         height: warehouse.height ?? warehouse.warehouseHeight,
@@ -397,6 +399,17 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const blockedSet = useMemo(() => new Set(layout.blockedCells), [layout.blockedCells])
   const binCount = useMemo(
     () => layout.racks.reduce((total, rack) => total + rack.bins.length, 0),
+    [layout.racks]
+  )
+  const rackCapacity = useMemo(
+    () =>
+      layout.racks.reduce(
+        (total, rack) => ({
+          maxWeight: total.maxWeight + numberOf(rack.maxWeight),
+          maxVolume: total.maxVolume + numberOf(rack.maxVolume),
+        }),
+        { maxWeight: 0, maxVolume: 0 }
+      ),
     [layout.racks]
   )
   const selectedBinId =
@@ -801,30 +814,30 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const propertyFields =
     selection.type === 'layout'
       ? [
-        ['width', 'Wide', 'm'],
-        ['length', 'Long', 'm'],
-        ['height', 'Height', 'm'],
-      ]
+          ['width', 'Wide', 'm'],
+          ['length', 'Long', 'm'],
+          ['height', 'Height', 'm'],
+        ]
       : selection.type === 'rack'
         ? [
-          ['name', 'Name'],
-          ['code', 'Code'],
-          ['width', 'Wide', 'm'],
-          ['length', 'Long', 'm'],
-          ['height', 'Height', 'm'],
-          ['maxWeight', 'Maximum load', 'kg'],
-          ['maxVolume', 'Maximum volume', 'm³'],
-        ]
+            ['name', 'Name'],
+            ['code', 'Code'],
+            ['width', 'Wide', 'm'],
+            ['length', 'Long', 'm'],
+            ['height', 'Height', 'm'],
+            ['maxWeight', 'Maximum load', 'kg'],
+            ['maxVolume', 'Maximum volume', 'm³'],
+          ]
         : [
-          ['name', 'Name'],
-          ['code', 'Code'],
-          ['width', 'Wide', 'm'],
-          ['length', 'Long', 'm'],
-          ['height', 'Height', 'm'],
-          ['shelfLevel', 'Floor'],
-          ['maxWeight', 'Maximum load', 'kg'],
-          ['maxVolume', 'Maximum volume', 'm³'],
-        ]
+            ['name', 'Name'],
+            ['code', 'Code'],
+            ['width', 'Wide', 'm'],
+            ['length', 'Long', 'm'],
+            ['height', 'Height', 'm'],
+            ['shelfLevel', 'Floor'],
+            ['maxWeight', 'Maximum load', 'kg'],
+            ['maxVolume', 'Maximum volume', 'm³'],
+          ]
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -840,8 +853,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       <div className="flex pt-14">
         <Sidebar currentRole={currentRole} />
         <div
-          className={`min-w-0 flex-1 transition-all duration-150 ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-            }`}
+          className={`min-w-0 flex-1 transition-all duration-150 ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
         >
           <main className="mx-auto w-full max-w-425 space-y-4 p-3 sm:p-5 lg:p-7">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -932,6 +946,46 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               </div>
             )}
 
+            {!isOwner && !loadingLayout && selectedWarehouseId && (
+              <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                  <p className="text-xs font-bold tracking-wider text-blue-600 uppercase">
+                    Owner configuration
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {layout.racks.length}{' '}
+                    <span className="text-sm font-semibold text-slate-500">Rack</span>
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                  <p className="text-xs font-bold tracking-wider text-emerald-600 uppercase">
+                    Total Bin
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {binCount} <span className="text-sm font-semibold text-slate-500">Bin</span>
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                  <p className="text-xs font-bold tracking-wider text-amber-700 uppercase">
+                    Rack load capacity
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {rackCapacity.maxWeight.toLocaleString('en-US')}{' '}
+                    <span className="text-sm font-semibold text-slate-500">kg</span>
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
+                  <p className="text-xs font-bold tracking-wider text-violet-700 uppercase">
+                    Rack volume
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">
+                    {rackCapacity.maxVolume.toLocaleString('en-US')}{' '}
+                    <span className="text-sm font-semibold text-slate-500">m³</span>
+                  </p>
+                </div>
+              </section>
+            )}
+
             <div className="grid min-w-0 gap-4 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
               <aside className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
@@ -976,10 +1030,18 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         }}
                         className={`w-full rounded-lg px-2 py-2 text-left text-sm font-semibold ${selection.key === rack.clientKey ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}
                       >
-                        {rack.name || rack.code}{' '}
-                        <span className="text-xs font-normal text-slate-400">
-                          ({rack.bins.length} Bin)
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="truncate">{rack.name || rack.code}</span>
+                          <span className="shrink-0 text-xs font-normal text-slate-400">
+                            {rack.bins.length} Bin
+                          </span>
                         </span>
+                        {!isOwner && (
+                          <span className="mt-1 block text-[11px] font-normal text-slate-500">
+                            Load: {numberOf(rack.maxWeight).toLocaleString('en-US')} kg · Volume:{' '}
+                            {numberOf(rack.maxVolume).toLocaleString('en-US')} m³
+                          </span>
+                        )}
                       </button>
                       <div className="ml-3 space-y-1 border-l border-slate-200 pl-2">
                         {rack.bins.map((bin) => (
@@ -992,7 +1054,20 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             }}
                             className={`block w-full rounded px-2 py-1.5 text-left text-xs ${selection.key === bin.clientKey ? 'bg-emerald-50 font-semibold text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
                           >
-                            {bin.name || bin.code}
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="truncate">{bin.name || bin.code}</span>
+                              {!isOwner && (
+                                <span className="shrink-0 text-[10px] text-slate-400">
+                                  {numberOf(bin.maxWeight).toLocaleString('en-US')} kg
+                                </span>
+                              )}
+                            </span>
+                            {!isOwner && (
+                              <span className="mt-0.5 block text-[10px] text-slate-400">
+                                Shelf {bin.shelfLevel} ·{' '}
+                                {numberOf(bin.maxVolume).toLocaleString('en-US')} m³
+                              </span>
+                            )}
                           </button>
                         ))}
                       </div>
@@ -1114,7 +1189,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         <AlertCircle className="mb-3 h-8 w-8 text-amber-500" />
                         <h3 className="font-bold text-slate-800">Bin has not been saved</h3>
                         <p className="mt-2 text-sm text-slate-500">
-                          Bin needs an ID from the system before it can view inventory.
+                          This Bin has not been synchronized yet, so its inventory cannot be viewed.
                         </p>
                       </div>
                     ) : binStockState.binId !== selectedBinId ||
@@ -1345,7 +1420,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               <aside className="min-w-0 self-start rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:sticky xl:top-20">
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <div>
-                    <h2 className="font-bold">Attributes</h2>
+                    <h2 className="font-bold"></h2>
                     <p className="text-xs text-slate-500">
                       {selection.type === 'layout'
                         ? 'General layout'

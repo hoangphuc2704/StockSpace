@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Edit3,
   Loader2,
+  MoreVertical,
   PackageSearch,
   Plus,
   Search,
@@ -73,6 +74,7 @@ export default function ProductManagementPage() {
   const [categoryAttributes, setCategoryAttributes] = useState('{}')
   const [skuForm, setSkuForm] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [openActionMenu, setOpenActionMenu] = useState(null)
 
   const loadData = useCallback(async () => {
     try {
@@ -195,6 +197,14 @@ export default function ProductManagementPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Header />
+      {openActionMenu && (
+        <button
+          type="button"
+          aria-label="Close action menu"
+          onClick={() => setOpenActionMenu(null)}
+          className="fixed inset-0 z-[55] cursor-default"
+        />
+      )}
       {isMobileOpen && (
         <button
           type="button"
@@ -278,16 +288,37 @@ export default function ProductManagementPage() {
                           </td>
                           <td className="px-5 py-3 text-right">
                             {category.tenantId && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setDeleteTarget({ type: 'category', item: category })
-                                }
-                                className="rounded-lg p-2 text-red-600 hover:bg-red-50"
-                                aria-label={`Delete ${category.name}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+                              <div className="relative z-[60] inline-flex flex-col items-end">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setOpenActionMenu((current) =>
+                                      current === `category-${category.id}`
+                                        ? null
+                                        : `category-${category.id}`
+                                    )
+                                  }
+                                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                  aria-label={`Actions for ${category.name}`}
+                                  aria-expanded={openActionMenu === `category-${category.id}`}
+                                >
+                                  <MoreVertical className="h-5 w-5" />
+                                </button>
+                                {openActionMenu === `category-${category.id}` && (
+                                  <div className="mt-1 min-w-32 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-lg">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenu(null)
+                                        setDeleteTarget({ type: 'category', item: category })
+                                      }}
+                                      className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </td>
                         </tr>
@@ -336,23 +367,44 @@ export default function ProductManagementPage() {
                           </td>
                           <td className="px-5 py-3 text-right">
                             {sku.tenantId && (
-                              <div className="inline-flex gap-1">
+                              <div className="relative z-[60] inline-flex flex-col items-end">
                                 <button
                                   type="button"
-                                  onClick={() => openEditSku(sku)}
-                                  className="rounded-lg p-2 text-blue-600 hover:bg-blue-50"
-                                  aria-label={`Edit ${sku.name}`}
+                                  onClick={() =>
+                                    setOpenActionMenu((current) =>
+                                      current === `sku-${sku.id}` ? null : `sku-${sku.id}`
+                                    )
+                                  }
+                                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                  aria-label={`Actions for ${sku.name}`}
+                                  aria-expanded={openActionMenu === `sku-${sku.id}`}
                                 >
-                                  <Edit3 className="h-4 w-4" />
+                                  <MoreVertical className="h-5 w-5" />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setDeleteTarget({ type: 'sku', item: sku })}
-                                  className="rounded-lg p-2 text-red-600 hover:bg-red-50"
-                                  aria-label={`Delete ${sku.name}`}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                {openActionMenu === `sku-${sku.id}` && (
+                                  <div className="mt-1 min-w-32 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-lg">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenu(null)
+                                        openEditSku(sku)
+                                      }}
+                                      className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                                    >
+                                      <Edit3 className="mr-2 h-4 w-4" /> Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setOpenActionMenu(null)
+                                        setDeleteTarget({ type: 'sku', item: sku })
+                                      }}
+                                      className="flex w-full items-center rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </td>

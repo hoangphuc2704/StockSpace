@@ -10,6 +10,7 @@ import toast from 'react-hot-toast'
 import { useSelector } from 'react-redux'
 import adminApi from '../../../services/admin/adminApi'
 import Modal from '../../../components/organisms/Modal'
+import TableActionMenu from '@/components/TableActionMenu'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import { HiBars3 } from 'react-icons/hi2'
@@ -195,14 +196,15 @@ const AdminAuditsPage = () => {
                           </td>
                           <td className="px-6 py-4">{getStatusBadge(audit.status)}</td>
                           <td className="px-6 py-4 text-center">
-                            <button
-                              onClick={() => openDetailModal(audit)}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                              title="See details"
-                            >
-                              <HiOutlineEye className="h-4 w-4 text-blue-600" />
-                              View
-                            </button>
+                            <TableActionMenu
+                              items={[
+                                {
+                                  label: 'View details',
+                                  icon: HiOutlineEye,
+                                  onClick: () => openDetailModal(audit),
+                                },
+                              ]}
+                            />
                           </td>
                         </tr>
                       ))

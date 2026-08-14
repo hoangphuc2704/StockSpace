@@ -8,6 +8,7 @@ import walletApi from '@/services/wallet/walletApi'
 import { useSelector, useDispatch } from 'react-redux'
 import { addBookedWarehouse } from '@/store/tenantBookingSlice'
 import { toast } from 'react-hot-toast'
+import PublicFooter from '@/components/PublicFooter'
 
 // Sub-components
 import WarehouseHeader from '../components/WarehouseHeader'
@@ -34,6 +35,7 @@ const normalizeWarehouse = (warehouse) => ({
   isVerified: warehouse.isVerified ?? warehouse.verified ?? false,
   imageUrls: warehouse.imageUrls || [],
   ownerName: warehouse.ownerName || 'Warehouse Owner',
+  ownerPhone: warehouse.ownerPhone || '',
 })
 
 const createClientKey = (prefix) =>
@@ -100,6 +102,7 @@ const WarehouseDetailPage = () => {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const bookedWarehouseIds = useSelector((state) => state.tenantBooking.bookedWarehouseIds)
+  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
   const hasBooked = bookedWarehouseIds.includes(id)
 
   const [isBookmarked, setIsBookmarked] = useState(false)
@@ -184,6 +187,7 @@ const WarehouseDetailPage = () => {
       ],
       owner: {
         name: warehouse.ownerName,
+        phone: warehouse.ownerPhone,
         company: 'StockSpace Partner',
         rating: warehouse.rating,
         since: '2024',
@@ -272,7 +276,11 @@ const WarehouseDetailPage = () => {
           />
 
           <div className="flex flex-col gap-12 lg:flex-row">
-            <WarehouseInfo warehouse={warehouse} extendedData={extendedData} />
+            <WarehouseInfo
+              warehouse={warehouse}
+              extendedData={extendedData}
+              isAuthenticated={isAuthenticated}
+            />
 
             <WarehouseBookingCard
               warehouse={warehouse}
@@ -297,6 +305,7 @@ const WarehouseDetailPage = () => {
         isBooking={isBooking}
         onConfirm={handleConfirmDeposit}
       />
+      <PublicFooter />
     </div>
   )
 }

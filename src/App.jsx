@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import RoleGuard from './components/guards/RoleGuard'
 import PublicGuard from './components/guards/PublicGuard'
+import PublicPageLayout from './components/PublicPageLayout'
 import { fetchCurrentUserThunk, logout } from './store/authSlice'
 
 // Lazy load components
@@ -108,17 +109,21 @@ const App = () => {
         <Route element={<PublicGuard />}>
           <Route path="/" element={<LandingpageKhamkhao />} />
           <Route path="/warehouses" element={<WarehouseListingPage />} />
-          <Route path="/warehouse/:id" element={<WarehouseDetailPage />} />
           <Route path="/packages" element={<PackageList />} />
           <Route path="/packages/:id" element={<PackageDetail />} />
+          <Route element={<PublicPageLayout />}>
+            <Route path="/warehouse/:id" element={<WarehouseDetailPage />} />
+          </Route>
         </Route>
         {/* <Route path="/login" element={<LoginPage />} /> */}
         {/* <Route path="/register" element={<RegisterPage />} /> */}
-        <Route path="/unauthorized" element={<UnauthorizedPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/staff/accept" element={<StaffAcceptInvitationPage />} />
+        <Route element={<PublicPageLayout />}>
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/staff/accept" element={<StaffAcceptInvitationPage />} />
+        </Route>
         <Route path="/wallet/callback" element={<WalletCallback />} />
 
         {/* Protected Routes Layout */}
@@ -151,14 +156,23 @@ const App = () => {
           <Route path="/tenant/inventory" element={<InventoryPage />} />
           <Route path="/tenant/categories" element={<CategoryPage />} />
           <Route path="/tenant/skus" element={<SkuPage />} />
-          <Route path="/tenant/inventory-audits" element={<InventoryAuditPage currentRole="TENANT" />} />
-          <Route path="/tenant/inventory-audits/:id" element={<InventoryAuditDetailPage currentRole="TENANT" />} />
+          <Route
+            path="/tenant/inventory-audits"
+            element={<InventoryAuditPage currentRole="TENANT" />}
+          />
+          <Route
+            path="/tenant/inventory-audits/:id"
+            element={<InventoryAuditDetailPage currentRole="TENANT" />}
+          />
           <Route path="/tenant/inbound" element={<InboundPage />} />
           <Route path="/tenant/outbound" element={<OutboundPage />} />
           <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
 
           <Route path="/tenant/subscription" element={<SubscriptionPage />} />
-          <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse currentRole="TENANT" />} />
+          <Route
+            path="/tenant/layoutwarehouses"
+            element={<LayoutWarehouse currentRole="TENANT" />}
+          />
 
           {/* <Route path="/tenant/payments" element={<BillingPage />} /> */}
           {/* <Route
@@ -182,10 +196,10 @@ const App = () => {
           <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
           <Route path="/tenant/staff" element={<TenantStaffManagementPage />} />
           <Route path="/tenant/products" element={<ProductManagementPage />} />
-        </Route >
+        </Route>
 
         {/* Owner Routes */}
-        < Route element={< RoleGuard allowedRoles={['ROLE_OWNER']} />}>
+        <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}>
           <Route path="/owner/dashboard" element={<OwnerDashboard />} />
           <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
           <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
@@ -194,32 +208,38 @@ const App = () => {
           <Route path="/owner/profile" element={<OwnerProfile />} />
           <Route path="/owner/contracts" element={<OwnerContractsPage />} />
           <Route path="/owner/disputes" element={<MyDisputesPage currentRole="OWNER" />} />
-        </Route >
+        </Route>
 
         {/* Staff Routes */}
-        < Route element={< RoleGuard allowedRoles={['ROLE_STAFF']} />}>
+        <Route element={<RoleGuard allowedRoles={['ROLE_STAFF']} />}>
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
           <Route path="/staff/inventory" element={<InventoryPage />} />
           <Route path="/staff/categories" element={<CategoryPage />} />
           <Route path="/staff/skus" element={<SkuPage />} />
-          <Route path="/staff/inventory-audits" element={<InventoryAuditPage currentRole="STAFF" />} />
-          <Route path="/staff/inventory-audits/:id" element={<InventoryAuditDetailPage currentRole="STAFF" />} />
+          <Route
+            path="/staff/inventory-audits"
+            element={<InventoryAuditPage currentRole="STAFF" />}
+          />
+          <Route
+            path="/staff/inventory-audits/:id"
+            element={<InventoryAuditDetailPage currentRole="STAFF" />}
+          />
           <Route path="/staff/inbound" element={<InboundPage />} />
           <Route path="/staff/outbound" element={<OutboundPage />} />
           <Route path="/staff/career-history" element={<StaffCareerHistoryPage />} />
-        </Route >
+        </Route>
 
         {/* Inspector Routes */}
-        < Route element={< RoleGuard allowedRoles={['ROLE_INSPECTOR']} />}>
+        <Route element={<RoleGuard allowedRoles={['ROLE_INSPECTOR']} />}>
           <Route path="/inspector/inspections" element={<InspectorInspectionsPage />} />
-        </Route >
+        </Route>
 
         {/* Fallback */}
-        < Route path="*" element={< Navigate to="/" replace />} />
-      </Routes >
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
       <AIChatWidget />
-    </BrowserRouter >
+    </BrowserRouter>
   )
   //check config mail
 }

@@ -18,7 +18,7 @@ const STATUS_CONFIG = {
   APPROVED: { label: 'Đã duyệt', type: 'success' },
   REJECTED: { label: 'Đã từ chối', type: 'error' },
   SUBMITTED: { label: 'Chờ duyệt', type: 'info' },
-  COMPLETED: { label: 'Hoàn tất', type: 'success' }
+  COMPLETED: { label: 'Hoàn tất', type: 'success' },
 }
 
 const InventoryAuditDetailPage = ({ currentRole }) => {
@@ -47,11 +47,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         setAudit(res.data.data)
         // copy items into state to allow editing actualQuantity
         const fetchedItems = res.data.data.items || []
-        setItems(fetchedItems.map(item => ({
-          ...item,
-          // Mặc định actualQuantity bằng expectedQuantity nếu chưa nhập
-          actualQuantity: item.actualQuantity !== null ? item.actualQuantity : item.expectedQuantity
-        })))
+        setItems(
+          fetchedItems.map((item) => ({
+            ...item,
+            // Mặc định actualQuantity bằng expectedQuantity nếu chưa nhập
+            actualQuantity:
+              item.actualQuantity !== null ? item.actualQuantity : item.expectedQuantity,
+          }))
+        )
       }
     } catch (error) {
       toast.error('Lỗi khi tải chi tiết phiếu kiểm kê')
@@ -75,26 +78,28 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
 
   const handleQuantityChange = (batchId, value) => {
     const num = parseInt(value, 10)
-    setItems(prev => prev.map(item => 
-      item.batchId === batchId ? { ...item, actualQuantity: isNaN(num) ? 0 : num } : item
-    ))
+    setItems((prev) =>
+      prev.map((item) =>
+        item.batchId === batchId ? { ...item, actualQuantity: isNaN(num) ? 0 : num } : item
+      )
+    )
   }
 
   const handleNoteChange = (batchId, value) => {
-    setItems(prev => prev.map(item => 
-      item.batchId === batchId ? { ...item, note: value } : item
-    ))
+    setItems((prev) =>
+      prev.map((item) => (item.batchId === batchId ? { ...item, note: value } : item))
+    )
   }
 
   const handleSubmitAudit = async () => {
     try {
       setSubmitting(true)
       const payload = {
-        items: items.map(item => ({
+        items: items.map((item) => ({
           batchId: item.batchId,
           actualQuantity: item.actualQuantity,
-          note: item.note || ''
-        }))
+          note: item.note || '',
+        })),
       }
       const res = await auditApi.submitAudit(id, payload)
       if (res.data?.success) {
@@ -172,12 +177,12 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     {
       accessor: 'location',
       header: 'Vị trí',
-      render: (row) => `${row.rackName || ''} - ${row.binName || ''}`
+      render: (row) => `${row.rackName || ''} - ${row.binName || ''}`,
     },
     {
       accessor: 'expectedQuantity',
       header: 'SL Hệ thống (Snapshot)',
-      render: (row) => `${row.expectedQuantity} ${row.uomSymbol || ''}`
+      render: (row) => `${row.expectedQuantity} ${row.uomSymbol || ''}`,
     },
     {
       accessor: 'actualQuantity',
@@ -188,23 +193,21 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             <input
               type="number"
               min="0"
-              className="w-24 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              className="focus:border-brand-500 focus:ring-brand-500 w-24 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:ring-1"
               value={row.actualQuantity}
               onChange={(e) => handleQuantityChange(row.batchId, e.target.value)}
             />
           )
         }
         return `${row.actualQuantity} ${row.uomSymbol || ''}`
-      }
+      },
     },
     {
       accessor: 'discrepancy',
       header: 'Chênh lệch',
       render: (row) => {
-        const diff = isPending 
-          ? (row.actualQuantity - row.expectedQuantity) 
-          : row.discrepancy
-        
+        const diff = isPending ? row.actualQuantity - row.expectedQuantity : row.discrepancy
+
         let colorClass = 'text-slate-600'
         let sign = ''
         if (diff > 0) {
@@ -213,9 +216,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         } else if (diff < 0) {
           colorClass = 'text-red-600 font-medium'
         }
-        
-        return <span className={colorClass}>{sign}{diff}</span>
-      }
+
+        return (
+          <span className={colorClass}>
+            {sign}
+            {diff}
+          </span>
+        )
+      },
     },
     {
       accessor: 'note',
@@ -225,7 +233,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
           return (
             <input
               type="text"
-              className="w-full min-w-[120px] rounded-lg border border-slate-300 px-2 py-1 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              className="focus:border-brand-500 focus:ring-brand-500 w-full min-w-[120px] rounded-lg border border-slate-300 px-2 py-1 outline-none focus:ring-1"
               value={row.note || ''}
               placeholder="Ghi chú..."
               onChange={(e) => handleNoteChange(row.batchId, e.target.value)}
@@ -233,8 +241,8 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
           )
         }
         return row.note || '-'
-      }
-    }
+      },
+    },
   ]
 
   return (
@@ -257,29 +265,29 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         >
           <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
             <div className="mx-auto max-w-7xl space-y-6">
-              
               <div className="flex items-center gap-4">
-                <button 
+                <button
                   onClick={handleBack}
-                  className="rounded-full p-2 hover:bg-slate-200 transition-colors"
+                  className="rounded-full p-2 transition-colors hover:bg-slate-200"
                 >
                   <ArrowLeft className="h-5 w-5 text-slate-600" />
                 </button>
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                    Chi tiết Phiếu Kiểm Kê #{audit.id}
+                    Chi tiết Phiếu Kiểm Kê
+                    {currentRole === 'STAFF' ? ` #${audit.id}` : ''}
                   </h1>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
-                  <Badge type={statusConfig.type} className="text-sm px-3 py-1">
+                  <Badge type={statusConfig.type} className="px-3 py-1 text-sm">
                     {statusConfig.label}
                   </Badge>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Thông tin chung</h3>
+                  <h3 className="mb-4 text-lg font-semibold text-slate-900">Thông tin chung</h3>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between">
                       <span className="text-slate-500">Kho kiểm kê:</span>
@@ -291,7 +299,9 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Ngày tạo:</span>
-                      <span className="font-medium text-slate-900">{moment(audit.createdAt).format('DD/MM/YYYY HH:mm')}</span>
+                      <span className="font-medium text-slate-900">
+                        {moment(audit.createdAt).format('DD/MM/YYYY HH:mm')}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Ghi chú:</span>
@@ -302,7 +312,9 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
 
                 {(audit.approvedByName || audit.status === 'REJECTED') && (
                   <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">Thông tin xét duyệt</h3>
+                    <h3 className="mb-4 text-lg font-semibold text-slate-900">
+                      Thông tin xét duyệt
+                    </h3>
                     <div className="space-y-3 text-sm">
                       {audit.approvedByName && (
                         <div className="flex justify-between">
@@ -313,7 +325,9 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                       {audit.updatedAt && (
                         <div className="flex justify-between">
                           <span className="text-slate-500">Ngày cập nhật:</span>
-                          <span className="font-medium text-slate-900">{moment(audit.updatedAt).format('DD/MM/YYYY HH:mm')}</span>
+                          <span className="font-medium text-slate-900">
+                            {moment(audit.updatedAt).format('DD/MM/YYYY HH:mm')}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -321,22 +335,18 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                 )}
               </div>
 
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/50">
+              <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/50 p-4">
                   <h3 className="font-semibold text-slate-900">Danh sách sản phẩm kiểm đếm</h3>
                 </div>
-                <DataTable
-                  columns={columns}
-                  data={items}
-                  loading={loading}
-                />
+                <DataTable columns={columns} data={items} loading={loading} />
               </div>
 
               {/* Actions based on status */}
               <div className="flex justify-end gap-3 pt-2">
                 {isPending && (
-                  <Button 
-                    onClick={handleSubmitAudit} 
+                  <Button
+                    onClick={handleSubmitAudit}
                     isLoading={submitting}
                     className="flex items-center gap-2"
                   >
@@ -347,18 +357,18 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
 
                 {isSubmitted && currentRole === 'TENANT' && (
                   <>
-                    <Button 
-                      variant="outline" 
-                      className="text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-200 flex items-center gap-2"
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2 text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
                       onClick={() => setIsRejectModalOpen(true)}
                     >
                       <XCircle className="h-4 w-4" />
                       Từ chối
                     </Button>
-                    <Button 
+                    <Button
                       onClick={handleApprove}
                       isLoading={approving}
-                      className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                      className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
                     >
                       <CheckCircle className="h-4 w-4" />
                       Duyệt & Cập nhật tồn kho
@@ -367,12 +377,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                 )}
 
                 {isSubmitted && currentRole === 'STAFF' && (
-                  <span className="text-sm italic text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                  <span className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-sm text-slate-500 italic">
                     Đang chờ Tenant duyệt kết quả
                   </span>
                 )}
               </div>
-
             </div>
           </main>
         </div>
@@ -386,9 +395,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       >
         <form onSubmit={handleReject} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Lý do từ chối <span className="text-red-500">*</span></label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Lý do từ chối <span className="text-red-500">*</span>
+            </label>
             <textarea
-              className="w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+              className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
               rows={3}
               placeholder="Nhập lý do từ chối..."
               value={rejectReason}
@@ -397,12 +408,20 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             />
           </div>
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setIsRejectModalOpen(false)}>Hủy</Button>
-            <Button type="submit" variant="outline" className="bg-red-600 text-white hover:bg-red-700" isLoading={rejecting}>Từ chối</Button>
+            <Button type="button" variant="outline" onClick={() => setIsRejectModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              type="submit"
+              variant="outline"
+              className="bg-red-600 text-white hover:bg-red-700"
+              isLoading={rejecting}
+            >
+              Từ chối
+            </Button>
           </div>
         </form>
       </Modal>
-
     </div>
   )
 }
