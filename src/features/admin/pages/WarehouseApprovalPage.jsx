@@ -155,12 +155,13 @@ const WarehouseApprovalPage = () => {
 
   const runApprovalAction = async (warehouse, type) => {
     if (type === 'reject') {
-      reason = window.prompt("Vui lòng nhập lý do từ chối (bắt buộc):")
-      if (!reason || !reason.trim()) {
-        toast.error('Bạn phải nhập lý do từ chối!')
-        return
-      }
+      setWarehouseToReject(warehouse)
+      setRejectReason('')
+      setRejectModalOpen(true)
+      return
     }
+    executeAction(warehouse, type, null)
+  }
 
   const executeAction = async (warehouse, type, reason) => {
     setPendingAction({ id: warehouse.id, type })
