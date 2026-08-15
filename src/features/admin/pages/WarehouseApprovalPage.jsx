@@ -114,6 +114,11 @@ const WarehouseApprovalPage = () => {
   const [layoutError, setLayoutError] = useState('')
   const [pendingAction, setPendingAction] = useState({ id: null, type: null })
 
+  // Modal từ chối
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [warehouseToReject, setWarehouseToReject] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+
   useEffect(() => {
     dispatch(fetchWarehouses())
   }, [dispatch])
@@ -149,15 +154,16 @@ const WarehouseApprovalPage = () => {
   const binCount = layout?.racks.reduce((total, rack) => total + (rack.bins?.length || 0), 0) || 0
 
   const runApprovalAction = async (warehouse, type) => {
-    let reason = null
     if (type === 'reject') {
-      reason = window.prompt("Vui lòng nhập lý do từ chối (bắt buộc):")
-      if (!reason || !reason.trim()) {
-        toast.error('Bạn phải nhập lý do từ chối!')
-        return
-      }
+      setWarehouseToReject(warehouse)
+      setRejectReason('')
+      setRejectModalOpen(true)
+      return
     }
+    executeAction(warehouse, type, null)
+  }
 
+  const executeAction = async (warehouse, type, reason) => {
     setPendingAction({ id: warehouse.id, type })
     try {
       const action =
@@ -172,6 +178,11 @@ const WarehouseApprovalPage = () => {
       toast.success(
         type === 'approve' ? 'Warehouse approved successfully.' : 'Warehouse rejected successfully.'
       )
+      
+      if (type === 'reject') {
+        setRejectModalOpen(false)
+        setWarehouseToReject(null)
+      }
     } catch (actionError) {
       toast.error(
         typeof actionError === 'string'
@@ -182,6 +193,14 @@ const WarehouseApprovalPage = () => {
     } finally {
       setPendingAction({ id: null, type: null })
     }
+  }
+
+  const submitReject = () => {
+    if (!rejectReason.trim()) {
+      toast.error('Bạn phải nhập lý do từ chối!')
+      return
+    }
+    executeAction(warehouseToReject, 'reject', rejectReason)
   }
 
   const columns = [
@@ -532,6 +551,48 @@ const WarehouseApprovalPage = () => {
               </p>
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* MODAL TỪ CHỐI */}
+      <Modal
+        isOpen={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        title="Từ chối duyệt đăng kho"
+      >
+        <div className="p-4 sm:p-6">
+          <p className="mb-4 text-sm text-slate-600">
+            Bạn đang từ chối phê duyệt kho <span className="font-bold text-slate-900">{warehouseToReject?.name}</span>. Vui lòng cung cấp lý do cụ thể để người cho thuê có thể nắm rõ và khắc phục.
+          </p>
+          <textarea
+            className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            rows={4}
+            placeholder="Nhập lý do từ chối (bắt buộc)..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => setRejectModalOpen(false)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={submitReject}
+              disabled={!rejectReason.trim() || pendingAction.type === 'reject'}
+              className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {pendingAction.type === 'reject' ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                'Xác nhận từ chối'
+              )}
+            </button>
+          </div>
         </div>
       </Modal>
     </div>
