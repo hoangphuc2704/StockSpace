@@ -149,10 +149,22 @@ const WarehouseApprovalPage = () => {
   const binCount = layout?.racks.reduce((total, rack) => total + (rack.bins?.length || 0), 0) || 0
 
   const runApprovalAction = async (warehouse, type) => {
+    let reason = null
+    if (type === 'reject') {
+      reason = window.prompt("Vui lòng nhập lý do từ chối (bắt buộc):")
+      if (!reason || !reason.trim()) {
+        toast.error('Bạn phải nhập lý do từ chối!')
+        return
+      }
+    }
+
     setPendingAction({ id: warehouse.id, type })
     try {
       const action =
-        type === 'approve' ? verifyWarehouse(warehouse.id) : rejectWarehouse(warehouse.id)
+        type === 'approve'
+          ? verifyWarehouse(warehouse.id)
+          : rejectWarehouse({ id: warehouse.id, reason })
+      
       const updatedWarehouse = await dispatch(action).unwrap()
       setWarehouseDetail((current) =>
         current?.id === updatedWarehouse?.id ? { ...current, ...updatedWarehouse } : current

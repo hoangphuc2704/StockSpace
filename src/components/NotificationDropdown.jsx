@@ -129,6 +129,23 @@ const NotificationDropdown = () => {
     return () => clearInterval(interval)
   }, [])
 
+  // Lắng nghe thông báo mới từ WebSocket
+  useEffect(() => {
+    const handleNewNotification = (e) => {
+      const data = e.detail
+      setUnreadCount(prev => prev + 1)
+      
+      setNotifications(prev => {
+        // Tránh trùng lặp nếu có rồi
+        if (prev.some(n => n.id === data.id)) return prev
+        return [data, ...prev]
+      })
+    }
+    
+    window.addEventListener('new_notification', handleNewNotification)
+    return () => window.removeEventListener('new_notification', handleNewNotification)
+  }, [])
+
   const fetchUnreadCount = async () => {
     try {
       const res = await notificationApi.getUnreadCount()

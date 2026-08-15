@@ -338,7 +338,12 @@ const WareHouseManagementPage = () => {
 
   const handleReject = useCallback(
     async (w) => {
-      await dispatch(rejectWarehouse(w.id))
+      const reason = window.prompt("Vui lòng nhập lý do từ chối (bắt buộc):")
+      if (!reason || !reason.trim()) {
+        toast.error('Bạn phải nhập lý do từ chối!')
+        return
+      }
+      await dispatch(rejectWarehouse({ id: w.id, reason }))
     },
     [dispatch]
   )

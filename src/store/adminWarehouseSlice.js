@@ -39,12 +39,12 @@ export const verifyWarehouse = createAsyncThunk(
   }
 )
 
-// Từ chối kho — no body, chỉ cần id
+// Từ chối kho
 export const rejectWarehouse = createAsyncThunk(
   'adminWarehouse/rejectWarehouse',
-  async (id, { rejectWithValue }) => {
+  async ({ id, reason }, { rejectWithValue }) => {
     try {
-      const res = await adminApi.rejectWarehouse(id)
+      const res = await adminApi.rejectWarehouse(id, { reason })
       return res.data.data // WarehouseResponse mới nhất
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)

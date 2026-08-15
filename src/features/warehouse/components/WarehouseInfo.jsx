@@ -19,12 +19,6 @@ const WarehouseInfo = ({ warehouse, extendedData, isAuthenticated = false }) => 
             <MapPin size={18} className="text-primary" />
             <span>{warehouse.location}</span>
           </div>
-          <div className="bg-warning/5 text-warning flex items-center gap-1.5 rounded-full px-3 py-1 font-bold">
-            <Star size={16} className="fill-current" />
-            <span>
-              {warehouse.rating} ({extendedData.reviews} reviews)
-            </span>
-          </div>
         </div>
 
         <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
@@ -78,7 +72,7 @@ const WarehouseInfo = ({ warehouse, extendedData, isAuthenticated = false }) => 
               </p>
             </div>
           </div>
-          {isAuthenticated && extendedData.owner.phone ? (
+          {extendedData.owner.phone ? (
             <a
               href={`tel:${extendedData.owner.phone}`}
               className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700"
@@ -88,7 +82,7 @@ const WarehouseInfo = ({ warehouse, extendedData, isAuthenticated = false }) => 
             </a>
           ) : (
             <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
-              Sign in to view phone number
+              Chưa cập nhật số điện thoại
             </span>
           )}
         </div>

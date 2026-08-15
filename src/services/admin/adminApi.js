@@ -103,8 +103,8 @@ const adminApi = {
   verifyWarehouse: (id) =>
     api.post(`/admin/warehouses/${id}/verify`),
 
-  rejectWarehouse: (id) =>
-    api.post(`/admin/warehouses/${id}/reject`),
+  rejectWarehouse: (id, payload) =>
+    api.post(`/admin/warehouses/${id}/reject`, payload),
 
   // =========================
   // WAREHOUSE TYPE MANAGEMENT

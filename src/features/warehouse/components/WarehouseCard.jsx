@@ -53,10 +53,6 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
       <div className="p-6 flex-1 flex flex-col">
         <div className="flex items-start justify-between mb-2">
           <h3 className="font-bold text-slate-900 text-lg group-hover:text-primary transition-colors line-clamp-1">{warehouse.name}</h3>
-          <div className="flex items-center gap-1 text-sm font-bold text-warning bg-warning/5 px-2 py-0.5 rounded-lg">
-            <Star className="h-3.5 w-3.5 fill-current" />
-            <span>{warehouse.rating}</span>
-          </div>
         </div>
 
         <div className="flex items-center gap-1.5 text-slate-500 text-sm mb-4">

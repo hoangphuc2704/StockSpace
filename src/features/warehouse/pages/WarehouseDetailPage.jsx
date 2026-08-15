@@ -198,6 +198,12 @@ const WarehouseDetailPage = () => {
   }, [gallery, warehouse, depositPercentage])
 
   const handleDepositClick = async () => {
+    if (!isAuthenticated) {
+      toast.error('Xin hãy đăng nhập để tiếp tục đặt cọc')
+      navigate('/login')
+      return
+    }
+
     setIsCheckingWallet(true)
     try {
       const res = await walletApi.getWallet()

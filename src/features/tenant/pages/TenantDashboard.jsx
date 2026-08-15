@@ -241,56 +241,24 @@ const TenantDashboard = () => {
               ))}
             </div>
 
-            {/* Charts Row */}
+            {/* Main Content Grid: Recent Activity (2/3) + Notifications (1/3) */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {/* <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+              
+              {/* Table: Recent Activity */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2 flex flex-col">
                 <div className="mb-6 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900">Inventory Movement (Demo)</h3>
-                  <select className="rounded-lg border-none bg-slate-50 px-2 py-1 text-xs font-bold text-slate-500 focus:ring-0">
-                    <option>Last 7 Days</option>
-                    <option>Last 30 Days</option>
-                  </select>
+                  <h3 className="font-bold text-slate-900">Recent Activity</h3>
                 </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={revenueData}>
-                      <defs>
-                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
-                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="month"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: '12px',
-                          border: 'none',
-                          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#2563eb"
-                        fillOpacity={1}
-                        fill="url(#colorRev)"
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                <div className="flex-1">
+                  {isLoading ? (
+                    <div className="flex justify-center p-8"><Loader2 className="animate-spin text-slate-400" /></div>
+                  ) : recentActivity.length > 0 ? (
+                    <DataTable columns={columns} data={recentActivity} />
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">No recent activity found.</div>
+                  )}
                 </div>
-              </div> */}
+              </div>
 
               {/* Notifications Panel */}
               <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -343,47 +311,7 @@ const TenantDashboard = () => {
                   View All Activity
                 </Button>
               </div>
-            </div>
 
-            {/* Table & Operations Row */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="mb-6 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900">Recent Activity</h3>
-                </div>
-                {isLoading ? (
-                  <div className="flex justify-center p-8"><Loader2 className="animate-spin text-slate-400" /></div>
-                ) : recentActivity.length > 0 ? (
-                  <DataTable columns={columns} data={recentActivity} />
-                ) : (
-                  <div className="text-center py-8 text-slate-500">No recent activity found.</div>
-                )}
-              </div>
-
-              {/* <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-6 font-bold text-slate-900">Weekly Operations (Demo)</h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={activityData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="name"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <Tooltip cursor={{ fill: '#f8fafc' }} />
-                      <Bar dataKey="inbound" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="outbound" fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div> */}
             </div>
           </main>
         </div>

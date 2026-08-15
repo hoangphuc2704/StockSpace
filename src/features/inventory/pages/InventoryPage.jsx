@@ -14,6 +14,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import productApi from '../../../services/wms/productApi'
 import stockApi from '../../../services/wms/stockApi'
+import warehouseApi from '../../../services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 
 const InventoryPage = () => {
@@ -21,6 +22,9 @@ const InventoryPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isDetailsLoading, setIsDetailsLoading] = useState(false)
+  const [warehouses, setWarehouses] = useState([])
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [historyBatchId, setHistoryBatchId] = useState(null)
@@ -46,87 +50,86 @@ const InventoryPage = () => {
   const { user } = useSelector((state) => state.auth)
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
 
-  const fetchInventoryData = async () => {
+  const loadWarehouses = async () => {
+    try {
+      const res = await warehouseApi.getMyWarehouses()
+      const list = res.data?.data || []
+      setWarehouses(list)
+      if (list.length > 0) {
+        setSelectedWarehouseId(list[0].id)
+      } else {
+        setIsLoading(false)
+      }
+    } catch (error) {
+      console.error('Error loading warehouses:', error)
+      toast.error('Failed to load warehouses')
+      setIsLoading(false)
+    }
+  }
+
+  const fetchInventoryOverview = async () => {
+    if (!selectedWarehouseId) return
     try {
       setIsLoading(true)
-      const [skuRes, catRes] = await Promise.all([
-        productApi.getSKUs({ page: 0, size: 50 }),
-        productApi.getCategories(),
-      ])
+      const res = await stockApi.getStockOverview(selectedWarehouseId, { page: 0, size: 50 })
+      const content = res.data?.data?.content || []
+      
+      const enrichedSkus = content.map((item) => {
+        const qty = item.totalQuantity || 0
+        let status = 'OUT_OF_STOCK'
+        if (qty > 0) status = qty > 10 ? 'IN_STOCK' : 'LOW_STOCK'
 
-      const categoryMap = {}
-      if (catRes.data?.data) {
-        catRes.data.data.forEach((c) => {
-          categoryMap[c.id] = c.name
-        })
-      }
-
-      const skus = skuRes.data?.data?.content || []
-
-      // Fetch stock for each SKU
-      const enrichedSkus = await Promise.all(
-        skus.map(async (sku) => {
-          let qty = 0
-          let status = 'OUT_OF_STOCK'
-          let batches = []
-          try {
-            const stockRes = await stockApi.getStockBySku(sku.id)
-            console.log(
-              '[DEBUG] stockBySku response for',
-              sku.id,
-              ':',
-              JSON.stringify(stockRes.data, null, 2)
-            )
-            const stockData = stockRes.data?.data
-            // Hỗ trợ các cấu trúc trả về khác nhau từ API
-            qty = stockData?.totalQuantity ?? stockData?.totalQty ?? 0
-
-            if (Array.isArray(stockData)) {
-              batches = stockData
-            } else {
-              batches =
-                stockData?.locations ||
-                stockData?.batches ||
-                stockData?.stockBatches ||
-                stockData?.content ||
-                []
-            }
-
-            if (!Array.isArray(batches)) batches = []
-            // Tính lại qty từ batches nếu totalQuantity không có
-            if (!qty && batches.length > 0) {
-              qty = batches.reduce((sum, b) => sum + (Number(b.quantity) || 0), 0)
-            }
-            if (qty > 0) status = qty > 10 ? 'IN_STOCK' : 'LOW_STOCK'
-          } catch (e) {
-            console.error('Error fetching stock for SKU', sku.id)
-          }
-          return {
-            ...sku,
-            categoryName: categoryMap[sku.categoryId] || 'Unknown Category',
-            qty,
-            status,
-            batches,
-          }
-        })
-      )
-
+        return {
+          ...item,
+          qty,
+          status,
+          name: item.skuName, // Map backend skuName to UI name
+        }
+      })
+      
       setProducts(enrichedSkus)
     } catch (error) {
-      console.error('Error fetching inventory data:', error)
-      toast.error('Failed to load inventory data')
+      console.error('Error fetching stock overview:', error)
+      toast.error('Failed to load inventory overview')
     } finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchInventoryData()
+    loadWarehouses()
   }, [])
 
-  const handleViewDetails = (product) => {
+  useEffect(() => {
+    fetchInventoryOverview()
+  }, [selectedWarehouseId])
+
+  const handleViewDetails = async (product) => {
     setSelectedProduct(product)
     setIsDrawerOpen(true)
+    setIsDetailsLoading(true)
+
+    try {
+      const stockRes = await stockApi.getStockBySku(product.skuId)
+      const stockData = stockRes.data?.data
+      
+      let batches = []
+      if (Array.isArray(stockData)) {
+        batches = stockData
+      } else {
+        batches = stockData?.locations || stockData?.batches || stockData?.stockBatches || stockData?.content || []
+      }
+      
+      // Lọc các batches theo warehouse đang chọn
+      batches = batches.filter(b => b.warehouseId === selectedWarehouseId)
+      
+      setSelectedProduct(prev => ({ ...prev, batches }))
+    } catch (err) {
+      console.error('Error loading stock batches', err)
+      toast.error('Failed to load stock batches')
+    } finally {
+      setIsDetailsLoading(false)
+    }
   }
 
   const columns = [
@@ -320,6 +323,24 @@ const InventoryPage = () => {
                     placeholder="Search products by name or SKU..."
                     className="focus:border-primary focus:ring-primary w-full rounded-lg border border-slate-200 py-2 pr-4 pl-10 text-sm focus:ring-1 focus:outline-none"
                   />
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <label htmlFor="warehouse-select" className="text-sm font-medium text-slate-700">
+                    Warehouse:
+                  </label>
+                  <select
+                    id="warehouse-select"
+                    value={selectedWarehouseId}
+                    onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    {warehouses.map((wh) => (
+                      <option key={wh.id} value={wh.id}>
+                        {wh.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

@@ -8,6 +8,13 @@ const stockApi = {
     })
   },
 
+  // Xem tổng quan tồn kho theo product-level (warehouse-scoped)
+  getStockOverview: (warehouseId, { page, size } = {}) => {
+    return api.get('/tenant/inventory/stock/overview', {
+      params: { warehouseId, page, size },
+    })
+  },
+
   /**
    * Xem các mặt hàng và số lượng đang nằm trong một Bin.
    *
