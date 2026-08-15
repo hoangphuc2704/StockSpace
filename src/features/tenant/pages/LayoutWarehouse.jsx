@@ -23,8 +23,10 @@ import stockApi from '@/services/wms/stockApi'
 
 const DEFAULT_LAYOUT_SIZE = 100
 const MIN_ENTITY_SIZE = 4
+const MIN_BIN_SIZE = 0.1
 const FOOTPRINT_GRID_SIZE = 10
 const BIN_MAX_RATIO = 0.8
+const layoutDimensionsKey = (warehouseId) => `stockspace:warehouse-layout-dimensions:${warehouseId}`
 
 const keyOf = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 const numberOf = (value, fallback = 0) => {
@@ -33,7 +35,15 @@ const numberOf = (value, fallback = 0) => {
 }
 const integerOf = (value, fallback = 0) => Math.round(numberOf(value, fallback))
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+const totalBinWeightLimit = (rack) =>
+  (rack?.bins || []).reduce((total, bin) => total + Math.max(numberOf(bin.maxWeight), 0), 0)
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
+const normalizeCreatedDimensions = (dimensions) => {
+  const width = numberOf(dimensions?.width)
+  const length = numberOf(dimensions?.length)
+  const height = numberOf(dimensions?.height)
+  return width >= 20 && length >= 20 && height >= MIN_ENTITY_SIZE ? { width, length, height } : null
+}
 const nullableId = (value) => (value == null || value === '' ? null : String(value))
 const cellKey = (row, column) => `${row}:${column}`
 const fullFootprint = () =>
@@ -116,9 +126,9 @@ const normalizeBin = (bin = {}) => ({
   coordinateX: numberOf(bin.coordinateX, 0),
   coordinateY: numberOf(bin.coordinateY, 0),
   positionZ: numberOf(bin.positionZ, 0),
-  width: Math.max(numberOf(bin.width, 8), MIN_ENTITY_SIZE),
-  length: Math.max(numberOf(bin.length, 8), MIN_ENTITY_SIZE),
-  height: Math.max(numberOf(bin.height, 8), MIN_ENTITY_SIZE),
+  width: Math.max(numberOf(bin.width, 8), MIN_BIN_SIZE),
+  length: Math.max(numberOf(bin.length, 8), MIN_BIN_SIZE),
+  height: Math.max(numberOf(bin.height, 8), MIN_BIN_SIZE),
 })
 
 const normalizeRack = (rack = {}) => ({
@@ -141,7 +151,7 @@ const normalizeRack = (rack = {}) => ({
 const normalizeLayout = (payload = {}) => ({
   width: Math.max(numberOf(payload.width, DEFAULT_LAYOUT_SIZE), 20),
   length: Math.max(numberOf(payload.length, DEFAULT_LAYOUT_SIZE), 20),
-  height: Math.max(numberOf(payload.height, DEFAULT_LAYOUT_SIZE), 20),
+  height: Math.max(numberOf(payload.height, DEFAULT_LAYOUT_SIZE), MIN_ENTITY_SIZE),
   footprintCells: normalizeFootprint(payload.footprintCells),
   // `positions` is the BE field that stores the painted/locked grid cells.
   // Keep the legacy fallback so layouts returned by an older deployment still render correctly.
@@ -149,17 +159,18 @@ const normalizeLayout = (payload = {}) => ({
   racks: Array.isArray(payload.racks) ? payload.racks.map(normalizeRack) : [],
 })
 
-const serializeBin = (bin, rackIndex, binIndex, rackWidth, rackLength) => {
+const serializeBin = (bin, rackIndex, binIndex, rackWidth, rackLength, rackHeight) => {
   const width = clamp(
-    integerOf(bin.width, 8),
-    MIN_ENTITY_SIZE,
-    Math.max(MIN_ENTITY_SIZE, Math.floor(rackWidth * BIN_MAX_RATIO))
+    numberOf(bin.width, 8),
+    MIN_BIN_SIZE,
+    Math.max(MIN_BIN_SIZE, rackWidth * BIN_MAX_RATIO)
   )
   const length = clamp(
-    integerOf(bin.length, 8),
-    MIN_ENTITY_SIZE,
-    Math.max(MIN_ENTITY_SIZE, Math.floor(rackLength * BIN_MAX_RATIO))
+    numberOf(bin.length, 8),
+    MIN_BIN_SIZE,
+    Math.max(MIN_BIN_SIZE, rackLength * BIN_MAX_RATIO)
   )
+  const height = clamp(numberOf(bin.height, 8), MIN_BIN_SIZE, rackHeight)
   return {
     id: nullableId(bin.id),
     shelfLevel: Math.max(integerOf(bin.shelfLevel, 1), 1),
@@ -167,44 +178,55 @@ const serializeBin = (bin, rackIndex, binIndex, rackWidth, rackLength) => {
     code: bin.code?.trim() || `BIN-${rackIndex + 1}-${binIndex + 1}`,
     maxWeight: numberOf(bin.maxWeight),
     maxVolume: numberOf(bin.maxVolume),
-    coordinateX: clamp(integerOf(bin.coordinateX), 0, Math.max(rackWidth - width, 0)),
-    coordinateY: clamp(integerOf(bin.coordinateY), 0, Math.max(rackLength - length, 0)),
-    positionZ: integerOf(bin.positionZ),
+    coordinateX: clamp(numberOf(bin.coordinateX), 0, Math.max(rackWidth - width, 0)),
+    coordinateY: clamp(numberOf(bin.coordinateY), 0, Math.max(rackLength - length, 0)),
+    positionZ: clamp(numberOf(bin.positionZ), 0, Math.max(rackHeight - height, 0)),
     width,
     length,
-    height: Math.max(integerOf(bin.height, 8), MIN_ENTITY_SIZE),
+    height,
   }
 }
 
-const serializeRack = (rack, rackIndex, layoutWidth, layoutLength) => {
-  const width = clamp(integerOf(rack.width, 18), MIN_ENTITY_SIZE, layoutWidth)
-  const length = clamp(integerOf(rack.length, 18), MIN_ENTITY_SIZE, layoutLength)
+const serializeRack = (rack, rackIndex, layoutWidth, layoutLength, layoutHeight) => {
+  const width = clamp(numberOf(rack.width, 18), MIN_ENTITY_SIZE, layoutWidth)
+  const length = clamp(numberOf(rack.length, 18), MIN_ENTITY_SIZE, layoutLength)
+  const height = clamp(numberOf(rack.height, 18), MIN_ENTITY_SIZE, layoutHeight)
   return {
     id: nullableId(rack.id),
     name: rack.name?.trim() || 'Rack',
     code: rack.code?.trim() || `RACK-${rackIndex + 1}`,
     maxWeight: numberOf(rack.maxWeight),
     maxVolume: numberOf(rack.maxVolume),
-    coordinateX: clamp(integerOf(rack.coordinateX), 0, Math.max(layoutWidth - width, 0)),
-    coordinateY: clamp(integerOf(rack.coordinateY), 0, Math.max(layoutLength - length, 0)),
-    positionZ: integerOf(rack.positionZ),
+    coordinateX: clamp(numberOf(rack.coordinateX), 0, Math.max(layoutWidth - width, 0)),
+    coordinateY: clamp(numberOf(rack.coordinateY), 0, Math.max(layoutLength - length, 0)),
+    positionZ: clamp(numberOf(rack.positionZ), 0, Math.max(layoutHeight - height, 0)),
     rotation: integerOf(rack.rotation),
     width,
     length,
-    height: Math.max(integerOf(rack.height, 18), MIN_ENTITY_SIZE),
-    bins: rack.bins.map((bin, binIndex) => serializeBin(bin, rackIndex, binIndex, width, length)),
+    height,
+    bins: rack.bins.map((bin, binIndex) =>
+      serializeBin(bin, rackIndex, binIndex, width, length, height)
+    ),
   }
 }
 
 const toPayload = (layout) => {
-  const width = Math.max(integerOf(layout.width, DEFAULT_LAYOUT_SIZE), 20)
-  const length = Math.max(integerOf(layout.length, DEFAULT_LAYOUT_SIZE), 20)
+  const width = Math.max(numberOf(layout.width, DEFAULT_LAYOUT_SIZE), 20)
+  const length = Math.max(numberOf(layout.length, DEFAULT_LAYOUT_SIZE), 20)
   return {
     width,
     length,
-    height: Math.max(integerOf(layout.height, DEFAULT_LAYOUT_SIZE), 20),
+    height: Math.max(numberOf(layout.height, DEFAULT_LAYOUT_SIZE), MIN_ENTITY_SIZE),
     positions: normalizeBlockedCells(layout.blockedCells),
-    racks: layout.racks.map((rack, rackIndex) => serializeRack(rack, rackIndex, width, length)),
+    racks: layout.racks.map((rack, rackIndex) =>
+      serializeRack(
+        rack,
+        rackIndex,
+        width,
+        length,
+        Math.max(numberOf(layout.height), MIN_ENTITY_SIZE)
+      )
+    ),
   }
 }
 
@@ -387,6 +409,26 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     return warehouses[0].id
   }, [preferredWarehouseId, searchParams, warehouses])
 
+  const createdDimensions = useMemo(() => {
+    if (!selectedWarehouseId) return null
+    const requestedWarehouseId = searchParams.get('warehouseId')
+    if (requestedWarehouseId === selectedWarehouseId) {
+      const fromQuery = normalizeCreatedDimensions({
+        width: searchParams.get('width'),
+        length: searchParams.get('length'),
+        height: searchParams.get('height'),
+      })
+      if (fromQuery) return fromQuery
+    }
+    try {
+      return normalizeCreatedDimensions(
+        JSON.parse(localStorage.getItem(layoutDimensionsKey(selectedWarehouseId)) || 'null')
+      )
+    } catch {
+      return null
+    }
+  }, [searchParams, selectedWarehouseId])
+
   const selectedEntity = useMemo(() => getSelected(layout, selection), [layout, selection])
   const selectedRack = useMemo(() => {
     if (selection.type === 'rack') return selectedEntity
@@ -460,7 +502,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         ? await warehouseApi.getOwnerWarehouseLayout(selectedWarehouseId)
         : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
       const payload = apiData(response) || {}
-      setLayout(normalizeLayout(payload))
+      setLayout(
+        normalizeLayout({
+          ...payload,
+          width: createdDimensions?.width ?? warehouse?.width ?? payload.width,
+          length: createdDimensions?.length ?? warehouse?.length ?? payload.length,
+          height: createdDimensions?.height ?? warehouse?.height ?? payload.height,
+        })
+      )
       setTenantDefault(!isOwner && Boolean(payload.isDefault ?? payload.default))
       setSelection({ type: 'layout', key: null })
     } catch (requestError) {
@@ -468,9 +517,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       if (isOwner && notFound) {
         setLayout(
           normalizeLayout({
-            width: warehouse?.width,
-            length: warehouse?.length,
-            height: warehouse?.height,
+            width: createdDimensions?.width ?? warehouse?.width,
+            length: createdDimensions?.length ?? warehouse?.length,
+            height: createdDimensions?.height ?? warehouse?.height,
             racks: [],
           })
         )
@@ -494,7 +543,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     } finally {
       setLoadingLayout(false)
     }
-  }, [isOwner, selectedWarehouseId, warehouses])
+  }, [createdDimensions, isOwner, selectedWarehouseId, warehouses])
 
   useEffect(() => {
     // Loading the selected warehouse is the external synchronization performed by this effect.
@@ -568,16 +617,17 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       }
 
       const maxRatio = drag.type === 'bin' ? BIN_MAX_RATIO : 1
+      const minSize = drag.type === 'bin' ? MIN_BIN_SIZE : MIN_ENTITY_SIZE
       const maxWidth = Math.max(
-        MIN_ENTITY_SIZE,
+        minSize,
         Math.min(drag.parentWidth - drag.x, drag.parentWidth * maxRatio)
       )
       const maxLength = Math.max(
-        MIN_ENTITY_SIZE,
+        minSize,
         Math.min(drag.parentLength - drag.y, drag.parentLength * maxRatio)
       )
-      const width = clamp(drag.width + deltaX, MIN_ENTITY_SIZE, maxWidth)
-      const length = clamp(drag.length + deltaY, MIN_ENTITY_SIZE, maxLength)
+      const width = clamp(drag.width + deltaX, minSize, maxWidth)
+      const length = clamp(drag.length + deltaY, minSize, maxLength)
       if (
         drag.type === 'rack' &&
         rectangleOverlapsBlockedCell(
@@ -662,7 +712,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       coordinateY: position.y,
       width,
       length,
-      height: 18,
+      height: Math.min(18, layout.height),
       bins: [],
     })
     setLayout((current) => ({ ...current, racks: [...current.racks, rack] }))
@@ -683,7 +733,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       coordinateY: 1,
       width: Math.min(8, Math.max(selectedRack.width / 2, 4)),
       length: Math.min(8, Math.max(selectedRack.length / 4, 4)),
-      height: 8,
+      height: Math.min(8, selectedRack.height),
     })
     setLayout((current) =>
       updateRack(current, selectedRack.clientKey, (rack) => ({
@@ -721,6 +771,15 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       setError('A rack overlaps a locked cell. Move it before saving the layout.')
       return
     }
+    const overloadedRack = layout.racks.find(
+      (rack) => totalBinWeightLimit(rack) > Math.max(numberOf(rack.maxWeight), 0)
+    )
+    if (isOwner && overloadedRack) {
+      setError(
+        `The total Bin weight limit in ${overloadedRack.name || overloadedRack.code || 'Rack'} cannot exceed the Rack limit.`
+      )
+      return
+    }
     try {
       setSaving(true)
       setError('')
@@ -751,7 +810,28 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       'maxWeight',
       'maxVolume',
     ])
-    const nextValue = numericFields.has(field) ? numberOf(value) : value
+    const parsedValue = numericFields.has(field) ? numberOf(value) : value
+    const nextValue = field === 'maxWeight' ? Math.max(parsedValue, 0) : parsedValue
+    if (
+      selection.type === 'rack' &&
+      field === 'maxWeight' &&
+      totalBinWeightLimit(selectedEntity) > nextValue
+    ) {
+      setError('The Rack limit cannot be lower than the total weight limit of its Bins.')
+      return
+    }
+    if (selection.type === 'bin' && field === 'maxWeight') {
+      const otherBinsWeight = selectedRack.bins.reduce(
+        (total, bin) =>
+          total +
+          (bin.clientKey === selectedEntity.clientKey ? 0 : Math.max(numberOf(bin.maxWeight), 0)),
+        0
+      )
+      if (otherBinsWeight + nextValue > Math.max(numberOf(selectedRack.maxWeight), 0)) {
+        setError('The total Bin weight limit cannot exceed the Rack limit.')
+        return
+      }
+    }
     if (selection.type === 'layout' && ['width', 'length'].includes(field)) {
       const candidateLayout = { ...layout, [field]: Math.max(nextValue, 20) }
       const invalidRack = candidateLayout.racks.some(
@@ -769,16 +849,41 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     }
     if (
       selection.type === 'rack' &&
-      ['width', 'length', 'coordinateX', 'coordinateY'].includes(field)
+      ['width', 'length', 'height', 'coordinateX', 'coordinateY', 'positionZ'].includes(field)
     ) {
       const candidate = { ...selectedEntity, [field]: nextValue }
       const outsideLayout =
         candidate.coordinateX < 0 ||
         candidate.coordinateY < 0 ||
+        candidate.positionZ < 0 ||
         candidate.coordinateX + candidate.width > layout.width ||
-        candidate.coordinateY + candidate.length > layout.length
-      if (outsideLayout || rectangleOverlapsBlockedCell(candidate, layout)) {
-        setError('A rack cannot be placed or resized on a locked cell.')
+        candidate.coordinateY + candidate.length > layout.length ||
+        candidate.positionZ + candidate.height > layout.height
+      const binOutsideRack = candidate.bins.some(
+        (bin) =>
+          bin.coordinateX + bin.width > candidate.width ||
+          bin.coordinateY + bin.length > candidate.length ||
+          bin.positionZ + bin.height > candidate.height
+      )
+      if (outsideLayout || binOutsideRack || rectangleOverlapsBlockedCell(candidate, layout)) {
+        setError('The rack and its bins must remain within the warehouse boundaries.')
+        return
+      }
+    }
+    if (
+      selection.type === 'bin' &&
+      ['width', 'length', 'height', 'coordinateX', 'coordinateY', 'positionZ'].includes(field)
+    ) {
+      const candidate = { ...selectedEntity, [field]: nextValue }
+      const outsideRack =
+        candidate.coordinateX < 0 ||
+        candidate.coordinateY < 0 ||
+        candidate.positionZ < 0 ||
+        candidate.coordinateX + candidate.width > selectedRack.width ||
+        candidate.coordinateY + candidate.length > selectedRack.length ||
+        candidate.positionZ + candidate.height > selectedRack.height
+      if (outsideRack) {
+        setError('The bin must remain within its rack boundaries.')
         return
       }
     }
@@ -1453,7 +1558,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     const tenantEditable =
                       !isOwner &&
                       ['coordinateX', 'coordinateY', 'positionZ', 'rotation'].includes(field)
-                    const disabled = view === 'stock' || (!isOwner && !tenantEditable)
+                    const disabled =
+                      view === 'stock' ||
+                      selection.type === 'layout' ||
+                      (!isOwner && !tenantEditable)
                     return (
                       <label key={field} className="block text-xs font-semibold text-slate-600">
                         <span className="mb-1 flex items-center justify-between gap-2">
@@ -1463,6 +1571,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         <input
                           type={isText ? 'text' : 'number'}
                           min={isText ? undefined : 0}
+                          step={
+                            isText || ['shelfLevel', 'rotation'].includes(field)
+                              ? undefined
+                              : '0.01'
+                          }
                           value={selectedEntity?.[field] ?? ''}
                           disabled={disabled}
                           onChange={(event) => changeProperty(field, event.target.value)}

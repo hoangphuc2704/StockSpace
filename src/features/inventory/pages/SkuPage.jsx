@@ -1,5 +1,20 @@
 import { useState, useEffect } from 'react'
-import { Plus, Package, Edit, Trash2, Loader2, Eye, X, Tag, Ruler, Hash } from 'lucide-react'
+import {
+  Plus,
+  Package,
+  Edit,
+  Trash2,
+  Loader2,
+  Eye,
+  X,
+  Tag,
+  Ruler,
+  Hash,
+  Save,
+  Copy,
+  Info,
+  Grid3X3,
+} from 'lucide-react'
 import TableActionMenu from '@/components/TableActionMenu'
 import DataTable from '@/components/organisms/DataTable'
 import Button from '@/components/atoms/Button'
@@ -12,6 +27,29 @@ import { closeMobileSidebar } from '@/store/uiSlide'
 import productApi from '../../../services/wms/productApi'
 import { toast } from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
+
+const priceSpecificationKeys = {
+  retailBefore: 'retailPriceBeforeTax',
+  retailAfter: 'retailPriceAfterTax',
+  boxBefore: 'boxPriceBeforeTax',
+  boxAfter: 'boxPriceAfterTax',
+  wholesaleBefore: 'wholesalePriceBeforeTax',
+  wholesaleAfter: 'wholesalePriceAfterTax',
+}
+const reservedSpecificationKeys = new Set([
+  'barcode',
+  'purchasePrice',
+  'vatRate',
+  ...Object.values(priceSpecificationKeys),
+])
+const emptyPrices = () => ({
+  retailBefore: '0',
+  retailAfter: '0',
+  boxBefore: '0',
+  boxAfter: '0',
+  wholesaleBefore: '0',
+  wholesaleAfter: '0',
+})
 
 const SkuPage = () => {
   const confirmDialog = useConfirmDialog()
@@ -31,6 +69,13 @@ const SkuPage = () => {
   const [formUomId, setFormUomId] = useState('')
   const [formSpecs, setFormSpecs] = useState([]) // [{key: '', value: ''}]
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [activeFormTab, setActiveFormTab] = useState('basic')
+  const [formBarcode, setFormBarcode] = useState('')
+  const [formPurchasePrice, setFormPurchasePrice] = useState('0')
+  const [formVatRate, setFormVatRate] = useState('KCT')
+  const [formUnitWeightKg, setFormUnitWeightKg] = useState('')
+  const [formUnitVolumeM3, setFormUnitVolumeM3] = useState('')
+  const [formPrices, setFormPrices] = useState(emptyPrices)
 
   // Detail modal states
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -85,6 +130,8 @@ const SkuPage = () => {
   }
 
   useEffect(() => {
+    // Load the server-backed catalog when the screen mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData()
   }, [])
 
@@ -96,6 +143,13 @@ const SkuPage = () => {
     setFormCategoryId('')
     setFormUomId('')
     setFormSpecs([])
+    setActiveFormTab('basic')
+    setFormBarcode('')
+    setFormPurchasePrice('0')
+    setFormVatRate('KCT')
+    setFormUnitWeightKg('')
+    setFormUnitVolumeM3('')
+    setFormPrices(emptyPrices())
     setIsModalOpen(true)
   }
 
@@ -106,20 +160,39 @@ const SkuPage = () => {
     setFormSkuCode(product.skuCode)
     setFormCategoryId(product.categoryId)
     setFormUomId(product.uomId)
-
-    let parsedSpecs = []
+    setActiveFormTab('basic')
+    let parsedSpecs
     try {
       parsedSpecs =
-        typeof product.specs === 'string' ? JSON.parse(product.specs) : product.specs || []
-    } catch (e) {
-      parsedSpecs = []
+        typeof (product.specifications ?? product.specs) === 'string'
+          ? JSON.parse(product.specifications ?? product.specs)
+          : product.specifications || product.specs || {}
+    } catch {
+      parsedSpecs = {}
     }
 
-    if (typeof parsedSpecs === 'object' && !Array.isArray(parsedSpecs)) {
-      parsedSpecs = Object.entries(parsedSpecs).map(([key, value]) => ({ key, value }))
-    }
-
-    setFormSpecs(parsedSpecs)
+    const specifications =
+      parsedSpecs && typeof parsedSpecs === 'object' && !Array.isArray(parsedSpecs)
+        ? parsedSpecs
+        : {}
+    setFormBarcode(String(specifications.barcode || ''))
+    setFormPurchasePrice(String(specifications.purchasePrice ?? '0'))
+    setFormVatRate(String(specifications.vatRate || 'KCT'))
+    setFormUnitWeightKg(String(product.unitWeightKg ?? ''))
+    setFormUnitVolumeM3(String(product.unitVolumeM3 ?? ''))
+    setFormPrices(
+      Object.fromEntries(
+        Object.entries(priceSpecificationKeys).map(([field, key]) => [
+          field,
+          String(specifications[key] ?? '0'),
+        ])
+      )
+    )
+    setFormSpecs(
+      Object.entries(specifications)
+        .filter(([key]) => !reservedSpecificationKeys.has(key))
+        .map(([key, value]) => ({ key, value }))
+    )
     setIsModalOpen(true)
   }
 
@@ -131,7 +204,7 @@ const SkuPage = () => {
       const res = await productApi.getSKUDetail(id)
       const raw = res.data?.data ?? res.data
       // Normalize specs
-      let specs = raw?.specs || {}
+      let specs = raw?.specifications || raw?.specs || {}
       if (typeof specs === 'string') {
         try {
           specs = JSON.parse(specs)
@@ -173,8 +246,21 @@ const SkuPage = () => {
     })
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, action = 'close') => {
     e.preventDefault()
+    if (
+      !formName.trim() ||
+      !formSkuCode.trim() ||
+      !formCategoryId ||
+      !formUomId ||
+      Number(formUnitWeightKg) <= 0 ||
+      Number(formUnitVolumeM3) <= 0
+    ) {
+      toast.error(
+        'Vui lòng nhập đầy đủ thông tin, trọng lượng và thể tích trên mỗi đơn vị phải lớn hơn 0.'
+      )
+      return
+    }
     setIsSubmitting(true)
 
     const specsObj = {}
@@ -183,25 +269,42 @@ const SkuPage = () => {
         specsObj[s.key] = s.value
       }
     })
+    if (formBarcode.trim()) specsObj.barcode = formBarcode.trim()
+    specsObj.purchasePrice = Number(formPurchasePrice) || 0
+    specsObj.vatRate = formVatRate
+    Object.entries(priceSpecificationKeys).forEach(([field, key]) => {
+      specsObj[key] = Number(formPrices[field]) || 0
+    })
 
     const payload = {
       name: formName,
       skuCode: formSkuCode,
       categoryId: formCategoryId,
       uomId: formUomId,
-      specs: specsObj,
+      unitWeightKg: Number(formUnitWeightKg).toFixed(6),
+      unitVolumeM3: Number(formUnitVolumeM3).toFixed(6),
+      specifications: specsObj,
     }
 
     try {
       if (isEditing) {
         await productApi.updateSKU(editingProductId, payload)
-        toast.success('SKU updated successfully')
       } else {
         await productApi.createSKU(payload)
-        toast.success('SKU created successfully')
       }
-      setIsModalOpen(false)
-      fetchData()
+      await fetchData()
+      if (action === 'duplicate') {
+        setIsEditing(false)
+        setEditingProductId(null)
+        setFormSkuCode('')
+        toast.success('Đã lưu. Hãy nhập mã SKU mới cho bản nhân bản.')
+      } else if (action === 'new') {
+        toast.success('Đã lưu SKU. Bạn có thể tiếp tục thêm hàng hóa mới.')
+        handleOpenCreate()
+      } else {
+        toast.success(isEditing ? 'Đã cập nhật SKU thành công.' : 'Đã tạo SKU thành công.')
+        setIsModalOpen(false)
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Operation failed')
     } finally {
@@ -211,18 +314,8 @@ const SkuPage = () => {
 
   const columns = [
     {
-      header: 'Product',
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-100">
-            <Package className="h-5 w-5 text-slate-400" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-900">{row.name}</p>
-            <p className="text-xs text-slate-500">{row.skuCode}</p>
-          </div>
-        </div>
-      ),
+      header: 'Mã SKU',
+      render: (row) => <span className="font-mono font-bold text-slate-900">{row.skuCode}</span>,
     },
     {
       header: 'Category',
@@ -296,119 +389,313 @@ const SkuPage = () => {
             <Modal
               isOpen={isModalOpen}
               onClose={() => setIsModalOpen(false)}
-              title={isEditing ? 'Edit SKU' : 'Add New SKU'}
-              size="lg"
+              title={`Hàng hóa / ${isEditing ? 'Chỉnh sửa' : 'Thêm mới'}`}
+              className="max-h-[94vh] max-w-5xl overflow-y-auto rounded-lg"
             >
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Product Name *</label>
-                    <InputField
-                      placeholder="Product Name"
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">SKU Code *</label>
-                    <InputField
-                      placeholder="SKU-000"
-                      value={formSkuCode}
-                      onChange={(e) => setFormSkuCode(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Category *</label>
-                    <select
-                      className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
-                      value={formCategoryId}
-                      onChange={(e) => setFormCategoryId(e.target.value)}
-                      required
-                    >
-                      <option value="">-- Select category --</option>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Unit of Measure *</label>
-                    <select
-                      className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
-                      value={formUomId}
-                      onChange={(e) => setFormUomId(e.target.value)}
-                      required
-                    >
-                      <option value="">-- Select UOM --</option>
-                      {uoms.map((uom) => (
-                        <option key={uom.id} value={uom.id}>
-                          {uom.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-2 pt-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-slate-700">Specifications</label>
+              <form onSubmit={handleSubmit} className="-m-6 bg-slate-50">
+                <div className="flex gap-8 border-b border-slate-200 bg-white px-7">
+                  {[
+                    ['basic', 'Thông tin cơ bản'],
+                    ['additional', 'Thông tin bổ sung'],
+                  ].map(([value, label]) => (
                     <button
+                      key={value}
                       type="button"
-                      onClick={() => setFormSpecs([...formSpecs, { key: '', value: '' }])}
-                      className="text-primary text-xs font-medium hover:underline"
+                      onClick={() => setActiveFormTab(value)}
+                      className={`border-b-2 px-1 py-4 text-sm font-semibold ${
+                        activeFormTab === value
+                          ? 'border-blue-600 text-blue-700'
+                          : 'border-transparent text-slate-500'
+                      }`}
                     >
-                      + Add Specs
+                      {label}
                     </button>
-                  </div>
-                  <div className="space-y-2">
-                    {formSpecs.map((spec, index) => (
-                      <div key={index} className="flex gap-2">
-                        <input
-                          placeholder="Key (e.g. Weight)"
-                          className="flex-1 rounded-md border border-slate-200 p-2 text-sm"
-                          value={spec.key}
-                          onChange={(e) => {
-                            const newSpecs = [...formSpecs]
-                            newSpecs[index].key = e.target.value
-                            setFormSpecs(newSpecs)
-                          }}
-                        />
-                        <input
-                          placeholder="Value (e.g. 5kg)"
-                          className="flex-1 rounded-md border border-slate-200 p-2 text-sm"
-                          value={spec.value}
-                          onChange={(e) => {
-                            const newSpecs = [...formSpecs]
-                            newSpecs[index].value = e.target.value
-                            setFormSpecs(newSpecs)
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setFormSpecs(formSpecs.filter((_, i) => i !== index))}
-                          className="p-2 text-slate-400 hover:text-red-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
-                    {formSpecs.length === 0 && (
-                      <p className="text-xs text-slate-500 italic">No specifications added.</p>
-                    )}
-                  </div>
+                  ))}
                 </div>
 
-                <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-6">
-                  <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                    Cancel
-                  </Button>
+                <div className="min-h-125 space-y-6 p-7">
+                  {activeFormTab === 'basic' ? (
+                    <>
+                      <h4 className="text-sm font-bold tracking-wide text-slate-700">THÔNG TIN</h4>
+                      <div className="max-w-3xl space-y-4">
+                        <label className="grid gap-2 sm:grid-cols-[190px_1fr] sm:items-center">
+                          <span className="text-sm font-medium text-slate-700">Tên hàng hóa *</span>
+                          <InputField
+                            placeholder="Ví dụ: Son môi Cỏ Mềm"
+                            value={formName}
+                            onChange={(event) => setFormName(event.target.value)}
+                            required
+                          />
+                        </label>
+
+                        <label className="grid gap-2 sm:grid-cols-[190px_1fr] sm:items-center">
+                          <span className="text-sm font-medium text-slate-700">
+                            Nhóm hàng hóa *
+                          </span>
+                          <div className="flex gap-2">
+                            <select
+                              className="focus:border-primary w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none"
+                              value={formCategoryId}
+                              onChange={(event) => setFormCategoryId(event.target.value)}
+                              required
+                            >
+                              <option value="">Chọn nhóm hàng hóa</option>
+                              {categories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                  {category.name}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              title="Thêm nhóm hàng hóa"
+                              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-blue-600"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </label>
+
+                        <label className="grid gap-2 sm:grid-cols-[190px_1fr] sm:items-center">
+                          <span className="text-sm font-medium text-slate-700">Mã SKU *</span>
+                          <input
+                            className="w-full rounded-md border border-red-500 bg-white px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-red-400"
+                            placeholder="SMCM01"
+                            value={formSkuCode}
+                            onChange={(event) => setFormSkuCode(event.target.value)}
+                            required
+                          />
+                        </label>
+
+                        <label className="grid gap-2 sm:grid-cols-[190px_1fr] sm:items-center">
+                          <span className="text-sm font-medium text-slate-700">Mã vạch</span>
+                          <input
+                            className="w-full rounded-md border border-red-500 bg-white px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-red-400"
+                            placeholder="Hệ thống tự sinh khi bỏ trống"
+                            value={formBarcode}
+                            onChange={(event) => setFormBarcode(event.target.value)}
+                          />
+                        </label>
+
+                        <label className="grid gap-2 sm:grid-cols-[190px_1fr] sm:items-center">
+                          <span className="flex items-center gap-1 text-sm font-medium text-slate-700">
+                            Giá mua <Info className="h-3.5 w-3.5 text-slate-400" />
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-right text-sm outline-none"
+                            value={formPurchasePrice}
+                            onChange={(event) => setFormPurchasePrice(event.target.value)}
+                          />
+                        </label>
+
+                        <label className="grid gap-2 sm:grid-cols-[190px_1fr] sm:items-center">
+                          <span className="text-sm font-medium text-slate-700">
+                            Thuế suất GTGT (%)
+                          </span>
+                          <select
+                            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none"
+                            value={formVatRate}
+                            onChange={(event) => setFormVatRate(event.target.value)}
+                          >
+                            <option value="KCT">KCT</option>
+                            <option value="0">0%</option>
+                            <option value="5">5%</option>
+                            <option value="8">8%</option>
+                            <option value="10">10%</option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <div className="overflow-x-auto rounded-md border border-slate-200 bg-white">
+                        <table className="w-full min-w-160 text-sm">
+                          <thead className="bg-slate-100 text-slate-600">
+                            <tr>
+                              <th className="px-4 py-3 text-left">Loại giá</th>
+                              <th className="px-4 py-3 text-right">Trước thuế</th>
+                              <th className="px-4 py-3 text-right">Sau thuế</th>
+                              <th className="w-12 px-4 py-3" />
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {[
+                              ['retail', 'Giá lẻ'],
+                              ['box', 'Giá thùng'],
+                              ['wholesale', 'Giá sỉ'],
+                            ].map(([key, label], index) => (
+                              <tr key={key}>
+                                <td className="px-4 py-3 font-semibold text-slate-700">{label}</td>
+                                {['Before', 'After'].map((suffix) => {
+                                  const field = `${key}${suffix}`
+                                  return (
+                                    <td key={field} className="px-4 py-2">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        className="w-full bg-transparent text-right outline-none"
+                                        value={formPrices[field]}
+                                        onChange={(event) =>
+                                          setFormPrices((current) => ({
+                                            ...current,
+                                            [field]: event.target.value,
+                                          }))
+                                        }
+                                      />
+                                    </td>
+                                  )
+                                })}
+                                <td className="px-4 py-2 text-center text-slate-400">
+                                  {index === 0 && <Grid3X3 className="inline h-4 w-4" />}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h4 className="text-sm font-bold tracking-wide text-slate-700">
+                        THÔNG TIN BỔ SUNG
+                      </h4>
+                      <label className="block max-w-3xl space-y-1.5">
+                        <span className="text-sm font-medium text-slate-700">Đơn vị tính *</span>
+                        <select
+                          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none"
+                          value={formUomId}
+                          onChange={(event) => setFormUomId(event.target.value)}
+                          required
+                        >
+                          <option value="">Chọn đơn vị tính</option>
+                          {uoms.map((uom) => (
+                            <option key={uom.id} value={uom.id}>
+                              {uom.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <div className="grid max-w-3xl gap-4 sm:grid-cols-2">
+                        <label className="block space-y-1.5">
+                          <span className="text-sm font-medium text-slate-700">
+                            Trọng lượng mỗi đơn vị (kg) *
+                          </span>
+                          <input
+                            type="number"
+                            min="0.000001"
+                            step="0.000001"
+                            required
+                            value={formUnitWeightKg}
+                            onChange={(event) => setFormUnitWeightKg(event.target.value)}
+                            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none"
+                            placeholder="Ví dụ: 0.25"
+                          />
+                        </label>
+                        <label className="block space-y-1.5">
+                          <span className="text-sm font-medium text-slate-700">
+                            Thể tích mỗi đơn vị (m³) *
+                          </span>
+                          <input
+                            type="number"
+                            min="0.000001"
+                            step="0.000001"
+                            required
+                            value={formUnitVolumeM3}
+                            onChange={(event) => setFormUnitVolumeM3(event.target.value)}
+                            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none"
+                            placeholder="Ví dụ: 0.0015"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-slate-700">Thuộc tính</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormSpecs((current) => [...current, { key: '', value: '' }])
+                            }
+                            className="text-sm font-semibold text-blue-600"
+                          >
+                            + Thêm thuộc tính
+                          </button>
+                        </div>
+                        {formSpecs.map((spec, index) => (
+                          <div key={index} className="flex gap-2">
+                            <input
+                              placeholder="Tên thuộc tính"
+                              className="flex-1 rounded-md border border-slate-300 bg-white p-2 text-sm"
+                              value={spec.key}
+                              onChange={(event) => {
+                                const nextSpecs = [...formSpecs]
+                                nextSpecs[index] = { ...nextSpecs[index], key: event.target.value }
+                                setFormSpecs(nextSpecs)
+                              }}
+                            />
+                            <input
+                              placeholder="Giá trị"
+                              className="flex-1 rounded-md border border-slate-300 bg-white p-2 text-sm"
+                              value={spec.value}
+                              onChange={(event) => {
+                                const nextSpecs = [...formSpecs]
+                                nextSpecs[index] = {
+                                  ...nextSpecs[index],
+                                  value: event.target.value,
+                                }
+                                setFormSpecs(nextSpecs)
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setFormSpecs((current) => current.filter((_, i) => i !== index))
+                              }
+                              className="p-2 text-slate-400 hover:text-red-500"
+                              aria-label="Xóa thuộc tính"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                        {!formSpecs.length && (
+                          <p className="text-sm text-slate-400">Chưa có thuộc tính bổ sung.</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 bg-white px-7 py-4">
                   <Button type="submit" isLoading={isSubmitting}>
-                    {isEditing ? 'Save Changes' : 'Create SKU'}
+                    <Save className="mr-2 h-4 w-4" /> Lưu
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={(event) => handleSubmit(event, 'duplicate')}
+                    className="border-slate-300 text-slate-700"
+                  >
+                    <Copy className="mr-2 h-4 w-4" /> Lưu và nhân bản
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSubmitting}
+                    onClick={(event) => handleSubmit(event, 'new')}
+                    className="border-slate-300 text-slate-700"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Lưu và thêm mới
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-3 py-2 text-sm font-medium text-slate-600"
+                  >
+                    × Hủy bỏ
+                  </button>
                 </div>
               </form>
             </Modal>
@@ -487,6 +774,26 @@ const SkuPage = () => {
                               {uoms.find((u) => u.id === detailData.uomId)?.name ||
                                 detailData.uomName ||
                                 '—'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <p className="mb-1 text-[11px] font-semibold text-slate-400 uppercase">
+                              Unit weight
+                            </p>
+                            <p className="text-sm font-semibold text-slate-800">
+                              {detailData.unitWeightKg != null
+                                ? `${Number(detailData.unitWeightKg).toLocaleString('en-US')} kg`
+                                : '—'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                            <p className="mb-1 text-[11px] font-semibold text-slate-400 uppercase">
+                              Unit volume
+                            </p>
+                            <p className="text-sm font-semibold text-slate-800">
+                              {detailData.unitVolumeM3 != null
+                                ? `${Number(detailData.unitVolumeM3).toLocaleString('en-US')} m³`
+                                : '—'}
                             </p>
                           </div>
                         </div>

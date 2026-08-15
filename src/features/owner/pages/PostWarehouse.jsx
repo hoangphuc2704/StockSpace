@@ -26,12 +26,15 @@ import ownerApi from '../../../services/warehouse/warehouseApi'
 import walletApi from '../../../services/wallet/walletApi'
 import addressApi from '../../../services/addressApi'
 import { toast } from 'react-hot-toast'
+import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 
 // Phí tạo bài đăng (VND) - chỉnh lại theo quy định thực tế của hệ thống
 const POSTING_FEE = 50000
+const layoutDimensionsKey = (warehouseId) => `stockspace:warehouse-layout-dimensions:${warehouseId}`
 
 const CreateWarehouse = () => {
   const navigate = useNavigate()
+  const confirmDialog = useConfirmDialog()
   const [isLoading, setIsLoading] = useState(false)
   const [warehouseTypes, setWarehouseTypes] = useState([])
   const [wards, setWards] = useState([])
@@ -57,8 +60,8 @@ const CreateWarehouse = () => {
     name: '',
     description: '',
     warehouseWidth: '',
+    warehouseLength: '',
     warehouseHeight: '',
-    capacity: '',
     pricePerMonth: '',
   })
 
@@ -168,18 +171,12 @@ const CreateWarehouse = () => {
     const detail = addressDetail.trim()
     return detail && selectedWard ? `${detail}, ${selectedWard.name}, Thành phố Hồ Chí Minh` : ''
   }, [addressDetail, selectedWard])
-  const suggestedCapacity = useMemo(() => {
-    const width = Number(formData.warehouseWidth)
-    const length = Number(formData.warehouseHeight)
-    return width > 0 && length > 0 ? Math.round(width * length * 100) / 100 : 0
-  }, [formData.warehouseHeight, formData.warehouseWidth])
-
   const handleInputChange = (e) => {
     const { name, value } = e.target
     const processedValue =
-      name === 'capacity' ||
       name === 'pricePerMonth' ||
       name === 'warehouseWidth' ||
+      name === 'warehouseLength' ||
       name === 'warehouseHeight'
         ? value === ''
           ? ''
@@ -224,9 +221,9 @@ const CreateWarehouse = () => {
     fullAddress !== '' &&
     formData.description.trim() !== '' &&
     formData.typeId !== '' &&
-    Number(formData.warehouseWidth) > 0 &&
-    Number(formData.warehouseHeight) > 0 &&
-    Number(formData.capacity) > 0 &&
+    Number(formData.warehouseWidth) >= 20 &&
+    Number(formData.warehouseLength) >= 20 &&
+    Number(formData.warehouseHeight) >= 4 &&
     Number(formData.pricePerMonth) > 0 &&
     coverFile !== null
 
@@ -250,8 +247,8 @@ const CreateWarehouse = () => {
     try {
       const formPayload = new FormData()
       const warehouseWidth = Number(formData.warehouseWidth)
+      const warehouseLength = Number(formData.warehouseLength)
       const warehouseHeight = Number(formData.warehouseHeight)
-      const capacity = Number(formData.capacity)
       const pricePerMonth = Number(formData.pricePerMonth)
 
       const warehouseInfo = {
@@ -259,7 +256,7 @@ const CreateWarehouse = () => {
         name: formData.name.trim(),
         address: fullAddress,
         description: formData.description.trim(),
-        capacity,
+        capacity: warehouseWidth * warehouseLength,
         pricePerMonth,
         imageUrls: [],
       }
@@ -281,13 +278,35 @@ const CreateWarehouse = () => {
       if (response?.data?.success) {
         const createdWarehouseId = response?.data?.data?.id ?? response?.data?.data?.warehouseId
 
-        toast.success(
-          'Warehouse posted successfully! Configure the layout for the newly created warehouse.'
-        )
+        if (createdWarehouseId) {
+          try {
+            localStorage.setItem(
+              layoutDimensionsKey(createdWarehouseId),
+              JSON.stringify({
+                width: warehouseWidth,
+                length: warehouseLength,
+                height: warehouseHeight,
+              })
+            )
+          } catch {
+            // Query parameters below still carry the dimensions for the immediate layout flow.
+          }
+        }
+
+        toast.success('Warehouse posted successfully!')
+        const shouldCreateLayout = await confirmDialog({
+          title: 'Create warehouse layout?',
+          message:
+            'The post was created successfully. Would you like to configure racks, bins, and locked areas now?',
+          confirmText: 'Create layout',
+          cancelText: 'Not now',
+        })
         navigate(
-          createdWarehouseId
-            ? `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${encodeURIComponent(String(warehouseWidth))}&height=${encodeURIComponent(String(warehouseHeight))}`
-            : '/owner/layoutwarehouses'
+          shouldCreateLayout
+            ? createdWarehouseId
+              ? `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${warehouseWidth}&length=${warehouseLength}&height=${warehouseHeight}`
+              : '/owner/layoutwarehouses'
+            : '/owner/listwarehouse'
         )
       } else {
         toast.error(response?.data?.message || 'Posting failed, please check your data again.')
@@ -568,12 +587,12 @@ const CreateWarehouse = () => {
                         <input
                           type="number"
                           name="warehouseWidth"
-                          step="0.1"
+                          step="0.01"
                           value={formData.warehouseWidth}
                           onChange={handleInputChange}
                           placeholder="30"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-10 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
-                          min="1"
+                          min="20"
                           required
                         />
                         <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
@@ -593,13 +612,13 @@ const CreateWarehouse = () => {
                         <Layers className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
                           type="number"
-                          name="warehouseHeight"
-                          step="0.1"
-                          value={formData.warehouseHeight}
+                          name="warehouseLength"
+                          step="0.01"
+                          value={formData.warehouseLength}
                           onChange={handleInputChange}
                           placeholder="40"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-10 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
-                          min="1"
+                          min="20"
                           required
                         />
                         <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
@@ -615,43 +634,28 @@ const CreateWarehouse = () => {
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-slate-700">
-                        Usable storage area *
+                        Warehouse height *
                       </label>
                       <div className="relative">
                         <Layers className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
                           type="number"
-                          name="capacity"
-                          step="0.1"
-                          value={formData.capacity}
+                          name="warehouseHeight"
+                          step="0.01"
+                          value={formData.warehouseHeight}
                           onChange={handleInputChange}
-                          placeholder="1200"
+                          placeholder="10"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-12 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
-                          min="1"
-                          max="99999999.99"
+                          min="4"
                           required
                         />
                         <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
-                          m²
+                          m
                         </span>
                       </div>
-                      <div className="flex flex-wrap items-center justify-between gap-1 text-xs leading-5 text-slate-500">
-                        <span>Actual floor area available for tenant storage.</span>
-                        {suggestedCapacity > 0 && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setFormData((previous) => ({
-                                ...previous,
-                                capacity: suggestedCapacity,
-                              }))
-                            }
-                            className="font-semibold text-blue-600 hover:underline"
-                          >
-                            Use {suggestedCapacity.toLocaleString('en-US')} m²
-                          </button>
-                        )}
-                      </div>
+                      <p className="text-xs leading-5 text-slate-500">
+                        Maximum vertical boundary used for racks and bins in the layout.
+                      </p>
                     </div>
 
                     <div className="space-y-1.5">

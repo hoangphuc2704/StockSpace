@@ -1,5 +1,25 @@
 import api from '../apiConfig'
 
+const fetchAllStock = async (warehouseId, size = 100) => {
+  const getPage = (page) =>
+    api.get('/tenant/inventory/stock', {
+      params: { warehouseId, page, size },
+    })
+
+  const firstResponse = await getPage(0)
+  const firstPage = firstResponse?.data?.data ?? firstResponse?.data ?? {}
+  const totalPages = Math.max(Number(firstPage.totalPages) || 1, 1)
+  const remainingResponses =
+    totalPages > 1
+      ? await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) => getPage(index + 1)))
+      : []
+
+  return [firstResponse, ...remainingResponses].flatMap((response) => {
+    const pageData = response?.data?.data ?? response?.data ?? {}
+    return Array.isArray(pageData.content) ? pageData.content : []
+  })
+}
+
 const stockApi = {
   // Xem toàn bộ tồn kho trong kho đang thuê
   getStock: (warehouseId, { page, size } = {}) => {
@@ -15,6 +35,9 @@ const stockApi = {
     })
   },
 
+  // Tải toàn bộ tồn kho một lần để các màn hình có thể tổng hợp theo Rack/Bin.
+  getAllStock: (warehouseId, { size = 100 } = {}) => fetchAllStock(warehouseId, size),
+
   /**
    * Xem các mặt hàng và số lượng đang nằm trong một Bin.
    *
@@ -28,35 +51,14 @@ const stockApi = {
       throw new Error('warehouseId and binId are required to view inventory in a bin.')
     }
 
-    const getPage = (page) =>
-      api.get('/tenant/inventory/stock', {
-        params: { warehouseId, page, size },
-      })
-
-    const firstResponse = await getPage(0)
-    const firstPage = firstResponse?.data?.data ?? firstResponse?.data ?? {}
-    const totalPages = Math.max(Number(firstPage.totalPages) || 1, 1)
-    const remainingResponses =
-      totalPages > 1
-        ? await Promise.all(
-            Array.from({ length: totalPages - 1 }, (_, index) => getPage(index + 1))
-          )
-        : []
-
-    const allBatches = [firstResponse, ...remainingResponses].flatMap((response) => {
-      const pageData = response?.data?.data ?? response?.data ?? {}
-      return Array.isArray(pageData.content) ? pageData.content : []
-    })
+    const allBatches = await fetchAllStock(warehouseId, size)
     const normalizedBinId = String(binId)
     const content = allBatches.filter((batch) => String(batch.binId) === normalizedBinId)
 
     return {
       content,
       totalElements: content.length,
-      totalQuantity: content.reduce(
-        (total, batch) => total + (Number(batch.quantity) || 0),
-        0
-      ),
+      totalQuantity: content.reduce((total, batch) => total + (Number(batch.quantity) || 0), 0),
     }
   },
 

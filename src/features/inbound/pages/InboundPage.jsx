@@ -1,33 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
-import {
-  ArrowDownLeft,
-  Package,
-  Truck,
-  Search,
-  Plus,
-  History,
-  BarChart2,
-  ShieldCheck,
-  FileText,
-  Download,
-  Loader2,
-  PlusCircle,
-  Trash2,
-  Eye,
-} from 'lucide-react'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
+import { ArrowDownLeft, Search, Plus, Download, Loader2, Eye } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
@@ -40,15 +16,6 @@ import productApi from '../../../services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
-
-const movementData = [
-  { name: '08:00', value: 20 },
-  { name: '10:00', value: 45 },
-  { name: '12:00', value: 30 },
-  { name: '14:00', value: 65 },
-  { name: '16:00', value: 50 },
-  { name: '18:00', value: 80 },
-]
 
 const InboundPage = () => {
   const dispatch = useDispatch()
@@ -81,66 +48,72 @@ const InboundPage = () => {
   const [formTotalQuantity, setFormTotalQuantity] = useState(1)
   const [allocations, setAllocations] = useState({}) // { binId: quantity }
   const [binCapacities, setBinCapacities] = useState({})
+  const [isCapacityLoading, setIsCapacityLoading] = useState(false)
+  const [capacityRefreshKey, setCapacityRefreshKey] = useState(0)
   const [formNote, setFormNote] = useState('')
 
+  const selectedSku = useMemo(
+    () => skus.find((sku) => String(sku.id) === String(formSkuId)),
+    [formSkuId, skus]
+  )
+  const selectedUnitWeightKg = Number(selectedSku?.unitWeightKg) || 0
+  const selectedUnitVolumeM3 = Number(selectedSku?.unitVolumeM3) || 0
+  const allocatedQuantity = useMemo(
+    () => Object.values(allocations).reduce((total, value) => total + (Number(value) || 0), 0),
+    [allocations]
+  )
+
   useEffect(() => {
+    let active = true
     const fetchCapacities = async () => {
       if (!selectedWarehouseId || !layout) return
-      const binIds = layout.racks?.flatMap((r) => r.bins?.map((b) => b.id)) || []
-      const newCapacities = { ...binCapacities }
-      let changed = false
-
-      for (const binId of binIds) {
-        if (!newCapacities[binId]) {
-          try {
-            let targetBin = null
-            layout.racks?.forEach((r) => {
-              const b = r.bins?.find((b) => b.id === binId)
-              if (b) targetBin = b
-            })
-            if (!targetBin) continue
-
-            const stockRes = await stockApi.getStockByBin(selectedWarehouseId, binId)
-            const currentStock = stockRes.totalQuantity || 0
-            const maxWeight = targetBin.maxWeight ? Number(targetBin.maxWeight) : Infinity
-            const maxVolume = targetBin.maxVolume ? Number(targetBin.maxVolume) : Infinity
-            const maxCapacity = Math.min(maxWeight, maxVolume)
-
-            newCapacities[binId] = {
-              max: maxCapacity === Infinity ? 'Unlimited' : maxCapacity,
-              current: currentStock,
-              available:
-                maxCapacity === Infinity ? 'Unlimited' : Math.max(maxCapacity - currentStock, 0),
+      setIsCapacityLoading(true)
+      try {
+        const allStock = await stockApi.getAllStock(selectedWarehouseId)
+        const skuById = new Map(skus.map((sku) => [String(sku.id), sku]))
+        const usageByBin = allStock.reduce((result, batch) => {
+          if (!batch.binId) return result
+          const key = String(batch.binId)
+          const quantity = Number(batch.quantity) || 0
+          const sku = skuById.get(String(batch.skuId))
+          const usage = result[key] || { units: 0, weightKg: 0, volumeM3: 0 }
+          usage.units += quantity
+          usage.weightKg += quantity * (Number(sku?.unitWeightKg) || 0)
+          usage.volumeM3 += quantity * (Number(sku?.unitVolumeM3) || 0)
+          result[key] = usage
+          return result
+        }, {})
+        const nextCapacities = {}
+        layout.racks?.forEach((rack) => {
+          rack.bins?.forEach((bin) => {
+            nextCapacities[bin.id] = {
+              currentUnits: usageByBin[String(bin.id)]?.units || 0,
+              currentWeightKg: usageByBin[String(bin.id)]?.weightKg || 0,
+              currentVolumeM3: usageByBin[String(bin.id)]?.volumeM3 || 0,
+              maxWeight: Number(bin.maxWeight) || 0,
+              maxVolume: Number(bin.maxVolume) || 0,
             }
-            changed = true
-          } catch (e) {
-            console.error('Error fetching bin capacity', e)
-          }
-        }
-      }
-      if (changed) {
-        setBinCapacities(newCapacities)
+          })
+        })
+        if (active) setBinCapacities(nextCapacities)
+      } catch (error) {
+        console.error('Error fetching Bin usage', error)
+        if (active) setBinCapacities({})
+      } finally {
+        if (active) setIsCapacityLoading(false)
       }
     }
     fetchCapacities()
-  }, [selectedWarehouseId, layout])
-
-  useEffect(() => {
-    fetchInitialData()
-  }, [])
-
-  useEffect(() => {
-    if (selectedWarehouseId) {
-      fetchReceipts()
-      fetchLayout()
+    return () => {
+      active = false
     }
-  }, [selectedWarehouseId])
+  }, [selectedWarehouseId, layout, capacityRefreshKey, skus])
 
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const [whRes, skuRes] = await Promise.all([
         warehouseApi.getMyWarehouses(),
-        productApi.getSKUs({ page: 0, size: 50 }),
+        productApi.getAllSKUs(),
       ])
 
       // API trả về danh sách kho, có thể ở data.data hoặc data.data.content
@@ -154,7 +127,7 @@ const InboundPage = () => {
         setSelectedWarehouseId(whList[0].id)
       }
 
-      setSkus(skuRes.data?.data?.content || [])
+      setSkus(Array.isArray(skuRes) ? skuRes : [])
     } catch (error) {
       console.error('Error fetching initial data:', error)
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
@@ -163,9 +136,9 @@ const InboundPage = () => {
         toast.error(error.response?.data?.message || 'Failed to load initial data')
       }
     }
-  }
+  }, [])
 
-  const fetchLayout = async () => {
+  const fetchLayout = useCallback(async () => {
     try {
       const res =
         currentRole === 'STAFF'
@@ -178,9 +151,9 @@ const InboundPage = () => {
         console.error('Error fetching layout:', error)
       }
     }
-  }
+  }, [currentRole, selectedWarehouseId])
 
-  const fetchReceipts = async () => {
+  const fetchReceipts = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await receiptApi.getReceipts(selectedWarehouseId, {
@@ -199,7 +172,22 @@ const InboundPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedWarehouseId])
+
+  useEffect(() => {
+    // Initial server data is intentionally loaded when this screen mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchInitialData()
+  }, [fetchInitialData])
+
+  useEffect(() => {
+    if (selectedWarehouseId) {
+      // Refresh server-backed data whenever the active warehouse changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchReceipts()
+      fetchLayout()
+    }
+  }, [fetchLayout, fetchReceipts, selectedWarehouseId])
 
   const handleExport = async () => {
     if (!selectedWarehouseId) return
@@ -228,9 +216,13 @@ const InboundPage = () => {
       toast.error('Please select a product')
       return
     }
+    if (selectedUnitWeightKg <= 0 || selectedUnitVolumeM3 <= 0) {
+      toast.error('This SKU must have valid unit weight and unit volume before inbound.')
+      return
+    }
 
     // Filter out bins with 0 or empty quantity
-    const activeAllocations = Object.entries(allocations).filter(([binId, qty]) => Number(qty) > 0)
+    const activeAllocations = Object.entries(allocations).filter(([, qty]) => Number(qty) > 0)
 
     if (activeAllocations.length === 0) {
       toast.error('Please allocate quantity to at least one bin')
@@ -248,14 +240,6 @@ const InboundPage = () => {
       layout?.racks?.forEach((r) => {
         if (r.bins?.some((b) => b.id === binId)) rackId = r.id
       })
-
-      const cap = binCapacities[binId]
-      if (cap && cap.available !== 'Unlimited' && qty > cap.available) {
-        toast.error(
-          `Bin exceeds capacity! (Available: ${cap.available}, Allocated: ${qty}). Please adjust.`
-        )
-        return
-      }
 
       payloadItems.push({
         skuId: formSkuId,
@@ -288,7 +272,6 @@ const InboundPage = () => {
       setFormSkuId('')
       setFormTotalQuantity(1)
       setAllocations({})
-      setBinCapacities({})
       setFormNote('')
     } catch (error) {
       console.error('Error creating receipt:', error)
@@ -325,6 +308,7 @@ const InboundPage = () => {
       await receiptApi.approveReceipt(id)
       toast.success('Approved input slip successfully')
       fetchReceipts()
+      setCapacityRefreshKey((current) => current + 1)
     } catch (error) {
       console.error('Error approving receipt:', error)
       toast.error(error.response?.data?.message || 'Error when approving votes')
@@ -356,15 +340,6 @@ const InboundPage = () => {
         const wh = warehouses.find((w) => w.id === selectedWarehouseId)
         return wh ? wh.name : 'Unknown'
       },
-    },
-    {
-      header: 'Items',
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <Package className="h-4 w-4 text-slate-400" />
-          <span className="font-medium text-slate-900">{row.items?.length || 0} items</span>
-        </div>
-      ),
     },
     {
       header: 'Status',
@@ -447,7 +422,11 @@ const InboundPage = () => {
                   <select
                     className="rounded-md border border-slate-200 p-2 text-sm"
                     value={selectedWarehouseId}
-                    onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                    onChange={(e) => {
+                      setSelectedWarehouseId(e.target.value)
+                      setAllocations({})
+                      setBinCapacities({})
+                    }}
                   >
                     <option value="">-- Select Warehouse --</option>
                     {warehouses.map((wh) => (
@@ -466,8 +445,8 @@ const InboundPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <div className="space-y-6 lg:col-span-2">
+              <div>
+                <div className="space-y-6">
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="mb-6 flex items-center justify-between">
                       <h3 className="font-bold text-slate-900">Recent Inbound Shipments</h3>
@@ -501,35 +480,6 @@ const InboundPage = () => {
                     )}
                   </div>
                 </div>
-
-                <div className="space-y-6">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h3 className="mb-6 font-bold text-slate-900">Volume Forecast</h3>
-                    <div className="h-48">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={movementData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" hide />
-                          <YAxis hide />
-                          <Tooltip
-                            contentStyle={{
-                              borderRadius: '12px',
-                              border: 'none',
-                              boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="value"
-                            stroke="#10b981"
-                            strokeWidth={3}
-                            dot={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* New Inbound Modal */}
@@ -537,6 +487,7 @@ const InboundPage = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title="Register New Inbound Shipment"
+                className="max-h-[92vh] max-w-5xl overflow-y-auto"
               >
                 <form onSubmit={handleCreateReceipt} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -576,72 +527,241 @@ const InboundPage = () => {
                       <label className="text-sm font-medium text-slate-700">
                         Allocate into Bins
                       </label>
-                      <span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                        Total Allocated:{' '}
-                        {Object.values(allocations).reduce(
-                          (acc, val) => acc + (Number(val) || 0),
-                          0
-                        )}{' '}
-                        / {formTotalQuantity}
+                      <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
+                        Allocated: {allocatedQuantity} / {formTotalQuantity}{' '}
+                        {selectedSku?.uomCode || selectedSku?.uomName || 'units'}
                       </span>
                     </div>
 
+                    <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs leading-5 text-slate-600">
+                      {selectedSku ? (
+                        selectedUnitWeightKg > 0 && selectedUnitVolumeM3 > 0 ? (
+                          <>
+                            Each unit weighs {selectedUnitWeightKg.toLocaleString('en-US')} kg. The
+                            allocation is limited automatically by the available Rack and Bin
+                            capacity.
+                          </>
+                        ) : (
+                          'This SKU is missing physical properties. Update its unit weight and volume before inbound.'
+                        )
+                      ) : (
+                        'Select an SKU to calculate the available Rack and Bin capacity.'
+                      )}
+                    </div>
+
                     <div className="max-h-100 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      {!layout?.racks?.length ? (
+                      {isCapacityLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Loading Rack and Bin
+                          limits...
+                        </div>
+                      ) : !layout?.racks?.length ? (
                         <div className="py-4 text-center text-sm text-slate-500">
                           No Racks found in this warehouse.
                         </div>
                       ) : (
                         <div className="space-y-4">
-                          {layout.racks.map((rack) => (
-                            <div
-                              key={rack.id}
-                              className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
-                            >
-                              <h4 className="mb-2 text-sm font-semibold text-slate-800">
-                                {rack.name}
-                              </h4>
-                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                {rack.bins?.map((bin) => {
-                                  const cap = binCapacities[bin.id]
-                                  return (
-                                    <div
-                                      key={bin.id}
-                                      className="flex items-center justify-between rounded border border-slate-100 bg-slate-50 p-2"
-                                    >
-                                      <div>
-                                        <div className="text-sm font-medium text-slate-700">
-                                          {bin.name}
-                                        </div>
-                                        {cap && (
-                                          <div className="text-[10px] text-slate-500">
-                                            Avail:{' '}
-                                            <span className="font-semibold text-emerald-600">
-                                              {cap.available}
-                                            </span>{' '}
-                                            / Max: {cap.max}
+                          {layout.racks.map((rack) => {
+                            const rackCurrentWeightKg = (rack.bins || []).reduce(
+                              (total, bin) => total + (binCapacities[bin.id]?.currentWeightKg || 0),
+                              0
+                            )
+                            const rackIncomingUnits = (rack.bins || []).reduce(
+                              (total, bin) => total + (Number(allocations[bin.id]) || 0),
+                              0
+                            )
+                            const rackCurrentVolumeM3 = (rack.bins || []).reduce(
+                              (total, bin) => total + (binCapacities[bin.id]?.currentVolumeM3 || 0),
+                              0
+                            )
+                            const rackIncomingWeightKg = rackIncomingUnits * selectedUnitWeightKg
+                            const totalBinWeightLimit = (rack.bins || []).reduce(
+                              (total, bin) => total + (Number(bin.maxWeight) || 0),
+                              0
+                            )
+                            return (
+                              <section
+                                key={rack.id}
+                                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+                                  <div>
+                                    <h4 className="text-sm font-bold text-slate-900">
+                                      {rack.name}
+                                      {rack.code && (
+                                        <span className="ml-2 font-normal text-slate-400">
+                                          {rack.code}
+                                        </span>
+                                      )}
+                                    </h4>
+                                    <p className="mt-1 text-xs text-slate-500">
+                                      {(rack.bins || []).length} bins · Current load{' '}
+                                      {rackCurrentWeightKg.toLocaleString('en-US', {
+                                        maximumFractionDigits: 6,
+                                      })}{' '}
+                                      kg · Incoming{' '}
+                                      {rackIncomingWeightKg.toLocaleString('en-US', {
+                                        maximumFractionDigits: 6,
+                                      })}{' '}
+                                      kg
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600">
+                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+                                      Rack limit:{' '}
+                                      {Number(rack.maxWeight) > 0
+                                        ? `${Number(rack.maxWeight).toLocaleString('en-US')} kg`
+                                        : 'Not set'}
+                                    </span>
+                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+                                      Bin limits: {totalBinWeightLimit.toLocaleString('en-US')} kg
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-3 p-3 md:grid-cols-2">
+                                  {rack.bins?.map((bin) => {
+                                    const capacity = binCapacities[bin.id] || {
+                                      currentUnits: 0,
+                                      currentWeightKg: 0,
+                                      currentVolumeM3: 0,
+                                      maxWeight: Number(bin.maxWeight) || 0,
+                                      maxVolume: Number(bin.maxVolume) || 0,
+                                    }
+                                    const currentAllocation = Number(allocations[bin.id]) || 0
+                                    const remainingReceiptUnits = Math.max(
+                                      Number(formTotalQuantity) -
+                                        (allocatedQuantity - currentAllocation),
+                                      0
+                                    )
+                                    const binWeightUnits =
+                                      capacity.maxWeight > 0 && selectedUnitWeightKg > 0
+                                        ? Math.floor(
+                                            Math.max(
+                                              capacity.maxWeight - capacity.currentWeightKg,
+                                              0
+                                            ) / selectedUnitWeightKg
+                                          )
+                                        : Number.POSITIVE_INFINITY
+                                    const binVolumeUnits =
+                                      capacity.maxVolume > 0 && selectedUnitVolumeM3 > 0
+                                        ? Math.floor(
+                                            Math.max(
+                                              capacity.maxVolume - capacity.currentVolumeM3,
+                                              0
+                                            ) / selectedUnitVolumeM3
+                                          )
+                                        : Number.POSITIVE_INFINITY
+                                    const otherRackIncomingUnits =
+                                      rackIncomingUnits - currentAllocation
+                                    const rackWeightUnits =
+                                      Number(rack.maxWeight) > 0 && selectedUnitWeightKg > 0
+                                        ? Math.floor(
+                                            Math.max(
+                                              Number(rack.maxWeight) -
+                                                rackCurrentWeightKg -
+                                                otherRackIncomingUnits * selectedUnitWeightKg,
+                                              0
+                                            ) / selectedUnitWeightKg
+                                          )
+                                        : Number.POSITIVE_INFINITY
+                                    const rackVolumeUnits =
+                                      Number(rack.maxVolume) > 0 && selectedUnitVolumeM3 > 0
+                                        ? Math.floor(
+                                            Math.max(
+                                              Number(rack.maxVolume) -
+                                                rackCurrentVolumeM3 -
+                                                otherRackIncomingUnits * selectedUnitVolumeM3,
+                                              0
+                                            ) / selectedUnitVolumeM3
+                                          )
+                                        : Number.POSITIVE_INFINITY
+                                    const maximumForBin = Math.max(
+                                      Math.min(
+                                        remainingReceiptUnits,
+                                        binWeightUnits,
+                                        binVolumeUnits,
+                                        rackWeightUnits,
+                                        rackVolumeUnits
+                                      ),
+                                      0
+                                    )
+                                    return (
+                                      <article
+                                        key={bin.id}
+                                        className="rounded-xl border border-slate-200 bg-white p-3"
+                                      >
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div className="min-w-0">
+                                            <p className="truncate text-sm font-bold text-slate-800">
+                                              {bin.name}
+                                            </p>
+                                            <p className="mt-0.5 text-[11px] text-slate-400">
+                                              {bin.code || 'No code'} · Shelf {bin.shelfLevel || 1}
+                                            </p>
                                           </div>
-                                        )}
-                                      </div>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        placeholder="0"
-                                        className="focus:ring-primary w-20 rounded-md border border-slate-200 bg-white p-1 text-center text-sm focus:ring-2 focus:outline-none"
-                                        value={allocations[bin.id] || ''}
-                                        onChange={(e) => {
-                                          setAllocations((prev) => ({
-                                            ...prev,
-                                            [bin.id]: e.target.value,
-                                          }))
-                                        }}
-                                      />
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            </div>
-                          ))}
+                                          <label className="shrink-0 text-right text-[10px] font-bold tracking-wide text-slate-500 uppercase">
+                                            Inbound
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max={maximumForBin}
+                                              disabled={
+                                                !selectedSku ||
+                                                selectedUnitWeightKg <= 0 ||
+                                                selectedUnitVolumeM3 <= 0
+                                              }
+                                              placeholder="0"
+                                              className="focus:ring-primary mt-1 block w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-semibold text-slate-800 focus:ring-2 focus:outline-none"
+                                              value={allocations[bin.id] || ''}
+                                              onChange={(event) => {
+                                                const rawValue = event.target.value
+                                                const nextValue =
+                                                  rawValue === ''
+                                                    ? ''
+                                                    : Math.min(
+                                                        Math.max(Number(rawValue) || 0, 0),
+                                                        maximumForBin
+                                                      )
+                                                setAllocations((previous) => ({
+                                                  ...previous,
+                                                  [bin.id]: nextValue,
+                                                }))
+                                              }}
+                                            />
+                                          </label>
+                                        </div>
+
+                                        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                                          <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
+                                            <span className="block text-slate-400">
+                                              Current load
+                                            </span>
+                                            <strong>
+                                              {capacity.currentWeightKg.toLocaleString('en-US', {
+                                                maximumFractionDigits: 6,
+                                              })}{' '}
+                                              kg
+                                            </strong>
+                                          </div>
+                                          <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
+                                            <span className="block text-slate-400">
+                                              Weight limit
+                                            </span>
+                                            <strong>
+                                              {capacity.maxWeight > 0
+                                                ? `${capacity.maxWeight.toLocaleString('en-US')} kg`
+                                                : 'Not set'}
+                                            </strong>
+                                          </div>
+                                        </div>
+                                      </article>
+                                    )
+                                  })}
+                                </div>
+                              </section>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -660,7 +780,17 @@ const InboundPage = () => {
                     <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit" isLoading={isSubmitting}>
+                    <Button
+                      type="submit"
+                      isLoading={isSubmitting}
+                      disabled={
+                        isSubmitting ||
+                        !formSkuId ||
+                        selectedUnitWeightKg <= 0 ||
+                        selectedUnitVolumeM3 <= 0 ||
+                        allocatedQuantity !== Number(formTotalQuantity)
+                      }
+                    >
                       Confirm Inbound
                     </Button>
                   </div>

@@ -25,6 +25,8 @@ const emptySku = {
   name: '',
   categoryId: '',
   uomId: '',
+  unitWeightKg: '',
+  unitVolumeM3: '',
   specifications: '{}',
 }
 
@@ -150,6 +152,8 @@ export default function ProductManagementPage() {
         categoryId: skuForm.categoryId || null,
         name: skuForm.name.trim(),
         uomId: skuForm.uomId,
+        unitWeightKg: Number(skuForm.unitWeightKg).toFixed(6),
+        unitVolumeM3: Number(skuForm.unitVolumeM3).toFixed(6),
         specifications: parseJsonObject(skuForm.specifications, 'Specifications'),
       }
       if (skuForm.id) await productApi.updateSKU(skuForm.id, payload)
@@ -189,6 +193,8 @@ export default function ProductManagementPage() {
       name: sku.name || '',
       categoryId: sku.categoryId || '',
       uomId: sku.uomId || '',
+      unitWeightKg: sku.unitWeightKg ?? '',
+      unitVolumeM3: sku.unitVolumeM3 ?? '',
       specifications: JSON.stringify(sku.specifications || {}, null, 2),
     })
 
@@ -492,6 +498,34 @@ export default function ProductManagementPage() {
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="block text-sm font-semibold">
+              Unit weight (kg)
+              <input
+                type="number"
+                min="0.000001"
+                step="0.000001"
+                required
+                value={skuForm.unitWeightKg}
+                onChange={(event) =>
+                  setSkuForm((current) => ({ ...current, unitWeightKg: event.target.value }))
+                }
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5"
+              />
+            </label>
+            <label className="block text-sm font-semibold">
+              Unit volume (m³)
+              <input
+                type="number"
+                min="0.000001"
+                step="0.000001"
+                required
+                value={skuForm.unitVolumeM3}
+                onChange={(event) =>
+                  setSkuForm((current) => ({ ...current, unitVolumeM3: event.target.value }))
+                }
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5"
+              />
             </label>
             <label className="block text-sm font-semibold sm:col-span-2">
               Specifications (JSON)
