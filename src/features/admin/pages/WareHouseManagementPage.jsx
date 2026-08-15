@@ -40,6 +40,7 @@ import {
 import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
+import Modal from '../../../components/organisms/Modal'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 // ─── Enum / Constants từ BE ───────────────────────────────────────────────────
@@ -307,6 +308,11 @@ const WareHouseManagementPage = () => {
   // Local UI
   const [searchInput, setSearchInput] = useState(keyword || '')
   const [selectedItem, setSelectedItem] = useState(null)
+
+  // Reject Modal
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [warehouseToReject, setWarehouseToReject] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   // Fetch khi filters/page thay đổi
   useEffect(() => {
@@ -713,6 +719,50 @@ const WareHouseManagementPage = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* Reject Modal */}
+      <Modal
+        isOpen={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        title="Từ chối duyệt đăng kho"
+      >
+        <div className="p-4 sm:p-6">
+          <p className="mb-4 text-sm text-slate-600">
+            Bạn đang từ chối phê duyệt kho{' '}
+            <span className="font-bold text-slate-900">{warehouseToReject?.name}</span>. Vui lòng
+            cung cấp lý do cụ thể để người cho thuê có thể nắm rõ và khắc phục.
+          </p>
+          <textarea
+            className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            rows={4}
+            placeholder="Nhập lý do từ chối (bắt buộc)..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => setRejectModalOpen(false)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={submitReject}
+              disabled={!rejectReason.trim() || actionLoading}
+              className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {actionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                'Xác nhận từ chối'
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

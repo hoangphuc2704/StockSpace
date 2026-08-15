@@ -170,6 +170,13 @@ const WarehouseManagement = () => {
           icon: <XCircle className="mr-1 h-3.5 w-3.5" />,
           text: "It's full",
         }
+      case 'INACTIVE':
+      case 'REJECTED':
+        return {
+          bg: 'bg-red-50 text-red-700 border-red-200',
+          icon: <XCircle className="mr-1 h-3.5 w-3.5" />,
+          text: 'Rejected / Inactive',
+        }
       default:
         return {
           bg: 'bg-slate-50 text-slate-700 border-slate-200',
@@ -371,12 +378,22 @@ const WarehouseManagement = () => {
 
                             {/* Cột 5: Trạng thái */}
                             <td className="px-6 py-4 text-center">
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.bg}`}
-                              >
-                                {badge.icon}
-                                {badge.text}
-                              </span>
+                              <div className="flex flex-col items-center gap-1.5">
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.bg}`}
+                                >
+                                  {badge.icon}
+                                  {badge.text}
+                                </span>
+                                {(wh.status === 'INACTIVE' || wh.status === 'REJECTED') && (wh.reason || wh.rejectionReason || wh.rejectReason) && (
+                                  <div
+                                    className="max-w-[120px] truncate text-[11px] text-red-600 font-medium cursor-help text-center"
+                                    title={wh.reason || wh.rejectionReason || wh.rejectReason}
+                                  >
+                                    Lý do: {wh.reason || wh.rejectionReason || wh.rejectReason}
+                                  </div>
+                                )}
+                              </div>
                             </td>
 
                             {/* Cột 6: Kiểm định */}

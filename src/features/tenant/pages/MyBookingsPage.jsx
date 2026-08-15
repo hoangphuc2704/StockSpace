@@ -181,10 +181,15 @@ const MyBookingsPage = () => {
                         <p className="font-medium text-slate-700">{booking.ownerName}</p>
                       </div>
 
-                      {booking.rejectReason && (
-                        <div className="mt-2 rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-600">
-                          <span className="font-semibold">Reject Reason:</span>{' '}
-                          {booking.rejectReason}
+                      {booking.status === 'REJECTED' && (booking.reason || booking.rejectReason || booking.rejectionReason) && (
+                        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3.5 text-sm text-red-800 shadow-sm">
+                          <div className="flex items-center gap-1.5 font-bold text-red-600 mb-1">
+                            <XCircle className="h-4 w-4" />
+                            <span>Lý do từ chối:</span>
+                          </div>
+                          <div className="pl-5.5 font-medium whitespace-pre-wrap">
+                            {booking.reason || booking.rejectReason || booking.rejectionReason}
+                          </div>
                         </div>
                       )}
                     </div>

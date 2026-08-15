@@ -83,9 +83,21 @@ const OwnerDashboard = () => {
 
   // State điều khiển Modal nhập tiền
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [inputAmount, setInputAmount] = useState('')
+
+  // State điều khiển Modal từ chối yêu cầu thuê
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [rejectTargetId, setRejectTargetId] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectLoading, setRejectLoading] = useState(false)
+
+  // State điều khiển Modal chi tiết yêu cầu thuê
+  const [viewDetailModalOpen, setViewDetailModalOpen] = useState(false)
+  const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null)
 
   useEscapeKey(isModalOpen, () => setIsModalOpen(false))
-  const [inputAmount, setInputAmount] = useState('')
+  useEscapeKey(rejectModalOpen, () => setRejectModalOpen(false))
+  useEscapeKey(viewDetailModalOpen, () => setViewDetailModalOpen(false))
 
   // --- LẤY DỮ LIỆU VÍ TỪ API ---
   const fetchWallet = async () => {
@@ -260,17 +272,35 @@ const OwnerDashboard = () => {
     }
   }
 
-  const handleReject = async (id) => {
-    const reason = prompt('Enter reason for rejection:')
-    if (!reason) return
+  const handleReject = (id) => {
+    setRejectTargetId(id)
+    setRejectReason('')
+    setRejectModalOpen(true)
+  }
+
+  const submitReject = async () => {
+    if (!rejectReason.trim()) {
+      toast.error('Please enter a reason for rejection!')
+      return
+    }
 
     try {
-      await warehouseApi.rejectBooking(id, { reason })
-      toast.error('Rejected warehouse rental request!')
+      setRejectLoading(true)
+      await warehouseApi.rejectBooking(rejectTargetId, { reason: rejectReason })
+      toast.success('Rejected warehouse rental request!')
       fetchRequests() // Refresh data
+      setRejectModalOpen(false)
+      setRejectTargetId(null)
     } catch (error) {
       toast.error(error.response?.data?.message || 'Reject failed request')
+    } finally {
+      setRejectLoading(false)
     }
+  }
+
+  const handleViewDetail = (row) => {
+    setSelectedRequestForDetail(row)
+    setViewDetailModalOpen(true)
   }
 
   const columns = [
@@ -316,7 +346,7 @@ const OwnerDashboard = () => {
                   { label: 'Approve', icon: Check, onClick: () => handleApprove(row.id) },
                   { label: 'Reject', icon: X, onClick: () => handleReject(row.id), danger: true },
                 ]
-              : [{ label: 'View', icon: Eye }]
+              : [{ label: 'View', icon: Eye, onClick: () => handleViewDetail(row) }]
           }
         />
       ),
@@ -578,6 +608,107 @@ const OwnerDashboard = () => {
           </div>
         </div>
       )}
+
+      {/* --- POPUP MODAL TỪ CHỐI THUÊ KHO --- */}
+      <Modal
+        isOpen={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        title="Từ chối yêu cầu thuê kho"
+      >
+        <div className="p-4 sm:p-6">
+          <p className="mb-4 text-sm text-slate-600">
+            Bạn đang từ chối yêu cầu thuê kho này. Vui lòng cung cấp lý do để khách thuê có thể biết và khắc phục.
+          </p>
+          <textarea
+            className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            rows={4}
+            placeholder="Nhập lý do từ chối (bắt buộc)..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => setRejectModalOpen(false)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={submitReject}
+              disabled={!rejectReason.trim() || rejectLoading}
+              className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {rejectLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                'Xác nhận từ chối'
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* --- POPUP MODAL CHI TIẾT YÊU CẦU THUÊ --- */}
+      <Modal
+        isOpen={viewDetailModalOpen}
+        onClose={() => setViewDetailModalOpen(false)}
+        title="Chi tiết yêu cầu thuê kho"
+      >
+        <div className="p-4 sm:p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Khách thuê</p>
+              <p className="text-sm font-semibold text-slate-900">{selectedRequestForDetail?.tenantName}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Kho hàng</p>
+              <p className="text-sm font-semibold text-slate-900">{selectedRequestForDetail?.warehouseName}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Tiền cọc</p>
+              <p className="text-sm font-semibold text-emerald-600">{formatVND(selectedRequestForDetail?.depositAmount)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Trạng thái</p>
+              <Badge
+                variant={
+                  selectedRequestForDetail?.status === 'APPROVED' ? 'success' : selectedRequestForDetail?.status === 'REJECTED' ? 'danger' : 'warning'
+                }
+              >
+                {selectedRequestForDetail?.status}
+              </Badge>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Ngày tạo</p>
+              <p className="text-sm font-semibold text-slate-900">{selectedRequestForDetail?.createdAt ? new Date(selectedRequestForDetail.createdAt).toLocaleDateString('vi-VN') : ''}</p>
+            </div>
+          </div>
+          
+          {selectedRequestForDetail?.status === 'REJECTED' && (selectedRequestForDetail.reason || selectedRequestForDetail.rejectionReason || selectedRequestForDetail.rejectReason) && (
+            <div className="mt-4 p-4 rounded-xl border border-red-200 bg-red-50">
+              <p className="text-xs text-red-600 font-bold uppercase mb-1 flex items-center gap-1">
+                <X className="h-3.5 w-3.5" />
+                Lý do từ chối
+              </p>
+              <p className="text-sm text-red-800 font-medium whitespace-pre-wrap">
+                {selectedRequestForDetail.reason || selectedRequestForDetail.rejectionReason || selectedRequestForDetail.rejectReason}
+              </p>
+            </div>
+          )}
+
+          <div className="mt-6 flex justify-end">
+            <button
+              onClick={() => setViewDetailModalOpen(false)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
