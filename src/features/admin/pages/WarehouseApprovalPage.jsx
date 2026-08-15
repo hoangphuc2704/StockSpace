@@ -151,7 +151,7 @@ const WarehouseApprovalPage = () => {
   const runApprovalAction = async (warehouse, type) => {
     let reason = null
     if (type === 'reject') {
-      reason = window.prompt("Vui lòng nhập lý do từ chối (bắt buộc):")
+      reason = window.prompt('Vui lòng nhập lý do từ chối (bắt buộc):')
       if (!reason || !reason.trim()) {
         toast.error('Bạn phải nhập lý do từ chối!')
         return
@@ -164,7 +164,7 @@ const WarehouseApprovalPage = () => {
         type === 'approve'
           ? verifyWarehouse(warehouse.id)
           : rejectWarehouse({ id: warehouse.id, reason })
-      
+
       const updatedWarehouse = await dispatch(action).unwrap()
       setWarehouseDetail((current) =>
         current?.id === updatedWarehouse?.id ? { ...current, ...updatedWarehouse } : current

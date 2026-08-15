@@ -338,7 +338,7 @@ const WareHouseManagementPage = () => {
 
   const handleReject = useCallback(
     async (w) => {
-      const reason = window.prompt("Vui lòng nhập lý do từ chối (bắt buộc):")
+      const reason = window.prompt('Vui lòng nhập lý do từ chối (bắt buộc):')
       if (!reason || !reason.trim()) {
         toast.error('Bạn phải nhập lý do từ chối!')
         return

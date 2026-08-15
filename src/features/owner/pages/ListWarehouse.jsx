@@ -573,7 +573,7 @@ const WarehouseManagement = () => {
                 <p className="text-xs font-bold text-slate-500 uppercase">Rental price / month</p>
                 <p className="mt-1 text-lg font-bold text-slate-900">
                   {selectedWarehouse.pricePerMonth
-                    ? selectedWarehouse.pricePerMonth.toLocaleString()
+                    ? Number(selectedWarehouse.pricePerMonth).toLocaleString('vi-VN')
                     : 0}{' '}
                   ₫
                 </p>
