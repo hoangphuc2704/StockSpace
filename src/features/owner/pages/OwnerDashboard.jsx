@@ -32,6 +32,7 @@ import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import StatCard from '@/components/molecules/StatCard'
 import TableActionMenu from '@/components/TableActionMenu'
+import Modal from '@/components/organisms/Modal'
 
 // Import Sidebar và Header
 import Sidebar from '../../../components/SideBar'
