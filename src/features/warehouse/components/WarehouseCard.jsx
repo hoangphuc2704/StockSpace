@@ -1,8 +1,6 @@
 import { motion } from 'framer-motion'
 import { MapPin, Maximize2, Star, Clock, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import Badge from '@/components/atoms/Badge'
-import Button from '@/components/atoms/Button'
 import { cn } from '@/utils/cn'
 
 const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
@@ -20,7 +18,11 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
         isGrid ? 'rounded-2xl flex flex-col' : 'rounded-2xl flex flex-row h-64'
       )}
     >
-      <Link to={`/warehouse/${warehouse.id}`} className="absolute inset-0 z-10" />
+      <Link
+        to={`/warehouse/${warehouse.id}`}
+        aria-label={`View details for ${warehouse.name}`}
+        className="absolute inset-0 z-30 cursor-pointer rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+      />
 
       {/* Thumbnail */}
       <div className={cn('relative bg-slate-100 overflow-hidden', isGrid ? 'aspect-[4/3]' : 'w-80 shrink-0')}>
@@ -51,10 +53,6 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
       <div className="p-6 flex-1 flex flex-col">
         <div className="flex items-start justify-between mb-2">
           <h3 className="font-bold text-slate-900 text-lg group-hover:text-primary transition-colors line-clamp-1">{warehouse.name}</h3>
-          <div className="flex items-center gap-1 text-sm font-bold text-warning bg-warning/5 px-2 py-0.5 rounded-lg">
-            <Star className="h-3.5 w-3.5 fill-current" />
-            <span>{warehouse.rating}</span>
-          </div>
         </div>
 
         <div className="flex items-center gap-1.5 text-slate-500 text-sm mb-4">
@@ -83,10 +81,10 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
               <span className="text-sm text-slate-400 font-medium">/mo</span>
             </p>
           </div>
-          <div className="relative z-20 text-black">
-            <Button size="sm" className="rounded-xl px-5 h-10 shadow-lg shadow-primary/20 text-black">
+          <div className="relative z-20">
+            <span className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-5 py-1.5 text-sm font-medium text-white shadow-lg shadow-primary/20 transition-colors group-hover:bg-primary/90">
               Details <ArrowRight size={14} className="ml-2 " />
-            </Button>
+            </span>
           </div>
         </div>
       </div>

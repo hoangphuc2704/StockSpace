@@ -1,18 +1,22 @@
-import React from 'react'
 import { Menu } from 'lucide-react'
 import logoDaidien from '../assets/logoDaidien.png'
 import { useDispatch, useSelector } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 // ✅ Đã kết nối trực tiếp action từ Redux store và sửa chính tả uiSlice
 import { toggleSidebar } from '../store/uiSlide'
 import NotificationDropdown from './NotificationDropdown'
 
 const Header = () => {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
 
-  const displayRole = user?.role 
-    ? user.role.replace('ROLE_', '').charAt(0) + user.role.replace('ROLE_', '').slice(1).toLowerCase()
+  const displayRole = user?.role
+    ? user.role.replace('ROLE_', '').charAt(0) +
+      user.role.replace('ROLE_', '').slice(1).toLowerCase()
     : 'Owner'
+
+  const isOwner = user?.role === 'ROLE_OWNER'
 
   return (
     <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
@@ -25,17 +29,28 @@ const Header = () => {
           <Menu className="h-6 w-6" />
         </button>
 
-        <div className="flex cursor-pointer items-center gap-2">
+        <div
+          className={`flex items-center gap-2 ${!isOwner ? 'cursor-pointer' : ''}`}
+          onClick={() => {
+            if (!isOwner) navigate('/')
+          }}
+          role={!isOwner ? "link" : "presentation"}
+          tabIndex={!isOwner ? 0 : undefined}
+          onKeyDown={(event) => {
+            if (!isOwner && (event.key === 'Enter' || event.key === ' ')) navigate('/')
+          }}
+          aria-label={!isOwner ? "Back to landing page" : undefined}
+        >
           <div className="shrink-0 rounded-lg bg-white p-1.5">
             <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
           </div>
-          <span className="font-display text-xl font-bold tracking-tight text-slate-950 hidden sm:inline-block">
+          <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline-block">
             StockSpace {displayRole}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="mr-24 flex items-center gap-2 sm:mr-28">
         <NotificationDropdown />
       </div>
     </header>

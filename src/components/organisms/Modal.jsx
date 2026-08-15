@@ -2,8 +2,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useEffect } from 'react'
 import { twMerge } from 'tailwind-merge'
+import useEscapeKey from '@/hooks/useEscapeKey'
 
 const Modal = ({ isOpen, onClose, title, children, className }) => {
+  useEscapeKey(isOpen, onClose)
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'

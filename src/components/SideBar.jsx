@@ -13,9 +13,12 @@ import {
   HiOutlineUsers,
   HiOutlineArrowRightOnRectangle,
   HiOutlineUserGroup,
+  HiOutlineArchiveBox,
+  HiOutlineTag,
 } from 'react-icons/hi2'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
+import useEscapeKey from '../hooks/useEscapeKey'
 
 // ✅ [HEAD] Dùng logoutThunk từ authSlice để logout đúng cách
 import { logoutThunk } from '../store/authSlice'
@@ -25,6 +28,7 @@ import { closeMobileSidebar } from '../store/uiSlide'
 const SIDEBAR_MENUS = {
   ADMIN: [
     { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/admin/dashboard' },
+    { text: 'System Wallet', icon: HiOutlineCurrencyDollar, path: '/admin/wallet' },
     { text: 'Users', icon: HiOutlineUsers, path: '/admin/users' },
     { text: 'Warehouses Approval', icon: HiOutlineHomeModern, path: '/admin/listings' },
     // { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },
@@ -44,41 +48,53 @@ const SIDEBAR_MENUS = {
     { text: 'System Policies', icon: HiOutlineDocumentText, path: '/admin/system-policies' },
     { text: 'System Config', icon: HiOutlineCog6Tooth, path: '/admin/system-config' },
     { text: 'Package Subcription', icon: HiOutlineCog6Tooth, path: '/admin/package-subcription' },
+    { text: 'WMS Inventory', icon: HiOutlineArchiveBox, path: '/admin/wms-inventory' },
+    { text: 'WMS Audits', icon: HiOutlineClipboardDocumentList, path: '/admin/wms-audits' },
   ],
   TENANT: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/tenant/dashboard' },
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/tenant/inventory' },
+    // <<<<<<< HEAD
+    { text: 'Category Mgt', icon: HiOutlineSquaresPlus, path: '/tenant/categories' },
+    { text: 'SKU Mgt', icon: HiOutlineArchiveBox, path: '/tenant/skus' },
+    // =======
+    //     { text: 'Categories & SKU', icon: HiOutlineTag, path: '/tenant/products' },
+    // >>>>>>> d40fad7adaa86ada5f5ce70c1028c65295711262
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/tenant/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/tenant/outbound' },
+    { text: 'Audits', icon: HiOutlineClipboardDocumentList, path: '/tenant/inventory-audits' },
     { text: 'My Bookings', icon: HiOutlineHomeModern, path: '/tenant/warehouses' },
     { text: 'My Contracts', icon: HiOutlineDocumentText, path: '/tenant/contracts' },
-    { text: 'Tranh chấp', icon: HiOutlineExclamationCircle, path: '/tenant/disputes' },
-    { text: 'Billing', icon: HiOutlineCurrencyDollar, path: '/tenant/payments' },
-    { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
+    { text: 'Dispute', icon: HiOutlineExclamationCircle, path: '/tenant/disputes' },
+    { text: 'Subscription', icon: HiOutlineCurrencyDollar, path: '/tenant/subscription' },
+    { text: 'Warehouse Layout', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
+    { text: 'Goods in Bin', icon: HiOutlineCircleStack, path: '/tenant/bin-stock' },
     { text: 'Wallet', icon: HiOutlineCurrencyDollar, path: '/tenant/wallet' },
-    { text: 'Nhân Viên', icon: HiOutlineUserGroup, path: '/tenant/staff' },
+    { text: 'Staff', icon: HiOutlineUserGroup, path: '/tenant/staff' },
   ],
   OWNER: [
-    { text: 'Đăng Tin', icon: HiOutlineHomeModern, path: '/owner/postwarehouse' },
-    { text: 'Tổng Quan', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
-    { text: 'Cài đặt', icon: HiOutlineCog6Tooth, path: '/owner/profile' },
-    { text: 'Danh sách kho', icon: HiOutlineHomeModern, path: '/owner/listwarehouse' },
-    { text: 'LayoutWarehouse', icon: HiOutlineSquaresPlus, path: '/owner/layoutwarehouses' },
-    { text: 'Hợp đồng', icon: HiOutlineDocumentText, path: '/owner/contracts' },
-    { text: 'Tranh chấp', icon: HiOutlineExclamationCircle, path: '/owner/disputes' },
+    { text: 'Post Warehouse', icon: HiOutlineHomeModern, path: '/owner/postwarehouse' },
+    { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/owner/dashboard' },
+    { text: 'Settings', icon: HiOutlineCog6Tooth, path: '/owner/profile' },
+    { text: 'Warehouse List', icon: HiOutlineHomeModern, path: '/owner/listwarehouse' },
+    { text: 'Warehouse Layout', icon: HiOutlineSquaresPlus, path: '/owner/layoutwarehouses' },
+    { text: 'Contracts', icon: HiOutlineDocumentText, path: '/owner/contracts' },
+    { text: 'Dispute', icon: HiOutlineExclamationCircle, path: '/owner/disputes' },
     {
-      text: 'Lịch sử giao dịch',
+      text: 'Transaction history',
       icon: HiOutlineCurrencyDollar,
       path: '/owner/wallet/withdraws',
     },
-    { text: 'Gói dịch vụ', icon: HiOutlineCog6Tooth, path: '/owner/packageSubcription' },
   ],
   STAFF: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/staff/dashboard' },
     { text: 'Tasks', icon: HiOutlineClipboardDocumentList, path: '/staff/tasks' },
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/staff/inventory' },
+    { text: 'Category Mgt', icon: HiOutlineSquaresPlus, path: '/staff/categories' },
+    { text: 'SKU Mgt', icon: HiOutlineArchiveBox, path: '/staff/skus' },
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/staff/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/staff/outbound' },
+    { text: 'Audits', icon: HiOutlineClipboardDocumentList, path: '/staff/inventory-audits' },
   ],
   INSPECTOR: [
     {
@@ -96,6 +112,7 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
 
   // Lấy trạng thái đóng mở Sidebar từ Redux Global State
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  useEscapeKey(isMobileOpen, () => dispatch(closeMobileSidebar()))
   const menuItems = SIDEBAR_MENUS[currentRole] || []
 
   const handleNavigation = (path) => {
@@ -105,11 +122,9 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
 
   return (
     <aside
-      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${
-        isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'
-      } ${
-        isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
-      } `}
+      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'
+        } ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
+        } `}
     >
       {/* Danh sách Menu điều hướng */}
       <nav className="flex-1 space-y-1 py-3">
@@ -120,26 +135,22 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
             <button
               key={idx}
               onClick={() => handleNavigation(item.path)}
-              className={`group flex w-full items-center rounded-xl transition-all ${
-                isSidebarExpanded
-                  ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-                  : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
-              } ${
-                isActive
+              className={`group flex w-full items-center rounded-xl transition-all ${isSidebarExpanded
+                ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
+                : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
+                } ${isActive
                   ? 'bg-slate-100 font-semibold text-slate-950'
                   : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
-              } `}
+                } `}
             >
               <item.icon
-                className={`shrink-0 transition-transform group-hover:scale-105 ${
-                  isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'
-                } ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
+                className={`shrink-0 transition-transform group-hover:scale-105 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'
+                  } ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
               />
 
               <span
-                className={`overflow-hidden text-ellipsis whitespace-nowrap ${
-                  !isSidebarExpanded && 'tracking-tight'
-                }`}
+                className={`overflow-hidden text-ellipsis whitespace-nowrap ${!isSidebarExpanded && 'tracking-tight'
+                  }`}
               >
                 {item.text}
               </span>
@@ -162,11 +173,10 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
           //   navigate('/login')
           // }}
 
-          className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${
-            isSidebarExpanded
-              ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-              : 'flex-col justify-center gap-1 py-3 text-[10px]'
-          } `}
+          className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${isSidebarExpanded
+            ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
+            : 'flex-col justify-center gap-1 py-3 text-[10px]'
+            } `}
         >
           <HiOutlineArrowRightOnRectangle
             className={`shrink-0 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'}`}

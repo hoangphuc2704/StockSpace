@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchDisputes,
@@ -32,23 +33,24 @@ import Header from '../../../components/HeaderDashboard'
 const STATUS_OPTIONS = ['', 'OPEN', 'RESOLVED']
 
 const STATUS_CONFIG = {
-  OPEN: { label: 'Đang mở', variant: 'warning', icon: AlertCircle },
-  RESOLVED: { label: 'Đã giải quyết', variant: 'success', icon: CheckCircle2 },
+  OPEN: { label: "Open", variant: 'warning', icon: AlertCircle },
+  RESOLVED: { label: "Resolved", variant: 'success', icon: CheckCircle2 },
 }
 
 const DEPOSIT_RESOLUTIONS = [
-  { value: 'REFUND_TO_TENANT', label: 'Hoàn cọc cho Tenant' },
-  { value: 'FORFEIT_TO_OWNER', label: 'Phạt cọc về Owner' },
-  { value: 'KEEP_IN_SYSTEM', label: 'Giữ lại hệ thống' },
+  { value: 'REFUND_TO_TENANT', label: "Refund deposit to Tenant" },
+  { value: 'FORFEIT_TO_OWNER', label: "Deposit fine on Owner" },
+  { value: 'KEEP_IN_SYSTEM', label: "Retain the system" },
 ]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—')
+const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 // ─── Resolve Modal ────────────────────────────────────────────────────────────
 const ResolveModal = ({ dispute, onClose }) => {
+  useEscapeKey(true, onClose)
   const dispatch = useDispatch()
   const { resolving, resolveError } = useSelector((state) => state.adminDispute)
 
@@ -63,11 +65,11 @@ const ResolveModal = ({ dispute, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!adminNote.trim()) {
-      setLocalError('Ghi chú Admin không được để trống.')
+      setLocalError("Admin notes cannot be empty.")
       return
     }
     if (!depositResolution) {
-      setLocalError('Vui lòng chọn quyết định xử lý tiền cọc.')
+      setLocalError("Please select a deposit handling decision.")
       return
     }
     setLocalError(null)
@@ -94,9 +96,9 @@ const ResolveModal = ({ dispute, onClose }) => {
       >
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Giải quyết tranh chấp</h2>
+            <h2 className="text-lg font-bold text-slate-900">Dispute resolution</h2>
             <p className="mt-0.5 text-sm text-slate-500">
-              Dispute {shortId(dispute.id)} · Hợp đồng {shortId(dispute.contractId)}
+              Dispute {shortId(dispute.id)} · Contract {shortId(dispute.contractId)}
             </p>
           </div>
           <button
@@ -108,14 +110,14 @@ const ResolveModal = ({ dispute, onClose }) => {
         </div>
 
         <div className="mb-5 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm">
-          <p className="mb-1 font-medium text-slate-700">Lý do khiếu nại:</p>
+          <p className="mb-1 font-medium text-slate-700">Reason for complaint:</p>
           <p className="text-slate-600">{dispute.reason || '—'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-              Quyết định xử lý tiền cọc <span className="text-rose-500">*</span>
+              Decision to handle deposit <span className="text-rose-500">*</span>
             </label>
             <div className="space-y-2">
               {DEPOSIT_RESOLUTIONS.map((opt) => (
@@ -143,13 +145,13 @@ const ResolveModal = ({ dispute, onClose }) => {
 
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-              Ghi chú Admin <span className="text-rose-500">*</span>
+              Admin Notes <span className="text-rose-500">*</span>
             </label>
             <textarea
               value={adminNote}
               onChange={(e) => setAdminNote(e.target.value)}
               rows={4}
-              placeholder="Nhập lý do và quyết định giải quyết tranh chấp..."
+              placeholder="Enter the reason and decide to resolve the dispute..."
               className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800 transition-colors focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
             />
           </div>
@@ -166,7 +168,7 @@ const ResolveModal = ({ dispute, onClose }) => {
               onClick={onClose}
               className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
@@ -174,7 +176,7 @@ const ResolveModal = ({ dispute, onClose }) => {
               className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {resolving && <Loader2 size={15} className="animate-spin" />}
-              Xác nhận giải quyết
+              Confirm resolution
             </button>
           </div>
         </form>
@@ -185,6 +187,7 @@ const ResolveModal = ({ dispute, onClose }) => {
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 const DetailModal = ({ dispute, onClose, onResolveClick }) => {
+  useEscapeKey(true, onClose)
   const StatusIcon = STATUS_CONFIG[dispute.status]?.icon || AlertCircle
 
   return (
@@ -206,7 +209,7 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
               <Scale size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900">Chi tiết tranh chấp</h2>
+              <h2 className="text-lg font-bold text-slate-900">Dispute details</h2>
               <p className="text-xs text-slate-400">{shortId(dispute.id)}</p>
             </div>
           </div>
@@ -220,7 +223,7 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
 
         <div className="space-y-4 text-sm">
           <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-            <span className="font-medium text-slate-600">Trạng thái</span>
+            <span className="font-medium text-slate-600">Status</span>
             <Badge
               variant={STATUS_CONFIG[dispute.status]?.variant || 'slate'}
               size="sm"
@@ -233,13 +236,13 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Hợp đồng</p>
+              <p className="mb-1 text-xs text-slate-400">Contract</p>
               <p className="font-mono text-xs font-bold text-slate-700">
                 {shortId(dispute.contractId)}
               </p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Ngày tạo</p>
+              <p className="mb-1 text-xs text-slate-400">Creation date</p>
               <p className="font-medium text-slate-700">{formatDate(dispute.createdAt)}</p>
             </div>
           </div>
@@ -247,16 +250,16 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-                <User size={11} /> Người khiếu nại
+                <User size={11} /> Complainant
               </p>
               <p className="font-semibold text-slate-800">{dispute.raisedByName || '—'}</p>
               <p className="font-mono text-[10px] text-slate-400">{shortId(dispute.raisedById)}</p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-                <User size={11} /> Người xử lý
+                <User size={11} /> Handler
               </p>
-              <p className="font-semibold text-slate-800">{dispute.handledByName || 'Chưa có'}</p>
+              <p className="font-semibold text-slate-800">{dispute.handledByName || "Not yet"}</p>
               {dispute.handledById && (
                 <p className="font-mono text-[10px] text-slate-400">
                   {shortId(dispute.handledById)}
@@ -267,14 +270,14 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
 
           <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-              <FileText size={11} /> Lý do khiếu nại
+              <FileText size={11} /> Reason for complaint
             </p>
             <p className="text-slate-700">{dispute.reason || '—'}</p>
           </div>
 
           {dispute.adminNote && (
             <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-              <p className="mb-1.5 text-xs font-medium text-blue-500">Ghi chú Admin</p>
+              <p className="mb-1.5 text-xs font-medium text-blue-500">Admin Notes</p>
               <p className="text-blue-800">{dispute.adminNote}</p>
             </div>
           )}
@@ -285,7 +288,7 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
             onClick={onClose}
             className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
           >
-            Đóng
+            Close
           </button>
           {dispute.status === 'OPEN' && (
             <button
@@ -296,7 +299,7 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
               className="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600"
             >
               <Scale size={15} />
-              Giải quyết
+              Solved
             </button>
           )}
         </div>
@@ -378,12 +381,12 @@ const DisputeManagementPage = () => {
             {/* Page header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Quản lý Tranh chấp</h1>
+                <h1 className="text-2xl font-bold text-slate-900">Dispute Management</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Xem và giải quyết các tranh chấp hợp đồng.
+                  View and resolve contract disputes.
                   {totalElements > 0 && (
                     <span className="ml-1 font-semibold text-slate-700">
-                      ({totalElements.toLocaleString()} tổng)
+                      ({totalElements.toLocaleString()} total)
                     </span>
                   )}
                 </p>
@@ -400,21 +403,21 @@ const DisputeManagementPage = () => {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
                 {
-                  label: 'Tổng tranh chấp',
+                  label: "Total dispute",
                   value: totalElements,
                   icon: Scale,
                   color: 'text-slate-600',
                   bg: 'bg-slate-100',
                 },
                 {
-                  label: 'Đang mở (trang này)',
+                  label: "Open (this page)",
                   value: openCount,
                   icon: AlertCircle,
                   color: 'text-amber-600',
                   bg: 'bg-amber-50',
                 },
                 {
-                  label: 'Đã giải quyết (trang này)',
+                  label: "Resolved (this page)",
                   value: resolvedCount,
                   icon: CheckCircle2,
                   color: 'text-emerald-600',
@@ -449,7 +452,7 @@ const DisputeManagementPage = () => {
                 />
                 <input
                   type="text"
-                  placeholder="Tìm theo ID, hợp đồng, người khiếu nại..."
+                  placeholder="Search by ID, contract, complainant..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm transition-all focus:ring-2 focus:ring-blue-200 focus:outline-none"
@@ -465,7 +468,7 @@ const DisputeManagementPage = () => {
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>
-                      {s ? STATUS_CONFIG[s]?.label || s : 'Tất cả trạng thái'}
+                      {s ? STATUS_CONFIG[s]?.label || s : "All status"}
                     </option>
                   ))}
                 </select>
@@ -477,11 +480,11 @@ const DisputeManagementPage = () => {
               {loading ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-400">
                   <Loader2 size={28} className="animate-spin text-blue-400" />
-                  <span className="text-sm">Đang tải dữ liệu...</span>
+                  <span className="text-sm">Loading data...</span>
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="py-20 text-center text-sm text-slate-400">
-                  Không có tranh chấp nào phù hợp.
+                  There are no relevant disputes.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -490,11 +493,11 @@ const DisputeManagementPage = () => {
                       <tr className="border-b border-slate-100 bg-slate-50">
                         {[
                           'ID',
-                          'Hợp đồng',
-                          'Người khiếu nại',
-                          'Lý do',
-                          'Trạng thái',
-                          'Ngày tạo',
+                          "Contract",
+                          "Complainant",
+                          "Reason",
+                          "Status",
+                          "Creation date",
                           '',
                         ].map((h) => (
                           <th
@@ -565,14 +568,14 @@ const DisputeManagementPage = () => {
                                   onClick={() => setSelectedDispute(d)}
                                   className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
                                 >
-                                  Chi tiết
+                                  Details
                                 </button>
                                 {d.status === 'OPEN' && (
                                   <button
                                     onClick={() => setResolveTarget(d)}
                                     className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-amber-600"
                                   >
-                                    Giải quyết
+                                    Solved
                                   </button>
                                 )}
                               </div>
@@ -589,7 +592,7 @@ const DisputeManagementPage = () => {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
                   <span className="text-sm text-slate-500">
-                    Trang {page + 1} / {totalPages} · {totalElements.toLocaleString()} tranh chấp
+                    Page {page + 1} / {totalPages} · {totalElements.toLocaleString()} disputes
                   </span>
                   <div className="flex items-center gap-2">
                     <button

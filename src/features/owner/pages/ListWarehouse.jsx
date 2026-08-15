@@ -16,15 +16,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  Loader2, // Import thêm icon Loading để làm UI xoay xoay đẹp mắt
+  Loader2,
+  Eye,
 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
+import Modal from '@/components/organisms/Modal'
+import TableActionMenu from '@/components/TableActionMenu'
 
 // Import Sidebar và Logo từ hệ thống của bạn
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
+import { toast } from 'react-hot-toast'
 
 const WarehouseManagement = () => {
   const navigate = useNavigate()
@@ -38,13 +42,18 @@ const WarehouseManagement = () => {
 
   // State quản lý phân trang đồng bộ từ API thực tế
   const [currentPage, setCurrentPage] = useState(0) // API trả về "page": 0 ở trang đầu tiên
-  const [pageSize, setPageSize] = useState(5) // API trả về "size": 5
+  const pageSize = 5 // API trả về "size": 5
   const [totalPages, setTotalPages] = useState(0) // API trả về "totalPages": 1
   const [totalElements, setTotalElements] = useState(0) // API trả về "totalElements": 2
 
   // Các trạng thái phục vụ tính năng yêu cầu kiểm duyệt & tải lại dữ liệu
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [requestingIds, setRequestingIds] = useState([])
+  const [inspectionsByWarehouse, setInspectionsByWarehouse] = useState({})
+  const [inspectionConfirm, setInspectionConfirm] = useState(null)
+
+  // State quản lý xem chi tiết kho bằng Modal
+  const [selectedWarehouse, setSelectedWarehouse] = useState(null)
 
   // Xử lý gửi yêu cầu kiểm định kho qua API
   const handleRequestInspection = async (warehouseId) => {
@@ -55,13 +64,22 @@ const WarehouseManagement = () => {
       const res = await warehouseApi.requestInspection(warehouseId)
 
       if (res?.data?.success || res?.success || res?.status === 200 || res?.status === 201) {
-        alert('Gửi yêu cầu kiểm định thành công!')
+        toast.success('Submitted inspection request successfully!')
+        const inspection = res?.data?.data ?? res?.data
+        if (inspection?.warehouseId) {
+          setInspectionsByWarehouse((current) => ({
+            ...current,
+            [String(inspection.warehouseId)]: inspection,
+          }))
+        }
+        setInspectionConfirm(null)
         setRefreshTrigger((prev) => prev + 1)
       } else {
-        alert(res?.data?.message || res?.message || 'Yêu cầu kiểm định thất bại.')
+        toast.error(res?.data?.message || res?.message || 'Audit request failed.')
       }
     } catch (error) {
-      console.error('Lỗi khi gửi yêu cầu kiểm định:', error)
+      console.error('Error when sending inspection request:', error)
+      toast.error(error.response?.data?.message || 'Unable to submit inspection request.')
     } finally {
       setRequestingIds((prev) => prev.filter((id) => id !== warehouseId))
     }
@@ -71,12 +89,15 @@ const WarehouseManagement = () => {
   useEffect(() => {
     const fetchWarehouses = async () => {
       try {
-        const response = await warehouseApi.getOwnerWarehouses({
-          page: currentPage,
-          size: pageSize,
-          sortBy: 'createdAt',
-          sortDir: 'desc',
-        })
+        const [response, inspectionResponse] = await Promise.all([
+          warehouseApi.getOwnerWarehouses({
+            page: currentPage,
+            size: pageSize,
+            sortBy: 'createdAt',
+            sortDir: 'desc',
+          }),
+          warehouseApi.getOwnerInspections({ page: 0, size: 200 }),
+        ])
 
         let apiResult = null
         if (response?.success && response?.data) {
@@ -93,8 +114,20 @@ const WarehouseManagement = () => {
         } else {
           setWarehouses([])
         }
+
+        const inspectionPage = inspectionResponse?.data?.data ?? inspectionResponse?.data
+        const inspectionList = Array.isArray(inspectionPage?.content) ? inspectionPage.content : []
+        const latestByWarehouse = {}
+        inspectionList.forEach((inspection) => {
+          const key = String(inspection.warehouseId)
+          const current = latestByWarehouse[key]
+          const timestamp = new Date(inspection.updatedAt || inspection.createdAt || 0).getTime()
+          const currentTimestamp = new Date(current?.updatedAt || current?.createdAt || 0).getTime()
+          if (!current || timestamp > currentTimestamp) latestByWarehouse[key] = inspection
+        })
+        setInspectionsByWarehouse(latestByWarehouse)
       } catch (error) {
-        console.error('Lỗi lấy danh sách kho:', error)
+        console.error('Error getting inventory list:', error)
         setWarehouses([])
       }
     }
@@ -107,7 +140,7 @@ const WarehouseManagement = () => {
     setWarehouses((prevList) =>
       prevList.map((wh) => (wh.id === id ? { ...wh, status: newStatus } : wh))
     )
-    alert(`Đã chuyển trạng thái kho sang: ${newStatus}`)
+    toast.success(`Warehouse status changed to: ${newStatus}`)
   }
 
   // Định dạng Badge hiển thị cho Trạng thái kho
@@ -117,33 +150,55 @@ const WarehouseManagement = () => {
         return {
           bg: 'bg-blue-50 text-blue-700 border-blue-200',
           icon: <Clock className="mr-1 h-3.5 w-3.5 animate-pulse" />,
-          text: 'Chờ duyệt',
+          text: 'Waiting for approval',
         }
       case 'AVAILABLE':
         return {
           bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
           icon: <CheckCircle2 className="mr-1 h-3.5 w-3.5" />,
-          text: 'Còn trống',
+          text: 'Still empty',
         }
       case 'MAINTENANCE':
         return {
           bg: 'bg-amber-50 text-amber-700 border-amber-200',
           icon: <AlertTriangle className="mr-1 h-3.5 w-3.5" />,
-          text: 'Bảo trì',
+          text: 'Maintenance',
         }
       case 'FULL':
         return {
           bg: 'bg-rose-50 text-rose-700 border-rose-200',
           icon: <XCircle className="mr-1 h-3.5 w-3.5" />,
-          text: 'Đã đầy',
+          text: "It's full",
+        }
+      case 'INACTIVE':
+      case 'REJECTED':
+        return {
+          bg: 'bg-red-50 text-red-700 border-red-200',
+          icon: <XCircle className="mr-1 h-3.5 w-3.5" />,
+          text: 'Rejected / Inactive',
         }
       default:
         return {
           bg: 'bg-slate-50 text-slate-700 border-slate-200',
           icon: null,
-          text: status || 'Không rõ',
+          text: status || 'Unknown',
         }
     }
+  }
+
+  const getInspectionBadge = (warehouse, inspection) => {
+    const status = warehouse.verified ? 'PASSED' : inspection?.status
+    const configs = {
+      PENDING: ['bg-amber-50 text-amber-700 border-amber-200', 'Waiting for assignment'],
+      IN_PROGRESS: ['bg-blue-50 text-blue-700 border-blue-200', 'Inspection in progress'],
+      PASSED: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Inspection passed'],
+      FAILED: ['bg-red-50 text-red-700 border-red-200', 'Inspection failed'],
+    }
+    const [className, text] = configs[status] || [
+      'bg-slate-100 text-slate-600 border-slate-200',
+      'Not requested',
+    ]
+    return { status, className, text }
   }
 
   // Bộ lọc kết hợp Client-side hỗ trợ tìm kiếm nhanh theo dữ liệu hiển thị hiện tại
@@ -172,7 +227,9 @@ const WarehouseManagement = () => {
           </button>
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Owner
@@ -197,23 +254,22 @@ const WarehouseManagement = () => {
 
         {/* MAIN CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]'}`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-[1250px] space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-312.5 space-y-6 p-6 md:p-8">
             {/* TIÊU ĐỀ TRANG */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Quản lý kho hàng</h1>
+                <h1 className="text-2xl font-bold text-slate-900">Warehouse management</h1>
                 <p className="text-sm text-slate-500">
-                  Xem toàn bộ danh sách, kiểm tra hiệu suất diện tích và cập nhật nhanh trạng thái
-                  kho vận.
+                  View entire listings, check area performance, and quickly update status logistics.
                 </p>
               </div>
               <Button
                 onClick={() => navigate('/owner/postwarehouse')}
                 className="flex items-center gap-2 self-start rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-blue-700 sm:self-auto"
               >
-                <Plus className="h-4 w-4" /> Đăng tin kho mới
+                <Plus className="h-4 w-4" /> Post new warehouse information
               </Button>
             </div>
 
@@ -223,7 +279,7 @@ const WarehouseManagement = () => {
                 <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Tìm tên kho, địa chỉ..."
+                  placeholder="Find warehouse name, address..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 py-2 pr-4 pl-10 text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
@@ -237,11 +293,11 @@ const WarehouseManagement = () => {
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium focus:border-blue-500 focus:outline-none"
                 >
-                  <option value="ALL">Tất cả trạng thái</option>
-                  <option value="PENDING_APPROVAL">Chờ duyệt (Pending)</option>
-                  <option value="AVAILABLE">Còn trống (Available)</option>
-                  <option value="FULL">Đã đầy (Full)</option>
-                  <option value="MAINTENANCE">Đang bảo trì (Maintenance)</option>
+                  <option value="ALL">All status</option>
+                  <option value="PENDING_APPROVAL">Pending</option>
+                  <option value="AVAILABLE">Available</option>
+                  <option value="FULL">Full</option>
+                  <option value="MAINTENANCE">Under maintenance (Maintenance)</option>
                 </select>
               </div>
             </div>
@@ -252,13 +308,13 @@ const WarehouseManagement = () => {
                 <table className="w-full border-collapse text-left text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold tracking-wider text-slate-400 uppercase">
                     <tr>
-                      <th className="px-6 py-4">Hình ảnh & Tên kho</th>
-                      <th className="px-6 py-4">Loại kho</th>
-                      <th className="px-6 py-4">Sức chứa</th>
-                      <th className="px-6 py-4">Giá thuê / Tháng</th>
-                      <th className="px-6 py-4 text-center">Trạng thái</th>
-                      <th className="px-6 py-4 text-center">Kiểm định</th>
-                      <th className="px-6 py-4 text-right">Cập nhật nhanh</th>
+                      <th className="px-6 py-4">Image &amp; Warehouse name</th>
+                      <th className="px-6 py-4">Warehouse type</th>
+                      <th className="px-6 py-4">Capacity</th>
+                      <th className="px-6 py-4">Rental price / Month</th>
+                      <th className="px-6 py-4 text-center">Status</th>
+                      <th className="px-6 py-4 text-center">Inspection</th>
+                      <th className="px-6 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
@@ -266,6 +322,11 @@ const WarehouseManagement = () => {
                       filteredWarehouses.map((wh) => {
                         const badge = getStatusBadge(wh.status)
                         const isCurrentlyRequesting = requestingIds.includes(wh.id)
+                        const inspection = inspectionsByWarehouse[String(wh.id)]
+                        const inspectionBadge = getInspectionBadge(wh, inspection)
+                        const requestPending = ['PENDING', 'IN_PROGRESS'].includes(
+                          inspectionBadge.status
+                        )
 
                         return (
                           <tr key={wh.id} className="transition-colors hover:bg-slate-50/60">
@@ -285,7 +346,7 @@ const WarehouseManagement = () => {
                                     {wh.name}
                                     <ExternalLink className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
                                   </p>
-                                  <p className="flex max-w-[200px] items-center gap-0.5 truncate text-xs text-slate-400">
+                                  <p className="flex max-w-50 items-center gap-0.5 truncate text-xs text-slate-400">
                                     <MapPin className="h-3 w-3 shrink-0" /> {wh.address}
                                   </p>
                                 </div>
@@ -295,7 +356,7 @@ const WarehouseManagement = () => {
                             {/* Cột 2: Loại hình */}
                             <td className="px-6 py-4">
                               <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                                {wh.typeName || 'Chưa rõ loại'}
+                                {wh.typeName || 'Type unknown'}
                               </span>
                             </td>
 
@@ -312,45 +373,66 @@ const WarehouseManagement = () => {
                               <span className="text-emerald-600">
                                 {wh.pricePerMonth ? wh.pricePerMonth.toLocaleString() : 0}
                               </span>{' '}
-                              <span className="text-xs font-normal text-slate-400">đ</span>
+                              <span className="text-xs font-normal text-slate-400">d</span>
                             </td>
 
                             {/* Cột 5: Trạng thái */}
                             <td className="px-6 py-4 text-center">
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.bg}`}
-                              >
-                                {badge.icon}
-                                {badge.text}
-                              </span>
+                              <div className="flex flex-col items-center gap-1.5">
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.bg}`}
+                                >
+                                  {badge.icon}
+                                  {badge.text}
+                                </span>
+                                {(wh.status === 'INACTIVE' || wh.status === 'REJECTED') && (wh.reason || wh.rejectionReason || wh.rejectReason) && (
+                                  <div
+                                    className="max-w-[120px] truncate text-[11px] text-red-600 font-medium cursor-help text-center"
+                                    title={wh.reason || wh.rejectionReason || wh.rejectReason}
+                                  >
+                                    Lý do: {wh.reason || wh.rejectionReason || wh.rejectReason}
+                                  </div>
+                                )}
+                              </div>
                             </td>
 
                             {/* Cột 6: Kiểm định */}
                             <td className="px-6 py-4 text-center">
                               <div className="flex flex-col items-center justify-center gap-1.5">
-                                {wh.verified ? (
-                                  <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                                <span
+                                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${inspectionBadge.className}`}
+                                >
+                                  {inspectionBadge.status === 'PASSED' ? (
                                     <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                                    Đã kiểm định
-                                  </span>
-                                ) : (
+                                  ) : inspectionBadge.status === 'IN_PROGRESS' ? (
+                                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <AlertTriangle className="mr-1 h-3.5 w-3.5" />
+                                  )}
+                                  {inspectionBadge.text}
+                                </span>
+                                {!wh.verified && (
                                   <div className="flex flex-col items-center gap-1">
-                                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                                      <AlertTriangle className="mr-1 h-3.5 w-3.5 text-amber-500" />
-                                      Chưa kiểm định
-                                    </span>
                                     <button
-                                      onClick={() => handleRequestInspection(wh.id)}
-                                      disabled={isCurrentlyRequesting}
-                                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400"
+                                      onClick={() => setInspectionConfirm(wh)}
+                                      disabled={isCurrentlyRequesting || requestPending}
+                                      className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
                                     >
                                       {isCurrentlyRequesting ? (
                                         <>
                                           <Loader2 className="h-3 w-3 animate-spin" />
-                                          Đang gửi...
+                                          Sending...
                                         </>
+                                      ) : requestPending ? (
+                                        inspectionBadge.status === 'PENDING' ? (
+                                          'Request submitted'
+                                        ) : (
+                                          'Being inspected'
+                                        )
+                                      ) : inspectionBadge.status === 'FAILED' ? (
+                                        'Request re-inspection'
                                       ) : (
-                                        'Yêu cầu kiểm duyệt'
+                                        'Request inspection'
                                       )}
                                     </button>
                                   </div>
@@ -358,17 +440,17 @@ const WarehouseManagement = () => {
                               </div>
                             </td>
 
-                            {/* Cột 7: Cập nhật trạng thái */}
-                            <td className="px-6 py-4 text-right">
-                              <select
-                                value={wh.status}
-                                onChange={(e) => handleStatusChange(wh.id, e.target.value)}
-                                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 shadow-sm hover:border-slate-300 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                              >
-                                <option value="AVAILABLE">🟢 Trống (Available)</option>
-                                <option value="FULL">🔴 Đầy (Full)</option>
-                                <option value="MAINTENANCE">🟡 Bảo trì (Maintenance)</option>
-                              </select>
+                            {/* Cột 7: Nút Action xem chi tiết */}
+                            <td className="px-6 py-4 text-center">
+                              <TableActionMenu
+                                items={[
+                                  {
+                                    label: 'View details',
+                                    icon: Eye,
+                                    onClick: () => setSelectedWarehouse(wh),
+                                  },
+                                ]}
+                              />
                             </td>
                           </tr>
                         )
@@ -377,7 +459,7 @@ const WarehouseManagement = () => {
                       <tr>
                         <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-400">
                           <Warehouse className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                          Không tìm thấy nhà kho nào phù hợp với dữ liệu hiện tại.
+                          No warehouses found matching the current data.
                         </td>
                       </tr>
                     )}
@@ -389,10 +471,10 @@ const WarehouseManagement = () => {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4">
                   <div className="text-xs text-slate-500">
-                    Hiển thị trang{' '}
-                    <span className="font-semibold text-slate-700">{currentPage + 1}</span> trên
-                    tổng số <span className="font-semibold text-slate-700">{totalPages}</span> trang
-                    ({totalElements} nhà kho)
+                    Show page{' '}
+                    <span className="font-semibold text-slate-700">{currentPage + 1}</span> above
+                    total <span className="font-semibold text-slate-700">{totalPages}</span> pages (
+                    {totalElements} warehouse)
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
@@ -431,6 +513,109 @@ const WarehouseManagement = () => {
           </main>
         </div>
       </div>
+
+      {inspectionConfirm && (
+        <div className="fixed inset-0 z-70 flex items-center justify-center bg-slate-950/45 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <h2 className="mt-4 text-xl font-bold text-slate-900">Confirm inspection request</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Submit <strong>{inspectionConfirm.name}</strong> for inspection? An inspection fee may
+              be charged according to the current system policy. The request button will be disabled
+              while this request is pending or in progress.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setInspectionConfirm(null)}
+                className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={requestingIds.includes(inspectionConfirm.id)}
+                onClick={() => handleRequestInspection(inspectionConfirm.id)}
+                className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {requestingIds.includes(inspectionConfirm.id) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Confirm request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XEM CHI TIẾT KHO */}
+      <Modal
+        isOpen={!!selectedWarehouse}
+        onClose={() => setSelectedWarehouse(null)}
+        title="Warehouse Details"
+        className="max-w-3xl"
+      >
+        {selectedWarehouse && (
+          <div className="space-y-6">
+            <div className="flex gap-4">
+              <img
+                src={selectedWarehouse.coverImageUrl}
+                alt={selectedWarehouse.name}
+                className="h-32 w-48 rounded-lg border border-slate-200 object-cover"
+                onError={(e) => {
+                  e.target.src = 'https://placehold.co/300x200?text=Warehouse'
+                }}
+              />
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">{selectedWarehouse.name}</h3>
+                <p className="mt-1 flex items-center gap-1 text-sm text-slate-500">
+                  <MapPin className="h-4 w-4" /> {selectedWarehouse.address}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                    {selectedWarehouse.typeName || 'Type unknown'}
+                  </span>
+                  <span className="rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    {selectedWarehouse.capacity ? selectedWarehouse.capacity.toLocaleString() : 0}{' '}
+                    m²
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase">Rental price / month</p>
+                <p className="mt-1 text-lg font-bold text-slate-900">
+                  {selectedWarehouse.pricePerMonth
+                    ? selectedWarehouse.pricePerMonth.toLocaleString()
+                    : 0}{' '}
+                  ₫
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase">Status</p>
+                <p className="mt-1 font-bold text-slate-900">{selectedWarehouse.status}</p>
+              </div>
+            </div>
+
+            {selectedWarehouse.description && (
+              <div>
+                <p className="mb-2 text-xs font-bold text-slate-500 uppercase">Description</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-slate-700">
+                  {selectedWarehouse.description}
+                </p>
+              </div>
+            )}
+
+            <div className="flex justify-end border-t border-slate-100 pt-4">
+              <Button onClick={() => setSelectedWarehouse(null)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

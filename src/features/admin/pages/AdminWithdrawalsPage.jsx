@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
     fetchWithdrawals,
@@ -33,24 +34,25 @@ import logoDaidien from '../../../assets/logoDaidien.png'
 const STATUS_OPTIONS = ['', 'PENDING', 'APPROVED', 'REJECTED']
 
 const STATUS_CONFIG = {
-    PENDING: { label: 'Chờ duyệt', variant: 'warning', icon: Clock },
-    APPROVED: { label: 'Đã duyệt', variant: 'success', icon: CheckCircle2 },
-    REJECTED: { label: 'Từ chối', variant: 'danger', icon: XCircle },
+    PENDING: { label: "Waiting for approval", variant: 'warning', icon: Clock },
+    APPROVED: { label: "Approved", variant: 'success', icon: CheckCircle2 },
+    REJECTED: { label: "Refuse", variant: 'danger', icon: XCircle },
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatVND = (amount) =>
     amount != null
-        ? Number(amount).toLocaleString('vi-VN') + ' ₫'
+        ? Number(amount).toLocaleString('en-US') + ' ₫'
         : '—'
 
 const formatDate = (dt) =>
-    dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—'
+    dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—'
 
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 // ─── Reject Modal ─────────────────────────────────────────────────────────────
 const RejectModal = ({ withdrawal, onClose }) => {
+    useEscapeKey(true, onClose)
     const dispatch = useDispatch()
     const { actionLoading, actionError } = useSelector((state) => state.adminWithdrawals)
 
@@ -64,7 +66,7 @@ const RejectModal = ({ withdrawal, onClose }) => {
     const handleSubmit = async (e) => {
         e.preventDefault()
         if (!adminNotes.trim()) {
-            setLocalError('Vui lòng nhập lý do từ chối.')
+            setLocalError("Please enter reason for refusal.")
             return
         }
         setLocalError(null)
@@ -91,7 +93,7 @@ const RejectModal = ({ withdrawal, onClose }) => {
             >
                 <div className="mb-5 flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900">Từ chối yêu cầu rút tiền</h2>
+                        <h2 className="text-lg font-bold text-slate-900">Reject withdrawal request</h2>
                         <p className="mt-0.5 text-sm text-slate-500">
                             {shortId(withdrawal.id)} · {formatVND(withdrawal.amount)}
                         </p>
@@ -106,21 +108,21 @@ const RejectModal = ({ withdrawal, onClose }) => {
 
                 {/* Withdrawal info */}
                 <div className="mb-5 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm space-y-1">
-                    <p><span className="text-slate-500">Ngân hàng:</span> <span className="font-medium text-slate-800">{withdrawal.bankName || '—'}</span></p>
-                    <p><span className="text-slate-500">Số TK:</span> <span className="font-mono font-medium text-slate-800">{withdrawal.bankAccountNumber || '—'}</span></p>
-                    <p><span className="text-slate-500">Chủ TK:</span> <span className="font-medium text-slate-800">{withdrawal.bankAccountHolder || '—'}</span></p>
+                    <p><span className="text-slate-500">Bank:</span> <span className="font-medium text-slate-800">{withdrawal.bankName || '—'}</span></p>
+                    <p><span className="text-slate-500">Account number:</span> <span className="font-mono font-medium text-slate-800">{withdrawal.bankAccountNumber || '—'}</span></p>
+                    <p><span className="text-slate-500">Account owner:</span> <span className="font-medium text-slate-800">{withdrawal.bankAccountHolder || '—'}</span></p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                            Lý do từ chối <span className="text-rose-500">*</span>
+                            Reason for refusal <span className="text-rose-500">*</span>
                         </label>
                         <textarea
                             value={adminNotes}
                             onChange={(e) => setAdminNotes(e.target.value)}
                             rows={3}
-                            placeholder="Nhập lý do từ chối yêu cầu rút tiền..."
+                            placeholder="Enter the reason for rejecting the withdrawal request..."
                             className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-800 transition-colors focus:border-rose-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-100"
                         />
                     </div>
@@ -135,7 +137,7 @@ const RejectModal = ({ withdrawal, onClose }) => {
                             onClick={onClose}
                             className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
                         >
-                            Hủy
+                            Cancel
                         </button>
                         <button
                             type="submit"
@@ -143,7 +145,7 @@ const RejectModal = ({ withdrawal, onClose }) => {
                             className="flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {actionLoading && <Loader2 size={15} className="animate-spin" />}
-                            Xác nhận từ chối
+                            Confirmed refusal
                         </button>
                     </div>
                 </form>
@@ -154,6 +156,7 @@ const RejectModal = ({ withdrawal, onClose }) => {
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
+    useEscapeKey(true, onClose)
     const { actionLoading } = useSelector((state) => state.adminWithdrawals)
     const StatusIcon = STATUS_CONFIG[withdrawal.status]?.icon || Clock
 
@@ -176,7 +179,7 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
                             <Banknote size={20} />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-slate-900">Chi tiết yêu cầu rút tiền</h2>
+                            <h2 className="text-lg font-bold text-slate-900">Details of withdrawal request</h2>
                             <p className="text-xs text-slate-400">{shortId(withdrawal.id)}</p>
                         </div>
                     </div>
@@ -191,7 +194,7 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
                 <div className="space-y-3 text-sm">
                     {/* Status */}
                     <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        <span className="font-medium text-slate-600">Trạng thái</span>
+                        <span className="font-medium text-slate-600">Status</span>
                         <Badge variant={STATUS_CONFIG[withdrawal.status]?.variant || 'slate'} size="sm" className="rounded-full">
                             <StatusIcon size={12} className="mr-1 inline" />
                             {STATUS_CONFIG[withdrawal.status]?.label || withdrawal.status}
@@ -200,23 +203,23 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
 
                     {/* Amount */}
                     <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        <p className="mb-1 text-xs text-slate-400">Số tiền rút</p>
+                        <p className="mb-1 text-xs text-slate-400">Withdrawal amount</p>
                         <p className="text-xl font-bold text-slate-900">{formatVND(withdrawal.amount)}</p>
                     </div>
 
                     {/* Bank info */}
                     <div className="grid grid-cols-1 gap-3">
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                            <p className="mb-1 text-xs text-slate-400">Ngân hàng</p>
+                            <p className="mb-1 text-xs text-slate-400">Bank</p>
                             <p className="font-semibold text-slate-800">{withdrawal.bankName || '—'}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                                <p className="mb-1 text-xs text-slate-400">Số tài khoản</p>
+                                <p className="mb-1 text-xs text-slate-400">Account number</p>
                                 <p className="font-mono font-semibold text-slate-800">{withdrawal.bankAccountNumber || '—'}</p>
                             </div>
                             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                                <p className="mb-1 text-xs text-slate-400">Chủ tài khoản</p>
+                                <p className="mb-1 text-xs text-slate-400">Account owner</p>
                                 <p className="font-semibold text-slate-800">{withdrawal.bankAccountHolder || '—'}</p>
                             </div>
                         </div>
@@ -225,11 +228,11 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
                     {/* Dates */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                            <p className="mb-1 text-xs text-slate-400">Ngày tạo</p>
+                            <p className="mb-1 text-xs text-slate-400">Creation date</p>
                             <p className="text-slate-700">{formatDate(withdrawal.createdAt)}</p>
                         </div>
                         <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                            <p className="mb-1 text-xs text-slate-400">Cập nhật</p>
+                            <p className="mb-1 text-xs text-slate-400">Update</p>
                             <p className="text-slate-700">{formatDate(withdrawal.updatedAt)}</p>
                         </div>
                     </div>
@@ -237,7 +240,7 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
                     {/* Admin notes */}
                     {withdrawal.adminNotes && (
                         <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3">
-                            <p className="mb-1.5 text-xs text-blue-500 font-medium">Ghi chú Admin</p>
+                            <p className="mb-1.5 text-xs text-blue-500 font-medium">Admin Notes</p>
                             <p className="text-blue-800">{withdrawal.adminNotes}</p>
                         </div>
                     )}
@@ -256,7 +259,7 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
                         onClick={onClose}
                         className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
                     >
-                        Đóng
+                        Close
                     </button>
                     {withdrawal.status === 'PENDING' && (
                         <>
@@ -265,7 +268,7 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
                                 className="flex items-center gap-2 rounded-xl border border-rose-200 px-5 py-2.5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50"
                             >
                                 <XCircle size={15} />
-                                Từ chối
+                                Refuse
                             </button>
                             <button
                                 onClick={() => { onClose(); onApprove(withdrawal) }}
@@ -273,7 +276,7 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
                                 className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
                             >
                                 {actionLoading ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                                Duyệt
+                                Browse
                             </button>
                         </>
                     )}
@@ -314,7 +317,7 @@ const AdminWithdrawalsPage = () => {
 
     // Inline approve (không cần modal)
     const handleApprove = async (w) => {
-        await dispatch(approveWithdrawal({ id: w.id, adminNotes: 'Duyệt bởi Admin' }))
+        await dispatch(approveWithdrawal({ id: w.id, adminNotes: "Browsed by Admin" }))
     }
 
     // Client-side search
@@ -348,7 +351,9 @@ const AdminWithdrawalsPage = () => {
                     </button>
                     <div className="flex cursor-pointer items-center gap-2">
                         <div className="shrink-0 rounded-lg bg-white p-1.5">
-                            <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+                            <a href="/" aria-label="Back to landing page">
+                                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+                            </a>
                         </div>
                         <span className="font-display text-xl font-bold tracking-tight text-slate-950">
                             StockSpace Admin
@@ -367,12 +372,12 @@ const AdminWithdrawalsPage = () => {
                         {/* Page header */}
                         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                             <div>
-                                <h1 className="text-2xl font-bold text-slate-900">Yêu cầu Rút tiền</h1>
+                                <h1 className="text-2xl font-bold text-slate-900">Withdrawal Request</h1>
                                 <p className="mt-1 text-sm text-slate-500">
-                                    Duyệt và xử lý các yêu cầu rút tiền từ người dùng.
+                                    Browse and process withdrawal requests from users.
                                     {totalElements > 0 && (
                                         <span className="ml-1 font-semibold text-slate-700">
-                                            ({totalElements.toLocaleString()} tổng)
+                                            ({totalElements.toLocaleString()} total)
                                         </span>
                                     )}
                                 </p>
@@ -391,7 +396,7 @@ const AdminWithdrawalsPage = () => {
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                             {[
                                 {
-                                    label: 'Tổng yêu cầu',
+                                    label: "Total requirements",
                                     value: totalElements,
                                     icon: Banknote,
                                     color: 'text-slate-600',
@@ -399,7 +404,7 @@ const AdminWithdrawalsPage = () => {
                                     isCount: true,
                                 },
                                 {
-                                    label: 'Chờ duyệt (trang này)',
+                                    label: "Waiting for approval (this page)",
                                     value: pendingCount,
                                     extra: formatVND(pendingTotal),
                                     icon: Clock,
@@ -408,7 +413,7 @@ const AdminWithdrawalsPage = () => {
                                     isCount: true,
                                 },
                                 {
-                                    label: 'Đã duyệt (trang này)',
+                                    label: "Approved (this page)",
                                     value: formatVND(approvedTotal),
                                     icon: CheckCircle2,
                                     color: 'text-emerald-600',
@@ -438,7 +443,7 @@ const AdminWithdrawalsPage = () => {
                                 <Search className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" size={16} />
                                 <input
                                     type="text"
-                                    placeholder="Tìm theo ID, ngân hàng, số tài khoản..."
+                                    placeholder="Search by ID, bank, account number..."
                                     value={searchText}
                                     onChange={(e) => setSearchText(e.target.value)}
                                     className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-200"
@@ -454,7 +459,7 @@ const AdminWithdrawalsPage = () => {
                                 >
                                     {STATUS_OPTIONS.map((s) => (
                                         <option key={s} value={s}>
-                                            {s ? STATUS_CONFIG[s]?.label || s : 'Tất cả trạng thái'}
+                                            {s ? STATUS_CONFIG[s]?.label || s : "All status"}
                                         </option>
                                     ))}
                                 </select>
@@ -466,18 +471,18 @@ const AdminWithdrawalsPage = () => {
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-400">
                                     <Loader2 size={28} className="animate-spin text-blue-400" />
-                                    <span className="text-sm">Đang tải dữ liệu...</span>
+                                    <span className="text-sm">Loading data...</span>
                                 </div>
                             ) : filtered.length === 0 ? (
                                 <div className="py-20 text-center text-sm text-slate-400">
-                                    Không có yêu cầu nào phù hợp.
+                                    There are no matching requests.
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b border-slate-100 bg-slate-50">
-                                                {['ID', 'Số tiền', 'Ngân hàng', 'Số TK / Chủ TK', 'Trạng thái', 'Ngày tạo', ''].map((h) => (
+                                                {['ID', "Amount", "Bank", "Account number / Account owner", "Status", "Creation date", ''].map((h) => (
                                                     <th
                                                         key={h}
                                                         className="px-5 py-3.5 text-left text-xs font-bold tracking-wide text-slate-500 uppercase"
@@ -521,12 +526,12 @@ const AdminWithdrawalsPage = () => {
                                                             {formatDate(w.createdAt)}
                                                         </td>
                                                         <td className="px-5 py-3.5">
-                                                            <div className="flex items-center gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+                                                            <div className="flex items-center gap-2 transition-opacity">
                                                                 <button
                                                                     onClick={() => setSelectedItem(w)}
                                                                     className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50"
                                                                 >
-                                                                    Chi tiết
+                                                                    Details
                                                                 </button>
                                                                 {w.status === 'PENDING' && (
                                                                     <>
@@ -534,14 +539,14 @@ const AdminWithdrawalsPage = () => {
                                                                             onClick={() => setRejectTarget(w)}
                                                                             className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
                                                                         >
-                                                                            Từ chối
+                                                                            Refuse
                                                                         </button>
                                                                         <button
                                                                             onClick={() => handleApprove(w)}
                                                                             disabled={actionLoading}
                                                                             className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
                                                                         >
-                                                                            Duyệt
+                                                                            Browse
                                                                         </button>
                                                                     </>
                                                                 )}
@@ -559,7 +564,7 @@ const AdminWithdrawalsPage = () => {
                             {totalPages > 1 && (
                                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
                                     <span className="text-sm text-slate-500">
-                                        Trang {page + 1} / {totalPages} · {totalElements.toLocaleString()} yêu cầu
+                                        Page {page + 1} / {totalPages} · {totalElements.toLocaleString()} requests
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <button

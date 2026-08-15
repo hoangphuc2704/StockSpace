@@ -1,10 +1,15 @@
 import api from '../apiConfig'
 
 const onwerwarehouseApi = {
-  getPublicWarehouses: ({ page, size, keyword, status, isVerified, sortBy, sortDir } = {}) => {
+  getPublicWarehouses: ({ page, size, keyword, status, isVerified, sortBy, sortDir, minPrice, maxPrice, minCapacity } = {}) => {
     return api.get('/warehouses', {
-      params: { page, size, keyword, status, isVerified, sortBy, sortDir },
+      params: { page, size, keyword, status, isVerified, sortBy, sortDir, minPrice, maxPrice, minCapacity },
     })
+  },
+
+  // API lấy danh sách kho riêng cho Tenant & Staff (có cách ly dữ liệu)
+  getMyWarehouses: () => {
+    return api.get('/tenant/warehouses/my-warehouses')
   },
 
   getPublicWarehouseById: (warehouseId) => {
@@ -84,6 +89,10 @@ const onwerwarehouseApi = {
   requestInspection: (warehouseId) => {
     // Tham số thứ 2 là body (để trống hoặc {}), tham số thứ 3 mới là config chứa params
     return api.post(`/owner/inspections`, {}, { params: { warehouseId } })
+  },
+
+  getOwnerInspections: ({ page = 0, size = 100 } = {}) => {
+    return api.get('/owner/inspections', { params: { page, size } })
   },
 
   // --- API Xét duyệt Booking của Owner ---

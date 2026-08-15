@@ -23,7 +23,7 @@ const contractApi = {
 
   // Tenant xác nhận kích hoạt hợp đồng
   tenantConfirmContract: (contractId) => {
-    return api.post(`/contracts/${contractId}/tenant-confirm`)
+    return api.post(`/contracts/${contractId}/tenant-confirm`, {})
   },
 
   // Tenant báo cáo thương lượng/deal không thành công (Tranh chấp)

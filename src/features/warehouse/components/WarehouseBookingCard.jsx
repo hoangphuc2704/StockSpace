@@ -5,15 +5,13 @@ import Button from '@/components/atoms/Button'
 const WarehouseBookingCard = ({
   warehouse,
   extendedData,
-  durationMonths,
-  onDurationChange,
   depositPercentage,
   hasBooked,
   isCheckingWallet,
   onDepositClick,
 }) => {
   return (
-    <aside className="w-full lg:w-[400px]">
+    <aside className="w-full lg:w-100">
       <div className="sticky top-28 space-y-6">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
@@ -28,51 +26,19 @@ const WarehouseBookingCard = ({
                 Rental Price
               </p>
               <span className="text-primary text-3xl font-black">
-                ${warehouse.price.toLocaleString()}
+                {warehouse.price.toLocaleString()}VND
               </span>
               <span className="font-medium text-slate-500"> / mo</span>
-            </div>
-            <div className="text-right">
-              <div className="text-warning flex items-center gap-1 font-bold">
-                <Star size={14} className="fill-current" />
-                <span>{warehouse.rating}</span>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">
-                {extendedData.reviews} reviews
-              </p>
             </div>
           </div>
 
           <div className="relative z-10 mb-8 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700">Start Date</label>
-                <input
-                  type="date"
-                  className="h-11 w-full rounded-md border border-slate-200 px-3 text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700">Duration</label>
-                <select
-                  className="h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
-                  value={durationMonths}
-                  onChange={(e) => onDurationChange(Number(e.target.value))}
-                >
-                  <option value={3}>3 months</option>
-                  <option value={6}>6 months</option>
-                  <option value={12}>12 months</option>
-                  <option value={24}>24 months</option>
-                </select>
-              </div>
-            </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-slate-700">Required Area (m²)</label>
-              <input
-                type="number"
-                defaultValue={warehouse.area}
-                className="h-11 w-full rounded-md border border-slate-200 px-3 text-sm"
-              />
+              <label className="text-sm font-medium text-slate-700">Required Area (m²)</label>{' '}
+              <br></br>
+              <span className="text-lg font-bold text-slate-900">
+                {warehouse.area.toLocaleString()} m²
+              </span>
             </div>
           </div>
 
@@ -84,27 +50,23 @@ const WarehouseBookingCard = ({
             <div className="space-y-2.5 text-sm">
               <div className="flex justify-between text-slate-600">
                 <span>Monthly Rental</span>
-                <span className="font-semibold">${warehouse.price.toLocaleString()}</span>
+                <span className="font-semibold">{warehouse.price.toLocaleString()}VND</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Security Deposit ({depositPercentage}%)</span>
-                <span className="font-semibold">${extendedData.deposit.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-slate-600">
-                <span>Service Fee</span>
-                <span className="font-semibold">$99.00</span>
+                <span className="font-semibold">{extendedData.deposit.toLocaleString()} VND</span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-3 text-lg font-black text-slate-900">
-                <span>Total to Book</span>
+                <span>Total to Book (Deposit)</span>
                 <span className="text-primary">
-                  ${(warehouse.price + extendedData.deposit + 99).toLocaleString()}
+                  {extendedData.deposit.toLocaleString()} VND
                 </span>
               </div>
             </div>
           </div>
 
           <Button
-            className="group shadow-primary/30 text-blackshadow-xl h-14 w-full rounded-2xl text-lg font-bold"
+            className="group shadow-primary/30 text-white shadow-xl h-14 w-full rounded-2xl text-lg font-bold"
             disabled={isCheckingWallet || hasBooked}
             onClick={onDepositClick}
           >

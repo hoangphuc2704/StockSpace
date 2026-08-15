@@ -37,6 +37,7 @@ const WithdrawHistory = () => {
     size: 10,
     totalElements: 0,
     totalPages: 1,
+    last: false,
   })
 
   const [withdrawals, setWithdrawals] = useState([])
@@ -46,6 +47,7 @@ const WithdrawHistory = () => {
     size: 10,
     totalElements: 0,
     totalPages: 1,
+    last: false,
   })
 
   // --- HÀM LẤY DỮ LIỆU ---
@@ -58,7 +60,7 @@ const WithdrawHistory = () => {
         setWallet(res?.data || res)
       }
     } catch (error) {
-      console.error('Lỗi lấy dữ liệu ví:', error)
+      console.error("Error retrieving wallet data:", error)
     }
   }
 
@@ -74,10 +76,11 @@ const WithdrawHistory = () => {
           size: res.data.data.size,
           totalElements: res.data.data.totalElements,
           totalPages: res.data.data.totalPages,
+          last: res.data.data.last,
         })
       }
     } catch (error) {
-      console.error('Lỗi lấy lịch sử giao dịch:', error)
+      console.error("Error retrieving transaction history:", error)
     } finally {
       setLoadingTransactions(false)
     }
@@ -95,10 +98,11 @@ const WithdrawHistory = () => {
           size: res.data.data.size,
           totalElements: res.data.data.totalElements,
           totalPages: res.data.data.totalPages,
+          last: res.data.data.last,
         })
       }
     } catch (error) {
-      console.error('Lỗi lấy lịch sử rút tiền:', error)
+      console.error("Error retrieving withdrawal history:", error)
     } finally {
       setLoadingWithdrawals(false)
     }
@@ -122,7 +126,7 @@ const WithdrawHistory = () => {
   // --- HELPER ĐỊNH DẠNG HIỂN THỊ ---
   const formatVND = (value) => {
     if (value === undefined || value === null) return '0 ₫'
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   const getTransactionTypeBadge = (type) => {
@@ -130,19 +134,33 @@ const WithdrawHistory = () => {
       case 'TOP_UP':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
-            Nạp tiền
+            Top up
           </span>
         )
       case 'COMMISSION':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-purple-700/10 ring-inset">
-            Chiết khấu
+            Discount
           </span>
         )
+      case 'WITHDRAWAL':
       case 'WITHDRAW':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-700/10 ring-inset">
-            Rút tiền
+            Withdraw money
+          </span>
+        )
+      case 'DEPOSIT_PAYMENT':
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-blue-700/10 ring-inset">
+            Deposit payment
+          </span>
+        )
+      case 'DEPOSIT_RECEIVED':
+      case 'DEPOSIT_REFUND': // Xử lý dữ liệu cũ từ BE khi Owner nhận cọc bị gán nhầm thành DEPOSIT_REFUND
+        return (
+          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-700/10 ring-inset">
+            Receive deposit
           </span>
         )
       default:
@@ -155,15 +173,15 @@ const WithdrawHistory = () => {
   }
 
   const getStatusBadge = (status) => {
-    if (status === 'SUCCESS' || status === 'APPROVED') return <Badge variant="success">Thành công</Badge>
-    if (status === 'PENDING') return <Badge variant="warning">Đang xử lý</Badge>
-    return <Badge variant="danger">Thất bại</Badge>
+    if (status === 'SUCCESS' || status === 'APPROVED') return <Badge variant="success">Success</Badge>
+    if (status === 'PENDING') return <Badge variant="warning">Processing</Badge>
+    return <Badge variant="danger">Failed</Badge>
   }
 
   // --- ĐỊNH NGHĨA CÁC CỘT CHO DATATABLE GIAO DỊCH ---
   const transactionColumns = [
     {
-      header: 'Mã giao dịch',
+      header: "Transaction code",
       render: (row) => (
         <div>
           <p className="text-xs font-semibold text-slate-400">
@@ -178,7 +196,7 @@ const WithdrawHistory = () => {
       ),
     },
     {
-      header: 'Loại & Phương thức',
+      header: "Type & Method",
       render: (row) => (
         <div className="space-y-1">
           <div>{getTransactionTypeBadge(row.transactionType)}</div>
@@ -189,27 +207,28 @@ const WithdrawHistory = () => {
       ),
     },
     {
-      header: 'Số tiền',
+      header: "Amount",
       render: (row) => {
-        const isPlus = row.transactionType === 'TOP_UP'
+        const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_RECEIVED' || row.transactionType === 'DEPOSIT_REFUND'
+        const isFailed = row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
         return (
-          <span className={`font-bold ${isPlus ? 'text-emerald-600' : 'text-rose-600'}`}>
+          <span className={`font-bold ${isFailed ? 'text-rose-600' : (isPlus ? 'text-emerald-600' : 'text-rose-600')}`}>
             {isPlus ? '+' : '-'} {formatVND(row.amount)}
           </span>
         )
       },
     },
     {
-      header: 'Trạng thái',
+      header: "Status",
       render: (row) => getStatusBadge(row.status),
     },
     {
-      header: 'Thời gian tạo',
+      header: "Creation time",
       render: (row) => (
         <div className="space-y-0.5 text-xs text-slate-600">
-          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('vi-VN')}</p>
+          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('en-US')}</p>
           <p className="text-[11px] text-slate-400">
-            {new Date(row.createdAt).toLocaleTimeString('vi-VN')}
+            {new Date(row.createdAt).toLocaleTimeString('en-US')}
           </p>
         </div>
       ),
@@ -219,7 +238,7 @@ const WithdrawHistory = () => {
   // --- ĐỊNH NGHĨA CÁC CỘT CHO DATATABLE RÚT TIỀN ---
   const withdrawalColumns = [
     {
-      header: 'Mã yêu cầu',
+      header: 'Request ID',
       render: (row) => (
         <p className="text-xs font-semibold text-slate-400">
           <span className="font-sans text-slate-600">{row.id.substring(0, 8)}...</span>
@@ -227,7 +246,7 @@ const WithdrawHistory = () => {
       ),
     },
     {
-      header: 'Ngân hàng nhận',
+      header: "Receiving bank",
       render: (row) => (
         <div className="space-y-1 text-sm">
           <p className="font-semibold text-slate-700">{row.bankName}</p>
@@ -237,7 +256,7 @@ const WithdrawHistory = () => {
       ),
     },
     {
-      header: 'Số tiền rút',
+      header: "Withdrawal amount",
       render: (row) => (
         <span className="font-bold text-rose-600">
           - {formatVND(row.amount)}
@@ -245,25 +264,25 @@ const WithdrawHistory = () => {
       ),
     },
     {
-      header: 'Trạng thái',
+      header: "Status",
       render: (row) => (
         <div className="space-y-1">
           {getStatusBadge(row.status)}
           {row.adminNotes && (
             <p className="text-[11px] text-slate-500 italic max-w-[150px] truncate" title={row.adminNotes}>
-              Ghi chú: {row.adminNotes}
+              Notes: {row.adminNotes}
             </p>
           )}
         </div>
       ),
     },
     {
-      header: 'Thời gian gửi',
+      header: 'Requested At',
       render: (row) => (
         <div className="space-y-0.5 text-xs text-slate-600">
-          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('vi-VN')}</p>
+          <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('en-US')}</p>
           <p className="text-[11px] text-slate-400">
-            {new Date(row.createdAt).toLocaleTimeString('vi-VN')}
+            {new Date(row.createdAt).toLocaleTimeString('en-US')}
           </p>
         </div>
       ),
@@ -298,23 +317,23 @@ const WithdrawHistory = () => {
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-                  <Wallet className="h-7 w-7 text-blue-600" /> Quản lý Ví (Owner)
+                  <Wallet className="h-7 w-7 text-blue-600" /> Wallet Management (Owner)
                 </h1>
                 <p className="text-sm text-slate-500">
-                  Xem số dư, yêu cầu rút tiền và quản lý dòng tiền chiết khấu của bạn.
+                  View balances, request withdrawals and manage your rebate cash flow.
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" onClick={handleRefresh}>
-                  <RefreshCw className="mr-2 h-4 w-4" /> Làm mới
+                  <RefreshCw className="mr-2 h-4 w-4" /> Refresh
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => setIsWithdrawModalOpen(true)}
                   className="bg-rose-600 text-white hover:bg-rose-700"
                 >
-                  <MinusCircle className="mr-2 h-4 w-4" /> Rút tiền
+                  <MinusCircle className="mr-2 h-4 w-4" /> Withdraw money
                 </Button>
               </div>
             </div>
@@ -326,9 +345,9 @@ const WithdrawHistory = () => {
                   <CircleDollarSign className="h-6 w-6" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Số dư khả dụng</p>
+                  <p className="text-sm font-medium text-slate-500">Available balance</p>
                   <h2 className="text-3xl font-bold text-slate-900">
-                    {wallet === null ? 'Đang tải...' : formatVND(wallet?.balance)}
+                    {wallet === null ? "Loading..." : formatVND(wallet?.balance)}
                   </h2>
                 </div>
               </div>
@@ -345,7 +364,7 @@ const WithdrawHistory = () => {
                   }`}
                   onClick={() => setActiveTab('transactions')}
                 >
-                  Lịch sử giao dịch
+                  Transaction history
                 </button>
                 <button
                   className={`flex-1 px-6 py-4 text-sm font-bold transition-colors ${
@@ -355,7 +374,7 @@ const WithdrawHistory = () => {
                   }`}
                   onClick={() => setActiveTab('withdrawals')}
                 >
-                  Yêu cầu rút tiền
+                  Request withdrawal
                 </button>
               </div>
 
@@ -368,7 +387,7 @@ const WithdrawHistory = () => {
                     {pagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Hiển thị <span className="font-semibold text-slate-700">{transactions.length}</span> trên tổng số <span className="font-semibold text-slate-700">{pagination.totalElements}</span>
+                          Showing <span className="font-semibold text-slate-700">{transactions.length}</span> of <span className="font-semibold text-slate-700">{pagination.totalElements}</span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -376,9 +395,9 @@ const WithdrawHistory = () => {
                             onClick={() => fetchTransactions(pagination.page - 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Trước
+                            Before
                           </button>
-                          {[...Array(pagination.totalPages).keys()].map((p) => (
+                          {[...Array(pagination.totalPages).keys()].filter(p => p >= pagination.page - 2 && p <= pagination.page + 2).map((p) => (
                             <button
                               key={p}
                               onClick={() => fetchTransactions(p)}
@@ -392,11 +411,11 @@ const WithdrawHistory = () => {
                             </button>
                           ))}
                           <button
-                            disabled={pagination.page === pagination.totalPages - 1}
+                            disabled={pagination.last}
                             onClick={() => fetchTransactions(pagination.page + 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Sau
+                            Next
                           </button>
                         </div>
                       </div>
@@ -410,7 +429,7 @@ const WithdrawHistory = () => {
                     {withdrawPagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Hiển thị <span className="font-semibold text-slate-700">{withdrawals.length}</span> trên tổng số <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span>
+                          Showing <span className="font-semibold text-slate-700">{withdrawals.length}</span> of <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -418,9 +437,9 @@ const WithdrawHistory = () => {
                             onClick={() => fetchWithdrawals(withdrawPagination.page - 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Trước
+                            Before
                           </button>
-                          {[...Array(withdrawPagination.totalPages).keys()].map((p) => (
+                          {[...Array(withdrawPagination.totalPages).keys()].filter(p => p >= withdrawPagination.page - 2 && p <= withdrawPagination.page + 2).map((p) => (
                             <button
                               key={p}
                               onClick={() => fetchWithdrawals(p)}
@@ -434,11 +453,11 @@ const WithdrawHistory = () => {
                             </button>
                           ))}
                           <button
-                            disabled={withdrawPagination.page === withdrawPagination.totalPages - 1}
+                            disabled={withdrawPagination.last}
                             onClick={() => fetchWithdrawals(withdrawPagination.page + 1)}
                             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-50"
                           >
-                            Sau
+                            Next
                           </button>
                         </div>
                       </div>

@@ -32,13 +32,13 @@ const WalletCallback = () => {
               <div className="flex justify-center mb-6">
                 <CheckCircle className="h-20 w-20 text-emerald-500" />
               </div>
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">Thanh toán thành công!</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-2">Payment successful!</h2>
               <p className="text-stone-500 mb-6">
-                Bạn đã nạp thành công <span className="font-bold text-emerald-600">{Number(amount || 0).toLocaleString('vi-VN')} VNĐ</span> vào ví.
+                You have successfully loaded <span className="font-bold text-emerald-600">{Number(amount || 0).toLocaleString('en-US')} VND</span> into your wallet.
               </p>
               {code && (
                 <p className="text-sm text-stone-400 mb-8">
-                  Mã giao dịch: {code}
+                  Transaction code: {code}
                 </p>
               )}
             </>
@@ -47,9 +47,9 @@ const WalletCallback = () => {
               <div className="flex justify-center mb-6">
                 <XCircle className="h-20 w-20 text-red-500" />
               </div>
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">Thanh toán thất bại</h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-2">Payment failed</h2>
               <p className="text-stone-500 mb-8">
-                Giao dịch của bạn đã bị hủy hoặc có lỗi xảy ra. Vui lòng thử lại sau.
+                Your transaction has been canceled or an error has occurred. Please try again later.
               </p>
             </>
           )}
@@ -58,7 +58,7 @@ const WalletCallback = () => {
             onClick={handleGoBack}
             className="w-full inline-flex justify-center items-center rounded-md bg-[#FF5A1F] px-6 py-3 text-sm font-bold text-white transition-all hover:bg-[#e04e19] hover:-translate-y-0.5"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại Ví của tôi
+            <ArrowLeft className="mr-2 h-4 w-4" /> Return to My Wallet
           </button>
         </div>
       </main>

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import RoleGuard from './components/guards/RoleGuard'
 import PublicGuard from './components/guards/PublicGuard'
+import PublicPageLayout from './components/PublicPageLayout'
 import { fetchCurrentUserThunk, logout } from './store/authSlice'
 
 // Lazy load components
@@ -34,19 +35,27 @@ import InspectionsManagementPage from './features/admin/pages/InspectionsManagem
 import WareHouseManagementPage from './features/admin/pages/WareHouseManagementPage'
 import WarehousesTypePage from './features/admin/pages/WarehousesTypePage'
 import SystemConfigueManagementPage from './features/admin/pages/SystemConfigueManagementPage'
+import AdminAuditsPage from './features/admin/pages/AdminAuditsPage'
+import AdminInventoryPage from './features/admin/pages/AdminInventoryPage'
+import WalletAdmin from './features/admin/pages/WalletAdmin'
 // Tenant Pages
 import TenantDashboard from './features/tenant/pages/TenantDashboard'
 import InventoryPage from './features/inventory/pages/InventoryPage'
+import SkuPage from './features/inventory/pages/SkuPage'
+import CategoryPage from './features/inventory/pages/CategoryPage'
 import InboundPage from './features/inbound/pages/InboundPage'
 import OutboundPage from './features/outbound/pages/OutboundPage'
+import InventoryAuditPage from './features/inventory/pages/InventoryAuditPage'
+import InventoryAuditDetailPage from './features/inventory/pages/InventoryAuditDetailPage'
 import MyBookingsPage from './features/tenant/pages/MyBookingsPage'
-import BillingPage from './features/tenant/pages/BillingPage'
+import SubscriptionPage from './features/tenant/pages/SubscriptionPage'
 import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
 import WalletTenant from './features/tenant/pages/WalletTenant'
 import WalletCallback from './features/tenant/pages/WalletCallback'
 import TenantContractsPage from './features/tenant/pages/TenantContractsPage'
 import MyDisputesPage from './features/dispute/pages/MyDisputesPage'
 import TenantStaffManagementPage from './features/tenant/pages/TenantStaffManagementPage'
+import ProductManagementPage from './features/tenant/pages/ProductManagementPage'
 import StaffAcceptInvitationPage from './features/auth/pages/StaffAcceptInvitationPage'
 
 // Owner Pages
@@ -59,11 +68,13 @@ import OwnerContractsPage from './features/owner/pages/OwnerContractsPage'
 // Staff Pages
 import StaffDashboard from './features/staff/pages/StaffDashboard'
 import StaffTasksPage from './features/staff/pages/StaffTasksPage'
+import StaffCareerHistoryPage from './features/staff/pages/StaffCareerHistoryPage'
 import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages_SubcriptionsManagementPage'
 
 // Inspector Pages
 import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
 import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
+import AIChatWidget from './features/chat/components/AIChatWidget'
 
 const App = () => {
   const dispatch = useDispatch()
@@ -98,17 +109,21 @@ const App = () => {
         <Route element={<PublicGuard />}>
           <Route path="/" element={<LandingpageKhamkhao />} />
           <Route path="/warehouses" element={<WarehouseListingPage />} />
-          <Route path="/warehouse/:id" element={<WarehouseDetailPage />} />
           <Route path="/packages" element={<PackageList />} />
           <Route path="/packages/:id" element={<PackageDetail />} />
+          <Route element={<PublicPageLayout />}>
+            <Route path="/warehouse/:id" element={<WarehouseDetailPage />} />
+          </Route>
         </Route>
         {/* <Route path="/login" element={<LoginPage />} /> */}
         {/* <Route path="/register" element={<RegisterPage />} /> */}
-        <Route path="/unauthorized" element={<UnauthorizedPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/staff/accept" element={<StaffAcceptInvitationPage />} />
+        <Route element={<PublicPageLayout />}>
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/staff/accept" element={<StaffAcceptInvitationPage />} />
+        </Route>
         <Route path="/wallet/callback" element={<WalletCallback />} />
 
         {/* Protected Routes Layout */}
@@ -130,21 +145,57 @@ const App = () => {
         <Route path="admin/warehouse-types" element={<WarehousesTypePage />} />
         <Route path="admin/system-config" element={<SystemConfigueManagementPage />} />
         <Route path="admin/package-subcription" element={<Packages_SubcriptionsManagementPage />} />
+        <Route path="/admin/wms-audits" element={<AdminAuditsPage />} />
+        <Route path="/admin/wms-inventory" element={<AdminInventoryPage />} />
+        <Route path="/admin/wallet" element={<WalletAdmin />} />
         {/* </Route> */}
 
         {/* Tenant Routes */}
         <Route element={<RoleGuard allowedRoles={['ROLE_TENANT']} />}>
           <Route path="/tenant/dashboard" element={<TenantDashboard />} />
           <Route path="/tenant/inventory" element={<InventoryPage />} />
+          <Route path="/tenant/categories" element={<CategoryPage />} />
+          <Route path="/tenant/skus" element={<SkuPage />} />
+          <Route
+            path="/tenant/inventory-audits"
+            element={<InventoryAuditPage currentRole="TENANT" />}
+          />
+          <Route
+            path="/tenant/inventory-audits/:id"
+            element={<InventoryAuditDetailPage currentRole="TENANT" />}
+          />
           <Route path="/tenant/inbound" element={<InboundPage />} />
           <Route path="/tenant/outbound" element={<OutboundPage />} />
           <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
-          <Route path="/tenant/payments" element={<BillingPage />} />
-          <Route path="/tenant/layoutwarehouses" element={<LayoutWarehouse currentRole="TENANT" />} />
+
+          <Route path="/tenant/subscription" element={<SubscriptionPage />} />
+          <Route
+            path="/tenant/layoutwarehouses"
+            element={<LayoutWarehouse currentRole="TENANT" />}
+          />
+
+          {/* <Route path="/tenant/payments" element={<BillingPage />} /> */}
+          {/* <Route
+            path="/tenant/layoutwarehouses"
+            element={<LayoutWarehouse currentRole="TENANT" />}
+          /> */}
+
+          <Route
+            path="/tenant/bin-stock"
+            element={
+              <LayoutWarehouse
+                key="tenant-bin-stock"
+                currentRole="TENANT"
+                initialView="stock"
+                stockOnly
+              />
+            }
+          />
           <Route path="/tenant/wallet" element={<WalletTenant />} />
           <Route path="/tenant/contracts" element={<TenantContractsPage />} />
           <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
           <Route path="/tenant/staff" element={<TenantStaffManagementPage />} />
+          <Route path="/tenant/products" element={<ProductManagementPage />} />
         </Route>
 
         {/* Owner Routes */}
@@ -164,8 +215,19 @@ const App = () => {
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
           <Route path="/staff/inventory" element={<InventoryPage />} />
+          <Route path="/staff/categories" element={<CategoryPage />} />
+          <Route path="/staff/skus" element={<SkuPage />} />
+          <Route
+            path="/staff/inventory-audits"
+            element={<InventoryAuditPage currentRole="STAFF" />}
+          />
+          <Route
+            path="/staff/inventory-audits/:id"
+            element={<InventoryAuditDetailPage currentRole="STAFF" />}
+          />
           <Route path="/staff/inbound" element={<InboundPage />} />
           <Route path="/staff/outbound" element={<OutboundPage />} />
+          <Route path="/staff/career-history" element={<StaffCareerHistoryPage />} />
         </Route>
 
         {/* Inspector Routes */}
@@ -176,6 +238,7 @@ const App = () => {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <AIChatWidget />
     </BrowserRouter>
   )
   //check config mail

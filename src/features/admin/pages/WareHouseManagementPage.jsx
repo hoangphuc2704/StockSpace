@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
+import TranslatableText from '@/components/TranslatableText'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   fetchWarehouses,
@@ -8,7 +10,6 @@ import {
   setKeyword,
   setStatusFilter,
   setIsVerifiedFilter,
-  clearActionError,
 } from '../../../store/adminWarehouseManagement'
 // ─── IMPORT CÁC ACTION ĐỂ ĐIỀU KHIỂN SIDEBAR ──────────────────────────────────
 import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
@@ -39,31 +40,33 @@ import {
 import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
+import Modal from '../../../components/organisms/Modal'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 // ─── Enum / Constants từ BE ───────────────────────────────────────────────────
 const STATUS_OPTIONS = ['', 'PENDING_APPROVAL', 'AVAILABLE', 'RENTED', 'INACTIVE']
 
 const STATUS_CONFIG = {
-  AVAILABLE: { label: 'Sẵn sàng', variant: 'success', icon: CheckCircle2 },
-  RENTED: { label: 'Đang thuê', variant: 'info', icon: Warehouse },
-  PENDING_APPROVAL: { label: 'Chờ duyệt', variant: 'warning', icon: Clock },
-  INACTIVE: { label: 'Không hoạt động', variant: 'danger', icon: XCircle },
+  AVAILABLE: { label: 'Ready', variant: 'success', icon: CheckCircle2 },
+  RENTED: { label: 'Currently renting', variant: 'info', icon: Warehouse },
+  PENDING_APPROVAL: { label: 'Waiting for approval', variant: 'warning', icon: Clock },
+  INACTIVE: { label: 'Inactive', variant: 'danger', icon: XCircle },
 }
 
 const VERIFIED_OPTIONS = [
-  { value: '', label: 'Tất cả' },
-  { value: 'true', label: 'Đã xác minh' },
-  { value: 'false', label: 'Chưa xác minh' },
+  { value: '', label: 'All' },
+  { value: 'true', label: 'Verified' },
+  { value: 'false', label: 'Not verified' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatVND = (amount) => (amount != null ? Number(amount).toLocaleString('vi-VN') + ' ₫' : '—')
-const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—')
+const formatVND = (amount) => (amount != null ? Number(amount).toLocaleString('en-US') + ' ₫' : '—')
+const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
+  useEscapeKey(true, onClose)
   const { actionLoading } = useSelector((s) => s.adminWarehouseManage)
   const cfg = STATUS_CONFIG[warehouse.status] || {}
   const StatusIcon = cfg.icon || Clock
@@ -110,7 +113,7 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
         <div className="space-y-3 text-sm">
           {/* Status + verified */}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-            <span className="mr-auto font-medium text-slate-600">Trạng thái</span>
+            <span className="mr-auto font-medium text-slate-600">Status</span>
             <Badge variant={cfg.variant || 'slate'} size="sm" className="rounded-full">
               <StatusIcon size={12} className="mr-1 inline" />
               {cfg.label || warehouse.status}
@@ -123,12 +126,12 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
               {warehouse.isVerified ? (
                 <>
                   <BadgeCheck size={12} className="mr-1 inline" />
-                  Đã xác minh
+                  Verified
                 </>
               ) : (
                 <>
                   <Clock size={12} className="mr-1 inline" />
-                  Chưa xác minh
+                  Not verified
                 </>
               )}
             </Badge>
@@ -138,13 +141,13 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-                <Tag size={11} /> Loại kho
+                <Tag size={11} /> Warehouse type
               </p>
               <p className="font-semibold text-slate-800">{warehouse.typeName || '—'}</p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-                <Ruler size={11} /> Diện tích
+                <Ruler size={11} /> Area
               </p>
               <p className="font-semibold text-slate-800">
                 {warehouse.capacity != null ? `${warehouse.capacity} m²` : '—'}
@@ -152,12 +155,12 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-                <DollarSign size={11} /> Giá/tháng
+                <DollarSign size={11} /> Price/month
               </p>
               <p className="font-bold text-slate-900">{formatVND(warehouse.pricePerMonth)}</p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Ngày đăng</p>
+              <p className="mb-1 text-xs text-slate-400">Date posted</p>
               <p className="text-slate-700">{formatDate(warehouse.createdAt)}</p>
             </div>
           </div>
@@ -165,7 +168,7 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
           {/* Address */}
           <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-              <MapPin size={11} /> Địa chỉ
+              <MapPin size={11} /> Address
             </p>
             <p className="text-slate-800">{warehouse.address || '—'}</p>
           </div>
@@ -173,15 +176,18 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
           {/* Description */}
           {warehouse.description && (
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Mô tả</p>
-              <p className="whitespace-pre-line text-slate-700">{warehouse.description}</p>
+              <p className="mb-1 text-xs text-slate-400">Description</p>
+              <TranslatableText
+                text={warehouse.description}
+                className="whitespace-pre-line text-slate-700"
+              />
             </div>
           )}
 
           {/* Owner */}
           <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <p className="mb-2 flex items-center gap-1 text-xs text-slate-400">
-              <User size={11} /> Chủ kho
+              <User size={11} /> Warehouse owner
             </p>
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-500">
@@ -199,7 +205,7 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
           {/* Policy */}
           {warehouse.policyVersion && (
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Phiên bản chính sách</p>
+              <p className="mb-1 text-xs text-slate-400">Policy version</p>
               <p className="font-mono text-xs text-slate-600">{warehouse.policyVersion}</p>
             </div>
           )}
@@ -208,7 +214,7 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
           {warehouse.imageUrls && warehouse.imageUrls.length > 1 && (
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-2 flex items-center gap-1 text-xs text-slate-400">
-                <ImageIcon size={11} /> Ảnh ({warehouse.imageUrls.length})
+                <ImageIcon size={11} /> Photo ({warehouse.imageUrls.length})
               </p>
               <div className="flex flex-wrap gap-2">
                 {warehouse.imageUrls.map((url, i) => (
@@ -240,7 +246,7 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
             onClick={onClose}
             className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50"
           >
-            Đóng
+            Close
           </button>
           {warehouse.status === 'PENDING_APPROVAL' && (
             <>
@@ -252,7 +258,7 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
                 disabled={actionLoading}
                 className="flex items-center gap-2 rounded-xl border border-rose-200 px-5 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60"
               >
-                <ShieldX size={15} /> Từ chối
+                <ShieldX size={15} /> Refuse
               </button>
               <button
                 onClick={() => {
@@ -267,7 +273,7 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
                 ) : (
                   <ShieldCheck size={15} />
                 )}
-                Duyệt kho
+                Approve warehouse
               </button>
             </>
           )}
@@ -302,6 +308,11 @@ const WareHouseManagementPage = () => {
   // Local UI
   const [searchInput, setSearchInput] = useState(keyword || '')
   const [selectedItem, setSelectedItem] = useState(null)
+  
+  // Reject Modal
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [warehouseToReject, setWarehouseToReject] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   // Fetch khi filters/page thay đổi
   useEffect(() => {
@@ -332,11 +343,23 @@ const WareHouseManagementPage = () => {
   )
 
   const handleReject = useCallback(
-    async (w) => {
-      await dispatch(rejectWarehouse(w.id))
+    (w) => {
+      setWarehouseToReject(w)
+      setRejectReason('')
+      setRejectModalOpen(true)
     },
-    [dispatch]
+    []
   )
+
+  const submitReject = async () => {
+    if (!rejectReason.trim()) {
+      import('react-hot-toast').then(m => m.toast.error('Bạn phải nhập lý do từ chối!'))
+      return
+    }
+    await dispatch(rejectWarehouse({ id: warehouseToReject.id, reason: rejectReason }))
+    setRejectModalOpen(false)
+    setWarehouseToReject(null)
+  }
 
   // Summary counts từ trang hiện tại
   const pendingCount = warehouses.filter((w) => w.status === 'PENDING_APPROVAL').length
@@ -357,7 +380,9 @@ const WareHouseManagementPage = () => {
           </button>
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Admin
@@ -385,12 +410,12 @@ const WareHouseManagementPage = () => {
           <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
             {/* Page header */}
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Quản lý Kho bãi</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Warehouse Management</h1>
               <p className="mt-1 text-sm text-slate-500">
-                Duyệt, từ chối và theo dõi trạng thái kho bãi.
+                Approve, reject and track warehouse status.
                 {totalElements > 0 && (
                   <span className="ml-1 font-semibold text-slate-700">
-                    ({totalElements.toLocaleString()} tổng)
+                    ({totalElements.toLocaleString()} total)
                   </span>
                 )}
               </p>
@@ -408,28 +433,28 @@ const WareHouseManagementPage = () => {
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {[
                 {
-                  label: 'Tổng kho',
+                  label: 'Total warehouses',
                   value: totalElements,
                   icon: Warehouse,
                   color: 'text-slate-600',
                   bg: 'bg-slate-100',
                 },
                 {
-                  label: 'Chờ duyệt',
+                  label: 'Waiting for approval',
                   value: pendingCount,
                   icon: Clock,
                   color: 'text-amber-600',
                   bg: 'bg-amber-50',
                 },
                 {
-                  label: 'Sẵn sàng',
+                  label: 'Ready',
                   value: availableCount,
                   icon: CheckCircle2,
                   color: 'text-emerald-600',
                   bg: 'bg-emerald-50',
                 },
                 {
-                  label: 'Đã xác minh',
+                  label: 'Verified',
                   value: verifiedCount,
                   icon: BadgeCheck,
                   color: 'text-blue-600',
@@ -464,7 +489,7 @@ const WareHouseManagementPage = () => {
                 />
                 <input
                   type="text"
-                  placeholder="Tìm tên kho, địa chỉ..."
+                  placeholder="Find warehouse name, address..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm focus:ring-2 focus:ring-blue-200 focus:outline-none"
@@ -480,7 +505,7 @@ const WareHouseManagementPage = () => {
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>
-                      {s ? STATUS_CONFIG[s]?.label || s : 'Tất cả trạng thái'}
+                      {s ? STATUS_CONFIG[s]?.label || s : 'All status'}
                     </option>
                   ))}
                 </select>
@@ -504,11 +529,11 @@ const WareHouseManagementPage = () => {
               {loading ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-400">
                   <Loader2 size={28} className="animate-spin text-blue-400" />
-                  <span className="text-sm">Đang tải dữ liệu...</span>
+                  <span className="text-sm">Loading data...</span>
                 </div>
               ) : warehouses.length === 0 ? (
                 <div className="py-20 text-center text-sm text-slate-400">
-                  Không có kho nào phù hợp.
+                  There are no suitable warehouses.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -517,13 +542,13 @@ const WareHouseManagementPage = () => {
                       <tr className="border-b border-slate-100 bg-slate-50">
                         {[
                           '',
-                          'Tên kho',
-                          'Địa chỉ',
-                          'Loại / Giá',
-                          'Chủ kho',
-                          'Trạng thái',
-                          'Xác minh',
-                          'Ngày đăng',
+                          'Warehouse name',
+                          'Address',
+                          'Type/Price',
+                          'Warehouse owner',
+                          'Status',
+                          'Verify',
+                          'Date posted',
                           '',
                         ].map((h, index) => (
                           <th
@@ -583,7 +608,7 @@ const WareHouseManagementPage = () => {
                               <p className="text-xs text-slate-500">{w.typeName || '—'}</p>
                               <p className="font-bold text-slate-800">
                                 {formatVND(w.pricePerMonth)}
-                                <span className="text-xs font-normal text-slate-400">/tháng</span>
+                                <span className="text-xs font-normal text-slate-400">/month</span>
                               </p>
                             </td>
                             <td className="px-4 py-3.5">
@@ -602,11 +627,11 @@ const WareHouseManagementPage = () => {
                             <td className="px-4 py-3.5">
                               {w.isVerified ? (
                                 <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                                  <BadgeCheck size={14} /> Đã xác minh
+                                  <BadgeCheck size={14} /> Verified
                                 </span>
                               ) : (
                                 <span className="flex items-center gap-1 text-xs font-semibold text-amber-500">
-                                  <Clock size={13} /> Chưa xác minh
+                                  <Clock size={13} /> Not verified
                                 </span>
                               )}
                             </td>
@@ -619,7 +644,7 @@ const WareHouseManagementPage = () => {
                                   onClick={() => setSelectedItem(w)}
                                   className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
                                 >
-                                  Chi tiết
+                                  Details
                                 </button>
                                 {w.status === 'PENDING_APPROVAL' && (
                                   <>
@@ -628,7 +653,7 @@ const WareHouseManagementPage = () => {
                                       disabled={actionLoading}
                                       className="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
                                     >
-                                      Từ chối
+                                      Refuse
                                     </button>
                                     <button
                                       onClick={() => handleVerify(w)}
@@ -638,7 +663,7 @@ const WareHouseManagementPage = () => {
                                       {actionLoading ? (
                                         <Loader2 size={12} className="animate-spin" />
                                       ) : (
-                                        'Duyệt'
+                                        'Approve'
                                       )}
                                     </button>
                                   </>
@@ -657,7 +682,7 @@ const WareHouseManagementPage = () => {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
                   <span className="text-sm text-slate-500">
-                    Trang {page + 1} / {totalPages} · {totalElements.toLocaleString()} kho
+                    Page {page + 1} / {totalPages} · {totalElements.toLocaleString()} warehouses
                   </span>
                   <div className="flex items-center gap-2">
                     <button
@@ -701,6 +726,48 @@ const WareHouseManagementPage = () => {
           />
         )}
       </AnimatePresence>
+
+      {/* Reject Modal */}
+      <Modal
+        isOpen={rejectModalOpen}
+        onClose={() => setRejectModalOpen(false)}
+        title="Từ chối duyệt đăng kho"
+      >
+        <div className="p-4 sm:p-6">
+          <p className="mb-4 text-sm text-slate-600">
+            Bạn đang từ chối phê duyệt kho <span className="font-bold text-slate-900">{warehouseToReject?.name}</span>. Vui lòng cung cấp lý do cụ thể để người cho thuê có thể nắm rõ và khắc phục.
+          </p>
+          <textarea
+            className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            rows={4}
+            placeholder="Nhập lý do từ chối (bắt buộc)..."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => setRejectModalOpen(false)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Hủy
+            </button>
+            <button
+              onClick={submitReject}
+              disabled={!rejectReason.trim() || actionLoading}
+              className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {actionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Đang xử lý...
+                </>
+              ) : (
+                'Xác nhận từ chối'
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

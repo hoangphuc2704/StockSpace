@@ -113,9 +113,9 @@ export const forgotPasswordThunk = createAsyncThunk(
   async (email, { rejectWithValue }) => {
     try {
       const response = await authApi.forgotPassword(email)
-      return response.message || 'Liên kết đặt lại mật khẩu đã được gửi đến email của bạn.'
+      return response.message || 'A password reset link has been sent to your email.'
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || 'Gửi yêu cầu thất bại')
+      return rejectWithValue(err.response?.data?.message || 'Failed to send the request')
     }
   }
 )
@@ -125,9 +125,9 @@ export const resetPasswordThunk = createAsyncThunk(
   async ({ email, token, newPassword }, { rejectWithValue }) => {
     try {
       const response = await authApi.resetPassword({ email, token, newPassword })
-      return response.message || 'Mật khẩu đã được đặt lại thành công.'
+      return response.message || 'Your password has been reset successfully.'
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || 'Đặt lại mật khẩu thất bại')
+      return rejectWithValue(err.response?.data?.message || 'Failed to reset the password')
     }
   }
 )

@@ -18,6 +18,15 @@ const systemConfigApi = {
       return 10
     }
   },
+  getActiveSystemPolicy: async () => {
+    try {
+      const response = await publicApi.get('/system-policies/active')
+      return response.data.data
+    } catch (error) {
+      console.error('Failed to fetch active system policy', error)
+      return null
+    }
+  },
 }
 
 export default systemConfigApi

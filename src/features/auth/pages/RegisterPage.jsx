@@ -9,8 +9,11 @@ import { useDispatch, useSelector } from 'react-redux'
 import Loading from '../../../components/Loading'
 import { registerUser, clearError } from '@/store/authSlice'
 import LoginGoogle from './LoginGoogle'
+import useEscapeKey from '@/hooks/useEscapeKey'
 
 const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
+  useEscapeKey(isOpen, onClose)
+
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { isLoading, error: reduxError } = useSelector((state) => state.auth)
@@ -62,7 +65,7 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
         role: `ROLE_${roleDefault}`
       })).unwrap()
       
-      setSuccessMessage('Đăng ký thành công. Vui lòng kiểm tra email và đăng nhập.')
+      setSuccessMessage("Registered successfully. Please check your email and log in.")
       setTimeout(() => {
         setSuccessMessage('')
         onClose()

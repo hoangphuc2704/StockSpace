@@ -1,152 +1,99 @@
 import { useMemo, useState } from 'react'
+import { Box, ChevronDown, ChevronUp, Eye, Loader2, Package } from 'lucide-react'
 import WarehouseLayoutPreview3D from '@/components/WarehouseLayoutPreview3D'
 
-const findSelectedEntity = (layout, selection) => {
-  if (!selection) return null
-  if (selection.type === 'layout') return layout
+const GRID_SIZE = 10
+const DEFAULT_SIZE = 100
+const fullFootprint = () =>
+  Array.from({ length: GRID_SIZE ** 2 }, (_, index) =>
+    `${Math.floor(index / GRID_SIZE)}:${index % GRID_SIZE}`
+  )
 
-  for (const zone of layout.zones) {
-    if (selection.type === 'zone' && zone.clientKey === selection.clientKey) return zone
+const createPreviewLayout = (layout, warehouse) => ({
+  id: layout?.id ?? null,
+  width: Math.max(Number(layout?.width || warehouse?.width || DEFAULT_SIZE), 20),
+  length: Math.max(Number(layout?.length || warehouse?.length || DEFAULT_SIZE), 20),
+  height: Math.max(Number(layout?.height || warehouse?.height || DEFAULT_SIZE), 20),
+  footprintCells: Array.isArray(layout?.footprintCells)
+    ? layout.footprintCells
+    : fullFootprint(),
+  positions: Array.isArray(layout?.positions) ? layout.positions : [],
+  racks: Array.isArray(layout?.racks) ? layout.racks : [],
+})
 
-    for (const rack of zone.racks) {
-      if (selection.type === 'rack' && rack.clientKey === selection.clientKey) return rack
-
-      for (const bin of rack.bins) {
-        if (selection.type === 'bin' && bin.clientKey === selection.clientKey) return bin
-      }
-    }
-  }
-
-  return null
-}
-
-export default function WarehouseLayoutShowcase({ layout }) {
-  const [selection, setSelection] = useState({ type: 'layout' })
-
-  const selectedEntity = useMemo(() => findSelectedEntity(layout, selection), [layout, selection])
-
-  if (!layout || !Array.isArray(layout.zones) || layout.zones.length === 0) {
-    return (
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="mb-2">
-          <h3 className="text-xl font-bold text-slate-900">Warehouse Layout</h3>
-          <p className="text-sm text-slate-500">Sơ đồ kho chưa được cấu hình cho bài đăng này.</p>
-        </div>
-      </section>
-    )
-  }
+export default function WarehouseLayoutShowcase({
+  layout,
+  warehouse,
+  isLoading = false,
+  isFallback = false,
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const previewLayout = useMemo(() => createPreviewLayout(layout, warehouse), [layout, warehouse])
+  const binCount = useMemo(
+    () => previewLayout.racks.reduce((total, rack) => total + rack.bins.length, 0),
+    [previewLayout.racks]
+  )
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <section className="mb-10 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-xl font-bold text-slate-900">Warehouse Layout</h3>
-          <p className="text-sm text-slate-500">
-            Người dùng có thể xem sơ đồ 2D và preview 3D ngay trong bài đăng.
+          <div className="flex items-center gap-2">
+            <Eye className="h-5 w-5 text-blue-600" />
+            <h3 className="text-xl font-bold text-slate-900">Warehouse Layout 3D</h3>
+          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            {isFallback
+              ? "The warehouse does not have a configured layout. This is a 3D space preview according to warehouse dimensions."
+              : "Preview warehouse space and Rack and Bin locations in 3D mode."}
           </p>
         </div>
-        <div className="rounded-xl bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-600">
-          {selection.type === 'layout'
-            ? `Layout ${layout.width} x ${layout.height}`
-            : selectedEntity?.name || 'Đang chọn'}
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsOpen((current) => !current)}
+          className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+        >
+          {isOpen ? (
+            <><ChevronUp className="mr-2 h-4 w-4" />Hide diagram</>
+          ) : (
+            <><ChevronDown className="mr-2 h-4 w-4" />See 3D diagram</>
+          )}
+        </button>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
-        <div className="overflow-auto rounded-2xl border border-slate-200 bg-slate-100 p-3">
-          <div className="relative mx-auto aspect-square min-h-[280px] w-full max-w-[760px] rounded-[24px] border border-slate-300 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.9),_rgba(226,232,240,0.9))] shadow-inner">
-            <div className="pointer-events-none absolute inset-0 rounded-[24px] bg-[linear-gradient(to_right,rgba(148,163,184,0.14)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.14)_1px,transparent_1px)] bg-[size:10%_10%]" />
-
-            {layout.zones.map((zone) => (
-              <div
-                key={zone.clientKey}
-                className={`absolute rounded-2xl border-2 transition ${
-                  selection.type === 'zone' && selection.clientKey === zone.clientKey
-                    ? 'z-10 border-emerald-500 ring-4 ring-emerald-100'
-                    : 'border-emerald-300'
-                }`}
-                style={{
-                  left: `${(zone.coordinateX / layout.width) * 100}%`,
-                  top: `${(zone.coordinateY / layout.height) * 100}%`,
-                  width: `${(zone.width / layout.width) * 100}%`,
-                  height: `${(zone.height / layout.height) * 100}%`,
-                  background:
-                    'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.2))',
-                }}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  setSelection({ type: 'zone', clientKey: zone.clientKey })
-                }}
-              >
-                <div className="border-b border-emerald-200 bg-white/70 px-2 py-1 text-[10px] font-bold text-emerald-700 sm:text-xs">
-                  {zone.name}
-                </div>
-
-                {zone.racks.map((rack) => (
-                  <div
-                    key={rack.clientKey}
-                    className={`absolute rounded-xl border-2 transition ${
-                      selection.type === 'rack' && selection.clientKey === rack.clientKey
-                        ? 'z-10 border-amber-500 ring-4 ring-amber-100'
-                        : 'border-amber-300'
-                    }`}
-                    style={{
-                      left: `${(rack.coordinateX / zone.width) * 100}%`,
-                      top: `${(rack.coordinateY / zone.height) * 100}%`,
-                      width: `${(rack.width / zone.width) * 100}%`,
-                      height: `${(rack.height / zone.height) * 100}%`,
-                      background:
-                        'linear-gradient(135deg, rgba(245,158,11,0.16), rgba(251,191,36,0.24))',
-                    }}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      setSelection({ type: 'rack', clientKey: rack.clientKey })
-                    }}
-                  >
-                    <div className="border-b border-amber-200 bg-white/75 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 sm:text-[10px]">
-                      {rack.name}
-                    </div>
-
-                    {rack.bins.map((bin) => (
-                      <div
-                        key={bin.clientKey}
-                        className={`absolute rounded-lg border transition ${
-                          selection.type === 'bin' && selection.clientKey === bin.clientKey
-                            ? 'z-10 border-fuchsia-500 ring-4 ring-fuchsia-100'
-                            : 'border-fuchsia-300'
-                        }`}
-                        style={{
-                          left: `${(bin.coordinateX / rack.width) * 100}%`,
-                          top: `${(bin.coordinateY / rack.height) * 100}%`,
-                          width: `${(bin.width / rack.width) * 100}%`,
-                          height: `${(bin.height / rack.height) * 100}%`,
-                          background:
-                            'linear-gradient(135deg, rgba(217,70,239,0.14), rgba(232,121,249,0.22))',
-                        }}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          setSelection({ type: 'bin', clientKey: bin.clientKey })
-                        }}
-                      />
-                    ))}
-                  </div>
-                ))}
+      {isOpen && (
+        <div className="mt-5">
+          {isLoading ? (
+            <div className="flex h-80 items-center justify-center rounded-2xl bg-slate-50">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : (
+            <>
+              <div className="mb-4 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
+                <span className="rounded-lg bg-slate-100 px-3 py-2">
+                  {previewLayout.width} × {previewLayout.length} × {previewLayout.height}
+                </span>
+                <span className="inline-flex items-center rounded-lg bg-blue-50 px-3 py-2 text-blue-700">
+                  <Package className="mr-1.5 h-3.5 w-3.5" />{previewLayout.racks.length} Rack
+                </span>
+                <span className="inline-flex items-center rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">
+                  <Box className="mr-1.5 h-3.5 w-3.5" />{binCount} Bin
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-sky-50">
-          <div className="h-[320px] w-full sm:h-[420px]">
-            <WarehouseLayoutPreview3D
-              layout={layout}
-              selection={selection}
-              onSelect={setSelection}
-              editable={false}
-            />
-          </div>
+              <div className="relative h-[400px] overflow-hidden rounded-2xl border border-slate-200 bg-sky-50 sm:h-[560px]">
+                <WarehouseLayoutPreview3D layout={previewLayout} editable={false} />
+                {!previewLayout.racks.length && (
+                  <div className="pointer-events-none absolute right-4 bottom-4 rounded-xl border border-white/80 bg-white/90 px-4 py-3 text-sm shadow-sm backdrop-blur-sm">
+                    <p className="font-semibold text-slate-700">Warehouse space is empty</p>
+                    <p className="mt-0.5 text-xs text-slate-500">Owner has not set Rack and Bin yet.</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
-      </div>
+      )}
     </section>
   )
 }

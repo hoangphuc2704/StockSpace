@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Package, AlertTriangle, ArrowUpRight, ArrowDownLeft, Bell, Users } from 'lucide-react'
+import { Package, AlertTriangle, ArrowUpRight, ArrowDownLeft, Bell, Users, Loader2 } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
 import {
   AreaChart,
@@ -18,10 +18,16 @@ import StatCard from '@/components/molecules/StatCard'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
-import Sidebar from '../../../components/SideBar' // Đường dẫn tới file Sidebar dùng chung của bạn
+import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
-// ==================== MOCK DATA & COLUMNS ====================
+import productApi from '@/services/wms/productApi'
+import staffApi from '@/services/staff/staffApi'
+import warehouseApi from '@/services/warehouse/warehouseApi'
+import receiptApi from '@/services/wms/receiptApi'
+import moment from 'moment'
+
+// ==================== MOCK DATA FOR CHARTS ====================
 const revenueData = [
   { month: 'Jan', revenue: 4000, expense: 2400 },
   { month: 'Feb', revenue: 3000, expense: 1398 },
@@ -44,6 +50,82 @@ const TenantDashboard = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const navigate = useNavigate()
 
+  const [isLoading, setIsLoading] = useState(true)
+  const [statsData, setStatsData] = useState({
+    totalInventory: 0,
+    activeStaff: 0,
+    inboundToday: 0,
+    lowStock: 0 // Mocked for now due to API missing aggregated low stock endpoint
+  })
+  const [recentActivity, setRecentActivity] = useState([])
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      setIsLoading(true)
+
+      // 1. Fetch SKUs for Total Inventory
+      const skusRes = await productApi.getSKUs({ page: 0, size: 1 })
+      const totalInventory = skusRes.data?.data?.totalElements || 0
+
+      // 2. Fetch Staff for Active Staff count
+      let activeStaff = 0
+      try {
+        const staffRes = await staffApi.listStaffs({ page: 0, size: 1 })
+        activeStaff = staffRes.data?.data?.totalElements || 0
+      } catch (err) {
+        console.error('Error fetching staff', err)
+      }
+
+      // 3. Fetch first Warehouse to get recent receipts for Inbound Today & Activity Table
+      let inboundTodayCount = 0
+      let activityList = []
+      try {
+        const whRes = await warehouseApi.getMyWarehouses()
+        const warehouses = whRes.data?.data?.content || whRes.data?.data || []
+
+        if (warehouses.length > 0) {
+          const firstWhId = warehouses[0].id || warehouses[0].warehouseId
+          const receiptRes = await receiptApi.getReceipts(firstWhId, { page: 0, size: 50 })
+          const receipts = receiptRes.data?.data?.content || []
+
+          const today = moment().startOf('day')
+
+          inboundTodayCount = receipts.filter(r => {
+            return r.type === 'INBOUND' && moment(r.createdAt).isSameOrAfter(today)
+          }).length
+
+          activityList = receipts.slice(0, 5).map(r => ({
+            id: r.id,
+            type: r.type,
+            item: r.items?.[0]?.skuCode || 'Multiple items',
+            qty: r.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0,
+            time: moment(r.createdAt).fromNow(),
+            status: r.status
+          }))
+        }
+      } catch (err) {
+        console.error('Error fetching receipts/warehouses', err)
+      }
+
+      setStatsData({
+        totalInventory,
+        activeStaff,
+        inboundToday: inboundTodayCount,
+        lowStock: 0 // Cannot compute efficiently without specific BE endpoint
+      })
+      setRecentActivity(activityList)
+
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const toggleSidebar = () => {
     if (window.innerWidth < 768) {
       setIsMobileOpen(!isMobileOpen)
@@ -53,45 +135,10 @@ const TenantDashboard = () => {
   }
 
   const stats = [
-    { title: 'Total Inventory', value: '12,450', icon: Package, trend: 'up', trendValue: 12 },
-    { title: 'Active Staff', value: '18', icon: Users, trend: 'up', trendValue: 2 },
-    { title: 'Inbound Today', value: '450', icon: ArrowDownLeft, trend: 'up', trendValue: 5 },
-    { title: 'Low Stock Items', value: '8', icon: AlertTriangle, trend: 'down', trendValue: 2 },
-  ]
-
-  const recentActivity = [
-    {
-      id: 'ACT-001',
-      type: 'INBOUND',
-      item: 'Electric Motors',
-      qty: 50,
-      time: '2h ago',
-      status: 'COMPLETED',
-    },
-    {
-      id: 'ACT-002',
-      type: 'OUTBOUND',
-      item: 'Steel Plates',
-      qty: 20,
-      time: '3h ago',
-      status: 'PENDING',
-    },
-    {
-      id: 'ACT-003',
-      type: 'INBOUND',
-      item: 'Bearings',
-      qty: 100,
-      time: '5h ago',
-      status: 'COMPLETED',
-    },
-    {
-      id: 'ACT-004',
-      type: 'OUTBOUND',
-      item: 'Copper Wire',
-      qty: 15,
-      time: '6h ago',
-      status: 'COMPLETED',
-    },
+    { title: 'Total SKUs', value: statsData.totalInventory.toLocaleString(), icon: Package, trend: 'up', trendValue: 0 },
+    { title: 'Active Staff', value: statsData.activeStaff.toString(), icon: Users, trend: 'up', trendValue: 0 },
+    { title: 'Inbound Today', value: statsData.inboundToday.toString(), icon: ArrowDownLeft, trend: 'up', trendValue: 0 },
+    { title: 'Low Stock Items', value: '-', icon: AlertTriangle, trend: 'down', trendValue: 0 },
   ]
 
   const columns = [
@@ -108,13 +155,13 @@ const TenantDashboard = () => {
         </div>
       ),
     },
-    { header: 'Item', accessor: 'item' },
+    { header: 'Item (SKU)', accessor: 'item' },
     { header: 'Qty', accessor: 'qty' },
     { header: 'Time', accessor: 'time' },
     {
       header: 'Status',
       render: (row) => (
-        <Badge variant={row.status === 'COMPLETED' ? 'success' : 'warning'}>{row.status}</Badge>
+        <Badge variant={row.status === 'APPROVED' ? 'success' : row.status === 'PENDING' ? 'warning' : 'primary'}>{row.status}</Badge>
       ),
     },
   ]
@@ -133,7 +180,9 @@ const TenantDashboard = () => {
 
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5 text-white">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Tenant
@@ -153,19 +202,18 @@ const TenantDashboard = () => {
       </div>
 
       <div className="flex pt-14">
-        {/* 2. SIDEBAR (Sử dụng component của bạn) */}
+        {/* 2. SIDEBAR */}
         <Sidebar
           isSidebarExpanded={isSidebarExpanded}
           isMobileOpen={isMobileOpen}
           setIsMobileOpen={setIsMobileOpen}
-          currentRole="TENANT" // Truyền đúng role để hiển thị menu Tenant
+          currentRole="TENANT"
         />
 
         {/* 3. MAIN CONTENT CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-[1600px] space-y-6 p-6 md:p-8">
             {/* Header Area */}
@@ -182,10 +230,7 @@ const TenantDashboard = () => {
                 <Button variant="outline" size="sm" onClick={() => navigate('/')}>
                   Back to Website
                 </Button>
-                <Button variant="outline" size="sm">
-                  Download PDF
-                </Button>
-                <Button size="sm">Create Shipment</Button>
+                <Button size="sm" onClick={() => navigate('/tenant/inbound')}>Create Shipment</Button>
               </div>
             </div>
 
@@ -196,54 +241,22 @@ const TenantDashboard = () => {
               ))}
             </div>
 
-            {/* Charts Row */}
+            {/* Main Content Grid: Recent Activity (2/3) + Notifications (1/3) */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+              
+              {/* Table: Recent Activity */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2 flex flex-col">
                 <div className="mb-6 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900">Inventory Movement</h3>
-                  <select className="rounded-lg border-none bg-slate-50 px-2 py-1 text-xs font-bold text-slate-500 focus:ring-0">
-                    <option>Last 7 Days</option>
-                    <option>Last 30 Days</option>
-                  </select>
+                  <h3 className="font-bold text-slate-900">Recent Activity</h3>
                 </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={revenueData}>
-                      <defs>
-                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
-                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="month"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: '12px',
-                          border: 'none',
-                          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#2563eb"
-                        fillOpacity={1}
-                        fill="url(#colorRev)"
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                <div className="flex-1">
+                  {isLoading ? (
+                    <div className="flex justify-center p-8"><Loader2 className="animate-spin text-slate-400" /></div>
+                  ) : recentActivity.length > 0 ? (
+                    <DataTable columns={columns} data={recentActivity} />
+                  ) : (
+                    <div className="text-center py-8 text-slate-500">No recent activity found.</div>
+                  )}
                 </div>
               </div>
 
@@ -279,13 +292,12 @@ const TenantDashboard = () => {
                       className="flex cursor-pointer gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-slate-100 hover:bg-slate-50"
                     >
                       <div
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                          n.type === 'danger'
-                            ? 'bg-danger'
-                            : n.type === 'success'
-                              ? 'bg-success'
-                              : 'bg-primary'
-                        }`}
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.type === 'danger'
+                          ? 'bg-danger'
+                          : n.type === 'success'
+                            ? 'bg-success'
+                            : 'bg-primary'
+                          }`}
                       />
                       <div>
                         <p className="text-sm font-bold text-slate-900">{n.title}</p>
@@ -299,44 +311,7 @@ const TenantDashboard = () => {
                   View All Activity
                 </Button>
               </div>
-            </div>
 
-            {/* Table & Operations Row */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="mb-6 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900">Recent Activity</h3>
-                  <Button variant="ghost" size="sm">
-                    Export CSV
-                  </Button>
-                </div>
-                <DataTable columns={columns} data={recentActivity} />
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-6 font-bold text-slate-900">Weekly Operations</h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={activityData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="name"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <Tooltip cursor={{ fill: '#f8fafc' }} />
-                      <Bar dataKey="inbound" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="outbound" fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
             </div>
           </main>
         </div>

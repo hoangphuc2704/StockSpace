@@ -10,6 +10,7 @@ import InputField from '@/components/atoms/InputField'
 // ✅ [HEAD] Dùng Redux thunk loginUser + clearError
 import { loginUser, clearError } from '@/store/authSlice'
 import LoginGoogle from './LoginGoogle'
+import useEscapeKey from '@/hooks/useEscapeKey'
 
 // ❌ [origin/owner] - Đã comment lại, không dùng
 // import { authApi } from '@/services/authApi'
@@ -26,6 +27,8 @@ import LoginGoogle from './LoginGoogle'
 
 // ĐÃ THÊM: prop onSwitchToRegister nhận từ cha
 const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
+  useEscapeKey(isOpen, onClose)
+
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const { isLoading, error } = useSelector((state) => state.auth)
@@ -67,7 +70,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
       // ❌ [origin/owner] - Cách login trực tiếp qua authApi, không dùng
       // const response = await authApi.login({ email, password })
       // if (response.success && response.data) {
-      //   alert('Đăng nhập thành công')
       //   const { accessToken, role, fullName } = response.data
       //   // dispatch to redux store
       //   dispatch(login({ user: { name: fullName, role }, token: accessToken }))

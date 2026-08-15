@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
     fetchSystemPolicies,
@@ -25,11 +26,12 @@ import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-const formatDate = (dt) => dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—'
+const formatDate = (dt) => dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—'
 const shortId = (id) => id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—'
 
 // ─── Create Policy Modal ──────────────────────────────────────────────────────
 const CreatePolicyModal = ({ onClose }) => {
+    useEscapeKey(true, onClose)
     const dispatch = useDispatch()
     const { actionLoading, actionError } = useSelector((s) => s.adminSystemPolicy)
     const [version, setVersion] = useState('')
@@ -40,8 +42,8 @@ const CreatePolicyModal = ({ onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!version.trim()) { setLocalError('Vui lòng nhập phiên bản.'); return }
-        if (!content.trim()) { setLocalError('Vui lòng nhập nội dung.'); return }
+        if (!version.trim()) { setLocalError("Please enter version."); return }
+        if (!content.trim()) { setLocalError("Please enter content."); return }
         setLocalError(null)
 
         const result = await dispatch(createSystemPolicy({ version: version.trim(), content: content.trim() }))
@@ -54,23 +56,23 @@ const CreatePolicyModal = ({ onClose }) => {
                 transition={{ duration: 0.18 }} className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="mb-5 flex items-start justify-between">
                     <div>
-                        <h2 className="text-lg font-bold text-slate-900">Thêm Phiên bản Chính sách mới</h2>
-                        <p className="mt-0.5 text-sm text-slate-500">Tạo phiên bản chính sách mới. Phiên bản này sẽ tự động trở thành Active.</p>
+                        <h2 className="text-lg font-bold text-slate-900">Add new Policy Version</h2>
+                        <p className="mt-0.5 text-sm text-slate-500">Create a new policy version. This version will automatically become Active.</p>
                     </div>
                     <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X size={18} /></button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Phiên bản <span className="text-rose-500">*</span></label>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Version <span className="text-rose-500">*</span></label>
                         <input value={version} onChange={(e) => setVersion(e.target.value)} maxLength={50}
-                            placeholder="Ví dụ: v1.0.0, 2026-Q1..."
+                            placeholder="For example: v1.0.0, 2026-Q1..."
                             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
                     </div>
                     <div>
-                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Nội dung Chính sách <span className="text-rose-500">*</span></label>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">Policy Content <span className="text-rose-500">*</span></label>
                         <textarea value={content} onChange={(e) => setContent(e.target.value)} rows={12}
-                            placeholder="Nhập toàn bộ nội dung điều khoản, chính sách..."
+                            placeholder="Enter all terms and policies..."
                             className="w-full resize-y rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm font-mono leading-relaxed focus:border-blue-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-100" />
                     </div>
 
@@ -79,10 +81,10 @@ const CreatePolicyModal = ({ onClose }) => {
                     )}
 
                     <div className="flex justify-end gap-3 pt-2">
-                        <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Hủy</button>
+                        <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Cancel</button>
                         <button type="submit" disabled={actionLoading} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
                             {actionLoading && <Loader2 size={14} className="animate-spin" />}
-                            <Plus size={14} /> Lưu Phiên bản
+                            <Plus size={14} /> Save Version
                         </button>
                     </div>
                 </form>
@@ -93,6 +95,7 @@ const CreatePolicyModal = ({ onClose }) => {
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 const DetailModal = ({ policy, onClose }) => {
+    useEscapeKey(true, onClose)
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm" onClick={onClose}>
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
@@ -104,12 +107,12 @@ const DetailModal = ({ policy, onClose }) => {
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h2 className="text-lg font-bold text-slate-900">Chi tiết Chính sách</h2>
+                                <h2 className="text-lg font-bold text-slate-900">Policy Details</h2>
                                 <Badge variant={policy.isActive ? 'success' : 'slate'} size="sm" className="rounded-full">
-                                    {policy.isActive ? 'Đang hiệu lực (Active)' : 'Đã cũ (Inactive)'}
+                                    {policy.isActive ? "Active" : "Inactive"}
                                 </Badge>
                             </div>
-                            <p className="text-sm font-mono text-slate-500">Phiên bản: {policy.version} | ID: {shortId(policy.id)}</p>
+                            <p className="text-sm font-mono text-slate-500">Version: {policy.version} | ID: {shortId(policy.id)}</p>
                         </div>
                     </div>
                     <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X size={18} /></button>
@@ -117,24 +120,24 @@ const DetailModal = ({ policy, onClose }) => {
 
                 <div className="grid grid-cols-2 gap-3 mb-4 shrink-0 text-sm">
                     <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        <p className="mb-1 flex items-center gap-1 text-xs text-slate-400"><Clock size={11} /> Ngày ban hành</p>
+                        <p className="mb-1 flex items-center gap-1 text-xs text-slate-400"><Clock size={11} /> Date of issue</p>
                         <p className="font-semibold text-slate-800">{formatDate(policy.createdAt)}</p>
                     </div>
                     <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                        <p className="mb-1 flex items-center gap-1 text-xs text-slate-400"><Clock size={11} /> Cập nhật lần cuối</p>
+                        <p className="mb-1 flex items-center gap-1 text-xs text-slate-400"><Clock size={11} /> Last updated</p>
                         <p className="font-semibold text-slate-800">{formatDate(policy.updatedAt)}</p>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto rounded-xl border border-slate-100 bg-slate-50 p-4">
-                    <p className="mb-2 flex items-center gap-1 text-xs font-bold text-slate-500 uppercase tracking-wide"><FileText size={12} /> Nội dung</p>
+                    <p className="mb-2 flex items-center gap-1 text-xs font-bold text-slate-500 uppercase tracking-wide"><FileText size={12} /> Content</p>
                     <div className="text-sm text-slate-700 whitespace-pre-wrap font-mono leading-relaxed bg-white p-4 rounded-lg border border-slate-200">
                         {policy.content}
                     </div>
                 </div>
 
                 <div className="mt-5 flex justify-end shrink-0">
-                    <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Đóng</button>
+                    <button onClick={onClose} className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50">Close</button>
                 </div>
             </motion.div>
         </div>
@@ -171,7 +174,11 @@ const SystemPolicyPage = () => {
                 <div className="flex items-center gap-4">
                     <button className="rounded-full p-2 text-slate-700 hover:bg-slate-100 active:bg-slate-200"><HiBars3 className="h-6 w-6" /></button>
                     <div className="flex cursor-pointer items-center gap-2">
-                        <div className="shrink-0 rounded-lg bg-white p-1.5"><img src={logoDaidien} alt="Logo" className="h-10 w-17" /></div>
+                        <div className="shrink-0 rounded-lg bg-white p-1.5">
+                            <a href="/" aria-label="Back to landing page">
+                                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+                            </a>
+                        </div>
                         <span className="font-display text-xl font-bold tracking-tight text-slate-950">StockSpace Admin</span>
                     </div>
                 </div>
@@ -186,14 +193,14 @@ const SystemPolicyPage = () => {
                         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                             <div>
                                 <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                                    <Shield className="text-blue-500" size={24} /> Chính sách Hệ thống
+                                    <Shield className="text-blue-500" size={24} /> System Policy
                                 </h1>
                                 <p className="mt-1 text-sm text-slate-500">
-                                    Quản lý các phiên bản chính sách, điều khoản và cam kết dành cho người dùng.
+                                    Manage policy versions, terms, and commitments for users.
                                 </p>
                             </div>
                             <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 shadow-sm">
-                                <Plus size={16} /> Thêm Phiên bản
+                                <Plus size={16} /> Add Version
                             </button>
                         </div>
 
@@ -209,16 +216,16 @@ const SystemPolicyPage = () => {
                             {loading ? (
                                 <div className="flex flex-col items-center justify-center gap-3 py-20 text-slate-400">
                                     <Loader2 size={28} className="animate-spin text-blue-400" />
-                                    <span className="text-sm">Đang tải dữ liệu...</span>
+                                    <span className="text-sm">Loading data...</span>
                                 </div>
                             ) : policies.length === 0 ? (
-                                <div className="py-20 text-center text-sm text-slate-400">Chưa có phiên bản chính sách nào.</div>
+                                <div className="py-20 text-center text-sm text-slate-400">There is no policy version yet.</div>
                             ) : (
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b border-slate-100 bg-slate-50">
-                                                {['Phiên bản / ID', 'Trạng thái', 'Ngày ban hành', 'Cập nhật', ''].map((h) => (
+                                                {["Version/ID", "Status", "Date of issue", "Update", ''].map((h) => (
                                                     <th key={h} className="px-5 py-3.5 text-left text-xs font-bold tracking-wide text-slate-500 uppercase">{h}</th>
                                                 ))}
                                             </tr>
@@ -233,7 +240,7 @@ const SystemPolicyPage = () => {
                                                     </td>
                                                     <td className="px-5 py-4">
                                                         <Badge variant={p.isActive ? 'success' : 'slate'} size="sm" className="rounded-full">
-                                                            {p.isActive ? <><CheckCircle2 size={12} className="mr-1 inline" /> Đang hiệu lực</> : 'Đã cũ'}
+                                                            {p.isActive ? <><CheckCircle2 size={12} className="mr-1 inline" /> In effect</> : "Old"}
                                                         </Badge>
                                                     </td>
                                                     <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
@@ -245,7 +252,7 @@ const SystemPolicyPage = () => {
                                                     <td className="px-5 py-4 text-right">
                                                         <button onClick={() => setSelectedItem(p)}
                                                             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 shadow-sm opacity-0 transition-opacity group-hover:opacity-100">
-                                                            <FileText size={14} className="text-slate-400" /> Xem nội dung
+                                                            <FileText size={14} className="text-slate-400" /> View content
                                                         </button>
                                                     </td>
                                                 </motion.tr>
@@ -259,7 +266,7 @@ const SystemPolicyPage = () => {
                             {totalPages > 1 && (
                                 <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4">
                                     <span className="text-sm text-slate-500">
-                                        Trang {page + 1} / {totalPages} · {totalElements.toLocaleString()} phiên bản
+                                        Page {page + 1} / {totalPages} · {totalElements.toLocaleString()} versions
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => dispatch(setPage(page - 1))} disabled={page === 0 || loading}

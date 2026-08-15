@@ -1,33 +1,15 @@
-import { useState, useEffect, useMemo } from 'react'
-import {
-  LayoutGrid,
-  List,
-  ChevronDown,
-  Search,
-  Warehouse as WarehouseIcon,
-  ThermometerSnowflake,
-  Shield,
-  Zap,
-  Box,
-} from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { LayoutGrid, List, ChevronDown, Search } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
 import WarehouseCard from '../components/WarehouseCard'
 import WarehouseFilters from '../components/WarehouseFilters'
 import Button from '@/components/atoms/Button'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import PublicHeader from '@/components/PublicHeader'
 
-const CATEGORIES = [
-  { id: 'all', label: 'All Spaces', icon: WarehouseIcon },
-  { id: 'cold', label: 'Cold Storage', icon: ThermometerSnowflake },
-  { id: 'fulfillment', label: 'Fulfillment', icon: Box },
-  { id: 'high-security', label: 'High Security', icon: Shield },
-  { id: 'last-mile', label: 'Last Mile', icon: Zap },
-]
-
 const WarehouseSkeleton = () => (
-  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white animate-pulse">
-    <div className="aspect-[4/3] bg-slate-100" />
+  <div className="animate-pulse overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div className="aspect-4/3 bg-slate-100" />
     <div className="space-y-4 p-6">
       <div className="flex justify-between">
         <div className="h-6 w-2/3 rounded-lg bg-slate-100" />
@@ -40,7 +22,7 @@ const WarehouseSkeleton = () => (
       </div>
       <div className="flex items-center justify-between border-t border-slate-50 pt-4">
         <div className="h-8 w-24 rounded-lg bg-slate-100" />
-        <div className="h-10 w-32 rounded-xl bg-primary/10" />
+        <div className="bg-primary/10 h-10 w-32 rounded-xl" />
       </div>
     </div>
   </div>
@@ -60,27 +42,17 @@ const normalizeWarehouse = (warehouse) => ({
   isVerified: warehouse.isVerified ?? warehouse.verified ?? false,
 })
 
-const isVisibleWarehouse = (warehouse) => true
-
-const matchesCategory = (warehouse, category) => {
-  if (category === 'all') return true
-
-  const type = (warehouse.type || '').toLowerCase()
-  if (category === 'cold') return type.includes('cold')
-  if (category === 'fulfillment') return type.includes('fulfillment')
-  if (category === 'high-security') return type.includes('security')
-  if (category === 'last-mile') return type.includes('last mile') || type.includes('last-mile')
-
-  return true
-}
-
 const WarehouseListingPage = () => {
   const [viewMode, setViewMode] = useState('grid')
   const [isLoading, setIsLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [warehouses, setWarehouses] = useState([])
   const [error, setError] = useState('')
+  const [apiFilters, setApiFilters] = useState({
+    minPrice: '',
+    maxPrice: '',
+    minCapacity: '',
+  })
 
   useEffect(() => {
     const fetchWarehouses = async () => {
@@ -88,13 +60,20 @@ const WarehouseListingPage = () => {
         setIsLoading(true)
         setError('')
 
-        const response = await warehouseApi.getPublicWarehouses({
+        const params = {
           page: 0,
           size: 24,
           status: 'AVAILABLE',
           sortBy: 'createdAt',
           sortDir: 'desc',
-        })
+          keyword: searchTerm.trim() || undefined,
+        }
+
+        if (apiFilters.minPrice) params.minPrice = apiFilters.minPrice
+        if (apiFilters.maxPrice) params.maxPrice = apiFilters.maxPrice
+        if (apiFilters.minCapacity) params.minCapacity = apiFilters.minCapacity
+
+        const response = await warehouseApi.getPublicWarehouses(params)
 
         const payload = response?.data?.data
         const content = Array.isArray(payload?.content)
@@ -103,7 +82,7 @@ const WarehouseListingPage = () => {
             ? payload
             : []
 
-        const normalized = content.map(normalizeWarehouse).filter(isVisibleWarehouse)
+        const normalized = content.map(normalizeWarehouse)
         setWarehouses(normalized)
       } catch (err) {
         setError(err.response?.data?.message || err.message || 'Unable to load warehouses.')
@@ -113,63 +92,27 @@ const WarehouseListingPage = () => {
       }
     }
 
-    fetchWarehouses()
-  }, [])
+    // Debounce the API call slightly if searching by keyword
+    const timer = setTimeout(() => {
+      fetchWarehouses()
+    }, 500)
 
-  const filteredWarehouses = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase()
+    return () => clearTimeout(timer)
+  }, [apiFilters, searchTerm])
 
-    return warehouses.filter((warehouse) => {
-      const matchesSearch =
-        !keyword ||
-        warehouse.name.toLowerCase().includes(keyword) ||
-        warehouse.location.toLowerCase().includes(keyword) ||
-        warehouse.type.toLowerCase().includes(keyword)
-
-      return matchesSearch && matchesCategory(warehouse, activeCategory)
-    })
-  }, [activeCategory, searchTerm, warehouses])
+  const filteredWarehouses = warehouses
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="flex min-h-screen flex-col bg-white">
       <PublicHeader />
-      <main className="pb-20 flex-1 pt-4">
+      <main className="flex-1 pt-4 pb-20">
         <div className="sticky top-20 z-40 border-b border-slate-100 bg-white/90 backdrop-blur-md">
           <div className="container mx-auto px-4 py-4">
-            <div className="flex flex-col items-center gap-6 lg:flex-row">
-              <div className="flex flex-1 items-center gap-8 overflow-x-auto pb-1 no-scrollbar">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`group relative flex min-w-max flex-col items-center gap-2 pb-2 transition-all ${activeCategory === cat.id
-                        ? 'text-primary'
-                        : 'text-slate-500 hover:text-slate-900'
-                      }`}
-                  >
-                    <cat.icon size={24} strokeWidth={activeCategory === cat.id ? 2.5 : 2} />
-                    <span
-                      className={`text-xs font-bold tracking-tight ${activeCategory === cat.id
-                          ? 'opacity-100'
-                          : 'opacity-70 group-hover:opacity-100'
-                        }`}
-                    >
-                      {cat.label}
-                    </span>
-                    {activeCategory === cat.id && (
-                      <motion.div
-                        layoutId="cat-active"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
-
+            <div className="flex justify-end">
               <div className="flex w-full items-center gap-3 lg:w-auto">
                 <div className="relative flex-1 lg:w-80">
                   <Search
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
                     size={16}
                   />
                   <input
@@ -177,25 +120,27 @@ const WarehouseListingPage = () => {
                     placeholder="Search by city or hub name..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    className="focus:ring-primary/20 w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium transition-all focus:ring-2 focus:outline-none"
                   />
                 </div>
                 <div className="hidden items-center rounded-2xl border border-slate-200 bg-white p-1 sm:flex">
                   <button
                     onClick={() => setViewMode('grid')}
-                    className={`rounded-xl p-1.5 transition-all ${viewMode === 'grid'
+                    className={`rounded-xl p-1.5 transition-all ${
+                      viewMode === 'grid'
                         ? 'bg-slate-900 text-white shadow-lg'
                         : 'text-slate-400 hover:text-slate-600'
-                      }`}
+                    }`}
                   >
                     <LayoutGrid size={20} />
                   </button>
                   <button
                     onClick={() => setViewMode('list')}
-                    className={`rounded-xl p-1.5 transition-all ${viewMode === 'list'
+                    className={`rounded-xl p-1.5 transition-all ${
+                      viewMode === 'list'
                         ? 'bg-slate-900 text-white shadow-lg'
                         : 'text-slate-400 hover:text-slate-600'
-                      }`}
+                    }`}
                   >
                     <List size={20} />
                   </button>
@@ -214,14 +159,14 @@ const WarehouseListingPage = () => {
                   <button
                     onClick={() => {
                       setSearchTerm('')
-                      setActiveCategory('all')
+                      setApiFilters({ minPrice: '', maxPrice: '', minCapacity: '' })
                     }}
-                    className="text-xs font-bold text-primary hover:underline"
+                    className="text-primary text-xs font-bold hover:underline"
                   >
                     Clear all
                   </button>
                 </div>
-                <WarehouseFilters />
+                <WarehouseFilters onFilterChange={setApiFilters} />
               </div>
             </aside>
 
@@ -238,10 +183,10 @@ const WarehouseListingPage = () => {
                   </p> */}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                  <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">
                     Sort by:
                   </span>
-                  <button className="flex items-center gap-1 text-sm font-bold text-slate-900 transition-colors hover:text-primary">
+                  <button className="hover:text-primary flex items-center gap-1 text-sm font-bold text-slate-900 transition-colors">
                     Newest <ChevronDown size={14} />
                   </button>
                 </div>
@@ -278,14 +223,15 @@ const WarehouseListingPage = () => {
                   </div>
                   <h3 className="text-xl font-bold text-slate-900">No approved warehouses found</h3>
                   <p className="mx-auto mt-2 max-w-sm text-slate-500">
-                    Try adjusting your filters or come back after more warehouse listings are approved.
+                    Try adjusting your filters or come back after more warehouse listings are
+                    approved.
                   </p>
                   <Button
                     variant="outline"
                     className="mt-6"
                     onClick={() => {
                       setSearchTerm('')
-                      setActiveCategory('all')
+                      setApiFilters({ minPrice: '', maxPrice: '', minCapacity: '' })
                     }}
                   >
                     Reset All Filters

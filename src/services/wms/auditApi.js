@@ -29,8 +29,8 @@ const auditApi = {
   },
 
   // Từ chối phiếu kiểm kê
-  rejectAudit: (id) => {
-    return api.patch(`/tenant/inventory/audits/${id}/reject`)
+  rejectAudit: (id, data) => {
+    return api.patch(`/tenant/inventory/audits/${id}/reject`, data)
   }
 }
 

@@ -3,9 +3,11 @@ import { Bell, Package, Calendar, DollarSign, Info, Check, Trash2 } from 'lucide
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSelector, useDispatch } from 'react-redux'
 import Button from '@/components/atoms/Button'
+import useEscapeKey from '@/hooks/useEscapeKey'
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false)
+  useEscapeKey(isOpen, () => setIsOpen(false))
   const { notifications } = useSelector((state) => state.notification)
   const dispatch = useDispatch()
   const unreadCount = notifications.filter((n) => !n.isRead).length

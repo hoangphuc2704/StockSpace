@@ -32,7 +32,7 @@ const ErrorMessage = ({ message, description, onClose }) => {
                             className="inline-flex text-red-400 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 rounded"
                             onClick={onClose}
                         >
-                            <span className="sr-only">Đóng</span>
+                            <span className="sr-only">Close</span>
                             <X className="h-4 w-4" />
                         </button>
                     </div>

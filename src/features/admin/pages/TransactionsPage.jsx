@@ -24,15 +24,16 @@ import logoDaidien from '../../../assets/logoDaidien.png'
 
 // ─── Enum maps từ BE ─────────────────────────────────────────────────────────
 const TRANSACTION_TYPE_LABELS = {
-  TOP_UP: 'Nạp tiền',
-  WITHDRAWAL: 'Rút tiền',
-  DEPOSIT_PAYMENT: 'Thanh toán cọc',
-  DEPOSIT_REFUND: 'Hoàn tiền cọc',
-  PACKAGE_PAYMENT: 'Mua gói dịch vụ',
-  COMMISSION: 'Phí hoa hồng',
+  TOP_UP: 'Top up',
+  WITHDRAWAL: "Withdraw money",
+  DEPOSIT_PAYMENT: "Deposit payment",
+  DEPOSIT_RECEIVED: "Receive deposit",
+  DEPOSIT_REFUND: "Refund deposit",
+  PACKAGE_PAYMENT: "Buy a service package",
+  COMMISSION: "Commission fee",
 }
 
-const CREDIT_TYPES = new Set(['TOP_UP', 'DEPOSIT_REFUND'])
+const CREDIT_TYPES = new Set(['TOP_UP', 'DEPOSIT_REFUND', 'DEPOSIT_RECEIVED'])
 
 const STATUS_VARIANT = {
   SUCCESS: 'success',
@@ -41,10 +42,10 @@ const STATUS_VARIANT = {
 }
 
 const PAYMENT_METHOD_LABELS = {
-  BANK_TRANSFER: 'Chuyển khoản',
+  BANK_TRANSFER: "Transfer",
   VNPAY: 'VNPay',
   MOMO: 'Momo',
-  WALLET: 'Ví nội bộ',
+  WALLET: "Internal wallet",
 }
 
 const ALL_TYPES = [
@@ -52,6 +53,7 @@ const ALL_TYPES = [
   'TOP_UP',
   'WITHDRAWAL',
   'DEPOSIT_PAYMENT',
+  'DEPOSIT_RECEIVED',
   'DEPOSIT_REFUND',
   'PACKAGE_PAYMENT',
   'COMMISSION',
@@ -61,10 +63,10 @@ const ALL_STATUSES = ['', 'SUCCESS', 'PENDING', 'FAILED']
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const formatVND = (amount) =>
   typeof amount === 'number'
-    ? amount.toLocaleString('vi-VN') + ' ₫'
+    ? amount.toLocaleString('en-US') + ' ₫'
     : (amount ?? 0).toString() + ' ₫'
 
-const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('vi-VN', { hour12: false }) : '—')
+const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
@@ -131,7 +133,7 @@ const TransactionsPage = () => {
       ),
     },
     {
-      header: 'Loại giao dịch',
+      header: "Transaction type",
       render: (row) => {
         const isCredit = CREDIT_TYPES.has(row.transactionType)
         return (
@@ -151,7 +153,7 @@ const TransactionsPage = () => {
       },
     },
     {
-      header: 'Số tiền',
+      header: "Amount",
       render: (row) => {
         const amt = Number(row.amount ?? 0)
         const isCredit = CREDIT_TYPES.has(row.transactionType)
@@ -164,7 +166,7 @@ const TransactionsPage = () => {
       },
     },
     {
-      header: 'Trạng thái',
+      header: "Status",
       render: (row) => (
         <Badge variant={STATUS_VARIANT[row.status] || 'slate'} size="sm" className="rounded-full">
           {row.status || '—'}
@@ -172,7 +174,7 @@ const TransactionsPage = () => {
       ),
     },
     {
-      header: 'Phương thức',
+      header: "Method",
       render: (row) => (
         <span className="text-sm text-slate-600">
           {PAYMENT_METHOD_LABELS[row.paymentMethod] || row.paymentMethod || '—'}
@@ -180,13 +182,13 @@ const TransactionsPage = () => {
       ),
     },
     {
-      header: 'Mã thanh toán',
+      header: "Payment code",
       render: (row) => (
         <span className="font-mono text-xs text-slate-400">{row.paymentCode || '—'}</span>
       ),
     },
     {
-      header: 'Ngày tạo',
+      header: "Creation date",
       render: (row) => (
         <span className="text-sm whitespace-nowrap text-slate-500">
           {formatDate(row.createdAt)}
@@ -217,7 +219,9 @@ const TransactionsPage = () => {
           </button>
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Admin
@@ -254,10 +258,10 @@ const TransactionsPage = () => {
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">Transactions</h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Toàn bộ lịch sử giao dịch tài chính trên hệ thống.
+                  Complete history of financial transactions on the system.
                   {totalElements > 0 && (
                     <span className="ml-1 font-semibold text-slate-700">
-                      ({totalElements.toLocaleString()} giao dịch)
+                      ({totalElements.toLocaleString()} transaction)
                     </span>
                   )}
                 </p>
@@ -275,21 +279,21 @@ const TransactionsPage = () => {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
                 {
-                  label: 'Tổng',
+                  label: "Total",
                   value: formatVND(summary.total),
                   icon: CreditCard,
                   color: 'text-blue-600',
                   bg: 'bg-blue-50',
                 },
                 {
-                  label: 'Thành công',
+                  label: "Success",
                   value: formatVND(summary.success),
                   icon: DollarSign,
                   color: 'text-emerald-600',
                   bg: 'bg-emerald-50',
                 },
                 {
-                  label: 'Đang chờ',
+                  label: "Waiting",
                   value: formatVND(summary.pending),
                   icon: Clock,
                   color: 'text-amber-600',
@@ -325,7 +329,7 @@ const TransactionsPage = () => {
                 />
                 <input
                   type="text"
-                  placeholder="Tìm theo ID, loại, mã thanh toán..."
+                  placeholder="Search by ID, type, payment code..."
                   value={searchText}
                   onChange={(e) => setSearchText(e.target.value)}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pr-4 pl-9 text-sm transition-all focus:ring-2 focus:ring-blue-200 focus:outline-none"
@@ -343,7 +347,7 @@ const TransactionsPage = () => {
                   >
                     {ALL_TYPES.map((t) => (
                       <option key={t} value={t}>
-                        {t ? TRANSACTION_TYPE_LABELS[t] || t : 'Tất cả loại'}
+                        {t ? TRANSACTION_TYPE_LABELS[t] || t : "All types"}
                       </option>
                     ))}
                   </select>
@@ -358,7 +362,7 @@ const TransactionsPage = () => {
                   >
                     {ALL_STATUSES.map((s) => (
                       <option key={s} value={s}>
-                        {s || 'Tất cả trạng thái'}
+                        {s || "All status"}
                       </option>
                     ))}
                   </select>
@@ -372,11 +376,11 @@ const TransactionsPage = () => {
                 {loading ? (
                   <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500" />
-                    <span className="text-sm">Đang tải dữ liệu...</span>
+                    <span className="text-sm">Loading data...</span>
                   </div>
                 ) : filtered.length === 0 ? (
                   <div className="py-16 text-center text-sm text-slate-400">
-                    Không có giao dịch nào phù hợp.
+                    There are no suitable transactions.
                   </div>
                 ) : (
                   <DataTable columns={columns} data={filtered} />
@@ -387,7 +391,7 @@ const TransactionsPage = () => {
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
                   <span className="text-sm text-slate-500">
-                    Trang {page + 1} / {totalPages} · {totalElements.toLocaleString()} giao dịch
+                    Page {page + 1} / {totalPages} · {totalElements.toLocaleString()} transactions
                   </span>
                   <div className="flex items-center gap-2">
                     <button

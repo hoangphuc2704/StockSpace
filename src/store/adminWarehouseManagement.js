@@ -59,9 +59,9 @@ export const verifyWarehouse = createAsyncThunk(
 
 export const rejectWarehouse = createAsyncThunk(
   'adminWarehouseManage/reject',
-  async (id, { rejectWithValue }) => {
+  async ({ id, reason }, { rejectWithValue }) => {
     try {
-      const res = await adminApi.rejectWarehouse(id)
+      const res = await adminApi.rejectWarehouse(id, { reason })
       return res.data.data  // WarehouseResponse
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)

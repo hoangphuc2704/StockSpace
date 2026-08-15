@@ -23,6 +23,11 @@ const receiptApi = {
     return api.patch(`/tenant/inventory/receipts/${id}/approve`)
   },
 
+  // Từ chối phiếu nhập/xuất kho (Reject)
+  rejectReceipt: (id, reason) => {
+    return api.patch(`/tenant/inventory/receipts/${id}/reject`, { reason })
+  },
+
   // Xuất file Excel/CSV danh sách phiếu nhập/xuất kho
   exportReceipts: (warehouseId, type) => {
     return api.get('/tenant/inventory/receipts/export', {

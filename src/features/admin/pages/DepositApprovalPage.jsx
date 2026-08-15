@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { CreditCard, CheckCircle, XCircle, Clock, AlertCircle, FileText } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
 import DataTable from '../../../components/organisms/DataTable'
-import Button from '../../../components/atoms/Button'
+import TableActionMenu from '@/components/TableActionMenu'
 import Avatar from '../../../components/atoms/Avatar'
 import Sidebar from '../../../components/SideBar' // <-- Import Sidebar dùng chung của hệ thống
 import logoDaidien from '../../../assets/logoDaidien.png'
@@ -95,22 +95,12 @@ const DepositApprovalPage = () => {
     {
       header: 'Actions',
       render: () => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-success/5 border-success/20 text-success hover:bg-success h-8 text-xs transition-all hover:text-white"
-          >
-            <CheckCircle size={14} className="mr-1" /> Approve
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="bg-danger/5 border-danger/20 text-danger hover:bg-danger h-8 text-xs transition-all hover:text-white"
-          >
-            <XCircle size={14} className="mr-1" /> Reject
-          </Button>
-        </div>
+        <TableActionMenu
+          items={[
+            { label: 'Approve', icon: CheckCircle },
+            { label: 'Reject', icon: XCircle, danger: true },
+          ]}
+        />
       ),
     },
   ]
@@ -129,7 +119,9 @@ const DepositApprovalPage = () => {
 
           <div className="flex cursor-pointer items-center gap-2">
             <div className="shrink-0 rounded-lg bg-white p-1.5 text-white">
-              <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              <a href="/" aria-label="Back to landing page">
+                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
+              </a>
             </div>
             <span className="font-display text-xl font-bold tracking-tight text-slate-950">
               StockSpace Admin

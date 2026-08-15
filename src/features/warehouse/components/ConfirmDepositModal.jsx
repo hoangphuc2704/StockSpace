@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import Button from '@/components/atoms/Button'
+import useEscapeKey from '@/hooks/useEscapeKey'
 
 const ConfirmDepositModal = ({
   isOpen,
@@ -10,6 +11,8 @@ const ConfirmDepositModal = ({
   isBooking,
   onConfirm
 }) => {
+  useEscapeKey(isOpen, onClose)
+
   if (!isOpen) return null
 
   return (
@@ -54,7 +57,7 @@ const ConfirmDepositModal = ({
             Cancel
           </Button>
           <Button
-            className="flex-1 text-black"
+            className="flex-1 text-white"
             disabled={walletBalance - depositAmount < 0 || isBooking}
             onClick={onConfirm}
           >
