@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
@@ -9,7 +9,6 @@ import {
   MapPin,
   Calendar,
   ArrowRight,
-  Package,
   ExternalLink,
   ShieldCheck,
   XCircle,
@@ -19,6 +18,7 @@ import Button from '@/components/atoms/Button'
 import { Link } from 'react-router-dom'
 import tenantApi from '@/services/tenant/tenantApi'
 import { toast } from 'react-hot-toast'
+import { formatVND } from '@/utils/currency'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 
 const MyBookingsPage = () => {
@@ -29,10 +29,10 @@ const MyBookingsPage = () => {
   const [bookings, setBookings] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [page, setPage] = useState(0)
+  const [page] = useState(0)
   const [isCanceling, setIsCanceling] = useState(null)
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       setIsLoading(true)
       setError('')
@@ -43,11 +43,13 @@ const MyBookingsPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [page])
 
   useEffect(() => {
+    // Refresh the server-backed booking list for the active page.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchBookings()
-  }, [page])
+  }, [fetchBookings])
 
   const handleCancelBooking = async (bookingId) => {
     const confirmed = await confirmDialog({
@@ -167,7 +169,7 @@ const MyBookingsPage = () => {
                             Deposit Amount
                           </p>
                           <p className="text-primary text-lg font-bold">
-                            ${booking.depositAmount?.toLocaleString()}
+                            {formatVND(booking.depositAmount)}
                           </p>
                         </div>
                       </div>

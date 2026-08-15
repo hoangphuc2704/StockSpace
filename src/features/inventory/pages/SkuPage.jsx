@@ -50,6 +50,11 @@ const emptyPrices = () => ({
   wholesaleBefore: '0',
   wholesaleAfter: '0',
 })
+const rawCurrencyValue = (value) => String(value ?? '').replace(/[^\d]/g, '')
+const formattedCurrencyInput = (value) => {
+  const rawValue = rawCurrencyValue(value)
+  return rawValue === '' ? '' : Number(rawValue).toLocaleString('vi-VN')
+}
 
 const SkuPage = () => {
   const confirmDialog = useConfirmDialog()
@@ -482,11 +487,13 @@ const SkuPage = () => {
                             Giá mua <Info className="h-3.5 w-3.5 text-slate-400" />
                           </span>
                           <input
-                            type="number"
-                            min="0"
+                            type="text"
+                            inputMode="numeric"
                             className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-right text-sm outline-none"
-                            value={formPurchasePrice}
-                            onChange={(event) => setFormPurchasePrice(event.target.value)}
+                            value={formattedCurrencyInput(formPurchasePrice)}
+                            onChange={(event) =>
+                              setFormPurchasePrice(rawCurrencyValue(event.target.value))
+                            }
                           />
                         </label>
 
@@ -531,14 +538,14 @@ const SkuPage = () => {
                                   return (
                                     <td key={field} className="px-4 py-2">
                                       <input
-                                        type="number"
-                                        min="0"
+                                        type="text"
+                                        inputMode="numeric"
                                         className="w-full bg-transparent text-right outline-none"
-                                        value={formPrices[field]}
+                                        value={formattedCurrencyInput(formPrices[field])}
                                         onChange={(event) =>
                                           setFormPrices((current) => ({
                                             ...current,
-                                            [field]: event.target.value,
+                                            [field]: rawCurrencyValue(event.target.value),
                                           }))
                                         }
                                       />

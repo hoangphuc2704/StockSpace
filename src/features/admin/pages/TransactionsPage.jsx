@@ -25,12 +25,12 @@ import logoDaidien from '../../../assets/logoDaidien.png'
 // ─── Enum maps từ BE ─────────────────────────────────────────────────────────
 const TRANSACTION_TYPE_LABELS = {
   TOP_UP: 'Top up',
-  WITHDRAWAL: "Withdraw money",
-  DEPOSIT_PAYMENT: "Deposit payment",
-  DEPOSIT_RECEIVED: "Receive deposit",
-  DEPOSIT_REFUND: "Refund deposit",
-  PACKAGE_PAYMENT: "Buy a service package",
-  COMMISSION: "Commission fee",
+  WITHDRAWAL: 'Withdraw money',
+  DEPOSIT_PAYMENT: 'Deposit payment',
+  DEPOSIT_RECEIVED: 'Receive deposit',
+  DEPOSIT_REFUND: 'Refund deposit',
+  PACKAGE_PAYMENT: 'Buy a service package',
+  COMMISSION: 'Commission fee',
 }
 
 const CREDIT_TYPES = new Set(['TOP_UP', 'DEPOSIT_REFUND', 'DEPOSIT_RECEIVED'])
@@ -42,10 +42,10 @@ const STATUS_VARIANT = {
 }
 
 const PAYMENT_METHOD_LABELS = {
-  BANK_TRANSFER: "Transfer",
+  BANK_TRANSFER: 'Transfer',
   VNPAY: 'VNPay',
   MOMO: 'Momo',
-  WALLET: "Internal wallet",
+  WALLET: 'Internal wallet',
 }
 
 const ALL_TYPES = [
@@ -63,7 +63,7 @@ const ALL_STATUSES = ['', 'SUCCESS', 'PENDING', 'FAILED']
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const formatVND = (amount) =>
   typeof amount === 'number'
-    ? amount.toLocaleString('en-US') + ' ₫'
+    ? amount.toLocaleString('vi-VN') + ' ₫'
     : (amount ?? 0).toString() + ' ₫'
 
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
@@ -133,7 +133,7 @@ const TransactionsPage = () => {
       ),
     },
     {
-      header: "Transaction type",
+      header: 'Transaction type',
       render: (row) => {
         const isCredit = CREDIT_TYPES.has(row.transactionType)
         return (
@@ -153,7 +153,7 @@ const TransactionsPage = () => {
       },
     },
     {
-      header: "Amount",
+      header: 'Amount',
       render: (row) => {
         const amt = Number(row.amount ?? 0)
         const isCredit = CREDIT_TYPES.has(row.transactionType)
@@ -166,7 +166,7 @@ const TransactionsPage = () => {
       },
     },
     {
-      header: "Status",
+      header: 'Status',
       render: (row) => (
         <Badge variant={STATUS_VARIANT[row.status] || 'slate'} size="sm" className="rounded-full">
           {row.status || '—'}
@@ -174,7 +174,7 @@ const TransactionsPage = () => {
       ),
     },
     {
-      header: "Method",
+      header: 'Method',
       render: (row) => (
         <span className="text-sm text-slate-600">
           {PAYMENT_METHOD_LABELS[row.paymentMethod] || row.paymentMethod || '—'}
@@ -182,13 +182,13 @@ const TransactionsPage = () => {
       ),
     },
     {
-      header: "Payment code",
+      header: 'Payment code',
       render: (row) => (
         <span className="font-mono text-xs text-slate-400">{row.paymentCode || '—'}</span>
       ),
     },
     {
-      header: "Creation date",
+      header: 'Creation date',
       render: (row) => (
         <span className="text-sm whitespace-nowrap text-slate-500">
           {formatDate(row.createdAt)}
@@ -279,21 +279,21 @@ const TransactionsPage = () => {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
               {[
                 {
-                  label: "Total",
+                  label: 'Total',
                   value: formatVND(summary.total),
                   icon: CreditCard,
                   color: 'text-blue-600',
                   bg: 'bg-blue-50',
                 },
                 {
-                  label: "Success",
+                  label: 'Success',
                   value: formatVND(summary.success),
                   icon: DollarSign,
                   color: 'text-emerald-600',
                   bg: 'bg-emerald-50',
                 },
                 {
-                  label: "Waiting",
+                  label: 'Waiting',
                   value: formatVND(summary.pending),
                   icon: Clock,
                   color: 'text-amber-600',
@@ -347,7 +347,7 @@ const TransactionsPage = () => {
                   >
                     {ALL_TYPES.map((t) => (
                       <option key={t} value={t}>
-                        {t ? TRANSACTION_TYPE_LABELS[t] || t : "All types"}
+                        {t ? TRANSACTION_TYPE_LABELS[t] || t : 'All types'}
                       </option>
                     ))}
                   </select>
@@ -362,7 +362,7 @@ const TransactionsPage = () => {
                   >
                     {ALL_STATUSES.map((s) => (
                       <option key={s} value={s}>
-                        {s || "All status"}
+                        {s || 'All status'}
                       </option>
                     ))}
                   </select>

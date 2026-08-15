@@ -42,7 +42,7 @@ const WalletAdmin = () => {
 
   // --- STATE QUáº¢N LÃ Dá»® LIá»†U ---
   const [activeTab, setActiveTab] = useState('transactions') // 'transactions' | 'withdrawals'
-  
+
   const [wallet, setWallet] = useState(null)
   const [loadingWallet, setLoadingWallet] = useState(true)
 
@@ -68,7 +68,7 @@ const WalletAdmin = () => {
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
   const [inputAmount, setInputAmount] = useState('')
   const [depositLoading, setDepositLoading] = useState(false)
-  
+
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
 
   useEscapeKey(isDepositModalOpen, () => setIsDepositModalOpen(false))
@@ -213,7 +213,7 @@ const WalletAdmin = () => {
   // --- HELPER Äá»ŠNH Dáº NG ---
   const formatVND = (value) => {
     if (value === undefined || value === null) return '₫0'
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   const getTransactionTypeBadge = (type) => {
@@ -258,7 +258,8 @@ const WalletAdmin = () => {
   }
 
   const getStatusBadge = (status) => {
-    if (status === 'SUCCESS' || status === 'APPROVED') return <Badge variant="success">Successful</Badge>
+    if (status === 'SUCCESS' || status === 'APPROVED')
+      return <Badge variant="success">Successful</Badge>
     if (status === 'PENDING') return <Badge variant="warning">Processing</Badge>
     return <Badge variant="danger">Failed</Badge>
   }
@@ -266,7 +267,7 @@ const WalletAdmin = () => {
   // --- Cá»˜T Báº¢NG GIAO Dá»ŠCH ---
   const transactionColumns = [
     {
-      header: "Transaction code",
+      header: 'Transaction code',
       render: (row) => (
         <div>
           <p className="text-xs font-semibold text-slate-400">
@@ -295,9 +296,12 @@ const WalletAdmin = () => {
       header: 'Amount',
       render: (row) => {
         const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_REFUND'
-        const isFailed = row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
+        const isFailed =
+          row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
         return (
-          <span className={`font-bold ${isFailed ? 'text-rose-600' : (isPlus ? 'text-emerald-600' : 'text-rose-600')}`}>
+          <span
+            className={`font-bold ${isFailed ? 'text-rose-600' : isPlus ? 'text-emerald-600' : 'text-rose-600'}`}
+          >
             {isPlus ? '+' : '-'} {formatVND(row.amount)}
           </span>
         )
@@ -308,7 +312,7 @@ const WalletAdmin = () => {
       render: (row) => getStatusBadge(row.status),
     },
     {
-      header: "Time",
+      header: 'Time',
       render: (row) => (
         <div className="space-y-0.5 text-xs text-slate-600">
           <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('en-US')}</p>
@@ -342,11 +346,7 @@ const WalletAdmin = () => {
     },
     {
       header: 'Withdrawal Amount',
-      render: (row) => (
-        <span className="font-bold text-rose-600">
-          - {formatVND(row.amount)}
-        </span>
-      ),
+      render: (row) => <span className="font-bold text-rose-600">- {formatVND(row.amount)}</span>,
     },
     {
       header: 'Status',
@@ -354,7 +354,10 @@ const WalletAdmin = () => {
         <div className="space-y-1">
           {getStatusBadge(row.status)}
           {row.adminNotes && (
-            <p className="text-[11px] text-slate-500 italic max-w-[150px] truncate" title={row.adminNotes}>
+            <p
+              className="max-w-[150px] truncate text-[11px] text-slate-500 italic"
+              title={row.adminNotes}
+            >
               Note: {row.adminNotes}
             </p>
           )}
@@ -362,7 +365,7 @@ const WalletAdmin = () => {
       ),
     },
     {
-      header: "What a time",
+      header: 'What a time',
       render: (row) => (
         <div className="space-y-0.5 text-xs text-slate-600">
           <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('en-US')}</p>
@@ -443,7 +446,7 @@ const WalletAdmin = () => {
                   <div>
                     <p className="text-sm font-medium text-slate-500">System wallet balance</p>
                     <h2 className="text-3xl font-bold text-slate-900">
-                      {loadingWallet ? "Loading..." : formatVND(wallet?.balance)}
+                      {loadingWallet ? 'Loading...' : formatVND(wallet?.balance)}
                     </h2>
                   </div>
                 </div>
@@ -456,9 +459,11 @@ const WalletAdmin = () => {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-slate-500">Total annual revenue {currentYear}</p>
+                      <p className="text-sm font-medium text-slate-500">
+                        Total annual revenue {currentYear}
+                      </p>
                       <select
-                        className="rounded-md border-slate-200 text-xs text-slate-600 py-1 pl-2 pr-6 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
+                        className="rounded-md border-slate-200 py-1 pr-6 pl-2 text-xs text-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                         value={currentYear}
                         onChange={(e) => setCurrentYear(Number(e.target.value))}
                       >
@@ -466,8 +471,8 @@ const WalletAdmin = () => {
                         <option value={new Date().getFullYear() - 1}>Last year</option>
                       </select>
                     </div>
-                    <h2 className="text-3xl font-bold text-slate-900 mt-1">
-                      {loadingRevenue ? "Loading..." : formatVND(totalRevenue)}
+                    <h2 className="mt-1 text-3xl font-bold text-slate-900">
+                      {loadingRevenue ? 'Loading...' : formatVND(totalRevenue)}
                     </h2>
                   </div>
                 </div>
@@ -475,7 +480,7 @@ const WalletAdmin = () => {
             </div>
 
             {/* Revenue Chart */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mt-6">
+            <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-6 flex items-center justify-between">
                 <h3 className="font-bold text-slate-900">Actual Revenue chart</h3>
                 <Badge variant="success">By month</Badge>
@@ -483,7 +488,7 @@ const WalletAdmin = () => {
               <div className="h-80">
                 {loadingRevenue ? (
                   <div className="flex h-full items-center justify-center text-slate-500">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading chart...
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" /> Loading chart...
                   </div>
                 ) : revenueData.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
@@ -505,11 +510,11 @@ const WalletAdmin = () => {
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: '#64748b', fontSize: 12 }}
-                        tickFormatter={(value) => new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value)}
+                        tickFormatter={(value) =>
+                          new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value)
+                        }
                       />
-                      <Tooltip
-                        formatter={(value) => formatVND(value)}
-                      />
+                      <Tooltip formatter={(value) => formatVND(value)} />
                       <Area
                         type="monotone"
                         dataKey="revenue"
@@ -521,19 +526,21 @@ const WalletAdmin = () => {
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
-                   <div className="flex h-full items-center justify-center text-slate-500">No annual revenue data is available {currentYear}.</div>
+                  <div className="flex h-full items-center justify-center text-slate-500">
+                    No annual revenue data is available {currentYear}.
+                  </div>
                 )}
               </div>
             </div>
 
             {/* TABS & BẢNG */}
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex border-b border-slate-200">
                 <button
                   className={`flex-1 px-6 py-4 text-sm font-bold transition-colors ${
                     activeTab === 'transactions'
-                      ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                      ? 'border-b-2 border-blue-600 bg-blue-50/50 text-blue-600'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                   }`}
                   onClick={() => setActiveTab('transactions')}
                 >
@@ -542,8 +549,8 @@ const WalletAdmin = () => {
                 <button
                   className={`flex-1 px-6 py-4 text-sm font-bold transition-colors ${
                     activeTab === 'withdrawals'
-                      ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                      ? 'border-b-2 border-blue-600 bg-blue-50/50 text-blue-600'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                   }`}
                   onClick={() => setActiveTab('withdrawals')}
                 >
@@ -554,13 +561,24 @@ const WalletAdmin = () => {
               <div className="p-6">
                 {activeTab === 'transactions' ? (
                   <>
-                    <DataTable columns={transactionColumns} data={transactions} isLoading={loadingTransactions} />
-                    
+                    <DataTable
+                      columns={transactionColumns}
+                      data={transactions}
+                      isLoading={loadingTransactions}
+                    />
+
                     {/* PhÃ¢n trang giao dá»‹ch */}
                     {pagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Showing <span className="font-semibold text-slate-700">{transactions.length}</span> of <span className="font-semibold text-slate-700">{pagination.totalElements}</span>
+                          Showing{' '}
+                          <span className="font-semibold text-slate-700">
+                            {transactions.length}
+                          </span>{' '}
+                          of{' '}
+                          <span className="font-semibold text-slate-700">
+                            {pagination.totalElements}
+                          </span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -572,7 +590,7 @@ const WalletAdmin = () => {
                           </button>
                           {[...Array(pagination.totalPages).keys()].map((p) => (
                             <button
-                               key={p}
+                              key={p}
                               onClick={() => fetchTransactions(p)}
                               className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
                                 pagination.page === p
@@ -596,13 +614,22 @@ const WalletAdmin = () => {
                   </>
                 ) : (
                   <>
-                    <DataTable columns={withdrawalColumns} data={withdrawals} isLoading={loadingWithdrawals} />
-                    
+                    <DataTable
+                      columns={withdrawalColumns}
+                      data={withdrawals}
+                      isLoading={loadingWithdrawals}
+                    />
+
                     {/* PhÃ¢n trang rÃºt tiá»n */}
                     {withdrawPagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Showing <span className="font-semibold text-slate-700">{withdrawals.length}</span> of <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span>
+                          Showing{' '}
+                          <span className="font-semibold text-slate-700">{withdrawals.length}</span>{' '}
+                          of{' '}
+                          <span className="font-semibold text-slate-700">
+                            {withdrawPagination.totalElements}
+                          </span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -614,7 +641,7 @@ const WalletAdmin = () => {
                           </button>
                           {[...Array(withdrawPagination.totalPages).keys()].map((p) => (
                             <button
-                               key={p}
+                              key={p}
                               onClick={() => fetchWithdrawals(p)}
                               className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
                                 withdrawPagination.page === p
@@ -714,7 +741,7 @@ const WalletAdmin = () => {
       )}
 
       {/* Modal rÃºt tiá»n */}
-      <WithdrawModal 
+      <WithdrawModal
         isOpen={isWithdrawModalOpen}
         onClose={() => setIsWithdrawModalOpen(false)}
         currentBalance={wallet?.balance || 0}

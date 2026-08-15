@@ -119,7 +119,7 @@ const PackageList = () => {
                     />
                     <div className="mb-6 flex items-baseline text-stone-900">
                       <span className="text-4xl font-extrabold tracking-tight">
-                        {Number(pkg.price || 0).toLocaleString('en-US')}
+                        {Number(pkg.price || 0).toLocaleString('vi-VN')}
                       </span>
                       <span className="ml-1 text-sm font-medium text-stone-500">VND</span>
                     </div>

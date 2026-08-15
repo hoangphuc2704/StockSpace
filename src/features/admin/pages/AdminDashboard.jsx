@@ -84,7 +84,7 @@ const AdminDashboard = () => {
   const stats = [
     {
       title: 'Total Revenue',
-      value: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(
+      value: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
         totalRevenue
       ),
       icon: HiOutlineCurrencyDollar,
@@ -262,7 +262,7 @@ const AdminDashboard = () => {
                         />
                         <Tooltip
                           formatter={(value) =>
-                            new Intl.NumberFormat('en-US', {
+                            new Intl.NumberFormat('vi-VN', {
                               style: 'currency',
                               currency: 'VND',
                             }).format(value)

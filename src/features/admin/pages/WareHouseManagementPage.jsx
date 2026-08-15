@@ -60,7 +60,7 @@ const VERIFIED_OPTIONS = [
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatVND = (amount) => (amount != null ? Number(amount).toLocaleString('en-US') + ' ₫' : '—')
+const formatVND = (amount) => (amount != null ? Number(amount).toLocaleString('vi-VN') + ' ₫' : '—')
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
@@ -308,7 +308,7 @@ const WareHouseManagementPage = () => {
   // Local UI
   const [searchInput, setSearchInput] = useState(keyword || '')
   const [selectedItem, setSelectedItem] = useState(null)
-  
+
   // Reject Modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [warehouseToReject, setWarehouseToReject] = useState(null)
@@ -343,23 +343,16 @@ const WareHouseManagementPage = () => {
   )
 
   const handleReject = useCallback(
-    (w) => {
-      setWarehouseToReject(w)
-      setRejectReason('')
-      setRejectModalOpen(true)
+    async (w) => {
+      const reason = window.prompt('Vui lòng nhập lý do từ chối (bắt buộc):')
+      if (!reason || !reason.trim()) {
+        toast.error('Bạn phải nhập lý do từ chối!')
+        return
+      }
+      await dispatch(rejectWarehouse({ id: w.id, reason }))
     },
-    []
+    [dispatch]
   )
-
-  const submitReject = async () => {
-    if (!rejectReason.trim()) {
-      import('react-hot-toast').then(m => m.toast.error('Bạn phải nhập lý do từ chối!'))
-      return
-    }
-    await dispatch(rejectWarehouse({ id: warehouseToReject.id, reason: rejectReason }))
-    setRejectModalOpen(false)
-    setWarehouseToReject(null)
-  }
 
   // Summary counts từ trang hiện tại
   const pendingCount = warehouses.filter((w) => w.status === 'PENDING_APPROVAL').length
@@ -735,10 +728,12 @@ const WareHouseManagementPage = () => {
       >
         <div className="p-4 sm:p-6">
           <p className="mb-4 text-sm text-slate-600">
-            Bạn đang từ chối phê duyệt kho <span className="font-bold text-slate-900">{warehouseToReject?.name}</span>. Vui lòng cung cấp lý do cụ thể để người cho thuê có thể nắm rõ và khắc phục.
+            Bạn đang từ chối phê duyệt kho{' '}
+            <span className="font-bold text-slate-900">{warehouseToReject?.name}</span>. Vui lòng
+            cung cấp lý do cụ thể để người cho thuê có thể nắm rõ và khắc phục.
           </p>
           <textarea
-            className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             rows={4}
             placeholder="Nhập lý do từ chối (bắt buộc)..."
             value={rejectReason}
@@ -747,14 +742,14 @@ const WareHouseManagementPage = () => {
           <div className="mt-6 flex justify-end gap-3">
             <button
               onClick={() => setRejectModalOpen(false)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
               Hủy
             </button>
             <button
               onClick={submitReject}
               disabled={!rejectReason.trim() || actionLoading}
-              className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {actionLoading ? (
                 <>

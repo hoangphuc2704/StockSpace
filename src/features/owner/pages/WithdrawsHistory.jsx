@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
-import {
-  CircleDollarSign,
-  CreditCard,
-  RefreshCw,
-  Wallet,
-  MinusCircle,
-} from 'lucide-react'
+import { CircleDollarSign, CreditCard, RefreshCw, Wallet, MinusCircle } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
@@ -26,7 +20,7 @@ const WithdrawHistory = () => {
 
   // --- STATE QUẢN LÝ DỮ LIỆU ---
   const [activeTab, setActiveTab] = useState('transactions') // 'transactions' | 'withdrawals'
-  
+
   const [wallet, setWallet] = useState(null)
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
 
@@ -60,7 +54,7 @@ const WithdrawHistory = () => {
         setWallet(res?.data || res)
       }
     } catch (error) {
-      console.error("Error retrieving wallet data:", error)
+      console.error('Error retrieving wallet data:', error)
     }
   }
 
@@ -80,7 +74,7 @@ const WithdrawHistory = () => {
         })
       }
     } catch (error) {
-      console.error("Error retrieving transaction history:", error)
+      console.error('Error retrieving transaction history:', error)
     } finally {
       setLoadingTransactions(false)
     }
@@ -102,7 +96,7 @@ const WithdrawHistory = () => {
         })
       }
     } catch (error) {
-      console.error("Error retrieving withdrawal history:", error)
+      console.error('Error retrieving withdrawal history:', error)
     } finally {
       setLoadingWithdrawals(false)
     }
@@ -126,7 +120,7 @@ const WithdrawHistory = () => {
   // --- HELPER ĐỊNH DẠNG HIỂN THỊ ---
   const formatVND = (value) => {
     if (value === undefined || value === null) return '0 ₫'
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   const getTransactionTypeBadge = (type) => {
@@ -173,7 +167,8 @@ const WithdrawHistory = () => {
   }
 
   const getStatusBadge = (status) => {
-    if (status === 'SUCCESS' || status === 'APPROVED') return <Badge variant="success">Success</Badge>
+    if (status === 'SUCCESS' || status === 'APPROVED')
+      return <Badge variant="success">Success</Badge>
     if (status === 'PENDING') return <Badge variant="warning">Processing</Badge>
     return <Badge variant="danger">Failed</Badge>
   }
@@ -181,7 +176,7 @@ const WithdrawHistory = () => {
   // --- ĐỊNH NGHĨA CÁC CỘT CHO DATATABLE GIAO DỊCH ---
   const transactionColumns = [
     {
-      header: "Transaction code",
+      header: 'Transaction code',
       render: (row) => (
         <div>
           <p className="text-xs font-semibold text-slate-400">
@@ -196,7 +191,7 @@ const WithdrawHistory = () => {
       ),
     },
     {
-      header: "Type & Method",
+      header: 'Type & Method',
       render: (row) => (
         <div className="space-y-1">
           <div>{getTransactionTypeBadge(row.transactionType)}</div>
@@ -207,23 +202,29 @@ const WithdrawHistory = () => {
       ),
     },
     {
-      header: "Amount",
+      header: 'Amount',
       render: (row) => {
-        const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_RECEIVED' || row.transactionType === 'DEPOSIT_REFUND'
-        const isFailed = row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
+        const isPlus =
+          row.transactionType === 'TOP_UP' ||
+          row.transactionType === 'DEPOSIT_RECEIVED' ||
+          row.transactionType === 'DEPOSIT_REFUND'
+        const isFailed =
+          row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
         return (
-          <span className={`font-bold ${isFailed ? 'text-rose-600' : (isPlus ? 'text-emerald-600' : 'text-rose-600')}`}>
+          <span
+            className={`font-bold ${isFailed ? 'text-rose-600' : isPlus ? 'text-emerald-600' : 'text-rose-600'}`}
+          >
             {isPlus ? '+' : '-'} {formatVND(row.amount)}
           </span>
         )
       },
     },
     {
-      header: "Status",
+      header: 'Status',
       render: (row) => getStatusBadge(row.status),
     },
     {
-      header: "Creation time",
+      header: 'Creation time',
       render: (row) => (
         <div className="space-y-0.5 text-xs text-slate-600">
           <p className="font-medium">{new Date(row.createdAt).toLocaleDateString('en-US')}</p>
@@ -246,7 +247,7 @@ const WithdrawHistory = () => {
       ),
     },
     {
-      header: "Receiving bank",
+      header: 'Receiving bank',
       render: (row) => (
         <div className="space-y-1 text-sm">
           <p className="font-semibold text-slate-700">{row.bankName}</p>
@@ -256,20 +257,19 @@ const WithdrawHistory = () => {
       ),
     },
     {
-      header: "Withdrawal amount",
-      render: (row) => (
-        <span className="font-bold text-rose-600">
-          - {formatVND(row.amount)}
-        </span>
-      ),
+      header: 'Withdrawal amount',
+      render: (row) => <span className="font-bold text-rose-600">- {formatVND(row.amount)}</span>,
     },
     {
-      header: "Status",
+      header: 'Status',
       render: (row) => (
         <div className="space-y-1">
           {getStatusBadge(row.status)}
           {row.adminNotes && (
-            <p className="text-[11px] text-slate-500 italic max-w-[150px] truncate" title={row.adminNotes}>
+            <p
+              className="max-w-[150px] truncate text-[11px] text-slate-500 italic"
+              title={row.adminNotes}
+            >
               Notes: {row.adminNotes}
             </p>
           )}
@@ -347,20 +347,20 @@ const WithdrawHistory = () => {
                 <div>
                   <p className="text-sm font-medium text-slate-500">Available balance</p>
                   <h2 className="text-3xl font-bold text-slate-900">
-                    {wallet === null ? "Loading..." : formatVND(wallet?.balance)}
+                    {wallet === null ? 'Loading...' : formatVND(wallet?.balance)}
                   </h2>
                 </div>
               </div>
             </div>
 
             {/* TABS & BẢNG */}
-            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex border-b border-slate-200">
                 <button
                   className={`flex-1 px-6 py-4 text-sm font-bold transition-colors ${
                     activeTab === 'transactions'
-                      ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                      ? 'border-b-2 border-blue-600 bg-blue-50/50 text-blue-600'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                   }`}
                   onClick={() => setActiveTab('transactions')}
                 >
@@ -369,8 +369,8 @@ const WithdrawHistory = () => {
                 <button
                   className={`flex-1 px-6 py-4 text-sm font-bold transition-colors ${
                     activeTab === 'withdrawals'
-                      ? 'border-b-2 border-blue-600 text-blue-600 bg-blue-50/50'
-                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                      ? 'border-b-2 border-blue-600 bg-blue-50/50 text-blue-600'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                   }`}
                   onClick={() => setActiveTab('withdrawals')}
                 >
@@ -381,13 +381,24 @@ const WithdrawHistory = () => {
               <div className="p-6">
                 {activeTab === 'transactions' ? (
                   <>
-                    <DataTable columns={transactionColumns} data={transactions} isLoading={loadingTransactions} />
-                    
+                    <DataTable
+                      columns={transactionColumns}
+                      data={transactions}
+                      isLoading={loadingTransactions}
+                    />
+
                     {/* PHÂN TRANG GIAO DỊCH */}
                     {pagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Showing <span className="font-semibold text-slate-700">{transactions.length}</span> of <span className="font-semibold text-slate-700">{pagination.totalElements}</span>
+                          Showing{' '}
+                          <span className="font-semibold text-slate-700">
+                            {transactions.length}
+                          </span>{' '}
+                          of{' '}
+                          <span className="font-semibold text-slate-700">
+                            {pagination.totalElements}
+                          </span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -397,19 +408,21 @@ const WithdrawHistory = () => {
                           >
                             Before
                           </button>
-                          {[...Array(pagination.totalPages).keys()].filter(p => p >= pagination.page - 2 && p <= pagination.page + 2).map((p) => (
-                            <button
-                              key={p}
-                              onClick={() => fetchTransactions(p)}
-                              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                                pagination.page === p
-                                  ? 'bg-blue-600 text-white shadow-sm'
-                                  : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                              }`}
-                            >
-                              {p + 1}
-                            </button>
-                          ))}
+                          {[...Array(pagination.totalPages).keys()]
+                            .filter((p) => p >= pagination.page - 2 && p <= pagination.page + 2)
+                            .map((p) => (
+                              <button
+                                key={p}
+                                onClick={() => fetchTransactions(p)}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                                  pagination.page === p
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                }`}
+                              >
+                                {p + 1}
+                              </button>
+                            ))}
                           <button
                             disabled={pagination.last}
                             onClick={() => fetchTransactions(pagination.page + 1)}
@@ -423,13 +436,22 @@ const WithdrawHistory = () => {
                   </>
                 ) : (
                   <>
-                    <DataTable columns={withdrawalColumns} data={withdrawals} isLoading={loadingWithdrawals} />
-                    
+                    <DataTable
+                      columns={withdrawalColumns}
+                      data={withdrawals}
+                      isLoading={loadingWithdrawals}
+                    />
+
                     {/* PHÂN TRANG RÚT TIỀN */}
                     {withdrawPagination.totalPages > 1 && (
                       <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                         <p className="text-xs text-slate-500">
-                          Showing <span className="font-semibold text-slate-700">{withdrawals.length}</span> of <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span>
+                          Showing{' '}
+                          <span className="font-semibold text-slate-700">{withdrawals.length}</span>{' '}
+                          of{' '}
+                          <span className="font-semibold text-slate-700">
+                            {withdrawPagination.totalElements}
+                          </span>
                         </p>
                         <div className="flex items-center gap-1">
                           <button
@@ -439,19 +461,24 @@ const WithdrawHistory = () => {
                           >
                             Before
                           </button>
-                          {[...Array(withdrawPagination.totalPages).keys()].filter(p => p >= withdrawPagination.page - 2 && p <= withdrawPagination.page + 2).map((p) => (
-                            <button
-                              key={p}
-                              onClick={() => fetchWithdrawals(p)}
-                              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-                                withdrawPagination.page === p
-                                  ? 'bg-blue-600 text-white shadow-sm'
-                                  : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                              }`}
-                            >
-                              {p + 1}
-                            </button>
-                          ))}
+                          {[...Array(withdrawPagination.totalPages).keys()]
+                            .filter(
+                              (p) =>
+                                p >= withdrawPagination.page - 2 && p <= withdrawPagination.page + 2
+                            )
+                            .map((p) => (
+                              <button
+                                key={p}
+                                onClick={() => fetchWithdrawals(p)}
+                                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+                                  withdrawPagination.page === p
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                }`}
+                              >
+                                {p + 1}
+                              </button>
+                            ))}
                           <button
                             disabled={withdrawPagination.last}
                             onClick={() => fetchWithdrawals(withdrawPagination.page + 1)}
@@ -469,8 +496,8 @@ const WithdrawHistory = () => {
           </main>
         </div>
       </div>
-      
-      <WithdrawModal 
+
+      <WithdrawModal
         isOpen={isWithdrawModalOpen}
         onClose={() => setIsWithdrawModalOpen(false)}
         currentBalance={wallet?.balance || 0}

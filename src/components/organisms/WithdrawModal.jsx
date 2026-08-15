@@ -18,7 +18,7 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
   if (!isOpen) return null
 
   const formatVND = (value) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   const handleChange = (e) => {
@@ -33,11 +33,13 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
 
     const amountNum = Number(formData.amount)
     if (isNaN(amountNum) || amountNum <= 0) {
-      setError("Withdrawal amount must be greater than 0.")
+      setError('Withdrawal amount must be greater than 0.')
       return
     }
     if (amountNum > currentBalance) {
-      setError(`The withdrawal amount cannot exceed the available balance (${formatVND(currentBalance)}).`)
+      setError(
+        `The withdrawal amount cannot exceed the available balance (${formatVND(currentBalance)}).`
+      )
       return
     }
 
@@ -54,11 +56,11 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
         onSuccess && onSuccess()
         onClose()
       } else {
-        setError(res?.data?.message || "Withdrawal request failed.")
+        setError(res?.data?.message || 'Withdrawal request failed.')
       }
     } catch (err) {
-      console.error("Error when withdrawing money:", err)
-      setError("An error occurred, please try again later.")
+      console.error('Error when withdrawing money:', err)
+      setError('An error occurred, please try again later.')
     } finally {
       setLoading(false)
     }
@@ -80,9 +82,7 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-600">
-            {error}
-          </div>
+          <div className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-600">{error}</div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,7 +110,8 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
               </p>
             )}
             <p className="mt-1 text-xs text-slate-400">
-              Available balance: <span className="font-semibold text-blue-600">{formatVND(currentBalance)}</span>
+              Available balance:{' '}
+              <span className="font-semibold text-blue-600">{formatVND(currentBalance)}</span>
             </p>
           </div>
 
@@ -155,7 +156,7 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
               value={formData.bankAccountHolder}
               onChange={handleChange}
               placeholder="CAPITALS WITHOUT diacritics"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none uppercase"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 uppercase focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
             />
           </div>
 

@@ -37,7 +37,7 @@ import { parseFeaturesToList } from '../../../utils/formatFeatures'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleDateString('en-US') : '—')
-const formatVND = (amount) => (amount != null ? Number(amount).toLocaleString('en-US') + ' ₫' : '—')
+const formatVND = (amount) => (amount != null ? Number(amount).toLocaleString('vi-VN') + ' ₫' : '—')
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 const SUB_STATUS_CONFIG = {

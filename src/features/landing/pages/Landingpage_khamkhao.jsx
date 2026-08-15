@@ -274,7 +274,7 @@ const LandingPageKhamkhao = () => {
                             Price/month
                           </p>
                           <p className="mt-1 text-xl font-extrabold text-[#FF5A1F]">
-                            {warehouse.pricePerMonth.toLocaleString('en-US')} d
+                            {warehouse.pricePerMonth.toLocaleString('vi-VN')} ₫
                           </p>
                         </div>
 

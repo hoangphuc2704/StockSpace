@@ -43,7 +43,7 @@ const numberOf = (value, fallback = 0) => {
 const formatCurrency = (value) =>
   value == null
     ? '—'
-    : new Intl.NumberFormat('en-US', {
+    : new Intl.NumberFormat('vi-VN', {
         style: 'currency',
         currency: 'VND',
         maximumFractionDigits: 0,
@@ -155,13 +155,12 @@ const WarehouseApprovalPage = () => {
 
   const runApprovalAction = async (warehouse, type) => {
     if (type === 'reject') {
-      setWarehouseToReject(warehouse)
-      setRejectReason('')
-      setRejectModalOpen(true)
-      return
+      reason = window.prompt("Vui lòng nhập lý do từ chối (bắt buộc):")
+      if (!reason || !reason.trim()) {
+        toast.error('Bạn phải nhập lý do từ chối!')
+        return
+      }
     }
-    executeAction(warehouse, type, null)
-  }
 
   const executeAction = async (warehouse, type, reason) => {
     setPendingAction({ id: warehouse.id, type })
@@ -170,7 +169,7 @@ const WarehouseApprovalPage = () => {
         type === 'approve'
           ? verifyWarehouse(warehouse.id)
           : rejectWarehouse({ id: warehouse.id, reason })
-      
+
       const updatedWarehouse = await dispatch(action).unwrap()
       setWarehouseDetail((current) =>
         current?.id === updatedWarehouse?.id ? { ...current, ...updatedWarehouse } : current
