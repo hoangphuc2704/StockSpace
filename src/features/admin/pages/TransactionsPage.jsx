@@ -63,7 +63,7 @@ const ALL_STATUSES = ['', 'SUCCESS', 'PENDING', 'FAILED']
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const formatVND = (amount) =>
   typeof amount === 'number'
-    ? amount.toLocaleString('en-US') + ' ₫'
+    ? amount.toLocaleString('vi-VN') + ' ₫'
     : (amount ?? 0).toString() + ' ₫'
 
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')

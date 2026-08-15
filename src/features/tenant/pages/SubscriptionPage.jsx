@@ -1,17 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import {
-  Wallet,
-  ArrowUpRight,
-  Clock,
-  Package,
-  CheckCircle,
-  Loader2,
-} from 'lucide-react'
+import { Wallet, ArrowUpRight, Clock, Package, CheckCircle, Loader2 } from 'lucide-react'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import Header from '@/components/HeaderDashboard'
 import Sidebar from '@/components/SideBar'
+import { formatVND } from '@/utils/currency'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import subscriptionApi from '@/services/tenant/subscriptionApi'
@@ -20,15 +14,11 @@ import moment from 'moment'
 const SubscriptionPage = () => {
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
-  
+
   const [isLoading, setIsLoading] = useState(true)
   const [subscription, setSubscription] = useState(null)
 
-  useEffect(() => {
-    fetchActiveSubscription()
-  }, [])
-
-  const fetchActiveSubscription = async () => {
+  const fetchActiveSubscription = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await subscriptionApi.getMyActiveSubscription()
@@ -38,7 +28,13 @@ const SubscriptionPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    // Load the active subscription when this screen mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchActiveSubscription()
+  }, [fetchActiveSubscription])
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -75,7 +71,7 @@ const SubscriptionPage = () => {
 
             {isLoading ? (
               <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="text-primary h-8 w-8 animate-spin" />
               </div>
             ) : subscription ? (
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -88,8 +84,8 @@ const SubscriptionPage = () => {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                          <Package className="h-6 w-6 text-primary" />
+                        <div className="bg-primary/10 flex h-12 w-12 items-center justify-center rounded-xl">
+                          <Package className="text-primary h-6 w-6" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-slate-500">Current Plan</p>
@@ -108,7 +104,7 @@ const SubscriptionPage = () => {
                     <div>
                       <p className="text-xs text-slate-500">Price</p>
                       <p className="font-bold text-slate-900">
-                        {subscription.servicePackage?.price?.toLocaleString() || 0} VND
+                        {formatVND(subscription.servicePackage?.price, '0 ₫')}
                       </p>
                     </div>
                     <div>
@@ -126,7 +122,9 @@ const SubscriptionPage = () => {
                     <div>
                       <p className="text-xs text-slate-500">Max Staff</p>
                       <p className="font-bold text-slate-900">
-                        {subscription.servicePackage?.maxStaff === 0 ? 'Unlimited' : subscription.servicePackage?.maxStaff || '0'}
+                        {subscription.servicePackage?.maxStaff === 0
+                          ? 'Unlimited'
+                          : subscription.servicePackage?.maxStaff || '0'}
                       </p>
                     </div>
                   </div>
@@ -135,10 +133,12 @@ const SubscriptionPage = () => {
                     <h3 className="mb-4 font-bold text-slate-900">Plan Features</h3>
                     <ul className="space-y-3">
                       <li className="flex items-center gap-3 text-sm text-slate-600">
-                        <CheckCircle className="h-5 w-5 text-success" /> Features: {subscription.servicePackage?.features || 'Basic'}
+                        <CheckCircle className="text-success h-5 w-5" /> Features:{' '}
+                        {subscription.servicePackage?.features || 'Basic'}
                       </li>
                       <li className="flex items-center gap-3 text-sm text-slate-600">
-                        <CheckCircle className="h-5 w-5 text-success" /> Duration: {subscription.servicePackage?.durationDays || '0'} days
+                        <CheckCircle className="text-success h-5 w-5" /> Duration:{' '}
+                        {subscription.servicePackage?.durationDays || '0'} days
                       </li>
                     </ul>
                   </div>

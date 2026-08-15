@@ -37,12 +37,12 @@ const CONFIG_KEY_LABELS = {
 
 const formatConfigValue = (key, val, packages = []) => {
   if (!val) return '—'
-  if (key === 'inspection_fee') return Number(val).toLocaleString('en-US') + ' ₫'
+  if (key === 'inspection_fee') return Number(val).toLocaleString('vi-VN') + ' ₫'
   if (key === 'deposit_percentage') return val + '%'
   if (key === 'contract_expiry_days') return val + 'day'
   if (key === 'warehouse_publish_package_id') {
     const pkg = packages.find((p) => p.id === val)
-    if (pkg) return `${pkg.name} - ${Number(pkg.price).toLocaleString('en-US')} ₫`
+    if (pkg) return `${pkg.name} - ${Number(pkg.price).toLocaleString('vi-VN')} ₫`
   }
   return val
 }
@@ -127,7 +127,7 @@ const EditConfigModal = ({ configItem, packages, onClose }) => {
                 <option value="">-- Select Service Package --</option>
                 {packages.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} - {Number(p.price).toLocaleString('en-US')} ₫
+                    {p.name} - {Number(p.price).toLocaleString('vi-VN')} ₫
                   </option>
                 ))}
               </select>

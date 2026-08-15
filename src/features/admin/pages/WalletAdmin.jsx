@@ -213,7 +213,7 @@ const WalletAdmin = () => {
   // --- HELPER Äá»ŠNH Dáº NG ---
   const formatVND = (value) => {
     if (value === undefined || value === null) return '₫0'
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   const getTransactionTypeBadge = (type) => {

@@ -43,7 +43,7 @@ const numberOf = (value, fallback = 0) => {
 const formatCurrency = (value) =>
   value == null
     ? '—'
-    : new Intl.NumberFormat('en-US', {
+    : new Intl.NumberFormat('vi-VN', {
         style: 'currency',
         currency: 'VND',
         maximumFractionDigits: 0,

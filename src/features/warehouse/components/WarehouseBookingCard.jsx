@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
-import { Star, ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 import Button from '@/components/atoms/Button'
+import { formatVND } from '@/utils/currency'
 
 const WarehouseBookingCard = ({
   warehouse,
@@ -26,7 +27,7 @@ const WarehouseBookingCard = ({
                 Rental Price
               </p>
               <span className="text-primary text-3xl font-black">
-                {warehouse.price.toLocaleString()}VND
+                {formatVND(warehouse.price, '0 ₫')}
               </span>
               <span className="font-medium text-slate-500"> / mo</span>
             </div>
@@ -50,23 +51,21 @@ const WarehouseBookingCard = ({
             <div className="space-y-2.5 text-sm">
               <div className="flex justify-between text-slate-600">
                 <span>Monthly Rental</span>
-                <span className="font-semibold">{warehouse.price.toLocaleString()}VND</span>
+                <span className="font-semibold">{formatVND(warehouse.price, '0 ₫')}</span>
               </div>
               <div className="flex justify-between text-slate-600">
                 <span>Security Deposit ({depositPercentage}%)</span>
-                <span className="font-semibold">{extendedData.deposit.toLocaleString()} VND</span>
+                <span className="font-semibold">{formatVND(extendedData.deposit, '0 ₫')}</span>
               </div>
               <div className="flex justify-between border-t border-slate-200 pt-3 text-lg font-black text-slate-900">
                 <span>Total to Book (Deposit)</span>
-                <span className="text-primary">
-                  {extendedData.deposit.toLocaleString()} VND
-                </span>
+                <span className="text-primary">{formatVND(extendedData.deposit, '0 ₫')}</span>
               </div>
             </div>
           </div>
 
           <Button
-            className="group shadow-primary/30 text-white shadow-xl h-14 w-full rounded-2xl text-lg font-bold"
+            className="group shadow-primary/30 h-14 w-full rounded-2xl text-lg font-bold text-white shadow-xl"
             disabled={isCheckingWallet || hasBooked}
             onClick={onDepositClick}
           >

@@ -215,7 +215,7 @@ const OwnerDashboard = () => {
   // Hàm định dạng tiền VND
   const formatVND = (value) => {
     if (value === undefined || value === null) return '0 ₫'
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'VND' }).format(value)
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
   }
 
   // Khối Thẻ Thống kê hiển thị số dư thực tế và dòng tiền tổng

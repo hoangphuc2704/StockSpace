@@ -146,7 +146,7 @@ const PackageDetail = () => {
                   </p>
                   <div className="flex items-baseline text-[#FF5A1F]">
                     <span className="text-5xl font-black tracking-tight">
-                      {Number(pkg.price || 0).toLocaleString('en-US')}
+                      {Number(pkg.price || 0).toLocaleString('vi-VN')}
                     </span>
                     <span className="ml-2 text-lg font-bold">VND</span>
                   </div>
@@ -243,7 +243,7 @@ const PackageDetail = () => {
           >
             <p className="text-sm whitespace-pre-line">
               {previewData?.message ||
-                `Are you sure you want to buy the package ${pkg?.name} with price ${Number(pkg?.price || 0).toLocaleString('en-US')} VND?`}
+                `Are you sure you want to buy the package ${pkg?.name} with price ${Number(pkg?.price || 0).toLocaleString('vi-VN')} VND?`}
             </p>
           </div>
           <div className="flex justify-end gap-3 border-t border-stone-100 pt-4">

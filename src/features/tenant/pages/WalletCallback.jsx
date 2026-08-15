@@ -34,7 +34,7 @@ const WalletCallback = () => {
               </div>
               <h2 className="text-2xl font-bold text-stone-900 mb-2">Payment successful!</h2>
               <p className="text-stone-500 mb-6">
-                You have successfully loaded <span className="font-bold text-emerald-600">{Number(amount || 0).toLocaleString('en-US')} VND</span> into your wallet.
+                You have successfully loaded <span className="font-bold text-emerald-600">{Number(amount || 0).toLocaleString('vi-VN')} VND</span> into your wallet.
               </p>
               {code && (
                 <p className="text-sm text-stone-400 mb-8">

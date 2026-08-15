@@ -42,7 +42,7 @@ const STATUS_CONFIG = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatVND = (amount) =>
     amount != null
-        ? Number(amount).toLocaleString('en-US') + ' ₫'
+        ? Number(amount).toLocaleString('vi-VN') + ' ₫'
         : '—'
 
 const formatDate = (dt) =>

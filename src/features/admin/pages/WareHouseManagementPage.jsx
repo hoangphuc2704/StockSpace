@@ -59,7 +59,7 @@ const VERIFIED_OPTIONS = [
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatVND = (amount) => (amount != null ? Number(amount).toLocaleString('en-US') + ' ₫' : '—')
+const formatVND = (amount) => (amount != null ? Number(amount).toLocaleString('vi-VN') + ' ₫' : '—')
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 

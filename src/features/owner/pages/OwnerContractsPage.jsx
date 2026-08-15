@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
@@ -23,6 +23,7 @@ import contractApi from '@/services/contractApi'
 import uploadApi from '@/services/uploadApi'
 import disputeApi from '@/services/disputeApi'
 import { toast } from 'react-hot-toast'
+import { formatVND } from '@/utils/currency'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 /** Kiểm tra hợp đồng còn trong vòng 7 ngày kể từ createdAt */
@@ -466,6 +467,8 @@ const OwnerContractsPage = () => {
   }
 
   useEffect(() => {
+    // Load contracts when this screen mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchContracts()
   }, [])
 
@@ -489,7 +492,7 @@ const OwnerContractsPage = () => {
         if (imageUrlRaw.startsWith('[')) {
           try {
             imageArray = JSON.parse(imageUrlRaw)
-          } catch (e) {
+          } catch {
             // Fallback for Java List.toString()
             const content = imageUrlRaw.slice(1, -1)
             if (content) {
@@ -504,7 +507,7 @@ const OwnerContractsPage = () => {
       if (!imageArray || imageArray.length === 0) throw new Error('Invalid URL')
       setViewerImages(imageArray)
       setViewerOpen(true)
-    } catch (error) {
+    } catch {
       toast.error('No valid contract photo yet!')
     }
   }
@@ -558,7 +561,7 @@ const OwnerContractsPage = () => {
           'No details of the dispute you opened for this contract were found.\n\n(Note: You can only view it if you are the person who directly opened the dispute).'
         )
       }
-    } catch (err) {
+    } catch {
       toast.error('Error when retrieving dispute information.')
     } finally {
       setLoadingDispute(false)
@@ -579,7 +582,7 @@ const OwnerContractsPage = () => {
     {
       header: 'Deposit',
       render: (row) => (
-        <span className="text-primary font-semibold">{row.depositAmount?.toLocaleString()} ₫</span>
+        <span className="text-primary font-semibold">{formatVND(row.depositAmount)}</span>
       ),
     },
     {
