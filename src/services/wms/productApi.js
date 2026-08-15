@@ -1,5 +1,21 @@
 import api from '../apiConfig'
 
+const fetchAllSkus = async (size = 100) => {
+  const getPage = (page) => api.get('/tenant/products/skus', { params: { page, size } })
+  const firstResponse = await getPage(0)
+  const firstPage = firstResponse?.data?.data ?? firstResponse?.data ?? {}
+  const totalPages = Math.max(Number(firstPage.totalPages) || 1, 1)
+  const remainingResponses =
+    totalPages > 1
+      ? await Promise.all(Array.from({ length: totalPages - 1 }, (_, index) => getPage(index + 1)))
+      : []
+
+  return [firstResponse, ...remainingResponses].flatMap((response) => {
+    const pageData = response?.data?.data ?? response?.data ?? {}
+    return Array.isArray(pageData.content) ? pageData.content : []
+  })
+}
+
 const productApi = {
   // Lấy danh sách danh mục (categories)
   getCategories: () => {
@@ -27,6 +43,9 @@ const productApi = {
       params: { page, size },
     })
   },
+
+  // Tải đầy đủ SKU để tính tải trọng tồn kho chính xác trên mọi trang dữ liệu.
+  getAllSKUs: ({ size = 100 } = {}) => fetchAllSkus(size),
 
   // Xem chi tiết SKU
   getSKUDetail: (id) => {

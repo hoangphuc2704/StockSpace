@@ -51,21 +51,17 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => (
         </div>
 
         <div>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3">
             <h4 className="flex items-center gap-2 font-bold text-slate-900">
               <Package className="h-4 w-4 text-blue-600" /> Item details
             </h4>
-            <span className="text-xs font-semibold text-slate-500">
-              {receipt.items?.length || 0} item lines
-            </span>
           </div>
           {receipt.items?.length ? (
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full min-w-170 text-left text-sm">
+              <table className="w-full min-w-140 text-left text-sm">
                 <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase">
                   <tr>
                     <th className="px-4 py-3">SKU</th>
-                    <th className="px-4 py-3">Product</th>
                     <th className="px-4 py-3">Rack</th>
                     <th className="px-4 py-3">Bin</th>
                     <th className="px-4 py-3 text-right">Quantity</th>
@@ -77,9 +73,6 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => (
                     <tr key={item.id || `${item.skuCode}-${index}`}>
                       <td className="px-4 py-3 font-mono text-xs font-bold text-blue-700">
                         {item.skuCode || '—'}
-                      </td>
-                      <td className="px-4 py-3 font-semibold text-slate-800">
-                        {item.skuName || '—'}
                       </td>
                       <td className="px-4 py-3 text-slate-600">{item.rackName || '—'}</td>
                       <td className="px-4 py-3 text-slate-600">{item.binName || '—'}</td>

@@ -1,26 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
-import {
-  ArrowUpRight,
-  Package,
-  Truck,
-  Search,
-  Minus,
-  History,
-  PieChart,
-  ShieldAlert,
-  FileText,
-  Share2,
-  Loader2,
-  Download,
-  PlusCircle,
-  Trash2,
-  Eye,
-} from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { ArrowUpRight, Search, Minus, Loader2, Download, Eye } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
@@ -33,14 +16,6 @@ import productApi from '@/services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
-
-const shipmentData = [
-  { name: 'Mon', value: 12 },
-  { name: 'Tue', value: 19 },
-  { name: 'Wed', value: 15 },
-  { name: 'Thu', value: 22 },
-  { name: 'Fri', value: 30 },
-]
 
 const OutboundPage = () => {
   const dispatch = useDispatch()
@@ -111,22 +86,11 @@ const OutboundPage = () => {
     fetchLocations()
   }, [formSkuId, selectedWarehouseId, layout])
 
-  useEffect(() => {
-    fetchInitialData()
-  }, [])
-
-  useEffect(() => {
-    if (selectedWarehouseId) {
-      fetchReceipts()
-      fetchLayout()
-    }
-  }, [selectedWarehouseId])
-
-  const fetchInitialData = async () => {
+  const fetchInitialData = useCallback(async () => {
     try {
       const [whRes, skuRes] = await Promise.all([
         warehouseApi.getMyWarehouses(),
-        productApi.getSKUs({ page: 0, size: 50 }),
+        productApi.getAllSKUs(),
       ])
 
       // API trả về danh sách kho, có thể ở data.data hoặc data.data.content
@@ -140,7 +104,7 @@ const OutboundPage = () => {
         setSelectedWarehouseId(whList[0].id)
       }
 
-      setSkus(skuRes.data?.data?.content || [])
+      setSkus(Array.isArray(skuRes) ? skuRes : [])
     } catch (error) {
       console.error('Error fetching initial data:', error)
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
@@ -149,9 +113,9 @@ const OutboundPage = () => {
         toast.error(error.response?.data?.message || 'Failed to load initial data')
       }
     }
-  }
+  }, [])
 
-  const fetchLayout = async () => {
+  const fetchLayout = useCallback(async () => {
     try {
       const res =
         currentRole === 'STAFF'
@@ -164,9 +128,9 @@ const OutboundPage = () => {
         console.error('Error fetching layout:', error)
       }
     }
-  }
+  }, [currentRole, selectedWarehouseId])
 
-  const fetchReceipts = async () => {
+  const fetchReceipts = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await receiptApi.getReceipts(selectedWarehouseId, {
@@ -185,7 +149,22 @@ const OutboundPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedWarehouseId])
+
+  useEffect(() => {
+    // Initial server data is intentionally loaded when this screen mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchInitialData()
+  }, [fetchInitialData])
+
+  useEffect(() => {
+    if (selectedWarehouseId) {
+      // Refresh server-backed data whenever the active warehouse changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchReceipts()
+      fetchLayout()
+    }
+  }, [fetchLayout, fetchReceipts, selectedWarehouseId])
 
   const handleExport = async () => {
     if (!selectedWarehouseId) return
@@ -215,7 +194,7 @@ const OutboundPage = () => {
       return
     }
 
-    const activeAllocations = Object.entries(allocations).filter(([binId, qty]) => Number(qty) > 0)
+    const activeAllocations = Object.entries(allocations).filter(([, qty]) => Number(qty) > 0)
 
     if (activeAllocations.length === 0) {
       toast.error('Please allocate quantity to at least one bin')
@@ -342,15 +321,6 @@ const OutboundPage = () => {
       },
     },
     {
-      header: 'Items',
-      render: (row) => (
-        <div className="flex items-center gap-2">
-          <Package className="h-4 w-4 text-slate-400" />
-          <span className="font-medium text-slate-900">{row.items?.length || 0} items</span>
-        </div>
-      ),
-    },
-    {
       header: 'Status',
       render: (row) => (
         <Badge
@@ -450,8 +420,8 @@ const OutboundPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <div className="space-y-6 lg:col-span-2">
+              <div>
+                <div className="space-y-6">
                   <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                     <div className="mb-6 flex items-center justify-between">
                       <h3 className="font-bold text-slate-900">Recent Outbound Shipments</h3>
@@ -483,34 +453,6 @@ const OutboundPage = () => {
                     ) : (
                       <DataTable columns={columns} data={receipts} />
                     )}
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h3 className="mb-6 font-bold text-slate-900">Fulfillment Distribution</h3>
-                    <div className="h-48">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={shipmentData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis
-                            dataKey="name"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fontSize: 10 }}
-                          />
-                          <YAxis hide />
-                          <Tooltip
-                            contentStyle={{
-                              borderRadius: '12px',
-                              border: 'none',
-                              boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                            }}
-                          />
-                          <Bar dataKey="value" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
                   </div>
                 </div>
               </div>
