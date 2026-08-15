@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
-import Sidebar from '@/components/Sidebar'
+import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import ContractViewerModal from '@/components/ContractViewerModal'
 import TableActionMenu from '@/components/TableActionMenu'
@@ -639,11 +639,11 @@ const OwnerContractsPage = () => {
               danger: true,
             },
             DISPUTABLE_STATUSES.includes(row.status) &&
-              isWithin7Days(row.createdAt) && {
-                label: 'Open dispute',
-                icon: Scale,
-                onClick: () => setDisputeContractId(row.id),
-              },
+            isWithin7Days(row.createdAt) && {
+              label: 'Open dispute',
+              icon: Scale,
+              onClick: () => setDisputeContractId(row.id),
+            },
             row.status === 'DISPUTED' && { label: 'In dispute', icon: Scale, disabled: true },
             (row.status === 'DISPUTED' || row.status === 'CANCELLED') && {
               label: 'Dispute details',
@@ -675,9 +675,8 @@ const OwnerContractsPage = () => {
         <Sidebar currentRole="OWNER" />
 
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-4000 space-y-6 p-6 md:p-8">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
