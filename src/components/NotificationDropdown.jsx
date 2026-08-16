@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux'
 import notificationApi from '../services/notificationApi'
 import { toast } from 'react-hot-toast'
 import useEscapeKey from '@/hooks/useEscapeKey'
+import { getEnglishNotification } from '@/utils/englishMessages'
 
 const timeAgo = (dateString) => {
   const date = new Date(dateString)
@@ -184,7 +185,7 @@ const NotificationDropdown = () => {
       }
     } catch (error) {
       console.error("Error loading notification:", error)
-      toast.error("Notifications cannot be loaded at this time.")
+      toast.error('Could not load notifications.')
     } finally {
       setIsLoading(false)
       setIsLoadingMore(false)
@@ -231,11 +232,11 @@ const NotificationDropdown = () => {
       if (res.success) {
         setNotifications(prev => prev.map(notif => ({ ...notif, read: true })))
         setUnreadCount(0)
-        toast.success("Marked all as read.")
+        toast.success('All notifications marked read.')
       }
     } catch (error) {
       console.error("Error when marking read all:", error)
-      toast.error("Error updating status.")
+      toast.error('Could not update notifications.')
     }
   }
 
@@ -290,6 +291,7 @@ const NotificationDropdown = () => {
               <div className="divide-y divide-slate-50">
                 {notifications.map((notif) => {
                   const { Icon, color, bg } = getNotificationProps(notif.type)
+                  const copy = getEnglishNotification(notif)
                   return (
                     <div
                       key={notif.id}
@@ -302,10 +304,10 @@ const NotificationDropdown = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-sm ${!notif.read ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
-                            {notif.title}
+                            {copy.title}
                           </p>
                           <p className="mt-1 text-xs text-slate-500 line-clamp-2">
-                            {notif.message}
+                            {copy.message}
                           </p>
                           <p className="mt-1.5 text-[10px] font-medium text-slate-400 uppercase tracking-wider">
                             {timeAgo(notif.createdAt)}

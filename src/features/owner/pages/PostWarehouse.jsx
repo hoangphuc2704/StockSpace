@@ -294,9 +294,9 @@ const CreateWarehouse = () => {
           }
         }
 
-        toast.success('Warehouse posted successfully!')
+        toast.success('Warehouse posted.')
         if (!createdWarehouseId) {
-          toast.error('Warehouse created, but its ID was not returned. Please contact support.')
+        toast.error('Warehouse created without an ID.')
           return
         }
 
@@ -319,11 +319,11 @@ const CreateWarehouse = () => {
           `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${warehouseWidth}&length=${warehouseLength}&height=${warehouseHeight}&setupRequired=true`
         )
       } else {
-        toast.error(response?.data?.message || 'Posting failed, please check your data again.')
+        toast.error(response?.data?.message || 'Could not post warehouse.')
       }
     } catch (error) {
       console.error('Error creating warehouse:', error)
-      toast.error(error.response?.data?.message || 'A system error occurred while connecting!')
+      toast.error(error.response?.data?.message || 'Connection error.')
     } finally {
       setIsLoading(false)
     }
@@ -334,7 +334,7 @@ const CreateWarehouse = () => {
     e.preventDefault()
     const amountNumber = Number(depositAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Please enter a valid deposit amount greater than 0')
+      toast.error('Enter a valid amount.')
       return
     }
     try {
@@ -344,11 +344,11 @@ const CreateWarehouse = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-        toast.error(res?.data?.message || 'VNPay payment link not found in the system!')
+      toast.error(res?.data?.message || 'Payment link unavailable.')
       }
     } catch (error) {
       console.error('Deposit error:', error)
-      toast.error('Deposit request failed, please try again!')
+      toast.error('Deposit failed. Try again.')
     } finally {
       setDepositLoading(false)
     }

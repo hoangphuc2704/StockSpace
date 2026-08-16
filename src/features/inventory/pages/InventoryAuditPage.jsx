@@ -14,13 +14,14 @@ import { toast } from 'react-hot-toast'
 import moment from 'moment'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
+import { getEnglishApiMessage } from '@/utils/englishMessages'
 
 const STATUS_CONFIG = {
-  PENDING: { label: 'Đang chờ', type: 'warning' },
-  APPROVED: { label: 'Đã duyệt', type: 'success' },
-  REJECTED: { label: 'Đã từ chối', type: 'error' },
-  SUBMITTED: { label: 'Chờ duyệt', type: 'info' },
-  COMPLETED: { label: 'Hoàn tất', type: 'success' },
+  PENDING: { label: 'Pending', type: 'warning' },
+  APPROVED: { label: 'Approved', type: 'success' },
+  REJECTED: { label: 'Rejected', type: 'error' },
+  SUBMITTED: { label: 'Awaiting approval', type: 'info' },
+  COMPLETED: { label: 'Completed', type: 'success' },
 }
 
 const InventoryAuditPage = ({ currentRole }) => {
@@ -50,7 +51,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         setTotalPages(res.data.data.totalPages || 1)
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Lỗi khi tải danh sách phiếu kiểm kê')
+      toast.error(getEnglishApiMessage(error, 'Could not load audits.'))
     } finally {
       setLoading(false)
     }
@@ -63,7 +64,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         setWarehouses(res.data.data || [])
       }
     } catch (error) {
-      toast.error('Lỗi khi tải danh sách kho')
+      toast.error('Could not load warehouses.')
     }
   }
 
@@ -74,7 +75,7 @@ const InventoryAuditPage = ({ currentRole }) => {
   const handleCreateAudit = async (e) => {
     e.preventDefault()
     if (!formWarehouseId) {
-      toast.error('Vui lòng chọn kho')
+      toast.error('Select a warehouse.')
       return
     }
 
@@ -86,7 +87,7 @@ const InventoryAuditPage = ({ currentRole }) => {
       }
       const res = await auditApi.createAudit(payload)
       if (res.data?.success) {
-        toast.success('Tạo phiếu kiểm kê thành công')
+      toast.success('Audit created.')
         setIsCreateModalOpen(false)
         setFormWarehouseId('')
         setFormNote('')
@@ -94,7 +95,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         fetchAudits()
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Lỗi khi tạo phiếu kiểm kê')
+      toast.error(getEnglishApiMessage(error, 'Could not create audit.'))
     } finally {
       setCreating(false)
     }
@@ -114,22 +115,22 @@ const InventoryAuditPage = ({ currentRole }) => {
   }
 
   const columns = [
-    ...(currentRole === 'TENANT'
+    ...(currentRole === 'TENANT' || currentRole === 'STAFF'
       ? []
       : [
           {
             accessor: 'id',
-            header: 'Mã Phiếu',
+            header: 'Audit ID',
             render: (row) => <span className="font-medium text-slate-900">#{row.id}</span>,
           },
         ]),
     {
       accessor: 'warehouseName',
-      header: 'Kho',
+      header: 'Warehouse',
     },
     {
       accessor: 'status',
-      header: 'Trạng thái',
+      header: 'Status',
       render: (row) => {
         const config = STATUS_CONFIG[row.status] || { label: row.status, type: 'default' }
         return <Badge type={config.type}>{config.label}</Badge>
@@ -137,19 +138,19 @@ const InventoryAuditPage = ({ currentRole }) => {
     },
     {
       accessor: 'requestedByName',
-      header: 'Người tạo',
+      header: 'Created by',
     },
     {
       accessor: 'createdAt',
-      header: 'Ngày tạo',
+      header: 'Created date',
       render: (row) => moment(row.createdAt).format('DD/MM/YYYY HH:mm'),
     },
     {
       accessor: 'actions',
-      header: 'Thao tác',
+      header: 'Actions',
       render: (row) => (
         <TableActionMenu
-          items={[{ label: 'Chi tiết', icon: Eye, onClick: () => handleViewDetail(row.id) }]}
+          items={[{ label: 'Details', icon: Eye, onClick: () => handleViewDetail(row.id) }]}
         />
       ),
     },
@@ -177,12 +178,12 @@ const InventoryAuditPage = ({ currentRole }) => {
             <div className="mx-auto max-w-7xl space-y-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight text-slate-900">Kiểm kê kho</h1>
-                  <p className="text-sm text-slate-500">Quản lý và thực hiện kiểm kê hàng hoá</p>
+                  <h1 className="text-2xl font-bold tracking-tight text-slate-900">Inventory Audits</h1>
+                  <p className="text-sm text-slate-500">Review and complete warehouse stock counts.</p>
                 </div>
                 <Button onClick={handleOpenCreateModal} className="flex items-center gap-2">
                   <Plus className="h-4 w-4" />
-                  Tạo phiếu kiểm kê
+                  New audit
                 </Button>
               </div>
 
@@ -208,13 +209,13 @@ const InventoryAuditPage = ({ currentRole }) => {
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Tạo phiếu kiểm kê"
+        title="Create audit"
         size="md"
       >
         <form onSubmit={handleCreateAudit} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Chọn kho <span className="text-red-500">*</span>
+              Warehouse <span className="text-red-500">*</span>
             </label>
             <select
               className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
@@ -222,7 +223,7 @@ const InventoryAuditPage = ({ currentRole }) => {
               onChange={(e) => setFormWarehouseId(e.target.value)}
               required
             >
-              <option value="">-- Chọn kho --</option>
+              <option value="">-- Select warehouse --</option>
               {warehouses.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name}
@@ -231,21 +232,21 @@ const InventoryAuditPage = ({ currentRole }) => {
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Ghi chú</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Note</label>
             <textarea
               className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
               rows={3}
-              placeholder="Nhập ghi chú hoặc lý do kiểm kê..."
+              placeholder="Add a note or audit reason..."
               value={formNote}
               onChange={(e) => setFormNote(e.target.value)}
             />
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-              Hủy
+              Cancel
             </Button>
             <Button type="submit" isLoading={creating}>
-              Tạo phiếu
+              Create audit
             </Button>
           </div>
         </form>

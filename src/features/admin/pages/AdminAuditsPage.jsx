@@ -46,7 +46,7 @@ const AdminAuditsPage = () => {
       setPage(data?.pageNo ?? data?.page ?? 0)
     } catch (error) {
       console.error('Error fetching audits:', error)
-      toast.error(error.response?.data?.message || 'Error loading inventory list')
+      toast.error(error.response?.data?.message || 'Could not load inventory.')
     } finally {
       setLoading(false)
     }

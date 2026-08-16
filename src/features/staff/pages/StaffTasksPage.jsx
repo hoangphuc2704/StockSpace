@@ -41,7 +41,6 @@ const StaffTasksPage = () => {
   const [tasks, setTasks] = useState(MOCK_TASKS)
 
   const columns = [
-    { header: 'Task ID', accessor: 'id' },
     {
       header: 'Title',
       render: (row) => <span className="font-bold text-slate-900">{row.title}</span>,

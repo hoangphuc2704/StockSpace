@@ -64,7 +64,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
 
     try {
       await disputeApi.createDispute({ contractId, reason: reason.trim() }, files)
-      toast.success('Dispute request sent successfully! Admin will handle it soon.')
+      toast.success('Dispute submitted.')
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -205,7 +205,7 @@ const ReportFailedModal = ({ contractId, onClose, onSuccess }) => {
     setSubmitting(true)
     try {
       await contractApi.tenantReportFailed(contractId, { reason: reason.trim() })
-      toast.success('Reported failure successfully! Dispute ticket has been opened.')
+      toast.success('Failure reported. Dispute opened.')
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -467,10 +467,10 @@ const TenantContractsPage = () => {
 
     try {
       await contractApi.tenantConfirmContract(id)
-      toast.success('Contract successfully confirmed! The contract has taken effect (ACTIVE).')
+      toast.success('Contract confirmed and activated.')
       fetchContracts()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Contract validation failed')
+      toast.error(error.response?.data?.message || 'Could not confirm contract.')
     }
   }
 
@@ -486,10 +486,10 @@ const TenantContractsPage = () => {
 
     try {
       await contractApi.tenantRespondCancel(id, { agree })
-      toast.success(agree ? 'Deal cancelled.' : 'Deal disputed.')
+      toast.success(agree ? 'Deal canceled.' : 'Dispute opened.')
       fetchContracts()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Action failed')
+      toast.error(error.response?.data?.message || 'Action failed.')
     }
   }
 
@@ -522,7 +522,7 @@ const TenantContractsPage = () => {
       setViewerOpen(true)
     } catch (error) {
       toast.error(
-        'The warehouse owner has not uploaded the contract or could not find a valid file!'
+        'Contract file unavailable.'
       )
     }
   }
@@ -538,11 +538,11 @@ const TenantContractsPage = () => {
         setViewDispute(dispute)
       } else {
         toast.error(
-          'No details of the dispute you opened for this contract were found.\n\n(Note: You can only view it if you are the person who directly opened the dispute).'
+          'Dispute details are unavailable.'
         )
       }
     } catch (err) {
-      toast.error('Error when retrieving dispute information.')
+      toast.error('Could not load dispute details.')
     } finally {
       setLoadingDispute(false)
     }

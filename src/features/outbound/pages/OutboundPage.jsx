@@ -16,6 +16,7 @@ import productApi from '@/services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
+import { getEnglishApiMessage } from '@/utils/englishMessages'
 
 const OutboundPage = () => {
   const dispatch = useDispatch()
@@ -142,9 +143,9 @@ const OutboundPage = () => {
     } catch (error) {
       console.error('Error fetching initial data:', error)
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
-        toast.error('Please purchase a subscription to use the Outbound function!')
+        toast.error('Subscription required for outbound.')
       } else {
-        toast.error(error.response?.data?.message || 'Failed to load initial data')
+        toast.error(getEnglishApiMessage(error, 'Could not load outbound data.'))
       }
     }
   }, [])
@@ -163,7 +164,7 @@ const OutboundPage = () => {
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
         // Only show if not already shown by initial data
       } else {
-        toast.error(error.response?.data?.message || 'Failed to load receipts')
+        toast.error(getEnglishApiMessage(error, 'Could not load receipts.'))
       }
     } finally {
       setIsLoading(false)
@@ -196,10 +197,10 @@ const OutboundPage = () => {
       document.body.appendChild(link)
       link.click()
       link.remove()
-      toast.success('Export file successfully')
+      toast.success('File exported.')
     } catch (error) {
       console.error('Error when exporting file:', error)
-      toast.error('Error when exporting file')
+      toast.error('Export failed.')
     } finally {
       setIsExporting(false)
     }
@@ -208,26 +209,24 @@ const OutboundPage = () => {
   const handleCreateReceipt = async (e) => {
     e.preventDefault()
     if (!formSkuId) {
-      toast.error('Please select a product')
+      toast.error('Select a product.')
       return
     }
 
     const requestedQuantity = Number(formTotalQuantity)
     if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
-      toast.error('Total quantity must be a positive whole number')
+      toast.error('Enter a positive whole quantity.')
       return
     }
     if (requestedQuantity > availableWarehouseQuantity) {
-      toast.error(
-        `The selected warehouse only has ${availableWarehouseQuantity} units of this SKU across all bins.`
-      )
+      toast.error(`Only ${availableWarehouseQuantity} units are available.`)
       return
     }
 
     const activeAllocations = Object.entries(allocations).filter(([, qty]) => Number(qty) > 0)
 
     if (activeAllocations.length === 0) {
-      toast.error('Please allocate quantity to at least one bin')
+      toast.error('Allocate quantity to a bin.')
       return
     }
 
@@ -239,13 +238,11 @@ const OutboundPage = () => {
 
       const loc = skuLocations.find((l) => l.binId === binId)
       if (!loc) {
-        toast.error(`Bin ${binId.substring(0, 6)} does not contain this SKU.`)
+        toast.error(`Bin ${binId.substring(0, 6)} has no stock for this SKU.`)
         return
       }
       if (qty > loc.quantity) {
-        toast.error(
-          `Bin ${loc.binName} doesn't have enough stock! (Current: ${loc.quantity}, Taken: ${qty}).`
-        )
+        toast.error(`Bin ${loc.binName} has only ${loc.quantity} units.`)
         return
       }
 
@@ -260,9 +257,7 @@ const OutboundPage = () => {
     }
 
     if (totalAllocated !== requestedQuantity) {
-      toast.error(
-        `Total allocated (${totalAllocated}) must equal the total quantity (${requestedQuantity})`
-      )
+      toast.error(`Allocated ${totalAllocated}; expected ${requestedQuantity}.`)
       return
     }
 
@@ -274,7 +269,7 @@ const OutboundPage = () => {
         items: payloadItems,
       }
       await receiptApi.createReceipt(payload)
-      toast.success('Created export ticket successfully')
+      toast.success('Outbound receipt created.')
       setIsModalOpen(false)
       fetchReceipts()
 
@@ -285,7 +280,7 @@ const OutboundPage = () => {
       setSkuLocations([])
     } catch (error) {
       console.error('Error creating receipt:', error)
-      toast.error(error.response?.data?.message || 'Error while creating ticket')
+      toast.error(getEnglishApiMessage(error, 'Could not create receipt.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -294,20 +289,20 @@ const OutboundPage = () => {
   const handleReject = async (e) => {
     e.preventDefault()
     if (!rejectReason.trim()) {
-      toast.error('Please enter a reject reason')
+      toast.error('Enter a rejection reason.')
       return
     }
     setIsSubmitting(true)
     try {
       await receiptApi.rejectReceipt(rejectingReceiptId, rejectReason)
-      toast.success('Rejected receipt successfully')
+      toast.success('Receipt rejected.')
       setIsRejectModalOpen(false)
       setRejectReason('')
       setRejectingReceiptId(null)
       fetchReceipts()
     } catch (error) {
       console.error('Error rejecting receipt:', error)
-      toast.error(error.response?.data?.message || 'Error when rejecting receipt')
+      toast.error(getEnglishApiMessage(error, 'Could not reject receipt.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -316,11 +311,11 @@ const OutboundPage = () => {
   const handleApprove = async (id) => {
     try {
       await receiptApi.approveReceipt(id)
-      toast.success('Export slip approved successfully')
+      toast.success('Outbound receipt approved.')
       fetchReceipts()
     } catch (error) {
       console.error('Error approving receipt:', error)
-      toast.error(error.response?.data?.message || 'Error when approving votes')
+      toast.error(getEnglishApiMessage(error, 'Could not approve receipt.'))
     }
   }
 
@@ -333,14 +328,14 @@ const OutboundPage = () => {
       setDetailReceipt(response?.data?.data ?? response?.data ?? receipt)
     } catch (error) {
       setDetailReceipt(receipt)
-      toast.error(error.response?.data?.message || 'Unable to load full receipt details.')
+      toast.error(getEnglishApiMessage(error, 'Could not load receipt details.'))
     } finally {
       setIsDetailLoading(false)
     }
   }
 
   const columns = [
-    ...(currentRole === 'TENANT'
+    ...(currentRole === 'TENANT' || currentRole === 'STAFF'
       ? []
       : [{ header: 'Receipt ID', render: (row) => row.id.substring(0, 8) }]),
     {
@@ -445,7 +440,7 @@ const OutboundPage = () => {
                     onClick={() => setIsModalOpen(true)}
                     disabled={!selectedWarehouseId}
                   >
-                    <Minus className="mr-2 h-4 w-4" /> New Shipment
+                    <Minus className="mr-2 h-4 w-4" /> New
                   </Button>
                 </div>
               </div>

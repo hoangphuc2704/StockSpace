@@ -64,7 +64,7 @@ const WarehouseManagement = () => {
       const res = await warehouseApi.requestInspection(warehouseId)
 
       if (res?.data?.success || res?.success || res?.status === 200 || res?.status === 201) {
-        toast.success('Submitted inspection request successfully!')
+        toast.success('Inspection requested.')
         const inspection = res?.data?.data ?? res?.data
         if (inspection?.warehouseId) {
           setInspectionsByWarehouse((current) => ({
@@ -75,11 +75,11 @@ const WarehouseManagement = () => {
         setInspectionConfirm(null)
         setRefreshTrigger((prev) => prev + 1)
       } else {
-        toast.error(res?.data?.message || res?.message || 'Audit request failed.')
+        toast.error(res?.data?.message || res?.message || 'Inspection request failed.')
       }
     } catch (error) {
       console.error('Error when sending inspection request:', error)
-      toast.error(error.response?.data?.message || 'Unable to submit inspection request.')
+      toast.error(error.response?.data?.message || 'Could not request inspection.')
     } finally {
       setRequestingIds((prev) => prev.filter((id) => id !== warehouseId))
     }
@@ -153,7 +153,7 @@ const WarehouseManagement = () => {
     setWarehouses((prevList) =>
       prevList.map((wh) => (wh.id === id ? { ...wh, status: newStatus } : wh))
     )
-    toast.success(`Warehouse status changed to: ${newStatus}`)
+    toast.success(`Warehouse set to ${newStatus}.`)
   }
 
   // Định dạng Badge hiển thị cho Trạng thái kho
@@ -282,7 +282,8 @@ const WarehouseManagement = () => {
                 onClick={() => navigate('/owner/postwarehouse')}
                 className="flex items-center gap-2 self-start rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-blue-700 sm:self-auto"
               >
-                <Plus className="h-4 w-4" /> Post new warehouse information
+                <Plus className="h-4 w-4" />
+                New warehouse
               </Button>
             </div>
 
@@ -376,14 +377,13 @@ const WarehouseManagement = () => {
                             {/* Cột 3: Sức chứa */}
                             <td className="px-6 py-4 font-mono font-semibold text-slate-900">
                               <div className="flex items-center gap-1">
-                                <Layers className="h-3.5 w-3.5 text-slate-400" />
                                 {wh.capacity ? wh.capacity.toLocaleString() : 0} m²
                               </div>
                             </td>
 
                             {/* Cột 4: Giá thuê */}
                             <td className="px-6 py-4 font-bold text-slate-900">
-                              <span className="text-emerald-600">
+                              <span className="">
                                 {wh.pricePerMonth ? wh.pricePerMonth.toLocaleString() : 0}
                               </span>{' '}
                               <span className="text-xs font-normal text-slate-400">d</span>
@@ -398,14 +398,15 @@ const WarehouseManagement = () => {
                                   {badge.icon}
                                   {badge.text}
                                 </span>
-                                {(wh.status === 'INACTIVE' || wh.status === 'REJECTED') && (wh.reason || wh.rejectionReason || wh.rejectReason) && (
-                                  <div
-                                    className="max-w-[120px] truncate text-[11px] text-red-600 font-medium cursor-help text-center"
-                                    title={wh.reason || wh.rejectionReason || wh.rejectReason}
-                                  >
-                                    Lý do: {wh.reason || wh.rejectionReason || wh.rejectReason}
-                                  </div>
-                                )}
+                                {(wh.status === 'INACTIVE' || wh.status === 'REJECTED') &&
+                                  (wh.reason || wh.rejectionReason || wh.rejectReason) && (
+                                    <div
+                                      className="max-w-[120px] cursor-help truncate text-center text-[11px] font-medium text-red-600"
+                                      title={wh.reason || wh.rejectionReason || wh.rejectReason}
+                                    >
+                                      Lý do: {wh.reason || wh.rejectionReason || wh.rejectReason}
+                                    </div>
+                                  )}
                               </div>
                             </td>
 

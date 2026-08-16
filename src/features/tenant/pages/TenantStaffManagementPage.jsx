@@ -54,6 +54,7 @@ const TenantStaffManagementPage = () => {
   const [isAssignOpen, setIsAssignOpen] = useState(false)
   const [selectedStaff, setSelectedStaff] = useState(null)
   const [assignments, setAssignments] = useState([])
+  const [isAssignmentsLoading, setIsAssignmentsLoading] = useState(false)
   const [myWarehouses, setMyWarehouses] = useState([])
   const [isAssigning, setIsAssigning] = useState(false)
   const [assignForm, setAssignForm] = useState({
@@ -69,7 +70,7 @@ const TenantStaffManagementPage = () => {
       setMyWarehouses(res.data?.data?.content || res.data?.data || [])
     } catch (err) {
       if (err.response?.status === 403) {
-        toast.error('The rental contract has expired or warehouse access was revoked.')
+        toast.error('Warehouse access expired.')
       } else {
         console.error('Failed to load warehouses', err)
       }
@@ -84,18 +85,22 @@ const TenantStaffManagementPage = () => {
       setStaffList(data?.content || [])
       setTotalElements(data?.totalElements || 0)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Unable to load employee list')
+      toast.error(err.response?.data?.message || 'Could not load staff.')
     } finally {
       setIsLoading(false)
     }
   }, [keyword, page])
 
   const fetchAssignments = useCallback(async (staffUserId) => {
+    setIsAssignmentsLoading(true)
     try {
       const res = await staffApi.getWarehouseAssignments(staffUserId)
       setAssignments(res.data?.data || [])
     } catch (err) {
-      toast.error('Unable to load assignment history')
+      toast.error('Could not load assignments.')
+      setAssignments([])
+    } finally {
+      setIsAssignmentsLoading(false)
     }
   }, [])
 
@@ -123,13 +128,13 @@ const TenantStaffManagementPage = () => {
   const handleInvite = async (e) => {
     e.preventDefault()
     if (!inviteForm.email || !inviteForm.fullName) {
-      toast.error('Please enter full Email and Full Name')
+      toast.error('Enter name and email.')
       return
     }
     setIsInviting(true)
     try {
       await staffApi.inviteStaff(inviteForm)
-      toast.success(`Invitation sent ${inviteForm.email}. Invitations are valid for 48 hours.`)
+      toast.success(`Invitation sent to ${inviteForm.email}.`)
       setIsInviteOpen(false)
       setInviteForm({ email: '', fullName: '', phone: '' })
       fetchStaffs()
@@ -152,10 +157,10 @@ const TenantStaffManagementPage = () => {
     setRemovingId(memberId)
     try {
       await staffApi.removeStaff(memberId)
-      toast.success(`Deleted employee ${name} out of the organization`)
+      toast.success(`${name} removed.`)
       fetchStaffs()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Delete employee failed')
+      toast.error(err.response?.data?.message || 'Could not remove staff.')
     } finally {
       setRemovingId(null)
     }
@@ -163,25 +168,39 @@ const TenantStaffManagementPage = () => {
 
   const handleOpenAssign = async (staff) => {
     setSelectedStaff(staff)
+    setAssignForm({ warehouseId: '', customTitle: '', notes: '' })
+    setAssignments([])
     setIsAssignOpen(true)
     fetchAssignments(staff.userId || staff.memberId)
   }
 
+  const hasActiveAssignment = (warehouseId) =>
+    assignments.some(
+      (assignment) =>
+        assignment.status === 'ACTIVE' && String(assignment.warehouseId) === String(warehouseId)
+    )
+
+  const selectedWarehouseAlreadyAssigned = hasActiveAssignment(assignForm.warehouseId)
+
   const handleAssign = async (e) => {
     e.preventDefault()
     if (!assignForm.warehouseId) {
-      toast.error('Please select warehouse')
+      toast.error('Select a warehouse.')
+      return
+    }
+    if (selectedWarehouseAlreadyAssigned) {
+      toast.error('This staff member is already assigned to this warehouse.')
       return
     }
     setIsAssigning(true)
     try {
       const staffUserId = selectedStaff.userId || selectedStaff.memberId
       await staffApi.assignWarehouse(staffUserId, assignForm)
-      toast.success('Warehouse assignment successful')
+      toast.success('Assignment added.')
       setAssignForm({ warehouseId: '', customTitle: '', notes: '' })
       fetchAssignments(staffUserId)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Assignment failed')
+      toast.error(err.response?.data?.message || 'Could not assign warehouse.')
     } finally {
       setIsAssigning(false)
     }
@@ -198,10 +217,10 @@ const TenantStaffManagementPage = () => {
     setRevokingId(assignmentId)
     try {
       await staffApi.revokeWarehouseAssignment(assignmentId)
-      toast.success('Assignment revoked')
+      toast.success('Assignment revoked.')
       fetchAssignments(selectedStaff.userId || selectedStaff.memberId)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Recall failed')
+      toast.error(err.response?.data?.message || 'Could not revoke assignment.')
     } finally {
       setRevokingId(null)
     }
@@ -528,7 +547,7 @@ const TenantStaffManagementPage = () => {
                         {revokingId === assign.id ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
-                          'Withdrawal'
+                          'Revoke'
                         )}
                       </Button>
                     )}
@@ -557,13 +576,14 @@ const TenantStaffManagementPage = () => {
                   <select
                     className="focus:ring-primary/20 focus:border-primary h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm transition-all outline-none focus:ring-2"
                     value={assignForm.warehouseId}
+                    disabled={isAssignmentsLoading}
                     onChange={(e) => setAssignForm((f) => ({ ...f, warehouseId: e.target.value }))}
                     required
                   >
                     <option value="">-- Select warehouse --</option>
                     {myWarehouses.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
+                      <option key={w.id} value={w.id} disabled={hasActiveAssignment(w.id)}>
+                        {w.name}{hasActiveAssignment(w.id) ? ' (Assigned)' : ''}
                       </option>
                     ))}
                   </select>
@@ -590,7 +610,21 @@ const TenantStaffManagementPage = () => {
               </div>
 
               <div className="flex justify-end pt-2">
-                <Button type="submit" isLoading={isAssigning}>
+                <Button
+                  type="submit"
+                  isLoading={isAssigning}
+                  disabled={
+                    isAssigning ||
+                    isAssignmentsLoading ||
+                    selectedWarehouseAlreadyAssigned ||
+                    !assignForm.warehouseId
+                  }
+                  title={
+                    selectedWarehouseAlreadyAssigned
+                      ? 'This warehouse is already assigned to this staff member.'
+                      : undefined
+                  }
+                >
                   Add Assignment
                 </Button>
               </div>

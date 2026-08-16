@@ -160,7 +160,7 @@ const StaffDashboard = () => {
           isSidebarExpanded={isSidebarExpanded}
           isMobileOpen={isMobileOpen}
           setIsMobileOpen={setIsMobileOpen}
-          currentRole="STAFF" 
+          currentRole="STAFF"
         />
 
         {/* 3. MAIN CONTENT CONTAINER */}
@@ -176,130 +176,7 @@ const StaffDashboard = () => {
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">
                   Staff Dashboard
                 </h1>
-                <p className="text-sm text-slate-500">
-                  Welcome to the Staff Portal.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => navigate('/')}>
-                  Back to Website
-                </Button>
-                <Button variant="outline" size="sm">
-                  Download PDF
-                </Button>
-                <Button size="sm">Create Shipment</Button>
-              </div>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {stats.map((stat, idx) => (
-                <StatCard key={idx} {...stat} />
-              ))}
-            </div>
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
-                <div className="mb-6 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900">Inventory Movement</h3>
-                  <select className="rounded-lg border-none bg-slate-50 px-2 py-1 text-xs font-bold text-slate-500 focus:ring-0">
-                    <option>Last 7 Days</option>
-                    <option>Last 30 Days</option>
-                  </select>
-                </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={revenueData}>
-                      <defs>
-                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1} />
-                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="month"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: '12px',
-                          border: 'none',
-                          boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#2563eb"
-                        fillOpacity={1}
-                        fill="url(#colorRev)"
-                        strokeWidth={2}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Notifications Panel */}
-              <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="mb-6 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900">Notifications</h3>
-                  <Bell className="h-5 w-5 text-slate-400" />
-                </div>
-                <div className="flex-1 space-y-4">
-                  {[
-                    {
-                      title: 'Low Stock Alert',
-                      msg: 'Solar Panels below 50 units',
-                      time: '10m ago',
-                      type: 'danger',
-                    },
-                    {
-                      title: 'New Inbound',
-                      msg: 'Shipment #1290 arrived',
-                      time: '1h ago',
-                      type: 'success',
-                    },
-                    {
-                      title: 'Staff Update',
-                      msg: 'John Doe checked in',
-                      time: '2h ago',
-                      type: 'info',
-                    },
-                  ].map((n, i) => (
-                    <div
-                      key={i}
-                      className="flex cursor-pointer gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-slate-100 hover:bg-slate-50"
-                    >
-                      <div
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                          n.type === 'danger'
-                            ? 'bg-danger'
-                            : n.type === 'success'
-                              ? 'bg-success'
-                              : 'bg-primary'
-                        }`}
-                      />
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{n.title}</p>
-                        <p className="text-xs text-slate-500">{n.msg}</p>
-                        <p className="mt-1 text-[10px] font-medium text-slate-400">{n.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <Button variant="ghost" size="sm" className="mt-4 w-full">
-                  View All Activity
-                </Button>
+                <p className="text-sm text-slate-500">Welcome to the Staff Portal.</p>
               </div>
             </div>
 
@@ -308,9 +185,6 @@ const StaffDashboard = () => {
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="mb-6 flex items-center justify-between">
                   <h3 className="font-bold text-slate-900">Recent Activity</h3>
-                  <Button variant="ghost" size="sm">
-                    Export CSV
-                  </Button>
                 </div>
                 <DataTable columns={columns} data={recentActivity} />
               </div>

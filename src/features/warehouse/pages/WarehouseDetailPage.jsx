@@ -199,7 +199,7 @@ const WarehouseDetailPage = () => {
 
   const handleDepositClick = async () => {
     if (!isAuthenticated) {
-      toast.error('Xin hãy đăng nhập để tiếp tục đặt cọc')
+      toast.error('Please log in to book.')
       navigate('/login')
       return
     }
@@ -211,7 +211,7 @@ const WarehouseDetailPage = () => {
       setWalletBalance(balance)
       setShowConfirmModal(true)
     } catch {
-      toast.error('Failed to check wallet balance')
+      toast.error('Could not check wallet.')
     } finally {
       setIsCheckingWallet(false)
     }
@@ -225,10 +225,10 @@ const WarehouseDetailPage = () => {
         depositAmount: extendedData.deposit,
       })
       dispatch(addBookedWarehouse(warehouse.id))
-      toast.success('Booking request sent successfully! Deposit deducted from wallet.')
+      toast.success('Booking sent. Deposit paid.')
       setShowConfirmModal(false)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send booking request')
+      toast.error(err.response?.data?.message || 'Booking failed.')
     } finally {
       setIsBooking(false)
     }

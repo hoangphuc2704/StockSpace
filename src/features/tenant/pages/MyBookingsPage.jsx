@@ -63,10 +63,10 @@ const MyBookingsPage = () => {
     try {
       setIsCanceling(bookingId)
       await tenantApi.cancelBooking(bookingId)
-      toast.success('Booking canceled successfully')
+      toast.success('Booking canceled.')
       fetchBookings()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to cancel booking')
+      toast.error(err.response?.data?.message || 'Could not cancel booking.')
     } finally {
       setIsCanceling(null)
     }

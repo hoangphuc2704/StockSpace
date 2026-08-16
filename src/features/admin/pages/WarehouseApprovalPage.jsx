@@ -176,7 +176,7 @@ const WarehouseApprovalPage = () => {
         current?.id === updatedWarehouse?.id ? { ...current, ...updatedWarehouse } : current
       )
       toast.success(
-        type === 'approve' ? 'Warehouse approved successfully.' : 'Warehouse rejected successfully.'
+        type === 'approve' ? 'Warehouse approved.' : 'Warehouse rejected.'
       )
       
       if (type === 'reject') {
@@ -197,7 +197,7 @@ const WarehouseApprovalPage = () => {
 
   const submitReject = () => {
     if (!rejectReason.trim()) {
-      toast.error('Bạn phải nhập lý do từ chối!')
+      toast.error('Enter a rejection reason.')
       return
     }
     executeAction(warehouseToReject, 'reject', rejectReason)

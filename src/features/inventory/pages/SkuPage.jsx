@@ -104,7 +104,7 @@ const SkuPage = () => {
       setUoms(uomsList)
     } catch (error) {
       console.error('Error fetching data:', error)
-      toast.error(error.response?.data?.message || 'Failed to load data')
+      toast.error(error.response?.data?.message || 'Could not load SKU data.')
     } finally {
       setIsLoading(false)
     }
@@ -170,7 +170,7 @@ const SkuPage = () => {
     event.stopPropagation()
     const categoryName = newCategoryName.trim()
     if (!categoryName) {
-      toast.error('Category name is required')
+      toast.error('Enter a category name.')
       return
     }
 
@@ -190,9 +190,9 @@ const SkuPage = () => {
       if (selectedCategory?.id) setFormCategoryId(selectedCategory.id)
       setNewCategoryName('')
       setIsCategoryFormOpen(false)
-      toast.success('Category created and selected successfully')
+      toast.success('Category created.')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create category')
+      toast.error(error.response?.data?.message || 'Could not create category.')
     } finally {
       setIsCreatingCategory(false)
     }
@@ -223,7 +223,7 @@ const SkuPage = () => {
       }
       setDetailData({ ...raw, specsObj: removeLegacySpecifications(specs) })
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to load SKU detail')
+      toast.error(error.response?.data?.message || 'Could not load SKU details.')
       setIsDetailOpen(false)
     } finally {
       setIsDetailLoading(false)
@@ -241,10 +241,10 @@ const SkuPage = () => {
 
     try {
       await productApi.deleteSKU(id)
-      toast.success('SKU deleted successfully')
+      toast.success('SKU deleted.')
       fetchData()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete SKU')
+      toast.error(error.response?.data?.message || 'Could not delete SKU.')
     }
   }
 
@@ -259,7 +259,7 @@ const SkuPage = () => {
       Number(formUnitVolumeM3) <= 0
     ) {
       toast.error(
-        'Vui lòng nhập đầy đủ thông tin, trọng lượng và thể tích trên mỗi đơn vị phải lớn hơn 0.'
+        'Enter all fields. Weight and volume must be greater than 0.'
       )
       return
     }
@@ -287,11 +287,11 @@ const SkuPage = () => {
       } else {
         await productApi.createSKU(payload)
       }
-      toast.success(isEditing ? 'SKU updated successfully' : 'SKU created successfully')
+      toast.success(isEditing ? 'SKU updated.' : 'SKU created.')
       setIsModalOpen(false)
       await fetchData()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Operation failed')
+      toast.error(error.response?.data?.message || 'Could not save SKU.')
     } finally {
       setIsSubmitting(false)
     }

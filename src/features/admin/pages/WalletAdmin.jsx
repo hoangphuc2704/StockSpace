@@ -183,7 +183,7 @@ const WalletAdmin = () => {
 
     const amountNumber = Number(inputAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Please enter a valid deposit amount greater than 0.')
+      toast.error('Enter a valid amount.')
       return
     }
 
@@ -200,11 +200,11 @@ const WalletAdmin = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-        toast.error(res?.data?.message || 'The VNPay payment link was not returned.')
+      toast.error(res?.data?.message || 'Payment link unavailable.')
       }
     } catch (error) {
       console.error('Failed to create deposit request:', error)
-      toast.error('The deposit request failed. Please try again.')
+      toast.error('Deposit failed. Try again.')
     } finally {
       setDepositLoading(false)
     }

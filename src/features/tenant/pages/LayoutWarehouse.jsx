@@ -20,6 +20,7 @@ import { closeMobileSidebar } from '@/store/uiSlide'
 import layoutApi from '@/services/layoutApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import stockApi from '@/services/wms/stockApi'
+import { getEnglishApiMessage } from '@/utils/englishMessages'
 
 const DEFAULT_LAYOUT_SIZE = 100
 // Racks can be smaller than the old 4m hard limit. Keep a small positive
@@ -546,7 +547,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           setError(
             !isOwner && requestError.response?.status === 403
               ? 'This rental contract has expired or your access to the warehouse list was revoked.'
-              : requestError.response?.data?.message || 'Unable to load inventory list.'
+              : getEnglishApiMessage(requestError, 'Unable to load inventory list.')
           )
         }
       } finally {
@@ -621,7 +622,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             'This rental contract has expired or your access to this warehouse was revoked.'
           )
         } else {
-          setError(requestError.response?.data?.message || 'Unable to load warehouse layout.')
+          setError(getEnglishApiMessage(requestError, 'Unable to load warehouse layout.'))
         }
       }
     } finally {
@@ -664,9 +665,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           error:
             requestError.response?.status === 403
               ? 'This rental contract has expired or your access to this warehouse was revoked.'
-              : requestError.response?.data?.message ||
-                requestError.message ||
-                'Unable to load inventory in Bin.',
+              : getEnglishApiMessage(requestError, 'Unable to load inventory in Bin.'),
         })
       })
 
@@ -911,7 +910,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         )
       }
     } catch (requestError) {
-      setError(requestError.response?.data?.message || 'Saving layout failed.')
+      setError(getEnglishApiMessage(requestError, 'Saving layout failed.'))
     } finally {
       setSaving(false)
     }

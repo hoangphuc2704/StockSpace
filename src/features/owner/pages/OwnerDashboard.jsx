@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
@@ -14,6 +14,9 @@ import {
   Wallet,
   PlusCircle,
   Loader2,
+  Search,
+  Filter,
+  RotateCcw,
 } from 'lucide-react'
 import {
   BarChart,
@@ -70,6 +73,11 @@ const OwnerDashboard = () => {
   // --- STATE YÊU CẦU THUÊ KHO ---
   const [incomingRequests, setIncomingRequests] = useState([])
   const [loadingRequests, setLoadingRequests] = useState(true)
+  const [requestFilters, setRequestFilters] = useState({
+    keyword: '',
+    status: 'ALL',
+    warehouse: 'ALL',
+  })
 
   // --- STATE KIỂM ĐỊNH KHO ---
   const [inspections, setInspections] = useState([])
@@ -99,6 +107,36 @@ const OwnerDashboard = () => {
   useEscapeKey(isModalOpen, () => setIsModalOpen(false))
   useEscapeKey(rejectModalOpen, () => setRejectModalOpen(false))
   useEscapeKey(viewDetailModalOpen, () => setViewDetailModalOpen(false))
+
+  const requestWarehouseOptions = useMemo(
+    () =>
+      [...new Set(incomingRequests.map((request) => request.warehouseName).filter(Boolean))].sort(
+        (a, b) => a.localeCompare(b)
+      ),
+    [incomingRequests]
+  )
+
+  const filteredIncomingRequests = useMemo(() => {
+    const keyword = requestFilters.keyword.trim().toLowerCase()
+    return incomingRequests.filter((request) => {
+      const matchesKeyword =
+        !keyword ||
+        [request.tenantName, request.warehouseName, request.tenantEmail]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(keyword))
+      const matchesStatus =
+        requestFilters.status === 'ALL' ||
+        String(request.status).toUpperCase() === requestFilters.status
+      const matchesWarehouse =
+        requestFilters.warehouse === 'ALL' || request.warehouseName === requestFilters.warehouse
+      return matchesKeyword && matchesStatus && matchesWarehouse
+    })
+  }, [incomingRequests, requestFilters])
+
+  const hasRequestFilters = requestFilters.keyword.trim() || requestFilters.status !== 'ALL'
+
+  const clearRequestFilters = () =>
+    setRequestFilters({ keyword: '', status: 'ALL', warehouse: 'ALL' })
 
   // --- LẤY DỮ LIỆU VÍ TỪ API ---
   const fetchWallet = async () => {
@@ -196,7 +234,7 @@ const OwnerDashboard = () => {
 
     const amountNumber = Number(inputAmount)
     if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Please enter a valid deposit amount greater than 0')
+      toast.error('Enter a valid amount.')
       return
     }
 
@@ -215,11 +253,11 @@ const OwnerDashboard = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl // Chuyển hướng sang VNPay
       } else {
-        toast.error(res?.data?.message || 'VNPay payment link not found in the system!')
+        toast.error(res?.data?.message || 'Payment link unavailable.')
       }
     } catch (error) {
       console.error('Deposit error:', error)
-      toast.error('Deposit request failed, please try again!')
+      toast.error('Deposit failed. Try again.')
     } finally {
       setDepositLoading(false)
     }
@@ -237,39 +275,31 @@ const OwnerDashboard = () => {
       title: 'My Warehouses',
       value: totalWarehouses.toString(),
       icon: Warehouse,
-      trend: 'stable',
-      trendValue: 0,
     },
     {
       title: 'Total Revenue',
       value: formatVND(totalRevenue),
       icon: PieChart,
-      trend: 'stable',
-      trendValue: 0,
     },
     {
       title: 'Wallet Balance',
       value: loadingWallet ? 'Loading...' : formatVND(wallet?.balance),
       icon: Wallet,
-      trend: 'stable',
-      trendValue: 0,
     },
     {
       title: 'Pending Requests',
       value: incomingRequests.length.toString(),
       icon: FileCheck,
-      trend: 'stable',
-      trendValue: 0,
     },
   ]
 
   const handleApprove = async (id) => {
     try {
       await warehouseApi.approveBooking(id)
-      toast.success('Warehouse rental request successfully accepted!')
+      toast.success('Rental request accepted.')
       fetchRequests() // Refresh data
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Accept failed request')
+      toast.error(error.response?.data?.message || 'Could not accept request.')
     }
   }
 
@@ -281,19 +311,19 @@ const OwnerDashboard = () => {
 
   const submitReject = async () => {
     if (!rejectReason.trim()) {
-      toast.error('Please enter a reason for rejection!')
+      toast.error('Enter a rejection reason.')
       return
     }
 
     try {
       setRejectLoading(true)
       await warehouseApi.rejectBooking(rejectTargetId, { reason: rejectReason })
-      toast.success('Rejected warehouse rental request!')
+      toast.success('Rental request rejected.')
       fetchRequests() // Refresh data
       setRejectModalOpen(false)
       setRejectTargetId(null)
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Reject failed request')
+      toast.error(error.response?.data?.message || 'Could not reject request.')
     } finally {
       setRejectLoading(false)
     }
@@ -416,88 +446,68 @@ const OwnerDashboard = () => {
             </div>
 
             {/* Biểu đồ (Giữ nguyên) */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
-                <div className="mb-8 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900">Revenue Performance</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-slate-500">This Year</span>
-                    <ArrowUpRight className="h-4 w-4 text-emerald-600" />
-                  </div>
-                </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={revenueData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="name"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <Tooltip cursor={{ fill: '#f8fafc' }} />
-                      <Bar dataKey="value" fill="#2563eb" radius={[6, 6, 0, 0]} barSize={40} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-8 font-bold text-slate-900">Portfolio Occupancy</h3>
-                <div className="relative h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RePieChart>
-                      <Pie
-                        data={occupancyData}
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {occupancyData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </RePieChart>
-                  </ResponsiveContainer>
-                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                    <p className="text-2xl font-bold text-slate-900">{occupancyRate}%</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Fill rate</p>
-                  </div>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {occupancyData.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-2 w-2 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="text-xs font-medium text-slate-600">{item.name}</span>
-                      </div>
-                      <span className="text-xs font-bold text-slate-900">{item.value}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
 
             {/* Bảng dữ liệu & Kiểm định (Giữ nguyên) */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
-                <div className="mb-6 flex items-center justify-between">
-                  <h3 className="font-bold text-slate-900">Recent Rental Requests</h3>
-                  <Button variant="ghost" size="sm">
-                    Manage All
-                  </Button>
+                <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+                  <div className="mb-3 flex items-center gap-2 text-xs font-bold tracking-wide text-slate-500 uppercase">
+                    <Filter className="h-4 w-4" />
+                    Filter requests
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_170px_200px_auto]">
+                    <label className="relative block">
+                      <span className="sr-only">Search requests</span>
+                      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="search"
+                        value={requestFilters.keyword}
+                        onChange={(event) =>
+                          setRequestFilters((current) => ({
+                            ...current,
+                            keyword: event.target.value,
+                          }))
+                        }
+                        placeholder="Search tenant or warehouse..."
+                        className="h-10 w-full rounded-lg border border-slate-200 bg-white pr-3 pl-9 text-sm transition outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                      />
+                    </label>
+                    <select
+                      value={requestFilters.status}
+                      onChange={(event) =>
+                        setRequestFilters((current) => ({
+                          ...current,
+                          status: event.target.value,
+                        }))
+                      }
+                      className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm transition outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    >
+                      <option value="ALL">All statuses</option>
+                      <option value="PENDING">Pending</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="REJECTED">Rejected</option>
+                    </select>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={!hasRequestFilters}
+                      onClick={clearRequestFilters}
+                      className="h-10 justify-center gap-2 whitespace-nowrap"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Clear
+                    </Button>
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">
+                    Showing {filteredIncomingRequests.length} of {incomingRequests.length} requests
+                  </p>
                 </div>
-                <DataTable columns={columns} data={incomingRequests} isLoading={loadingRequests} />
+                <DataTable
+                  columns={columns}
+                  data={filteredIncomingRequests}
+                  isLoading={loadingRequests}
+                />
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -618,10 +628,11 @@ const OwnerDashboard = () => {
       >
         <div className="p-4 sm:p-6">
           <p className="mb-4 text-sm text-slate-600">
-            Bạn đang từ chối yêu cầu thuê kho này. Vui lòng cung cấp lý do để khách thuê có thể biết và khắc phục.
+            Bạn đang từ chối yêu cầu thuê kho này. Vui lòng cung cấp lý do để khách thuê có thể biết
+            và khắc phục.
           </p>
           <textarea
-            className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             rows={4}
             placeholder="Nhập lý do từ chối (bắt buộc)..."
             value={rejectReason}
@@ -630,14 +641,14 @@ const OwnerDashboard = () => {
           <div className="mt-6 flex justify-end gap-3">
             <button
               onClick={() => setRejectModalOpen(false)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
               Hủy
             </button>
             <button
               onClick={submitReject}
               disabled={!rejectReason.trim() || rejectLoading}
-              className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {rejectLoading ? (
                 <>
@@ -658,52 +669,71 @@ const OwnerDashboard = () => {
         onClose={() => setViewDetailModalOpen(false)}
         title="Chi tiết yêu cầu thuê kho"
       >
-        <div className="p-4 sm:p-6 space-y-4">
+        <div className="space-y-4 p-4 sm:p-6">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Khách thuê</p>
-              <p className="text-sm font-semibold text-slate-900">{selectedRequestForDetail?.tenantName}</p>
+              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Khách thuê</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {selectedRequestForDetail?.tenantName}
+              </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Kho hàng</p>
-              <p className="text-sm font-semibold text-slate-900">{selectedRequestForDetail?.warehouseName}</p>
+              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Kho hàng</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {selectedRequestForDetail?.warehouseName}
+              </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Tiền cọc</p>
-              <p className="text-sm font-semibold text-emerald-600">{formatVND(selectedRequestForDetail?.depositAmount)}</p>
+              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Tiền cọc</p>
+              <p className="text-sm font-semibold text-emerald-600">
+                {formatVND(selectedRequestForDetail?.depositAmount)}
+              </p>
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Trạng thái</p>
+              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Trạng thái</p>
               <Badge
                 variant={
-                  selectedRequestForDetail?.status === 'APPROVED' ? 'success' : selectedRequestForDetail?.status === 'REJECTED' ? 'danger' : 'warning'
+                  selectedRequestForDetail?.status === 'APPROVED'
+                    ? 'success'
+                    : selectedRequestForDetail?.status === 'REJECTED'
+                      ? 'danger'
+                      : 'warning'
                 }
               >
                 {selectedRequestForDetail?.status}
               </Badge>
             </div>
             <div>
-              <p className="text-xs text-slate-500 font-bold uppercase mb-1">Ngày tạo</p>
-              <p className="text-sm font-semibold text-slate-900">{selectedRequestForDetail?.createdAt ? new Date(selectedRequestForDetail.createdAt).toLocaleDateString('vi-VN') : ''}</p>
+              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Ngày tạo</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {selectedRequestForDetail?.createdAt
+                  ? new Date(selectedRequestForDetail.createdAt).toLocaleDateString('vi-VN')
+                  : ''}
+              </p>
             </div>
           </div>
-          
-          {selectedRequestForDetail?.status === 'REJECTED' && (selectedRequestForDetail.reason || selectedRequestForDetail.rejectionReason || selectedRequestForDetail.rejectReason) && (
-            <div className="mt-4 p-4 rounded-xl border border-red-200 bg-red-50">
-              <p className="text-xs text-red-600 font-bold uppercase mb-1 flex items-center gap-1">
-                <X className="h-3.5 w-3.5" />
-                Lý do từ chối
-              </p>
-              <p className="text-sm text-red-800 font-medium whitespace-pre-wrap">
-                {selectedRequestForDetail.reason || selectedRequestForDetail.rejectionReason || selectedRequestForDetail.rejectReason}
-              </p>
-            </div>
-          )}
+
+          {selectedRequestForDetail?.status === 'REJECTED' &&
+            (selectedRequestForDetail.reason ||
+              selectedRequestForDetail.rejectionReason ||
+              selectedRequestForDetail.rejectReason) && (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+                <p className="mb-1 flex items-center gap-1 text-xs font-bold text-red-600 uppercase">
+                  <X className="h-3.5 w-3.5" />
+                  Lý do từ chối
+                </p>
+                <p className="text-sm font-medium whitespace-pre-wrap text-red-800">
+                  {selectedRequestForDetail.reason ||
+                    selectedRequestForDetail.rejectionReason ||
+                    selectedRequestForDetail.rejectReason}
+                </p>
+              </div>
+            )}
 
           <div className="mt-6 flex justify-end">
             <button
               onClick={() => setViewDetailModalOpen(false)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
               Đóng
             </button>

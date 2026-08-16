@@ -16,6 +16,7 @@ import productApi from '../../../services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
+import { getEnglishApiMessage } from '@/utils/englishMessages'
 
 const CAPACITY_EPSILON = 1e-9
 
@@ -80,10 +81,8 @@ const InboundPage = () => {
           const sku = skuById.get(String(batch.skuId))
           const usage = result[key] || { units: 0, weightKg: 0, volumeM3: 0 }
           usage.units += quantity
-          usage.weightKg +=
-            quantity * (Number(sku?.unitWeightKg ?? batch.unitWeightKg) || 0)
-          usage.volumeM3 +=
-            quantity * (Number(sku?.unitVolumeM3 ?? batch.unitVolumeM3) || 0)
+          usage.weightKg += quantity * (Number(sku?.unitWeightKg ?? batch.unitWeightKg) || 0)
+          usage.volumeM3 += quantity * (Number(sku?.unitVolumeM3 ?? batch.unitVolumeM3) || 0)
           result[key] = usage
           return result
         }, {})
@@ -135,9 +134,9 @@ const InboundPage = () => {
     } catch (error) {
       console.error('Error fetching initial data:', error)
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
-        toast.error('Please purchase a subscription to use the Inbound function!')
+        toast.error('Subscription required for inbound.')
       } else {
-        toast.error(error.response?.data?.message || 'Failed to load initial data')
+        toast.error(getEnglishApiMessage(error, 'Could not load inbound data.'))
       }
     }
   }, [])
@@ -171,7 +170,7 @@ const InboundPage = () => {
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
         // Only show if not already shown by initial data
       } else {
-        toast.error(error.response?.data?.message || 'Failed to load receipts')
+        toast.error(getEnglishApiMessage(error, 'Could not load receipts.'))
       }
     } finally {
       setIsLoading(false)
@@ -205,10 +204,10 @@ const InboundPage = () => {
       document.body.appendChild(link)
       link.click()
       link.remove()
-      toast.success('Export file successfully')
+      toast.success('File exported.')
     } catch (error) {
       console.error('Error when exporting file:', error)
-      toast.error('Error when exporting file')
+      toast.error('Export failed.')
     } finally {
       setIsExporting(false)
     }
@@ -217,17 +216,17 @@ const InboundPage = () => {
   const handleCreateReceipt = async (e) => {
     e.preventDefault()
     if (!formSkuId) {
-      toast.error('Please select a product')
+      toast.error('Select a product.')
       return
     }
     if (selectedUnitWeightKg <= 0 || selectedUnitVolumeM3 <= 0) {
-      toast.error('This SKU must have valid unit weight and unit volume before inbound.')
+      toast.error('Set SKU weight and volume first.')
       return
     }
 
     const requestedQuantity = Number(formTotalQuantity)
     if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
-      toast.error('Total quantity must be a positive whole number')
+      toast.error('Enter a positive whole quantity.')
       return
     }
 
@@ -235,7 +234,7 @@ const InboundPage = () => {
     const activeAllocations = Object.entries(allocations).filter(([, qty]) => Number(qty) > 0)
 
     if (activeAllocations.length === 0) {
-      toast.error('Please allocate quantity to at least one bin')
+      toast.error('Allocate quantity to a bin.')
       return
     }
 
@@ -258,7 +257,7 @@ const InboundPage = () => {
     for (const [binId, qtyStr] of activeAllocations) {
       const qty = Number(qtyStr)
       if (!Number.isInteger(qty) || qty <= 0) {
-        toast.error('Each Bin quantity must be a positive whole number.')
+        toast.error('Each bin quantity must be a positive whole number.')
         return
       }
       totalAllocated += qty
@@ -266,7 +265,7 @@ const InboundPage = () => {
       const binContext = binsById.get(String(binId))
       const rackId = binContext?.rack?.id
       if (!binContext || rackId == null || rackId === '') {
-        toast.error('Unable to find the Rack for one of the selected Bins.')
+        toast.error('Rack not found for a selected bin.')
         return
       }
 
@@ -278,16 +277,14 @@ const InboundPage = () => {
       }
       const incomingWeightKg = qty * selectedUnitWeightKg
       const incomingVolumeM3 = qty * selectedUnitVolumeM3
-      const projectedBinWeight =
-        (Number(capacity.currentWeightKg) || 0) + incomingWeightKg
-      const projectedBinVolume =
-        (Number(capacity.currentVolumeM3) || 0) + incomingVolumeM3
+      const projectedBinWeight = (Number(capacity.currentWeightKg) || 0) + incomingWeightKg
+      const projectedBinVolume = (Number(capacity.currentVolumeM3) || 0) + incomingVolumeM3
       if (
         Number(capacity.maxWeight) > 0 &&
         projectedBinWeight > Number(capacity.maxWeight) + CAPACITY_EPSILON
       ) {
         toast.error(
-          `${binContext.bin.name || binContext.bin.code || 'Bin'} exceeds its maximum weight.`
+          `${binContext.bin.name || binContext.bin.code || 'Bin'} exceeds its weight limit.`
         )
         return
       }
@@ -296,7 +293,7 @@ const InboundPage = () => {
         projectedBinVolume > Number(capacity.maxVolume) + CAPACITY_EPSILON
       ) {
         toast.error(
-          `${binContext.bin.name || binContext.bin.code || 'Bin'} exceeds its maximum volume.`
+          `${binContext.bin.name || binContext.bin.code || 'Bin'} exceeds its volume limit.`
         )
         return
       }
@@ -329,22 +326,20 @@ const InboundPage = () => {
         rackMaxWeight > 0 &&
         currentWeightKg + incomingWeightKg > rackMaxWeight + CAPACITY_EPSILON
       ) {
-        toast.error(`${rack.name || rack.code || 'Rack'} exceeds its maximum weight.`)
+        toast.error(`${rack.name || rack.code || 'Rack'} exceeds its weight limit.`)
         return
       }
       if (
         rackMaxVolume > 0 &&
         currentVolumeM3 + incomingVolumeM3 > rackMaxVolume + CAPACITY_EPSILON
       ) {
-        toast.error(`${rack.name || rack.code || 'Rack'} exceeds its maximum volume.`)
+        toast.error(`${rack.name || rack.code || 'Rack'} exceeds its volume limit.`)
         return
       }
     }
 
     if (totalAllocated !== requestedQuantity) {
-      toast.error(
-        `Total allocated (${totalAllocated}) must equal the total quantity (${requestedQuantity})`
-      )
+      toast.error(`Allocated ${totalAllocated}; expected ${requestedQuantity}.`)
       return
     }
 
@@ -356,7 +351,7 @@ const InboundPage = () => {
         items: payloadItems,
       }
       await receiptApi.createReceipt(payload)
-      toast.success('Created successful entry form')
+      toast.success('Inbound receipt created.')
       setIsModalOpen(false)
       fetchReceipts()
 
@@ -366,7 +361,7 @@ const InboundPage = () => {
       setFormNote('')
     } catch (error) {
       console.error('Error creating receipt:', error)
-      toast.error(error.response?.data?.message || 'Error while creating ticket')
+      toast.error(getEnglishApiMessage(error, 'Could not create receipt.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -375,20 +370,20 @@ const InboundPage = () => {
   const handleReject = async (e) => {
     e.preventDefault()
     if (!rejectReason.trim()) {
-      toast.error('Please enter a reject reason')
+      toast.error('Enter a rejection reason.')
       return
     }
     setIsSubmitting(true)
     try {
       await receiptApi.rejectReceipt(rejectingReceiptId, rejectReason)
-      toast.success('Rejected receipt successfully')
+      toast.success('Receipt rejected.')
       setIsRejectModalOpen(false)
       setRejectReason('')
       setRejectingReceiptId(null)
       fetchReceipts()
     } catch (error) {
       console.error('Error rejecting receipt:', error)
-      toast.error(error.response?.data?.message || 'Error when rejecting receipt')
+      toast.error(getEnglishApiMessage(error, 'Could not reject receipt.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -397,12 +392,12 @@ const InboundPage = () => {
   const handleApprove = async (id) => {
     try {
       await receiptApi.approveReceipt(id)
-      toast.success('Approved input slip successfully')
+      toast.success('Inbound receipt approved.')
       fetchReceipts()
       setCapacityRefreshKey((current) => current + 1)
     } catch (error) {
       console.error('Error approving receipt:', error)
-      toast.error(error.response?.data?.message || 'Error when approving votes')
+      toast.error(getEnglishApiMessage(error, 'Could not approve receipt.'))
     }
   }
 
@@ -415,14 +410,14 @@ const InboundPage = () => {
       setDetailReceipt(response?.data?.data ?? response?.data ?? receipt)
     } catch (error) {
       setDetailReceipt(receipt)
-      toast.error(error.response?.data?.message || 'Unable to load full receipt details.')
+      toast.error(getEnglishApiMessage(error, 'Could not load receipt details.'))
     } finally {
       setIsDetailLoading(false)
     }
   }
 
   const columns = [
-    ...(currentRole === 'TENANT'
+    ...(currentRole === 'TENANT' || currentRole === 'STAFF'
       ? []
       : [{ header: 'Receipt ID', render: (row) => row.id.substring(0, 8) }]),
     {
@@ -531,7 +526,7 @@ const InboundPage = () => {
                     onClick={() => setIsModalOpen(true)}
                     disabled={!selectedWarehouseId}
                   >
-                    <Plus className="mr-2 h-4 w-4" /> New Inbound
+                    <Plus className="mr-2 h-4 w-4" /> New
                   </Button>
                 </div>
               </div>
@@ -723,8 +718,8 @@ const InboundPage = () => {
                                         : 'Not set'}
                                     </span>
                                     <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                                      Bin volume limits: {totalBinVolumeLimit.toLocaleString('en-US')}{' '}
-                                      m³
+                                      Bin volume limits:{' '}
+                                      {totalBinVolumeLimit.toLocaleString('en-US')} m³
                                     </span>
                                   </div>
                                 </div>
@@ -833,7 +828,9 @@ const InboundPage = () => {
                                                   rawValue === ''
                                                     ? ''
                                                     : Math.min(
-                                                        Math.floor(Math.max(Number(rawValue) || 0, 0)),
+                                                        Math.floor(
+                                                          Math.max(Number(rawValue) || 0, 0)
+                                                        ),
                                                         maximumForBin
                                                       )
                                                 setAllocations((previous) => ({
@@ -864,11 +861,13 @@ const InboundPage = () => {
                                             <strong>
                                               {capacity.maxWeight > 0
                                                 ? `${capacity.maxWeight.toLocaleString('en-US')} kg`
-                                              : 'Not set'}
+                                                : 'Not set'}
                                             </strong>
                                           </div>
                                           <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
-                                            <span className="block text-slate-400">Current volume</span>
+                                            <span className="block text-slate-400">
+                                              Current volume
+                                            </span>
                                             <strong>
                                               {capacity.currentVolumeM3.toLocaleString('en-US', {
                                                 maximumFractionDigits: 6,
@@ -877,7 +876,9 @@ const InboundPage = () => {
                                             </strong>
                                           </div>
                                           <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
-                                            <span className="block text-slate-400">Volume limit</span>
+                                            <span className="block text-slate-400">
+                                              Volume limit
+                                            </span>
                                             <strong>
                                               {capacity.maxVolume > 0
                                                 ? `${capacity.maxVolume.toLocaleString('en-US')} m³`

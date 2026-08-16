@@ -93,7 +93,7 @@ export default function ProductManagementPage() {
       setTotalElements(skuData?.totalElements ?? 0)
       setUoms(Array.isArray(uomData?.content) ? uomData.content : [])
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Unable to load categories and SKUs.')
+      toast.error(error.response?.data?.message || 'Could not load products.')
     } finally {
       setLoading(false)
     }
@@ -132,13 +132,13 @@ export default function ProductManagementPage() {
         name: categoryName.trim(),
         defaultAttributes: parseJsonObject(categoryAttributes, 'Default attributes'),
       })
-      toast.success('Category created successfully.')
+      toast.success('Category created.')
       setCategoryFormOpen(false)
       setCategoryName('')
       setCategoryAttributes('{}')
       await loadData()
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Unable to create category.')
+      toast.error(error.response?.data?.message || error.message || 'Could not create category.')
     } finally {
       setSaving(false)
     }
@@ -158,11 +158,11 @@ export default function ProductManagementPage() {
       }
       if (skuForm.id) await productApi.updateSKU(skuForm.id, payload)
       else await productApi.createSKU({ ...payload, skuCode: skuForm.skuCode.trim() })
-      toast.success(skuForm.id ? 'SKU updated successfully.' : 'SKU created successfully.')
+      toast.success(skuForm.id ? 'SKU updated.' : 'SKU created.')
       setSkuForm(null)
       await loadData()
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Unable to save SKU.')
+      toast.error(error.response?.data?.message || error.message || 'Could not save SKU.')
     } finally {
       setSaving(false)
     }
@@ -175,12 +175,12 @@ export default function ProductManagementPage() {
       if (deleteTarget.type === 'category') await productApi.deleteCategory(deleteTarget.item.id)
       else await productApi.deleteSKU(deleteTarget.item.id)
       toast.success(
-        `${deleteTarget.type === 'category' ? 'Category' : 'SKU'} deleted successfully.`
+        `${deleteTarget.type === 'category' ? 'Category' : 'SKU'} deleted.`
       )
       setDeleteTarget(null)
       await loadData()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Unable to delete this item.')
+      toast.error(error.response?.data?.message || 'Could not delete item.')
     } finally {
       setSaving(false)
     }

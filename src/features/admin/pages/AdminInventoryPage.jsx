@@ -70,7 +70,7 @@ const AdminInventoryPage = () => {
       }
     } catch (error) {
       console.error('Error fetching warehouses:', error)
-      toast.error("Error loading inventory list")
+      toast.error('Could not load inventory.')
     } finally {
       setLoadingWarehouses(false)
     }
@@ -87,7 +87,7 @@ const AdminInventoryPage = () => {
       setStockPage(data?.pageNo ?? data?.page ?? 0)
     } catch (error) {
       console.error('Error fetching stock:', error)
-      toast.error(error.response?.data?.message || "Error loading inventory data")
+      toast.error(error.response?.data?.message || 'Could not load inventory.')
     } finally {
       setLoading(false)
     }
@@ -109,7 +109,7 @@ const AdminInventoryPage = () => {
       setReceiptPage(data?.pageNo ?? data?.page ?? 0)
     } catch (error) {
       console.error('Error fetching receipts:', error)
-      toast.error(error.response?.data?.message || "Error when loading import/export ticket data")
+      toast.error(error.response?.data?.message || 'Could not load receipts.')
     } finally {
       setLoading(false)
     }

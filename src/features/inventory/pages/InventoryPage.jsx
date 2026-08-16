@@ -40,7 +40,7 @@ const InventoryPage = () => {
       const res = await stockApi.getStockTransactions(batchId)
       setBatchHistory(res.data?.data?.content || [])
     } catch (err) {
-      toast.error('Failed to load batch history')
+      toast.error('Could not load batch history.')
     } finally {
       setIsHistoryLoading(false)
     }
@@ -66,7 +66,7 @@ const InventoryPage = () => {
       return list
     } catch (error) {
       console.error('Error loading warehouses:', error)
-      toast.error('Failed to load warehouses')
+      toast.error('Could not load warehouses.')
       setIsLoading(false)
       return null
     }
@@ -102,7 +102,7 @@ const InventoryPage = () => {
           'This rental contract has expired or access to the selected warehouse was revoked.'
         )
       } else {
-        toast.error('Failed to load inventory overview')
+        toast.error('Could not load inventory.')
       }
     } finally {
       setIsLoading(false)
@@ -166,7 +166,7 @@ const InventoryPage = () => {
           'This rental contract has expired or access to the selected warehouse was revoked.'
         )
       } else {
-        toast.error('Failed to load stock batches')
+        toast.error('Could not load stock batches.')
       }
     } finally {
       setIsDetailsLoading(false)
@@ -256,7 +256,7 @@ const InventoryPage = () => {
         )
       },
     },
-    ...(currentRole === 'TENANT'
+    ...(currentRole === 'TENANT' || currentRole === 'STAFF'
       ? []
       : [
           {

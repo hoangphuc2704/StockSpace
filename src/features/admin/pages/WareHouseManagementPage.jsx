@@ -362,12 +362,12 @@ const WareHouseManagementPage = () => {
 
     try {
       await dispatch(rejectWarehouse({ id: warehouseToReject.id, reason })).unwrap()
-      toast.success('Đã từ chối kho thành công.')
+      toast.success('Warehouse rejected.')
       setRejectModalOpen(false)
       setWarehouseToReject(null)
       setRejectReason('')
     } catch (requestError) {
-      toast.error(requestError || 'Không thể từ chối kho lúc này.')
+      toast.error(requestError || 'Could not reject warehouse.')
     }
   }, [dispatch, rejectReason, warehouseToReject])
 

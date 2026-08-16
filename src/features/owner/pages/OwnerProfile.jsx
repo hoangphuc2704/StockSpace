@@ -38,7 +38,7 @@ const OwnerProfile = () => {
   const handleSubmit = (e) => {
     e.preventDefault()
     // Xử lý logic Call API cập nhật thông tin tại đây
-    toast.success("Updated account information successfully!")
+    toast.success('Profile updated.')
   }
 
   return (

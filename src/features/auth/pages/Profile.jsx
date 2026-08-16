@@ -27,9 +27,9 @@ const Profile = () => {
         
         try {
             await dispatch(forgotPasswordThunk(profileData.email)).unwrap()
-            toast.success('A password reset link has been sent to your email.')
+            toast.success('Password reset link sent.')
         } catch (err) {
-            toast.error(err || 'Failed to send password reset link.')
+            toast.error(err || 'Could not send reset link.')
         }
     }
 

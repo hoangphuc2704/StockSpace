@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Package, AlertTriangle, ArrowUpRight, ArrowDownLeft, Bell, Users, Loader2 } from 'lucide-react'
+import {
+  Package,
+  AlertTriangle,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Bell,
+  Users,
+  Loader2,
+} from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
 import {
   AreaChart,
@@ -55,7 +63,7 @@ const TenantDashboard = () => {
     totalInventory: 0,
     activeStaff: 0,
     inboundToday: 0,
-    lowStock: 0 // Mocked for now due to API missing aggregated low stock endpoint
+    lowStock: 0, // Mocked for now due to API missing aggregated low stock endpoint
   })
   const [recentActivity, setRecentActivity] = useState([])
 
@@ -94,17 +102,17 @@ const TenantDashboard = () => {
 
           const today = moment().startOf('day')
 
-          inboundTodayCount = receipts.filter(r => {
+          inboundTodayCount = receipts.filter((r) => {
             return r.type === 'INBOUND' && moment(r.createdAt).isSameOrAfter(today)
           }).length
 
-          activityList = receipts.slice(0, 5).map(r => ({
+          activityList = receipts.slice(0, 5).map((r) => ({
             id: r.id,
             type: r.type,
             item: r.items?.[0]?.skuCode || 'Multiple items',
             qty: r.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0,
             time: moment(r.createdAt).fromNow(),
-            status: r.status
+            status: r.status,
           }))
         }
       } catch (err) {
@@ -115,10 +123,9 @@ const TenantDashboard = () => {
         totalInventory,
         activeStaff,
         inboundToday: inboundTodayCount,
-        lowStock: 0 // Cannot compute efficiently without specific BE endpoint
+        lowStock: 0, // Cannot compute efficiently without specific BE endpoint
       })
       setRecentActivity(activityList)
-
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     } finally {
@@ -135,10 +142,18 @@ const TenantDashboard = () => {
   }
 
   const stats = [
-    { title: 'Total SKUs', value: statsData.totalInventory.toLocaleString(), icon: Package, trend: 'up', trendValue: 0 },
-    { title: 'Active Staff', value: statsData.activeStaff.toString(), icon: Users, trend: 'up', trendValue: 0 },
-    { title: 'Inbound Today', value: statsData.inboundToday.toString(), icon: ArrowDownLeft, trend: 'up', trendValue: 0 },
-    { title: 'Low Stock Items', value: '-', icon: AlertTriangle, trend: 'down', trendValue: 0 },
+    { title: 'Total SKUs', value: statsData.totalInventory.toLocaleString(), icon: Package },
+    {
+      title: 'Active Staff',
+      value: statsData.activeStaff.toString(),
+      icon: Users,
+    },
+    {
+      title: 'Inbound Today',
+      value: statsData.inboundToday.toString(),
+      icon: ArrowDownLeft,
+    },
+    { title: 'Low Stock Items', value: '-', icon: AlertTriangle },
   ]
 
   const columns = [
@@ -161,7 +176,13 @@ const TenantDashboard = () => {
     {
       header: 'Status',
       render: (row) => (
-        <Badge variant={row.status === 'APPROVED' ? 'success' : row.status === 'PENDING' ? 'warning' : 'primary'}>{row.status}</Badge>
+        <Badge
+          variant={
+            row.status === 'APPROVED' ? 'success' : row.status === 'PENDING' ? 'warning' : 'primary'
+          }
+        >
+          {row.status}
+        </Badge>
       ),
     },
   ]
@@ -212,8 +233,9 @@ const TenantDashboard = () => {
 
         {/* 3. MAIN CONTENT CONTAINER */}
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-            }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
         >
           <main className="mx-auto w-full max-w-[1600px] space-y-6 p-6 md:p-8">
             {/* Header Area */}
@@ -230,7 +252,9 @@ const TenantDashboard = () => {
                 <Button variant="outline" size="sm" onClick={() => navigate('/')}>
                   Back to Website
                 </Button>
-                <Button size="sm" onClick={() => navigate('/tenant/inbound')}>Create Shipment</Button>
+                <Button size="sm" onClick={() => navigate('/tenant/inbound')}>
+                  Create Shipment
+                </Button>
               </div>
             </div>
 
@@ -243,19 +267,20 @@ const TenantDashboard = () => {
 
             {/* Main Content Grid: Recent Activity (2/3) + Notifications (1/3) */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              
               {/* Table: Recent Activity */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2 flex flex-col">
+              <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
                 <div className="mb-6 flex items-center justify-between">
                   <h3 className="font-bold text-slate-900">Recent Activity</h3>
                 </div>
                 <div className="flex-1">
                   {isLoading ? (
-                    <div className="flex justify-center p-8"><Loader2 className="animate-spin text-slate-400" /></div>
+                    <div className="flex justify-center p-8">
+                      <Loader2 className="animate-spin text-slate-400" />
+                    </div>
                   ) : recentActivity.length > 0 ? (
                     <DataTable columns={columns} data={recentActivity} />
                   ) : (
-                    <div className="text-center py-8 text-slate-500">No recent activity found.</div>
+                    <div className="py-8 text-center text-slate-500">No recent activity found.</div>
                   )}
                 </div>
               </div>
@@ -292,12 +317,13 @@ const TenantDashboard = () => {
                       className="flex cursor-pointer gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-slate-100 hover:bg-slate-50"
                     >
                       <div
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.type === 'danger'
-                          ? 'bg-danger'
-                          : n.type === 'success'
-                            ? 'bg-success'
-                            : 'bg-primary'
-                          }`}
+                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                          n.type === 'danger'
+                            ? 'bg-danger'
+                            : n.type === 'success'
+                              ? 'bg-success'
+                              : 'bg-primary'
+                        }`}
                       />
                       <div>
                         <p className="text-sm font-bold text-slate-900">{n.title}</p>
@@ -311,7 +337,6 @@ const TenantDashboard = () => {
                   View All Activity
                 </Button>
               </div>
-
             </div>
           </main>
         </div>

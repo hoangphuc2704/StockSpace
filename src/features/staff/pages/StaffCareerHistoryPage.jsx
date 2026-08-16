@@ -7,6 +7,7 @@ import { Briefcase, Building2, Calendar, MapPin, ShieldCheck, Loader2 } from 'lu
 import Badge from '@/components/atoms/Badge'
 import staffApi from '@/services/staff/staffApi'
 import { toast } from 'react-hot-toast'
+import { getEnglishApiMessage } from '@/utils/englishMessages'
 
 const StaffCareerHistoryPage = () => {
   const dispatch = useDispatch()
@@ -26,7 +27,7 @@ const StaffCareerHistoryPage = () => {
       const res = await staffApi.getMyWorkHistory()
       setHistoryData(res.data?.data)
     } catch (err) {
-      toast.error(err.response?.data?.message || "Unable to download work history")
+      toast.error(getEnglishApiMessage(err, 'Could not load work history.'))
     } finally {
       setIsLoading(false)
     }

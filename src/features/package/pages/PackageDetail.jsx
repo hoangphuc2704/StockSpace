@@ -31,7 +31,7 @@ const PackageDetail = () => {
         const response = await packageApi.getPackageById(id)
         const nextPackage = response.data?.data || response.data
         if (isInternalFeePackage(nextPackage)) {
-          toast.error('This package is not available for subscription purchase.')
+          toast.error('Package unavailable.')
           navigate('/packages', { replace: true })
           return
         }
@@ -47,11 +47,11 @@ const PackageDetail = () => {
 
   const handlePurchaseClick = async () => {
     if (!isAuthenticated) {
-      toast.error('Please log in to purchase service packages.')
+      toast.error('Please log in to subscribe.')
       return
     }
     if (user?.role !== 'ROLE_TENANT') {
-      toast.error('Only Tenant accounts can purchase this service package.')
+      toast.error('Only Tenant accounts can subscribe.')
       return
     }
 
@@ -61,7 +61,7 @@ const PackageDetail = () => {
       const data = res.data?.data || res.data
 
       if (data && data.canProceed === false) {
-        toast.error(data.message || 'This transaction cannot be performed.')
+      toast.error(data.message || 'Transaction unavailable.')
         return
       }
 
@@ -69,7 +69,7 @@ const PackageDetail = () => {
       setShowBuyConfirm(true)
     } catch (error) {
       const errorCode = error.response?.data?.errorCode
-      toast.error(error.response?.data?.message || 'Cannot preview transactions.')
+      toast.error(error.response?.data?.message || 'Could not preview transaction.')
       if (errorCode === 'PACKAGE_NOT_FOUND' || error.response?.status === 404) {
         navigate('/packages', { replace: true })
       }
@@ -83,19 +83,19 @@ const PackageDetail = () => {
     try {
       setIsPurchasing(true)
       await subscriptionApi.purchasePackage({ packageId: id })
-      toast.success('Registered service package successfully! Your WMS system has been unlocked.')
+      toast.success('Subscription activated.')
       navigate('/tenant/dashboard')
     } catch (error) {
       const errorCode = error.response?.data?.errorCode
       if (errorCode === 'WALLET_INSUFFICIENT_BALANCE') {
         setShowWalletConfirm(true)
       } else if (errorCode === 'PACKAGE_NOT_FOUND' || error.response?.status === 404) {
-        toast.error('This package is no longer available.')
+      toast.error('Package no longer available.')
         navigate('/packages', { replace: true })
       } else if (errorCode === 'SUBSCRIPTION_ALREADY_ACTIVE') {
-        toast.error('You already have an active service plan. Cannot register further.')
+      toast.error('You already have an active plan.')
       } else {
-        toast.error(error.response?.data?.message || 'Service pack registration failed.')
+      toast.error(error.response?.data?.message || 'Subscription failed.')
       }
     } finally {
       setIsPurchasing(false)

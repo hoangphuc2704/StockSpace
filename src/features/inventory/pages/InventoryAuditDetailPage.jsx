@@ -12,13 +12,14 @@ import { toast } from 'react-hot-toast'
 import moment from 'moment'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
+import { getEnglishApiMessage } from '@/utils/englishMessages'
 
 const STATUS_CONFIG = {
-  PENDING: { label: 'Đang chờ', type: 'warning' },
-  APPROVED: { label: 'Đã duyệt', type: 'success' },
-  REJECTED: { label: 'Đã từ chối', type: 'error' },
-  SUBMITTED: { label: 'Chờ duyệt', type: 'info' },
-  COMPLETED: { label: 'Hoàn tất', type: 'success' },
+  PENDING: { label: 'Pending', type: 'warning' },
+  APPROVED: { label: 'Approved', type: 'success' },
+  REJECTED: { label: 'Rejected', type: 'error' },
+  SUBMITTED: { label: 'Awaiting approval', type: 'info' },
+  COMPLETED: { label: 'Completed', type: 'success' },
 }
 
 const InventoryAuditDetailPage = ({ currentRole }) => {
@@ -57,7 +58,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         )
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Lỗi khi tải chi tiết phiếu kiểm kê')
+      toast.error(getEnglishApiMessage(error, 'Could not load audit details.'))
       handleBack()
     } finally {
       setLoading(false)
@@ -103,11 +104,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       }
       const res = await auditApi.submitAudit(id, payload)
       if (res.data?.success) {
-        toast.success('Nộp kết quả kiểm đếm thành công')
+      toast.success('Count submitted.')
         fetchAuditDetail()
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Lỗi khi nộp kết quả')
+      toast.error(getEnglishApiMessage(error, 'Could not submit count.'))
     } finally {
       setSubmitting(false)
     }
@@ -118,11 +119,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setApproving(true)
       const res = await auditApi.approveAudit(id)
       if (res.data?.success) {
-        toast.success('Duyệt phiếu kiểm kê thành công')
+      toast.success('Audit approved.')
         fetchAuditDetail()
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Lỗi khi duyệt phiếu')
+      toast.error(getEnglishApiMessage(error, 'Could not approve audit.'))
     } finally {
       setApproving(false)
     }
@@ -134,12 +135,12 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setRejecting(true)
       const res = await auditApi.rejectAudit(id, { reason: rejectReason })
       if (res.data?.success) {
-        toast.success('Từ chối phiếu kiểm kê thành công')
+      toast.success('Audit rejected.')
         setIsRejectModalOpen(false)
         fetchAuditDetail()
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Lỗi khi từ chối phiếu')
+      toast.error(getEnglishApiMessage(error, 'Could not reject audit.'))
     } finally {
       setRejecting(false)
     }
@@ -152,7 +153,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         <div className="flex pt-14">
           <Sidebar currentRole={currentRole} />
           <div className="flex flex-1 items-center justify-center pt-20">
-            <p>Đang tải...</p>
+            <p>Loading...</p>
           </div>
         </div>
       </div>
@@ -168,25 +169,25 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
   const columns = [
     {
       accessor: 'skuCode',
-      header: 'Mã SKU',
+      header: 'SKU',
     },
     {
       accessor: 'skuName',
-      header: 'Tên Sản Phẩm',
+      header: 'Product',
     },
     {
       accessor: 'location',
-      header: 'Vị trí',
+      header: 'Location',
       render: (row) => `${row.rackName || ''} - ${row.binName || ''}`,
     },
     {
       accessor: 'expectedQuantity',
-      header: 'SL Hệ thống (Snapshot)',
+      header: 'System quantity',
       render: (row) => `${row.expectedQuantity} ${row.uomSymbol || ''}`,
     },
     {
       accessor: 'actualQuantity',
-      header: 'SL Thực tế',
+      header: 'Counted quantity',
       render: (row) => {
         if (isPending) {
           return (
@@ -204,7 +205,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     },
     {
       accessor: 'discrepancy',
-      header: 'Chênh lệch',
+      header: 'Difference',
       render: (row) => {
         const diff = isPending ? row.actualQuantity - row.expectedQuantity : row.discrepancy
 
@@ -227,7 +228,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     },
     {
       accessor: 'note',
-      header: 'Ghi chú',
+      header: 'Note',
       render: (row) => {
         if (isPending) {
           return (
@@ -235,7 +236,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               type="text"
               className="focus:border-brand-500 focus:ring-brand-500 w-full min-w-30 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:ring-1"
               value={row.note || ''}
-              placeholder="Ghi chú..."
+              placeholder="Note..."
               onChange={(e) => handleNoteChange(row.batchId, e.target.value)}
             />
           )
@@ -274,8 +275,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                 </button>
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                    Chi tiết Phiếu Kiểm Kê
-                    {currentRole === 'STAFF' ? ` #${audit.id}` : ''}
+                    Audit details
                   </h1>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
@@ -287,25 +287,25 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <h3 className="mb-4 text-lg font-semibold text-slate-900">Thông tin chung</h3>
+                      <h3 className="mb-4 text-lg font-semibold text-slate-900">Overview</h3>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Kho kiểm kê:</span>
+                      <span className="text-slate-500">Warehouse:</span>
                       <span className="font-medium text-slate-900">{audit.warehouseName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Người tạo:</span>
+                      <span className="text-slate-500">Created by:</span>
                       <span className="font-medium text-slate-900">{audit.requestedByName}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Ngày tạo:</span>
+                      <span className="text-slate-500">Created:</span>
                       <span className="font-medium text-slate-900">
                         {moment(audit.createdAt).format('DD/MM/YYYY HH:mm')}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-slate-500">Ghi chú:</span>
-                      <span className="font-medium text-slate-900">{audit.note || 'Không có'}</span>
+                      <span className="text-slate-500">Note:</span>
+                      <span className="font-medium text-slate-900">{audit.note || 'None'}</span>
                     </div>
                   </div>
                 </div>
@@ -313,18 +313,18 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                 {(audit.approvedByName || audit.status === 'REJECTED') && (
                   <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                     <h3 className="mb-4 text-lg font-semibold text-slate-900">
-                      Thông tin xét duyệt
+                      Approval details
                     </h3>
                     <div className="space-y-3 text-sm">
                       {audit.approvedByName && (
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Người duyệt:</span>
+                          <span className="text-slate-500">Approved by:</span>
                           <span className="font-medium text-slate-900">{audit.approvedByName}</span>
                         </div>
                       )}
                       {audit.updatedAt && (
                         <div className="flex justify-between">
-                          <span className="text-slate-500">Ngày cập nhật:</span>
+                          <span className="text-slate-500">Updated:</span>
                           <span className="font-medium text-slate-900">
                             {moment(audit.updatedAt).format('DD/MM/YYYY HH:mm')}
                           </span>
@@ -337,7 +337,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
 
               <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/50 p-4">
-                  <h3 className="font-semibold text-slate-900">Danh sách sản phẩm kiểm đếm</h3>
+                  <h3 className="font-semibold text-slate-900">Counted products</h3>
                 </div>
                 <DataTable columns={columns} data={items} loading={loading} />
               </div>
@@ -351,7 +351,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     className="flex items-center gap-2"
                   >
                     <Save className="h-4 w-4" />
-                    Lưu kết quả kiểm đếm
+                    Save count
                   </Button>
                 )}
 
@@ -363,7 +363,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                       onClick={() => setIsRejectModalOpen(true)}
                     >
                       <XCircle className="h-4 w-4" />
-                      Từ chối
+                      Reject
                     </Button>
                     <Button
                       onClick={handleApprove}
@@ -371,14 +371,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                       className="flex items-center gap-2 bg-green-600 text-white hover:bg-green-700"
                     >
                       <CheckCircle className="h-4 w-4" />
-                      Duyệt & Cập nhật tồn kho
+                      Approve & update stock
                     </Button>
                   </>
                 )}
 
                 {isSubmitted && currentRole === 'STAFF' && (
                   <span className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-sm text-slate-500 italic">
-                    Đang chờ Tenant duyệt kết quả
+                    Awaiting tenant approval
                   </span>
                 )}
               </div>
@@ -390,18 +390,18 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       <Modal
         isOpen={isRejectModalOpen}
         onClose={() => setIsRejectModalOpen(false)}
-        title="Từ chối phiếu kiểm kê"
+        title="Reject audit"
         size="md"
       >
         <form onSubmit={handleReject} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Lý do từ chối <span className="text-red-500">*</span>
+              Rejection reason <span className="text-red-500">*</span>
             </label>
             <textarea
               className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
               rows={3}
-              placeholder="Nhập lý do từ chối..."
+              placeholder="Enter a rejection reason..."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               required
@@ -409,7 +409,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsRejectModalOpen(false)}>
-              Hủy
+              Cancel
             </Button>
             <Button
               type="submit"
@@ -417,7 +417,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               className="bg-red-600 text-white hover:bg-red-700"
               isLoading={rejecting}
             >
-              Từ chối
+              Reject
             </Button>
           </div>
         </form>

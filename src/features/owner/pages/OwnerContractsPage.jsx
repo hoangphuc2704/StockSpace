@@ -68,7 +68,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
         { contractId, reason: reason.trim() },
         files.map((f) => f.file)
       )
-      toast.success('Dispute request sent successfully! Admin will handle it soon.')
+      toast.success('Dispute submitted.')
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -222,7 +222,7 @@ const CancelDealModal = ({ contractId, onClose, onSuccess }) => {
     setSubmitting(true)
     try {
       await contractApi.ownerRequestCancel(contractId, { reason: reason.trim() })
-      toast.success('Cancellation request sent successfully! Waiting for Tenant to respond.')
+      toast.success('Cancellation request sent.')
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -516,14 +516,14 @@ const OwnerContractsPage = () => {
       setViewerImages(imageArray)
       setViewerOpen(true)
     } catch {
-      toast.error('No valid contract photo yet!')
+      toast.error('No valid contract file.')
     }
   }
 
   const handleSubmitContract = async (e) => {
     e.preventDefault()
     if (!startDate || !endDate || contractFiles.length === 0) {
-      toast.error('Please fill in all information and select the contract file!')
+      toast.error('Complete the dates and contract file.')
       return
     }
 
@@ -545,11 +545,11 @@ const OwnerContractsPage = () => {
       }
       await contractApi.submitOnlineContract(selectedContractId, payload)
 
-      toast.success('Contract uploaded successfully! Waiting for Tenant to confirm.')
+      toast.success('Contract uploaded.')
       setIsModalOpen(false)
       fetchContracts()
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Uploading the contract failed')
+      toast.error(error.response?.data?.message || error.message || 'Could not upload contract.')
     } finally {
       setSubmitLoading(false)
     }
@@ -566,11 +566,11 @@ const OwnerContractsPage = () => {
         setViewDispute(dispute)
       } else {
         toast.error(
-          'No details of the dispute you opened for this contract were found.\n\n(Note: You can only view it if you are the person who directly opened the dispute).'
+          'Dispute details are unavailable.'
         )
       }
     } catch {
-      toast.error('Error when retrieving dispute information.')
+      toast.error('Could not load dispute details.')
     } finally {
       setLoadingDispute(false)
     }

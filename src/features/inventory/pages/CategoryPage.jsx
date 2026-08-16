@@ -33,7 +33,7 @@ const CategoryPage = () => {
       setCategories(res.data?.data || [])
     } catch (error) {
       console.error('Error fetching categories:', error)
-      toast.error(error.response?.data?.message || 'Failed to load categories')
+      toast.error(error.response?.data?.message || 'Could not load categories.')
     } finally {
       setIsLoading(false)
     }
@@ -50,12 +50,12 @@ const CategoryPage = () => {
     setIsCreatingCategory(true)
     try {
       await productApi.createCategory({ name: newCategoryName })
-      toast.success('Category created successfully')
+      toast.success('Category created.')
       setIsCategoryModalOpen(false)
       setNewCategoryName('')
       fetchCategories()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to create category')
+      toast.error(error.response?.data?.message || 'Could not create category.')
     } finally {
       setIsCreatingCategory(false)
     }
@@ -72,10 +72,10 @@ const CategoryPage = () => {
 
     try {
       await productApi.deleteCategory(categoryId)
-      toast.success('Category deleted successfully')
+      toast.success('Category deleted.')
       fetchCategories()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete category')
+      toast.error(error.response?.data?.message || 'Could not delete category.')
     }
   }
 
