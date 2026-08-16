@@ -42,6 +42,7 @@ import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import Modal from '../../../components/organisms/Modal'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { toast } from 'react-hot-toast'
 
 // ─── Enum / Constants từ BE ───────────────────────────────────────────────────
 const STATUS_OPTIONS = ['', 'PENDING_APPROVAL', 'AVAILABLE', 'RENTED', 'INACTIVE']
@@ -342,17 +343,33 @@ const WareHouseManagementPage = () => {
     [dispatch]
   )
 
-  const handleReject = useCallback(
-    async (w) => {
-      const reason = window.prompt('Vui lòng nhập lý do từ chối (bắt buộc):')
-      if (!reason || !reason.trim()) {
-        toast.error('Bạn phải nhập lý do từ chối!')
-        return
-      }
-      await dispatch(rejectWarehouse({ id: w.id, reason }))
-    },
-    [dispatch]
-  )
+  const handleReject = useCallback((warehouse) => {
+    setWarehouseToReject(warehouse)
+    setRejectReason('')
+    setRejectModalOpen(true)
+  }, [])
+
+  const closeRejectModal = useCallback(() => {
+    if (actionLoading) return
+    setRejectModalOpen(false)
+    setWarehouseToReject(null)
+    setRejectReason('')
+  }, [actionLoading])
+
+  const submitReject = useCallback(async () => {
+    const reason = rejectReason.trim()
+    if (!warehouseToReject?.id || !reason) return
+
+    try {
+      await dispatch(rejectWarehouse({ id: warehouseToReject.id, reason })).unwrap()
+      toast.success('Đã từ chối kho thành công.')
+      setRejectModalOpen(false)
+      setWarehouseToReject(null)
+      setRejectReason('')
+    } catch (requestError) {
+      toast.error(requestError || 'Không thể từ chối kho lúc này.')
+    }
+  }, [dispatch, rejectReason, warehouseToReject])
 
   // Summary counts từ trang hiện tại
   const pendingCount = warehouses.filter((w) => w.status === 'PENDING_APPROVAL').length
@@ -721,11 +738,7 @@ const WareHouseManagementPage = () => {
       </AnimatePresence>
 
       {/* Reject Modal */}
-      <Modal
-        isOpen={rejectModalOpen}
-        onClose={() => setRejectModalOpen(false)}
-        title="Từ chối duyệt đăng kho"
-      >
+      <Modal isOpen={rejectModalOpen} onClose={closeRejectModal} title="Từ chối duyệt đăng kho">
         <div className="p-4 sm:p-6">
           <p className="mb-4 text-sm text-slate-600">
             Bạn đang từ chối phê duyệt kho{' '}
@@ -741,7 +754,7 @@ const WareHouseManagementPage = () => {
           />
           <div className="mt-6 flex justify-end gap-3">
             <button
-              onClick={() => setRejectModalOpen(false)}
+              onClick={closeRejectModal}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
               Hủy

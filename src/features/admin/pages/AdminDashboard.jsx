@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import adminApi from '../../../services/admin/adminApi'
 // Import các action từ uiSlice (Điều chỉnh lại đường dẫn cho đúng với dự án của bạn nếu cần)
@@ -8,9 +8,6 @@ import {
   HiOutlineHomeModern,
   HiOutlineCurrencyDollar,
   HiOutlineChartBar,
-  HiOutlineCheckCircle,
-  HiOutlineExclamationCircle,
-  HiOutlineClock,
   HiBars3,
 } from 'react-icons/hi2'
 
@@ -23,9 +20,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts'
-import DataTable from '../../../components/organisms/DataTable'
 import StatCard from '../../../components/molecules/StatCard'
-import TableActionMenu from '@/components/TableActionMenu'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 
@@ -55,19 +50,21 @@ const AdminDashboard = () => {
         setLoading(true)
         // Fetch summary
         const summaryRes = await adminApi.getSummaryStats()
-        if (summaryRes?.data) {
-          setSummary(summaryRes.data)
+        const summaryPayload = summaryRes?.data?.data ?? summaryRes?.data
+        if (summaryPayload) {
+          setSummary((current) => ({ ...current, ...summaryPayload }))
         }
 
         // Fetch revenue for current year
         const revenueRes = await adminApi.getRevenueStats(currentYear)
-        if (revenueRes?.data) {
-          setTotalRevenue(revenueRes.data.totalRevenue || 0)
+        const revenuePayload = revenueRes?.data?.data ?? revenueRes?.data
+        if (revenuePayload) {
+          setTotalRevenue(Number(revenuePayload.totalRevenue) || 0)
 
           // Map to chart format
-          const formattedRevenue = (revenueRes.data.monthlyRevenue || []).map((item) => ({
+          const formattedRevenue = (revenuePayload.monthlyRevenue || []).map((item) => ({
             name: `T${item.month}`,
-            revenue: item.revenue,
+            revenue: Number(item.revenue) || 0,
           }))
           setRevenueData(formattedRevenue)
         }
@@ -93,65 +90,24 @@ const AdminDashboard = () => {
     },
     {
       title: 'Platform Users',
-      value: summary.totalUsers.toLocaleString(),
+      value: (Number(summary.totalUsers) || 0).toLocaleString(),
       icon: HiOutlineUsers,
       trend: 'stable',
       trendValue: 0,
     },
     {
       title: 'Warehouses',
-      value: summary.totalWarehouses.toLocaleString(),
+      value: (Number(summary.totalWarehouses) || 0).toLocaleString(),
       icon: HiOutlineHomeModern,
       trend: 'stable',
       trendValue: 0,
     },
     {
       title: 'Contracts',
-      value: summary.totalContracts.toLocaleString(),
+      value: (Number(summary.totalContracts) || 0).toLocaleString(),
       icon: HiOutlineChartBar,
       trend: 'stable',
       trendValue: 0,
-    },
-  ]
-
-  const pendingApprovals = [
-    {
-      id: 'WH-8821',
-      owner: 'Nguyen Van A',
-      type: 'Industrial',
-      location: 'HCM City',
-      date: '2h ago',
-    },
-    {
-      id: 'WH-8822',
-      owner: 'Tran Thi B',
-      type: 'Cold Storage',
-      location: 'Ha Noi',
-      date: '5h ago',
-    },
-    {
-      id: 'WH-8823',
-      owner: 'Le Van C',
-      type: 'Fulfillment',
-      location: 'Binh Duong',
-      date: '1d ago',
-    },
-  ]
-
-  const columns = [
-    {
-      header: 'Listing ID',
-      render: (row) => <span className="text-primary font-bold">{row.id}</span>,
-    },
-    { header: 'Owner', accessor: 'owner' },
-    { header: 'Type', accessor: 'type' },
-    { header: 'Location', accessor: 'location' },
-    { header: 'Submitted', accessor: 'date' },
-    {
-      header: 'Actions',
-      render: () => (
-        <TableActionMenu items={[{ label: 'Approve' }, { label: 'Reject', danger: true }]} />
-      ),
     },
   ]
 
