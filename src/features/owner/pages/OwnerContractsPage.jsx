@@ -24,6 +24,7 @@ import uploadApi from '@/services/uploadApi'
 import disputeApi from '@/services/disputeApi'
 import { toast } from 'react-hot-toast'
 import { formatVND } from '@/utils/currency'
+import DisputeContractInfo from '@/features/dispute/components/DisputeContractInfo'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 /** Kiểm tra hợp đồng còn trong vòng 7 ngày kể từ createdAt */
@@ -346,6 +347,8 @@ const DetailModal = ({ dispute, onClose }) => {
               {STATUS_CONFIG[dispute.status]?.label || dispute.status}
             </Badge>
           </div>
+
+          <DisputeContractInfo dispute={dispute} />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">

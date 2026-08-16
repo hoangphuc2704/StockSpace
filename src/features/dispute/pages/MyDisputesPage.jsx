@@ -20,6 +20,7 @@ import {
   ImageIcon,
 } from 'lucide-react'
 import disputeApi from '@/services/disputeApi'
+import DisputeContractInfo from '@/features/dispute/components/DisputeContractInfo'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const STATUS_OPTIONS = ['', 'OPEN', 'RESOLVED']
@@ -87,6 +88,8 @@ const DetailModal = ({ dispute, onClose }) => {
               {STATUS_CONFIG[dispute.status]?.label || dispute.status}
             </Badge>
           </div>
+
+          <DisputeContractInfo dispute={dispute} showContractId />
 
           <div className="grid grid-cols-1 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">

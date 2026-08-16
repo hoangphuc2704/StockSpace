@@ -28,6 +28,7 @@ import Badge from '../../../components/atoms/Badge'
 // Import Sidebar và Header đồng bộ theo chuẩn layout mới
 import Sidebar from '../../../components/SideBar'
 import Header from '../../../components/HeaderDashboard'
+import DisputeContractInfo from '../../dispute/components/DisputeContractInfo'
 
 // ─── Enum / Constants ────────────────────────────────────────────────────────
 const STATUS_OPTIONS = ['', 'OPEN', 'RESOLVED']
@@ -233,6 +234,8 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
               {STATUS_CONFIG[dispute.status]?.label || dispute.status}
             </Badge>
           </div>
+
+          <DisputeContractInfo dispute={dispute} />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
