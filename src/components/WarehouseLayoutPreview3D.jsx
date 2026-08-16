@@ -237,7 +237,8 @@ function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity })
   const z = getWorldCenter(rack.coordinateY, depth, layout.length, WORLD_SIZE)
   const levels = getRackLevels(rack)
   const rackHeight = 1.9 + levels * 0.7
-  const isSelected = selection?.type === 'rack' && selection.clientKey === rack.clientKey
+  const isSelected =
+    selection?.type === 'rack' && (selection.clientKey ?? selection.key) === rack.clientKey
 
   return (
     <PivotControls
@@ -297,7 +298,9 @@ function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity })
             rackWorldWidth={width}
             rackWorldDepth={depth}
             rackHeight={rackHeight}
-            isSelected={selection?.type === 'bin' && selection.clientKey === bin.clientKey}
+            isSelected={
+              selection?.type === 'bin' && (selection.clientKey ?? selection.key) === bin.clientKey
+            }
             editable={editable}
             onSelect={onSelect}
             onMoveEntity={onMoveEntity}

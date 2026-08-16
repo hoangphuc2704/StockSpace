@@ -215,8 +215,6 @@ const App = () => {
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
           <Route path="/staff/inventory" element={<InventoryPage />} />
-          <Route path="/staff/categories" element={<CategoryPage />} />
-          <Route path="/staff/skus" element={<SkuPage />} />
           <Route
             path="/staff/inventory-audits"
             element={<InventoryAuditPage currentRole="STAFF" />}
@@ -227,6 +225,7 @@ const App = () => {
           />
           <Route path="/staff/inbound" element={<InboundPage />} />
           <Route path="/staff/outbound" element={<OutboundPage />} />
+          <Route path="/staff/layoutwarehouses" element={<LayoutWarehouse currentRole="STAFF" />} />
           <Route path="/staff/career-history" element={<StaffCareerHistoryPage />} />
         </Route>
 

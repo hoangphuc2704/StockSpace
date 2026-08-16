@@ -351,6 +351,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const dragRef = useRef(null)
   const blockedPaintRef = useRef(false)
   const isOwner = currentRole === 'OWNER'
+  const isReadOnly = currentRole === 'STAFF' || stockOnly
 
   const [rentedWarehouses, setRentedWarehouses] = useState([])
   const [ownedWarehouses, setOwnedWarehouses] = useState([])
@@ -500,7 +501,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       setMessage('')
       const response = isOwner
         ? await warehouseApi.getOwnerWarehouseLayout(selectedWarehouseId)
-        : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
+        : currentRole === 'STAFF'
+          ? await warehouseApi.getPublicWarehouseLayout(selectedWarehouseId)
+          : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
       const payload = apiData(response) || {}
       setLayout(
         normalizeLayout({
@@ -543,7 +546,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     } finally {
       setLoadingLayout(false)
     }
-  }, [createdDimensions, isOwner, selectedWarehouseId, warehouses])
+  }, [createdDimensions, currentRole, isOwner, selectedWarehouseId, warehouses])
 
   useEffect(() => {
     // Loading the selected warehouse is the external synchronization performed by this effect.
@@ -552,7 +555,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [loadLayout])
 
   useEffect(() => {
-    if (isOwner || view !== 'stock' || !selectedWarehouseId || !selectedBinId) return undefined
+    const shouldLoadBinStock = view === 'stock' || currentRole === 'STAFF'
+    if (isOwner || !shouldLoadBinStock || !selectedWarehouseId || !selectedBinId) return undefined
 
     let alive = true
     stockApi
@@ -586,7 +590,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     return () => {
       alive = false
     }
-  }, [isOwner, selectedBinId, selectedWarehouseId, stockRefreshKey, view])
+  }, [currentRole, isOwner, selectedBinId, selectedWarehouseId, stockRefreshKey, view])
 
   useEffect(() => {
     const onMove = (event) => {
@@ -660,6 +664,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [])
 
   const startInteraction = (event, type, entity, mode, parentElement) => {
+    if (isReadOnly) {
+      event.preventDefault()
+      event.stopPropagation()
+      setSelection({ type, key: entity.clientKey })
+      if (currentRole === 'STAFF' && type === 'bin') setView('stock')
+      return
+    }
     if (blockedMode || (mode === 'resize' && !isOwner) || !parentElement) return
     event.preventDefault()
     event.stopPropagation()
@@ -766,7 +777,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }
 
   const saveLayout = async () => {
-    if (!selectedWarehouseId || tenantDefault) return
+    if (isReadOnly || !selectedWarehouseId || tenantDefault) return
     if (layout.racks.some((rack) => rectangleOverlapsBlockedCell(rack, layout))) {
       setError('A rack overlaps a locked cell. Move it before saving the layout.')
       return
@@ -978,7 +989,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     ? 'Select warehouse and Bin to view items, units and inventory quantity. This screen is for viewing only.'
                     : isOwner
                       ? 'Create Rack, Bin and warehouse shapes. Data is stored in the correct BE structure, without Zone.'
-                      : "Move Rack and Bin on Tenant's own layout."}
+                      : isReadOnly
+                        ? 'View the warehouse layout. Editing is disabled for Staff.'
+                        : "Move Rack and Bin on Tenant's own layout."}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -991,7 +1004,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   <RotateCcw className={`mr-2 h-4 w-4 ${loadingLayout ? 'animate-spin' : ''}`} />{' '}
                   Reload
                 </button>
-                {!stockOnly && (
+                {!isReadOnly && (
                   <button
                     type="button"
                     onClick={saveLayout}
@@ -1044,51 +1057,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                 {message}
               </div>
             )}
-            {tenantDefault && (
+            {tenantDefault && !isReadOnly && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 This is the Owner's default layout. Layout Tenant has not been cloned yet so it
                 cannot be saved own mind.
               </div>
-            )}
-
-            {!isOwner && !loadingLayout && selectedWarehouseId && (
-              <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                  <p className="text-xs font-bold tracking-wider text-blue-600 uppercase">
-                    Owner configuration
-                  </p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900">
-                    {layout.racks.length}{' '}
-                    <span className="text-sm font-semibold text-slate-500">Rack</span>
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                  <p className="text-xs font-bold tracking-wider text-emerald-600 uppercase">
-                    Total Bin
-                  </p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900">
-                    {binCount} <span className="text-sm font-semibold text-slate-500">Bin</span>
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
-                  <p className="text-xs font-bold tracking-wider text-amber-700 uppercase">
-                    Rack load capacity
-                  </p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900">
-                    {rackCapacity.maxWeight.toLocaleString('en-US')}{' '}
-                    <span className="text-sm font-semibold text-slate-500">kg</span>
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4">
-                  <p className="text-xs font-bold tracking-wider text-violet-700 uppercase">
-                    Rack volume
-                  </p>
-                  <p className="mt-2 text-2xl font-bold text-slate-900">
-                    {rackCapacity.maxVolume.toLocaleString('en-US')}{' '}
-                    <span className="text-sm font-semibold text-slate-500">m³</span>
-                  </p>
-                </div>
-              </section>
             )}
 
             <div className="grid min-w-0 gap-4 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
@@ -1205,6 +1178,15 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         >
                           3D
                         </button>
+                        {currentRole === 'STAFF' && (
+                          <button
+                            type="button"
+                            onClick={() => setView('stock')}
+                            className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === 'stock' ? 'bg-white shadow-sm' : 'text-slate-500'}`}
+                          >
+                            Inventory
+                          </button>
+                        )}
                       </>
                     )}
                   </div>
@@ -1394,9 +1376,72 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     )}
                   </div>
                 ) : view === '3d' ? (
-                  <div className="h-140 overflow-hidden rounded-xl border border-slate-200">
-                    <WarehouseLayoutPreview3D layout={layout} />
-                  </div>
+                  <>
+                    <div className="h-140 overflow-hidden rounded-xl border border-slate-200">
+                      <WarehouseLayoutPreview3D
+                        layout={layout}
+                        selection={{ ...selection, clientKey: selection.key }}
+                        editable={!isReadOnly}
+                        onSelect={(nextSelection) => {
+                          setSelection({
+                            type: nextSelection.type,
+                            key: nextSelection.clientKey ?? nextSelection.key ?? null,
+                          })
+                          setBlockedMode(false)
+                        }}
+                      />
+                    </div>
+                    {currentRole === 'STAFF' && selectedBinId && (
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">
+                              Inventory in selected Bin
+                            </p>
+                            <h3 className="mt-1 font-bold text-slate-900">
+                              {selectedEntity?.name || selectedEntity?.code || 'Bin'}
+                            </h3>
+                          </div>
+                          <span className="rounded-lg bg-emerald-100 px-3 py-1.5 text-sm font-bold text-emerald-800">
+                            Total: {binStockState.totalQuantity.toLocaleString()}
+                          </span>
+                        </div>
+                        {binStockState.binId !== selectedBinId ||
+                        binStockState.status === 'loading' ? (
+                          <div className="flex items-center justify-center py-6">
+                            <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                          </div>
+                        ) : binStockState.status === 'error' ? (
+                          <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                            {binStockState.error}
+                          </p>
+                        ) : binStockState.content.length === 0 ? (
+                          <p className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-center text-sm text-slate-500">
+                            This Bin is empty.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {binStockState.content.map((batch) => (
+                              <div
+                                key={batch.id}
+                                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                              >
+                                <span>
+                                  <strong className="text-blue-700">{batch.skuCode || '—'}</strong>
+                                  <span className="ml-2 text-slate-700">
+                                    {batch.skuName || 'No name yet'}
+                                  </span>
+                                </span>
+                                <strong className="text-slate-900">
+                                  {(Number(batch.quantity) || 0).toLocaleString()}
+                                </strong>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="overflow-auto rounded-xl bg-slate-100 p-3 sm:p-5">
                     <div
@@ -1556,9 +1601,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   {propertyFields.map(([field, label, unit]) => {
                     const isText = field === 'name' || field === 'code'
                     const tenantEditable =
+                      !isReadOnly &&
                       !isOwner &&
                       ['coordinateX', 'coordinateY', 'positionZ', 'rotation'].includes(field)
                     const disabled =
+                      isReadOnly ||
                       view === 'stock' ||
                       selection.type === 'layout' ||
                       (!isOwner && !tenantEditable)

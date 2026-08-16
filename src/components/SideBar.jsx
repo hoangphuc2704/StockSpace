@@ -90,11 +90,10 @@ const SIDEBAR_MENUS = {
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/staff/dashboard' },
     { text: 'Tasks', icon: HiOutlineClipboardDocumentList, path: '/staff/tasks' },
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/staff/inventory' },
-    { text: 'Category Mgt', icon: HiOutlineSquaresPlus, path: '/staff/categories' },
-    { text: 'SKU Mgt', icon: HiOutlineArchiveBox, path: '/staff/skus' },
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/staff/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/staff/outbound' },
     { text: 'Audits', icon: HiOutlineClipboardDocumentList, path: '/staff/inventory-audits' },
+    { text: 'Warehouse Layout', icon: HiOutlineSquaresPlus, path: '/staff/layoutwarehouses' },
   ],
   INSPECTOR: [
     {
