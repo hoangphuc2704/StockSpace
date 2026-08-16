@@ -13,6 +13,27 @@ import productApi from '../../../services/wms/productApi'
 import { toast } from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 
+const LEGACY_SPECIFICATION_KEYS = new Set([
+  'barcode',
+  'purchaseprice',
+  'vatrate',
+  'retailpricebeforetax',
+  'retailpriceaftertax',
+  'boxpricebeforetax',
+  'boxpriceaftertax',
+  'wholesalebeforetax',
+  'wholesalepricebeforetax',
+  'wholesaleaftertax',
+  'wholesalepriceaftertax',
+])
+
+const removeLegacySpecifications = (specifications) =>
+  Object.fromEntries(
+    Object.entries(specifications || {}).filter(
+      ([key]) => !LEGACY_SPECIFICATION_KEYS.has(String(key).replace(/[A-Z]/g, (char) => char.toLowerCase()))
+    )
+  )
+
 const SkuPage = () => {
   const confirmDialog = useConfirmDialog()
   const [products, setProducts] = useState([])
@@ -135,7 +156,12 @@ const SkuPage = () => {
     setFormUnitVolumeM3(String(product.unitVolumeM3 ?? ''))
     setIsCategoryFormOpen(false)
     setNewCategoryName('')
-    setFormSpecs(Object.entries(specifications).map(([key, value]) => ({ key, value })))
+    setFormSpecs(
+      Object.entries(removeLegacySpecifications(specifications)).map(([key, value]) => ({
+        key,
+        value,
+      }))
+    )
     setIsModalOpen(true)
   }
 
@@ -195,7 +221,7 @@ const SkuPage = () => {
         })
         specs = obj
       }
-      setDetailData({ ...raw, specsObj: specs })
+      setDetailData({ ...raw, specsObj: removeLegacySpecifications(specs) })
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to load SKU detail')
       setIsDetailOpen(false)
