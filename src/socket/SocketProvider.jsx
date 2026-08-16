@@ -13,14 +13,24 @@ export const SocketProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && token) {
-      // Get API URL (e.g., http://103.153.75.143/api)
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+      // Ưu tiên dùng VITE_SOCKET_URL nếu có, nếu không thì fallback về VITE_API_URL
+      const sourceUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL || 'http://localhost:8080'
       
       // Strip '/api' from the end if it exists, to get the root host
-      const baseUrl = apiUrl.replace(/\/api\/?$/, '')
+      const baseUrl = sourceUrl.replace(/\/api\/?$/, '')
       
-      // Convert to ws:// and append the exact backend endpoint
-      const wsUrl = baseUrl.replace(/^http(s)?:\/\//, 'ws$1://') + '/ws'
+      // Convert to ws:// or wss:// and append the exact backend endpoint
+      let wsUrl = baseUrl.replace(/^http(s)?:\/\//, 'ws$1://') + '/ws'
+
+      if (!baseUrl || baseUrl === '') {
+        wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws'
+      }
+
+      // Bỏ qua kết nối nếu gặp lỗi Mixed Content (Frontend HTTPS gọi Backend WS)
+      if (window.location.protocol === 'https:' && wsUrl.startsWith('ws://')) {
+        console.warn('⚠️ WebSocket skipped: Cannot connect to an insecure WebSocket (ws://) from a secure website (https://). Please configure SSL for your backend or test locally via HTTP.')
+        return
+      }
 
       const client = new Client({
         brokerURL: wsUrl,
