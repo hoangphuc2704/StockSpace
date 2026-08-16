@@ -57,7 +57,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         )
       }
     } catch (error) {
-      toast.error('Lỗi khi tải chi tiết phiếu kiểm kê')
+      toast.error(error.response?.data?.message || 'Lỗi khi tải chi tiết phiếu kiểm kê')
       handleBack()
     } finally {
       setLoading(false)

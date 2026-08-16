@@ -33,7 +33,7 @@ const CategoryPage = () => {
       setCategories(res.data?.data || [])
     } catch (error) {
       console.error('Error fetching categories:', error)
-      toast.error('Failed to load categories')
+      toast.error(error.response?.data?.message || 'Failed to load categories')
     } finally {
       setIsLoading(false)
     }

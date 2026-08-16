@@ -50,7 +50,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         setTotalPages(res.data.data.totalPages || 1)
       }
     } catch (error) {
-      toast.error('Lỗi khi tải danh sách phiếu kiểm kê')
+      toast.error(error.response?.data?.message || 'Lỗi khi tải danh sách phiếu kiểm kê')
     } finally {
       setLoading(false)
     }
