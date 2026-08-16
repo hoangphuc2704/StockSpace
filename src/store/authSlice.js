@@ -49,7 +49,7 @@ export const registerUser = createAsyncThunk(
   }
 )
 
-export const logoutThunk = createAsyncThunk('auth/logoutThunk', async (_, { rejectWithValue }) => {
+export const logoutThunk = createAsyncThunk('auth/logoutThunk', async () => {
   try {
     await authApi.logout()
   } catch (err) {
@@ -61,19 +61,16 @@ export const logoutThunk = createAsyncThunk('auth/logoutThunk', async (_, { reje
   }
 })
 
-export const logoutAllThunk = createAsyncThunk(
-  'auth/logoutAllThunk',
-  async (_, { rejectWithValue }) => {
-    try {
-      await authApi.logoutAll()
-    } catch (err) {
-      console.error('Logout all API error:', err)
-    } finally {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-    }
+export const logoutAllThunk = createAsyncThunk('auth/logoutAllThunk', async () => {
+  try {
+    await authApi.logoutAll()
+  } catch (err) {
+    console.error('Logout all API error:', err)
+  } finally {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
   }
-)
+})
 
 export const fetchCurrentUserThunk = createAsyncThunk(
   'auth/fetchCurrentUser',
@@ -146,6 +143,7 @@ export const googleLoginThunk = createAsyncThunk(
             role: response.data.role,
             userId: response.data.userId,
             email: response.data.email,
+            tenantId: response.data.tenantId || null,
           })
         )
         return response.data
@@ -331,8 +329,8 @@ const authSlice = createSlice({
       .addCase(googleLoginThunk.fulfilled, (state, action) => {
         state.isLoading = false
         state.isAuthenticated = true
-        const { accessToken, role, fullName, userId, email } = action.payload
-        state.user = { name: fullName, role, userId, email }
+        const { accessToken, role, fullName, userId, email, tenantId } = action.payload
+        state.user = { name: fullName, role, userId, email, tenantId: tenantId || null }
         state.token = accessToken
       })
       .addCase(googleLoginThunk.rejected, (state, action) => {

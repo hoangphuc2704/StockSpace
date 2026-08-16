@@ -17,7 +17,7 @@ const onwerwarehouseApi = {
   },
 
   getPublicWarehouseLayout: (warehouseId) => {
-    return api.get(`/warehouses/${warehouseId}/layout`)
+    return api.get(`/warehouses/${warehouseId}/layout`, { skipAuth: true })
   },
 
   // Layout của Owner

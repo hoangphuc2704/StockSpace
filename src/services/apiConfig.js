@@ -37,8 +37,10 @@ const processQueue = (error, token = null) => {
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
-    if (token) {
+    if (token && !config.skipAuth) {
       config.headers.Authorization = `Bearer ${token}`
+    } else if (config.skipAuth) {
+      delete config.headers.Authorization
     }
     return config
   },
@@ -87,11 +89,11 @@ api.interceptors.response.use(
           localStorage.setItem('token', newToken)
 
           // Cập nhật user info nếu có
-          const { fullName, role, userId, email } = response.data.data
+          const { fullName, role, userId, email, tenantId } = response.data.data
           if (fullName && role) {
             localStorage.setItem(
               'user',
-              JSON.stringify({ name: fullName, role, userId, email })
+              JSON.stringify({ name: fullName, role, userId, email, tenantId: tenantId || null })
             )
           }
 
