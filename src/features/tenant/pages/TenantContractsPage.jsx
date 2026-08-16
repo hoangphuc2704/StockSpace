@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useCallback, useState, useEffect } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
@@ -426,7 +426,7 @@ const TenantContractsPage = () => {
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerImages, setViewerImages] = useState([])
 
-  const fetchContracts = async () => {
+  const fetchContracts = useCallback(async () => {
     try {
       setLoading(true)
       const res = await contractApi.getMyContracts({ page: 0, size: 20 })
@@ -438,11 +438,24 @@ const TenantContractsPage = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchContracts()
-  }, [])
+  }, [fetchContracts])
+
+  // Contract expiry/cancellation is processed by the BE scheduler. Refresh the
+  // list as soon as the user receives the corresponding realtime notification.
+  useEffect(() => {
+    const handleRentalNotification = (event) => {
+      if (String(event.detail?.type || '').toUpperCase() === 'RENTAL') {
+        fetchContracts()
+      }
+    }
+
+    window.addEventListener('new_notification', handleRentalNotification)
+    return () => window.removeEventListener('new_notification', handleRentalNotification)
+  }, [fetchContracts])
 
   const handleConfirmContract = async (id) => {
     const confirmed = await confirmDialog({

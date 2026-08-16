@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
@@ -447,7 +447,7 @@ const OwnerContractsPage = () => {
   const [viewDispute, setViewDispute] = useState(null)
   const [loadingDispute, setLoadingDispute] = useState(false)
 
-  const fetchContracts = async () => {
+  const fetchContracts = useCallback(async () => {
     try {
       setLoading(true)
       const res = await contractApi.getMyContracts({ page: 0, size: 20 })
@@ -459,13 +459,26 @@ const OwnerContractsPage = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     // Load contracts when this screen mounts.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchContracts()
-  }, [])
+  }, [fetchContracts])
+
+  // Contract expiry/cancellation is processed by the BE scheduler. Refresh the
+  // list as soon as the owner receives the corresponding realtime notification.
+  useEffect(() => {
+    const handleRentalNotification = (event) => {
+      if (String(event.detail?.type || '').toUpperCase() === 'RENTAL') {
+        fetchContracts()
+      }
+    }
+
+    window.addEventListener('new_notification', handleRentalNotification)
+    return () => window.removeEventListener('new_notification', handleRentalNotification)
+  }, [fetchContracts])
 
   const openUploadModal = (id) => {
     setSelectedContractId(id)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import TableActionMenu from '@/components/TableActionMenu'
@@ -63,21 +63,20 @@ const TenantStaffManagementPage = () => {
   })
   const [revokingId, setRevokingId] = useState(null)
 
-  useEffect(() => {
-    fetchStaffs()
-    fetchMyWarehouses()
-  }, [page, keyword])
-
-  const fetchMyWarehouses = async () => {
+  const fetchMyWarehouses = useCallback(async () => {
     try {
       const res = await warehouseApi.getMyWarehouses()
       setMyWarehouses(res.data?.data?.content || res.data?.data || [])
     } catch (err) {
-      console.error('Failed to load warehouses', err)
+      if (err.response?.status === 403) {
+        toast.error('The rental contract has expired or warehouse access was revoked.')
+      } else {
+        console.error('Failed to load warehouses', err)
+      }
     }
-  }
+  }, [])
 
-  const fetchStaffs = async () => {
+  const fetchStaffs = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await staffApi.listStaffs({ page, size: pageSize, keyword })
@@ -89,7 +88,37 @@ const TenantStaffManagementPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [keyword, page])
+
+  const fetchAssignments = useCallback(async (staffUserId) => {
+    try {
+      const res = await staffApi.getWarehouseAssignments(staffUserId)
+      setAssignments(res.data?.data || [])
+    } catch (err) {
+      toast.error('Unable to load assignment history')
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchStaffs()
+    fetchMyWarehouses()
+  }, [fetchMyWarehouses, fetchStaffs])
+
+  // The expiry scheduler revokes assignments on the BE. Keep the tenant's
+  // assignment modal and warehouse selector in sync with that change.
+  useEffect(() => {
+    const handleRentalNotification = (event) => {
+      if (String(event.detail?.type || '').toUpperCase() !== 'RENTAL') return
+
+      fetchMyWarehouses()
+      if (selectedStaff) {
+        fetchAssignments(selectedStaff.userId || selectedStaff.memberId)
+      }
+    }
+
+    window.addEventListener('new_notification', handleRentalNotification)
+    return () => window.removeEventListener('new_notification', handleRentalNotification)
+  }, [fetchAssignments, fetchMyWarehouses, selectedStaff])
 
   const handleInvite = async (e) => {
     e.preventDefault()
@@ -136,15 +165,6 @@ const TenantStaffManagementPage = () => {
     setSelectedStaff(staff)
     setIsAssignOpen(true)
     fetchAssignments(staff.userId || staff.memberId)
-  }
-
-  const fetchAssignments = async (staffUserId) => {
-    try {
-      const res = await staffApi.getWarehouseAssignments(staffUserId)
-      setAssignments(res.data?.data || [])
-    } catch (err) {
-      toast.error('Unable to load assignment history')
-    }
   }
 
   const handleAssign = async (e) => {

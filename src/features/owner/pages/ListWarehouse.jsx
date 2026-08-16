@@ -134,6 +134,19 @@ const WarehouseManagement = () => {
     fetchWarehouses()
   }, [currentPage, pageSize, refreshTrigger]) // Đã thêm chính xác refreshTrigger vào đây!
 
+  // Contract expiry can change a warehouse back to AVAILABLE on the BE.
+  // Reload the owner list when that change is pushed through WebSocket.
+  useEffect(() => {
+    const handleRentalNotification = (event) => {
+      if (String(event.detail?.type || '').toUpperCase() === 'RENTAL') {
+        setRefreshTrigger((current) => current + 1)
+      }
+    }
+
+    window.addEventListener('new_notification', handleRentalNotification)
+    return () => window.removeEventListener('new_notification', handleRentalNotification)
+  }, [])
+
   // Hàm xử lý cập nhật trạng thái kho trực tiếp tại bảng
   const handleStatusChange = (id, newStatus) => {
     if (!Array.isArray(warehouses)) return

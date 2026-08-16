@@ -6,35 +6,8 @@ import { useSelector } from 'react-redux'
 import PublicHeader from '../../../components/PublicHeader'
 import packageApi from '../../../services/packageApi'
 import subscriptionApi from '../../../services/subscriptionApi'
-import { parseFeaturesToList } from '../../../utils/formatFeatures'
+import { isInternalFeePackage, parseFeaturesToList } from '../../../utils/formatFeatures'
 import TranslatableText from '@/components/TranslatableText'
-
-const normalizePackageText = (value = '') =>
-  String(value)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-
-const isInternalFeePackage = (pkg = {}) => {
-  const name = normalizePackageText(pkg.name)
-  const featureType = (() => {
-    if (typeof pkg.features !== 'string') return normalizePackageText(pkg.features?.type)
-    try {
-      return normalizePackageText(JSON.parse(pkg.features)?.type)
-    } catch {
-      return normalizePackageText(pkg.features)
-    }
-  })()
-
-  return (
-    featureType.includes('posting_fee') ||
-    featureType.includes('inspection_fee') ||
-    name.includes('posting fee') ||
-    name.includes('inspection fee') ||
-    name.includes('phi dang bai') ||
-    name.includes('phi kiem dinh')
-  )
-}
 
 const PackageList = () => {
   const [packages, setPackages] = useState([])
@@ -123,6 +96,9 @@ const PackageList = () => {
                       </span>
                       <span className="ml-1 text-sm font-medium text-stone-500">VND</span>
                     </div>
+                    <p className="mb-6 text-sm font-medium text-stone-500">
+                      Valid for {pkg.durationDays || 0} days
+                    </p>
                     {activeSub?.servicePackage?.id === pkg.id ? (
                       <div className="block w-full cursor-default rounded-md bg-emerald-500 py-3 text-center text-xs font-bold tracking-wider text-white uppercase">
                         In use

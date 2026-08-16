@@ -5,7 +5,7 @@ import { ArrowLeft, Check } from 'lucide-react'
 import PublicHeader from '../../../components/PublicHeader'
 import packageApi from '../../../services/packageApi'
 import subscriptionApi from '../../../services/tenant/subscriptionApi'
-import { parseFeaturesToList } from '../../../utils/formatFeatures'
+import { isInternalFeePackage, parseFeaturesToList } from '../../../utils/formatFeatures'
 import { toast } from 'react-hot-toast'
 import Modal from '@/components/organisms/Modal'
 import Button from '@/components/atoms/Button'
@@ -29,7 +29,13 @@ const PackageDetail = () => {
     const fetchPackageDetail = async () => {
       try {
         const response = await packageApi.getPackageById(id)
-        setPkg(response.data?.data || response.data)
+        const nextPackage = response.data?.data || response.data
+        if (isInternalFeePackage(nextPackage)) {
+          toast.error('This package is not available for subscription purchase.')
+          navigate('/packages', { replace: true })
+          return
+        }
+        setPkg(nextPackage)
       } catch (error) {
         console.error('Failed to fetch package detail', error)
       } finally {
@@ -37,7 +43,7 @@ const PackageDetail = () => {
       }
     }
     fetchPackageDetail()
-  }, [id])
+  }, [id, navigate])
 
   const handlePurchaseClick = async () => {
     if (!isAuthenticated) {
@@ -62,7 +68,11 @@ const PackageDetail = () => {
       setPreviewData(data)
       setShowBuyConfirm(true)
     } catch (error) {
+      const errorCode = error.response?.data?.errorCode
       toast.error(error.response?.data?.message || 'Cannot preview transactions.')
+      if (errorCode === 'PACKAGE_NOT_FOUND' || error.response?.status === 404) {
+        navigate('/packages', { replace: true })
+      }
     } finally {
       setIsPreviewing(false)
     }
@@ -79,6 +89,9 @@ const PackageDetail = () => {
       const errorCode = error.response?.data?.errorCode
       if (errorCode === 'WALLET_INSUFFICIENT_BALANCE') {
         setShowWalletConfirm(true)
+      } else if (errorCode === 'PACKAGE_NOT_FOUND' || error.response?.status === 404) {
+        toast.error('This package is no longer available.')
+        navigate('/packages', { replace: true })
       } else if (errorCode === 'SUBSCRIPTION_ALREADY_ACTIVE') {
         toast.error('You already have an active service plan. Cannot register further.')
       } else {
@@ -161,6 +174,9 @@ const PackageDetail = () => {
                 </span>
                 <span className="inline-flex items-center rounded-full bg-blue-100 px-4 py-1.5 text-[11px] font-bold tracking-wider text-blue-700 uppercase">
                   {pkg.maxStaff > 0 ? `Max ${pkg.maxStaff} staff` : 'Unlimited employees'}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-stone-100 px-4 py-1.5 text-[11px] font-bold tracking-wider text-stone-700 uppercase">
+                  {pkg.durationDays || 0} days
                 </span>
               </div>
             </div>

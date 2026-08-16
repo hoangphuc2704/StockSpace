@@ -410,6 +410,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [layoutSetupComplete, setLayoutSetupComplete] = useState(false)
   const [tenantDefault, setTenantDefault] = useState(false)
   const [stockRefreshKey, setStockRefreshKey] = useState(0)
+  const [rentalRefreshKey, setRentalRefreshKey] = useState(0)
   const [binStockState, setBinStockState] = useState({
     binId: null,
     status: 'idle',
@@ -541,8 +542,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           }
         }
       } catch (requestError) {
-        if (alive)
-          setError(requestError.response?.data?.message || 'Unable to load inventory list.')
+        if (alive) {
+          setError(
+            !isOwner && requestError.response?.status === 403
+              ? 'This rental contract has expired or your access to the warehouse list was revoked.'
+              : requestError.response?.data?.message || 'Unable to load inventory list.'
+          )
+        }
       } finally {
         if (alive) setLoadingOptions(false)
       }
@@ -551,6 +557,20 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     return () => {
       alive = false
     }
+  }, [isOwner, rentalRefreshKey])
+
+  // Contract expiry/cancellation can remove the selected rented warehouse and
+  // revoke its layout/stock access. Reload the warehouse options immediately
+  // when the realtime RENTAL notification is received.
+  useEffect(() => {
+    const handleRentalNotification = (event) => {
+      if (!isOwner && String(event.detail?.type || '').toUpperCase() === 'RENTAL') {
+        setRentalRefreshKey((current) => current + 1)
+      }
+    }
+
+    window.addEventListener('new_notification', handleRentalNotification)
+    return () => window.removeEventListener('new_notification', handleRentalNotification)
   }, [isOwner])
 
   const loadLayout = useCallback(async () => {
@@ -598,7 +618,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           )
         } else if (!isOwner && status === 403) {
           setError(
-            'You do not have permission to view this warehouse layout. Please sign in again or contact support.'
+            'This rental contract has expired or your access to this warehouse was revoked.'
           )
         } else {
           setError(requestError.response?.data?.message || 'Unable to load warehouse layout.')
@@ -642,9 +662,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           totalElements: 0,
           totalQuantity: 0,
           error:
-            requestError.response?.data?.message ||
-            requestError.message ||
-            'Unable to load inventory in Bin.',
+            requestError.response?.status === 403
+              ? 'This rental contract has expired or your access to this warehouse was revoked.'
+              : requestError.response?.data?.message ||
+                requestError.message ||
+                'Unable to load inventory in Bin.',
         })
       })
 

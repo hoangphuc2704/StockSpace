@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { Search, Filter, Download, Upload, Eye, ArrowUpDown, Package, FileText } from 'lucide-react'
 import { motion } from 'framer-motion'
 import DataTable from '@/components/organisms/DataTable'
@@ -25,6 +25,7 @@ const InventoryPage = () => {
   const [isDetailsLoading, setIsDetailsLoading] = useState(false)
   const [warehouses, setWarehouses] = useState([])
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
+  const [accessError, setAccessError] = useState('')
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [historyBatchId, setHistoryBatchId] = useState(null)
@@ -50,27 +51,32 @@ const InventoryPage = () => {
   const { user } = useSelector((state) => state.auth)
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
 
-  const loadWarehouses = async () => {
+  const loadWarehouses = useCallback(async () => {
     try {
       const res = await warehouseApi.getMyWarehouses()
-      const list = res.data?.data || []
+      const payload = res.data?.data || []
+      const list = Array.isArray(payload) ? payload : payload?.content || []
       setWarehouses(list)
-      if (list.length > 0) {
-        setSelectedWarehouseId(list[0].id)
-      } else {
-        setIsLoading(false)
-      }
+      setSelectedWarehouseId((current) =>
+        list.some((warehouse) => String(warehouse.id) === String(current))
+          ? current
+          : list[0]?.id || ''
+      )
+      if (!list.length) setIsLoading(false)
+      return list
     } catch (error) {
       console.error('Error loading warehouses:', error)
       toast.error('Failed to load warehouses')
       setIsLoading(false)
+      return null
     }
-  }
+  }, [])
 
-  const fetchInventoryOverview = async () => {
+  const fetchInventoryOverview = useCallback(async () => {
     if (!selectedWarehouseId) return
     try {
       setIsLoading(true)
+      setAccessError('')
       const res = await stockApi.getStockOverview(selectedWarehouseId, { page: 0, size: 50 })
       const content = res.data?.data?.content || []
       
@@ -90,19 +96,48 @@ const InventoryPage = () => {
       setProducts(enrichedSkus)
     } catch (error) {
       console.error('Error fetching stock overview:', error)
-      toast.error('Failed to load inventory overview')
+      if (error.response?.status === 403) {
+        setProducts([])
+        setAccessError(
+          'This rental contract has expired or access to the selected warehouse was revoked.'
+        )
+      } else {
+        toast.error('Failed to load inventory overview')
+      }
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [selectedWarehouseId])
 
   useEffect(() => {
     loadWarehouses()
-  }, [])
+  }, [loadWarehouses])
 
   useEffect(() => {
     fetchInventoryOverview()
-  }, [selectedWarehouseId])
+  }, [fetchInventoryOverview])
+
+  // The expiry scheduler changes the active warehouse/stock scope on the BE.
+  // Re-fetch both resources when the realtime RENTAL event arrives.
+  useEffect(() => {
+    const handleRentalNotification = async (event) => {
+      if (String(event.detail?.type || '').toUpperCase() !== 'RENTAL') return
+
+      const previousWarehouseId = selectedWarehouseId
+      const list = await loadWarehouses()
+      fetchInventoryOverview()
+      if (
+        previousWarehouseId &&
+        Array.isArray(list) &&
+        !list.some((warehouse) => String(warehouse.id) === String(previousWarehouseId))
+      ) {
+        setAccessError('This rental contract has expired or access to the selected warehouse was revoked.')
+      }
+    }
+
+    window.addEventListener('new_notification', handleRentalNotification)
+    return () => window.removeEventListener('new_notification', handleRentalNotification)
+  }, [fetchInventoryOverview, loadWarehouses, selectedWarehouseId])
 
   const handleViewDetails = async (product) => {
     setSelectedProduct(product)
@@ -126,7 +161,13 @@ const InventoryPage = () => {
       setSelectedProduct(prev => ({ ...prev, batches }))
     } catch (err) {
       console.error('Error loading stock batches', err)
-      toast.error('Failed to load stock batches')
+      if (err.response?.status === 403) {
+        setAccessError(
+          'This rental contract has expired or access to the selected warehouse was revoked.'
+        )
+      } else {
+        toast.error('Failed to load stock batches')
+      }
     } finally {
       setIsDetailsLoading(false)
     }
@@ -264,6 +305,12 @@ const InventoryPage = () => {
                 </p>
               </div>
             </div>
+
+            {accessError && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                {accessError}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <motion.div

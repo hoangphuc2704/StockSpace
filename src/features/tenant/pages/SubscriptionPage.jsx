@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import { Wallet, ArrowUpRight, Clock, Package, CheckCircle, Loader2 } from 'lucide-react'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
@@ -9,10 +10,12 @@ import { formatVND } from '@/utils/currency'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import subscriptionApi from '@/services/tenant/subscriptionApi'
+import { parseFeaturesToList } from '@/utils/formatFeatures'
 import moment from 'moment'
 
 const SubscriptionPage = () => {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
 
   const [isLoading, setIsLoading] = useState(true)
@@ -66,7 +69,9 @@ const SubscriptionPage = () => {
                   Manage your current plan and active subscription.
                 </p>
               </div>
-              <Button size="sm">Upgrade Plan</Button>
+              <Button size="sm" onClick={() => navigate('/packages')}>
+                Upgrade Plan
+              </Button>
             </div>
 
             {isLoading ? (
@@ -132,10 +137,15 @@ const SubscriptionPage = () => {
                   <div className="mt-6">
                     <h3 className="mb-4 font-bold text-slate-900">Plan Features</h3>
                     <ul className="space-y-3">
-                      <li className="flex items-center gap-3 text-sm text-slate-600">
-                        <CheckCircle className="text-success h-5 w-5" /> Features:{' '}
-                        {subscription.servicePackage?.features || 'Basic'}
-                      </li>
+                      {(parseFeaturesToList(subscription.servicePackage?.features).length > 0
+                        ? parseFeaturesToList(subscription.servicePackage?.features)
+                        : ['Basic features included']
+                      ).map((feature, index) => (
+                        <li key={`${feature}-${index}`} className="flex items-center gap-3 text-sm text-slate-600">
+                          <CheckCircle className="text-success h-5 w-5 shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
                       <li className="flex items-center gap-3 text-sm text-slate-600">
                         <CheckCircle className="text-success h-5 w-5" /> Duration:{' '}
                         {subscription.servicePackage?.durationDays || '0'} days
@@ -164,8 +174,8 @@ const SubscriptionPage = () => {
                     </div>
                   </div>
                   <div className="mt-6 flex flex-col gap-3">
-                    <Button variant="outline" className="w-full justify-between">
-                      Cancel Subscription
+                    <Button variant="outline" className="w-full justify-between" disabled>
+                      Cancellation unavailable
                       <ArrowUpRight className="h-4 w-4 text-slate-400" />
                     </Button>
                   </div>
@@ -178,7 +188,7 @@ const SubscriptionPage = () => {
                 <p className="mb-6 text-slate-500">
                   You currently do not have any active plan. Please upgrade to unlock all features.
                 </p>
-                <Button>View Pricing Plans</Button>
+                <Button onClick={() => navigate('/packages')}>View Pricing Plans</Button>
               </div>
             )}
           </main>

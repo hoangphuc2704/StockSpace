@@ -90,6 +90,11 @@ const AUTH_ROLE_TO_CHAT_ROLE = {
   ROLE_GUEST: 'guest',
 }
 
+// The current FE UX exposes the assistant only to public visitors and tenants.
+// Owner/Staff/Admin/Inspector chat endpoints may still exist in the BE, but the
+// widget must stay hidden for those roles until their product flows are enabled.
+const CHAT_WIDGET_ENABLED_ROLES = new Set(['guest', 'tenant'])
+
 const greeting = (chatRole) => ({
   id: `greeting-${chatRole}`,
   role: 'assistant',
@@ -652,7 +657,7 @@ const AIChatWidget = () => {
   const { isAuthenticated, user } = useSelector((state) => state.auth)
   const chatRole = isAuthenticated ? AUTH_ROLE_TO_CHAT_ROLE[user?.role] : 'guest'
 
-  if (!chatRole) return null
+  if (!chatRole || !CHAT_WIDGET_ENABLED_ROLES.has(chatRole)) return null
 
   return <AIChatPanel key={chatRole} chatRole={chatRole} />
 }

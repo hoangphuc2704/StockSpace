@@ -71,6 +71,13 @@ const NotificationDropdown = () => {
           bg: 'bg-purple-100', 
           route: role === 'ROLE_TENANT' ? '/tenant/contracts' : '/owner/contracts'
         }
+      case 'RENTAL':
+        return {
+          Icon: CalendarCheck,
+          color: 'text-indigo-500',
+          bg: 'bg-indigo-100',
+          route: role === 'ROLE_TENANT' ? '/tenant/contracts' : '/owner/contracts',
+        }
       case 'DISPUTE':
         return { 
           Icon: AlertTriangle, 
