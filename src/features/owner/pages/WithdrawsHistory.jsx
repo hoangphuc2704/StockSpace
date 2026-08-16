@@ -239,14 +239,6 @@ const WithdrawHistory = () => {
   // --- ĐỊNH NGHĨA CÁC CỘT CHO DATATABLE RÚT TIỀN ---
   const withdrawalColumns = [
     {
-      header: 'Request ID',
-      render: (row) => (
-        <p className="text-xs font-semibold text-slate-400">
-          <span className="font-sans text-slate-600">{row.id.substring(0, 8)}...</span>
-        </p>
-      ),
-    },
-    {
       header: 'Receiving bank',
       render: (row) => (
         <div className="space-y-1 text-sm">

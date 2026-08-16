@@ -520,7 +520,6 @@ const AdminWithdrawalsPage = () => {
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
                         {[
-                          'ID',
                           'Amount',
                           'Bank',
                           'Account number / Account owner',
@@ -547,14 +546,6 @@ const AdminWithdrawalsPage = () => {
                             animate={{ opacity: 1, y: 0 }}
                             className="group transition-colors hover:bg-slate-50/60"
                           >
-                            <td className="px-5 py-3.5">
-                              <span
-                                className="font-mono text-xs font-bold text-slate-500"
-                                title={w.id}
-                              >
-                                {shortId(w.id)}
-                              </span>
-                            </td>
                             <td className="px-5 py-3.5">
                               <span className="font-bold text-slate-800">
                                 {formatVND(w.amount)}

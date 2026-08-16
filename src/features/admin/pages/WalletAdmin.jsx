@@ -327,14 +327,6 @@ const WalletAdmin = () => {
   // --- Cá»˜T Báº¢NG YÃŠU Cáº¦U RÃšT TIá»€N ---
   const withdrawalColumns = [
     {
-      header: 'Request ID',
-      render: (row) => (
-        <p className="text-xs font-semibold text-slate-400">
-          <span className="font-sans text-slate-600">{row.id.substring(0, 8)}...</span>
-        </p>
-      ),
-    },
-    {
       header: 'Receiving Bank',
       render: (row) => (
         <div className="space-y-1 text-sm">
