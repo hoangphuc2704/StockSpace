@@ -345,14 +345,14 @@ const AIChatPanel = ({ chatRole }) => {
 
   return (
     <div
-      className={`fixed right-4 z-100 transition-[bottom] duration-200 sm:right-6 ${
+      className={`fixed right-6 z-100 transition-[bottom] duration-200 sm:right-8 ${
         isOpen ? 'bottom-4 sm:bottom-6' : 'bottom-24 sm:bottom-24'
       }`}
     >
       {isOpen ? (
         <section
           aria-label="StockSpace AI assistant"
-          className="flex h-[min(680px,calc(100vh-2rem))] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:h-162.5 sm:w-105"
+          className="flex h-[min(680px,calc(100vh-2rem))] w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:h-162.5 sm:w-105"
         >
           <header className="relative overflow-hidden bg-slate-950 px-5 pt-5 pb-4 text-white">
             <div className="absolute -top-12 -right-8 h-32 w-32 rounded-full bg-orange-500/20 blur-2xl" />

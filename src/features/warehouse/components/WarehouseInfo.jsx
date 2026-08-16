@@ -22,20 +22,7 @@ const WarehouseInfo = ({ warehouse, extendedData, isAuthenticated = false }) => 
         </div>
 
         <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
-          {[
-            { icon: Maximize2, label: 'Area', value: `${warehouse.area.toLocaleString()} m²` },
-            {
-              icon: Maximize2,
-              label: 'Dimensions',
-              value:
-                warehouse.width > 0 && warehouse.height > 0
-                  ? `${warehouse.width}m x ${warehouse.height}m`
-                  : 'Updating',
-            },
-            { icon: Shield, label: 'Security', value: '24/7 Monitoring' },
-            { icon: Clock, label: 'Access', value: 'Anytime' },
-            { icon: Truck, label: 'Loading', value: 'Supported' },
-          ].map((item, idx) => (
+          {[].map((item, idx) => (
             <div key={idx} className="flex flex-col gap-2">
               <div className="text-primary flex h-10 w-10 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
                 <item.icon size={20} />
@@ -89,7 +76,7 @@ const WarehouseInfo = ({ warehouse, extendedData, isAuthenticated = false }) => 
       </section>
 
       <section className="space-y-6">
-        <h3 className="text-xl font-bold text-slate-900">About this space</h3>
+        <h3 className="text-xl font-bold text-slate-900">Description</h3>
         <TranslatableText
           text={warehouse.description}
           fallback="Warehouse information is being updated."
