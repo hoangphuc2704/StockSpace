@@ -8,12 +8,6 @@ const formatMoney = (value) => {
   return `${Number(value).toLocaleString('vi-VN')} VND`
 }
 
-const shortId = (value) => {
-  if (!value) return '—'
-  const id = String(value)
-  return id.length > 12 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id
-}
-
 const parseFiles = (value) => {
   if (!value) return []
   if (Array.isArray(value)) return value.filter(Boolean)
@@ -41,13 +35,12 @@ const InfoCard = ({ label, value, className = '' }) => (
   </div>
 )
 
-const PersonCard = ({ title, id, name, email, phone }) => (
+const PersonCard = ({ title, name, email, phone }) => (
   <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
     <p className="mb-2 flex items-center gap-1 text-[11px] font-semibold tracking-wide text-slate-400 uppercase">
       <UserRound size={12} /> {title}
     </p>
     <p className="text-sm font-bold text-slate-800">{name || '—'}</p>
-    {id && <p className="mt-1 font-mono text-[10px] text-slate-400">ID: {shortId(id)}</p>}
     {email && <p className="mt-1 break-all text-xs text-slate-500">{email}</p>}
     {phone && (
       <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
@@ -83,18 +76,12 @@ const FileLinks = ({ label, value }) => {
   )
 }
 
-const DisputeContractInfo = ({ dispute, showContractId = false }) => (
+const DisputeContractInfo = ({ dispute }) => (
   <>
-    {showContractId && (
-      <InfoCard label="Contract" value={shortId(dispute.contractId)} />
-    )}
     <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
       <p className="mb-3 flex items-center gap-1 text-xs font-bold tracking-wide text-blue-700 uppercase">
         <Building2 size={14} /> Warehouse information
       </p>
-      {dispute.warehouseId && (
-        <p className="mb-3 font-mono text-[10px] text-blue-500">ID: {shortId(dispute.warehouseId)}</p>
-      )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <InfoCard label="Warehouse" value={dispute.warehouseName} />
         <InfoCard label="Address" value={dispute.warehouseAddress} />
@@ -114,14 +101,12 @@ const DisputeContractInfo = ({ dispute, showContractId = false }) => (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <PersonCard
         title="Tenant"
-        id={dispute.tenantId}
         name={dispute.tenantName}
         email={dispute.tenantEmail}
         phone={dispute.tenantPhone}
       />
       <PersonCard
         title="Owner"
-        id={dispute.ownerId}
         name={dispute.ownerName}
         email={dispute.ownerEmail}
         phone={dispute.ownerPhone}

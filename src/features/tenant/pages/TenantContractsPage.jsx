@@ -300,7 +300,7 @@ const DetailModal = ({ dispute, onClose }) => {
       onClick={onClose}
     >
       <div
-        className="animate-in fade-in zoom-in-95 w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl duration-150"
+        className="animate-in fade-in zoom-in-95 w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-start justify-between">
@@ -320,7 +320,7 @@ const DetailModal = ({ dispute, onClose }) => {
           </button>
         </div>
 
-        <div className="space-y-4 text-sm">
+        <div className="space-y-3 text-sm">
           <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <span className="font-medium text-slate-600">Status</span>
             <Badge
@@ -333,7 +333,7 @@ const DetailModal = ({ dispute, onClose }) => {
             </Badge>
           </div>
 
-          <DisputeContractInfo dispute={dispute} showContractId />
+          <DisputeContractInfo dispute={dispute} />
 
           <div className="grid grid-cols-1 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">

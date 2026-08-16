@@ -34,20 +34,18 @@ import DisputeContractInfo from '../../dispute/components/DisputeContractInfo'
 const STATUS_OPTIONS = ['', 'OPEN', 'RESOLVED']
 
 const STATUS_CONFIG = {
-  OPEN: { label: "Open", variant: 'warning', icon: AlertCircle },
-  RESOLVED: { label: "Resolved", variant: 'success', icon: CheckCircle2 },
+  OPEN: { label: 'Open', variant: 'warning', icon: AlertCircle },
+  RESOLVED: { label: 'Resolved', variant: 'success', icon: CheckCircle2 },
 }
 
 const DEPOSIT_RESOLUTIONS = [
-  { value: 'REFUND_TO_TENANT', label: "Refund deposit to Tenant" },
-  { value: 'FORFEIT_TO_OWNER', label: "Deposit fine on Owner" },
-  { value: 'KEEP_IN_SYSTEM', label: "Retain the system" },
+  { value: 'REFUND_TO_TENANT', label: 'Refund deposit to Tenant' },
+  { value: 'FORFEIT_TO_OWNER', label: 'Deposit fine on Owner' },
+  { value: 'KEEP_IN_SYSTEM', label: 'Retain the system' },
 ]
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
-
-const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 // ─── Resolve Modal ────────────────────────────────────────────────────────────
 const ResolveModal = ({ dispute, onClose }) => {
@@ -66,11 +64,11 @@ const ResolveModal = ({ dispute, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!adminNote.trim()) {
-      setLocalError("Admin notes cannot be empty.")
+      setLocalError('Admin notes cannot be empty.')
       return
     }
     if (!depositResolution) {
-      setLocalError("Please select a deposit handling decision.")
+      setLocalError('Please select a deposit handling decision.')
       return
     }
     setLocalError(null)
@@ -92,14 +90,14 @@ const ResolveModal = ({ dispute, onClose }) => {
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.15 }}
-        className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+        className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900">Dispute resolution</h2>
             <p className="mt-0.5 text-sm text-slate-500">
-              Dispute {shortId(dispute.id)} · Contract {shortId(dispute.contractId)}
+              Review the submitted dispute information before resolving it.
             </p>
           </div>
           <button
@@ -201,7 +199,7 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.15 }}
-        className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"
+        className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-start justify-between">
@@ -211,7 +209,6 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Dispute details</h2>
-              <p className="text-xs text-slate-400">{shortId(dispute.id)}</p>
             </div>
           </div>
           <button
@@ -222,7 +219,7 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
           </button>
         </div>
 
-        <div className="space-y-4 text-sm">
+        <div className="space-y-3 text-sm">
           <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <span className="font-medium text-slate-600">Status</span>
             <Badge
@@ -237,13 +234,7 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
 
           <DisputeContractInfo dispute={dispute} />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="mb-1 text-xs text-slate-400">Contract</p>
-              <p className="font-mono text-xs font-bold text-slate-700">
-                {shortId(dispute.contractId)}
-              </p>
-            </div>
+          <div className="grid grid-cols-1 gap-3">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 text-xs text-slate-400">Creation date</p>
               <p className="font-medium text-slate-700">{formatDate(dispute.createdAt)}</p>
@@ -256,18 +247,12 @@ const DetailModal = ({ dispute, onClose, onResolveClick }) => {
                 <User size={11} /> Complainant
               </p>
               <p className="font-semibold text-slate-800">{dispute.raisedByName || '—'}</p>
-              <p className="font-mono text-[10px] text-slate-400">{shortId(dispute.raisedById)}</p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
                 <User size={11} /> Handler
               </p>
-              <p className="font-semibold text-slate-800">{dispute.handledByName || "Not yet"}</p>
-              {dispute.handledById && (
-                <p className="font-mono text-[10px] text-slate-400">
-                  {shortId(dispute.handledById)}
-                </p>
-              )}
+              <p className="font-semibold text-slate-800">{dispute.handledByName || 'Not yet'}</p>
             </div>
           </div>
 
@@ -402,50 +387,6 @@ const DisputeManagementPage = () => {
               </div>
             )}
 
-            {/* Summary cards */}
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {[
-                {
-                  label: "Total dispute",
-                  value: totalElements,
-                  icon: Scale,
-                  color: 'text-slate-600',
-                  bg: 'bg-slate-100',
-                },
-                {
-                  label: "Open (this page)",
-                  value: openCount,
-                  icon: AlertCircle,
-                  color: 'text-amber-600',
-                  bg: 'bg-amber-50',
-                },
-                {
-                  label: "Resolved (this page)",
-                  value: resolvedCount,
-                  icon: CheckCircle2,
-                  color: 'text-emerald-600',
-                  bg: 'bg-emerald-50',
-                },
-              ].map((item, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-                >
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-xl ${item.bg} ${item.color}`}
-                  >
-                    <item.icon size={24} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold tracking-widest text-slate-400 uppercase">
-                      {item.label}
-                    </p>
-                    <p className="mt-0.5 text-2xl font-bold text-slate-900">{item.value}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
             {/* Filters */}
             <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 md:flex-row">
               <div className="relative w-full md:w-96">
@@ -471,7 +412,7 @@ const DisputeManagementPage = () => {
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>
-                      {s ? STATUS_CONFIG[s]?.label || s : "All status"}
+                      {s ? STATUS_CONFIG[s]?.label || s : 'All status'}
                     </option>
                   ))}
                 </select>
@@ -494,15 +435,7 @@ const DisputeManagementPage = () => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
-                        {[
-                          'ID',
-                          "Contract",
-                          "Complainant",
-                          "Reason",
-                          "Status",
-                          "Creation date",
-                          '',
-                        ].map((h) => (
+                        {['Complainant', 'Reason', 'Status', 'Creation date', ''].map((h) => (
                           <th
                             key={h}
                             className="px-5 py-3.5 text-left text-xs font-bold tracking-wide text-slate-500 uppercase"
@@ -522,22 +455,6 @@ const DisputeManagementPage = () => {
                             animate={{ opacity: 1, y: 0 }}
                             className="group transition-colors hover:bg-slate-50/60"
                           >
-                            <td className="px-5 py-3.5">
-                              <span
-                                className="font-mono text-xs font-bold text-slate-500"
-                                title={d.id}
-                              >
-                                {shortId(d.id)}
-                              </span>
-                            </td>
-                            <td className="px-5 py-3.5">
-                              <span
-                                className="font-mono text-xs text-slate-500"
-                                title={d.contractId}
-                              >
-                                {shortId(d.contractId)}
-                              </span>
-                            </td>
                             <td className="px-5 py-3.5">
                               <div className="flex items-center gap-2">
                                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500">
