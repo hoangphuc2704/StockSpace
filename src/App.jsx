@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
 import RoleGuard from './components/guards/RoleGuard'
 import PublicGuard from './components/guards/PublicGuard'
 import PublicPageLayout from './components/PublicPageLayout'
@@ -75,6 +75,39 @@ import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages
 import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
 import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
 import AIChatWidget from './features/chat/components/AIChatWidget'
+
+const PENDING_OWNER_LAYOUT_KEY = 'stockspace:pending-owner-layout'
+
+const getPendingOwnerLayout = () => {
+  try {
+    const raw = sessionStorage.getItem(PENDING_OWNER_LAYOUT_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+const OwnerLayoutSetupGuard = () => {
+  const location = useLocation()
+  const user = useSelector((state) => state.auth.user)
+  const pendingLayout = getPendingOwnerLayout()
+  const belongsToCurrentOwner =
+    pendingLayout &&
+    (!pendingLayout.ownerId || String(pendingLayout.ownerId) === String(user?.userId))
+
+  if (belongsToCurrentOwner && location.pathname !== '/owner/layoutwarehouses') {
+    const params = new URLSearchParams({
+      warehouseId: String(pendingLayout.warehouseId || ''),
+      width: String(pendingLayout.width || ''),
+      length: String(pendingLayout.length || ''),
+      height: String(pendingLayout.height || ''),
+      setupRequired: 'true',
+    })
+    return <Navigate to={`/owner/layoutwarehouses?${params.toString()}`} replace />
+  }
+
+  return <Outlet />
+}
 
 const App = () => {
   const dispatch = useDispatch()
@@ -200,14 +233,19 @@ const App = () => {
 
         {/* Owner Routes */}
         <Route element={<RoleGuard allowedRoles={['ROLE_OWNER']} />}>
-          <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-          <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
-          <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
-          <Route path="/owner/layoutwarehouses" element={<LayoutWarehouse currentRole="OWNER" />} />
-          <Route path="/owner/wallet/withdraws" element={<WithdrawsHistory />} />
-          <Route path="/owner/profile" element={<OwnerProfile />} />
-          <Route path="/owner/contracts" element={<OwnerContractsPage />} />
-          <Route path="/owner/disputes" element={<MyDisputesPage currentRole="OWNER" />} />
+          <Route element={<OwnerLayoutSetupGuard />}>
+            <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+            <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
+            <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
+            <Route
+              path="/owner/layoutwarehouses"
+              element={<LayoutWarehouse currentRole="OWNER" />}
+            />
+            <Route path="/owner/wallet/withdraws" element={<WithdrawsHistory />} />
+            <Route path="/owner/profile" element={<OwnerProfile />} />
+            <Route path="/owner/contracts" element={<OwnerContractsPage />} />
+            <Route path="/owner/disputes" element={<MyDisputesPage currentRole="OWNER" />} />
+          </Route>
         </Route>
 
         {/* Staff Routes */}

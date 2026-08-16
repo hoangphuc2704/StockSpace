@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   AlertCircle,
@@ -22,11 +22,14 @@ import warehouseApi from '@/services/warehouse/warehouseApi'
 import stockApi from '@/services/wms/stockApi'
 
 const DEFAULT_LAYOUT_SIZE = 100
-const MIN_ENTITY_SIZE = 4
+// Racks can be smaller than the old 4m hard limit. Keep a small positive
+// minimum so the 2D/3D renderers still have a usable footprint.
+const MIN_ENTITY_SIZE = 1
 const MIN_BIN_SIZE = 0.1
 const FOOTPRINT_GRID_SIZE = 10
 const BIN_MAX_RATIO = 0.8
 const layoutDimensionsKey = (warehouseId) => `stockspace:warehouse-layout-dimensions:${warehouseId}`
+const pendingOwnerLayoutKey = 'stockspace:pending-owner-layout'
 
 const keyOf = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 const numberOf = (value, fallback = 0) => {
@@ -37,6 +40,8 @@ const integerOf = (value, fallback = 0) => Math.round(numberOf(value, fallback))
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 const totalBinWeightLimit = (rack) =>
   (rack?.bins || []).reduce((total, bin) => total + Math.max(numberOf(bin.maxWeight), 0), 0)
+const totalBinVolumeLimit = (rack) =>
+  (rack?.bins || []).reduce((total, bin) => total + Math.max(numberOf(bin.maxVolume), 0), 0)
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
 const normalizeCreatedDimensions = (dimensions) => {
   const width = numberOf(dimensions?.width)
@@ -210,6 +215,40 @@ const serializeRack = (rack, rackIndex, layoutWidth, layoutLength, layoutHeight)
   }
 }
 
+const fitBinsToRack = (rack) => {
+  const rackWidth = Math.max(numberOf(rack.width, MIN_ENTITY_SIZE), MIN_ENTITY_SIZE)
+  const rackLength = Math.max(numberOf(rack.length, MIN_ENTITY_SIZE), MIN_ENTITY_SIZE)
+  const rackHeight = Math.max(numberOf(rack.height, MIN_ENTITY_SIZE), MIN_ENTITY_SIZE)
+  return {
+    ...rack,
+    width: rackWidth,
+    length: rackLength,
+    height: rackHeight,
+    bins: (rack.bins || []).map((bin) => {
+      const width = clamp(
+        numberOf(bin.width, 8),
+        MIN_BIN_SIZE,
+        Math.max(MIN_BIN_SIZE, rackWidth * BIN_MAX_RATIO)
+      )
+      const length = clamp(
+        numberOf(bin.length, 8),
+        MIN_BIN_SIZE,
+        Math.max(MIN_BIN_SIZE, rackLength * BIN_MAX_RATIO)
+      )
+      const height = clamp(numberOf(bin.height, 8), MIN_BIN_SIZE, rackHeight)
+      return {
+        ...bin,
+        width,
+        length,
+        height,
+        coordinateX: clamp(numberOf(bin.coordinateX), 0, Math.max(rackWidth - width, 0)),
+        coordinateY: clamp(numberOf(bin.coordinateY), 0, Math.max(rackLength - length, 0)),
+        positionZ: clamp(numberOf(bin.positionZ), 0, Math.max(rackHeight - height, 0)),
+      }
+    }),
+  }
+}
+
 const toPayload = (layout) => {
   const width = Math.max(numberOf(layout.width, DEFAULT_LAYOUT_SIZE), 20)
   const length = Math.max(numberOf(layout.length, DEFAULT_LAYOUT_SIZE), 20)
@@ -346,6 +385,8 @@ function BinStockMiniMap({ layout, selection, onSelectBin }) {
 
 function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly = false }) {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams] = useSearchParams()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const dragRef = useRef(null)
@@ -366,6 +407,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [layoutSetupComplete, setLayoutSetupComplete] = useState(false)
   const [tenantDefault, setTenantDefault] = useState(false)
   const [stockRefreshKey, setStockRefreshKey] = useState(0)
   const [binStockState, setBinStockState] = useState({
@@ -400,15 +442,45 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       }))
   }, [isOwner, ownedWarehouses, rentedWarehouses])
 
+  const pendingOwnerLayout = useMemo(() => {
+    if (!isOwner || layoutSetupComplete) return null
+    try {
+      return JSON.parse(sessionStorage.getItem(pendingOwnerLayoutKey) || 'null')
+    } catch {
+      return null
+    }
+  }, [isOwner, layoutSetupComplete])
+
   const selectedWarehouseId = useMemo(() => {
     if (!warehouses.length) return ''
+    if (
+      pendingOwnerLayout?.warehouseId &&
+      warehouses.some((warehouse) => warehouse.id === String(pendingOwnerLayout.warehouseId))
+    ) {
+      return String(pendingOwnerLayout.warehouseId)
+    }
     const requested = searchParams.get('warehouseId')
     if (requested && warehouses.some((warehouse) => warehouse.id === requested)) return requested
     if (warehouses.some((warehouse) => warehouse.id === preferredWarehouseId)) {
       return preferredWarehouseId
     }
     return warehouses[0].id
-  }, [preferredWarehouseId, searchParams, warehouses])
+  }, [pendingOwnerLayout, preferredWarehouseId, searchParams, warehouses])
+
+  const isMandatorySetup = useMemo(() => {
+    if (!isOwner || layoutSetupComplete) return false
+    return searchParams.get('setupRequired') === 'true' || Boolean(pendingOwnerLayout)
+  }, [isOwner, layoutSetupComplete, pendingOwnerLayout, searchParams])
+
+  useEffect(() => {
+    if (!isMandatorySetup) return undefined
+    const warnBeforeLeaving = (event) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warnBeforeLeaving)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeaving)
+  }, [isMandatorySetup])
 
   const createdDimensions = useMemo(() => {
     if (!selectedWarehouseId) return null
@@ -442,17 +514,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const blockedSet = useMemo(() => new Set(layout.blockedCells), [layout.blockedCells])
   const binCount = useMemo(
     () => layout.racks.reduce((total, rack) => total + rack.bins.length, 0),
-    [layout.racks]
-  )
-  const rackCapacity = useMemo(
-    () =>
-      layout.racks.reduce(
-        (total, rack) => ({
-          maxWeight: total.maxWeight + numberOf(rack.maxWeight),
-          maxVolume: total.maxVolume + numberOf(rack.maxVolume),
-        }),
-        { maxWeight: 0, maxVolume: 0 }
-      ),
     [layout.racks]
   )
   const selectedBinId =
@@ -644,7 +705,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       }
       setLayout((current) =>
         drag.type === 'rack'
-          ? updateRack(current, drag.key, (rack) => ({ ...rack, width, length }))
+          ? updateRack(current, drag.key, (rack) => fitBinsToRack({ ...rack, width, length }))
           : updateBin(current, drag.key, (bin) => ({ ...bin, width, length }))
       )
     }
@@ -740,10 +801,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const bin = normalizeBin({
       name: `Bin ${selectedRack.bins.length + 1}`,
       code: `BIN-${Date.now().toString().slice(-6)}`,
-      coordinateX: 1,
-      coordinateY: 1,
-      width: Math.min(8, Math.max(selectedRack.width / 2, 4)),
-      length: Math.min(8, Math.max(selectedRack.length / 4, 4)),
+      coordinateX: 0,
+      coordinateY: 0,
+      width: Math.min(8, Math.max(MIN_BIN_SIZE, selectedRack.width * BIN_MAX_RATIO)),
+      length: Math.min(8, Math.max(MIN_BIN_SIZE, selectedRack.length * BIN_MAX_RATIO)),
       height: Math.min(8, selectedRack.height),
     })
     setLayout((current) =>
@@ -782,12 +843,20 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       setError('A rack overlaps a locked cell. Move it before saving the layout.')
       return
     }
-    const overloadedRack = layout.racks.find(
-      (rack) => totalBinWeightLimit(rack) > Math.max(numberOf(rack.maxWeight), 0)
-    )
+    const overloadedRack = layout.racks.find((rack) => {
+      const maxWeight = Math.max(numberOf(rack.maxWeight), 0)
+      const maxVolume = Math.max(numberOf(rack.maxVolume), 0)
+      return (
+        (maxWeight > 0 && totalBinWeightLimit(rack) > maxWeight) ||
+        (maxVolume > 0 && totalBinVolumeLimit(rack) > maxVolume)
+      )
+    })
     if (isOwner && overloadedRack) {
+      const weightOverloaded =
+        Math.max(numberOf(overloadedRack.maxWeight), 0) > 0 &&
+        totalBinWeightLimit(overloadedRack) > Math.max(numberOf(overloadedRack.maxWeight), 0)
       setError(
-        `The total Bin weight limit in ${overloadedRack.name || overloadedRack.code || 'Rack'} cannot exceed the Rack limit.`
+        `The total Bin ${weightOverloaded ? 'weight' : 'volume'} limit in ${overloadedRack.name || overloadedRack.code || 'Rack'} cannot exceed the Rack limit.`
       )
       return
     }
@@ -801,6 +870,24 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       if (saved) setLayout(normalizeLayout(saved))
       setSelection({ type: 'layout', key: null })
       setMessage('Warehouse layout saved successfully.')
+      if (isMandatorySetup) {
+        try {
+          sessionStorage.removeItem(pendingOwnerLayoutKey)
+        } catch {
+          // Ignore storage cleanup errors; the saved layout is still valid.
+        }
+        setLayoutSetupComplete(true)
+        setMessage('Warehouse layout saved successfully. You can now leave this page.')
+        const nextParams = new URLSearchParams(searchParams)
+        nextParams.delete('setupRequired')
+        navigate(
+          {
+            pathname: location.pathname,
+            search: nextParams.toString() ? `?${nextParams.toString()}` : '',
+          },
+          { replace: true }
+        )
+      }
     } catch (requestError) {
       setError(requestError.response?.data?.message || 'Saving layout failed.')
     } finally {
@@ -822,24 +909,42 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       'maxVolume',
     ])
     const parsedValue = numericFields.has(field) ? numberOf(value) : value
-    const nextValue = field === 'maxWeight' ? Math.max(parsedValue, 0) : parsedValue
+    const isDimensionField = ['width', 'length', 'height'].includes(field)
+    const dimensionMinimum = selection.type === 'bin' ? MIN_BIN_SIZE : MIN_ENTITY_SIZE
+    const nextValue = isDimensionField
+      ? Math.max(parsedValue, dimensionMinimum)
+      : ['maxWeight', 'maxVolume'].includes(field)
+        ? Math.max(parsedValue, 0)
+        : parsedValue
     if (
       selection.type === 'rack' &&
       field === 'maxWeight' &&
+      nextValue > 0 &&
       totalBinWeightLimit(selectedEntity) > nextValue
     ) {
       setError('The Rack limit cannot be lower than the total weight limit of its Bins.')
       return
     }
-    if (selection.type === 'bin' && field === 'maxWeight') {
+    if (
+      selection.type === 'rack' &&
+      field === 'maxVolume' &&
+      nextValue > 0 &&
+      totalBinVolumeLimit(selectedEntity) > nextValue
+    ) {
+      setError('The Rack volume limit cannot be lower than the total volume limit of its Bins.')
+      return
+    }
+    if (selection.type === 'bin' && ['maxWeight', 'maxVolume'].includes(field)) {
+      const limitField = field === 'maxWeight' ? 'maxWeight' : 'maxVolume'
       const otherBinsWeight = selectedRack.bins.reduce(
         (total, bin) =>
           total +
-          (bin.clientKey === selectedEntity.clientKey ? 0 : Math.max(numberOf(bin.maxWeight), 0)),
+          (bin.clientKey === selectedEntity.clientKey ? 0 : Math.max(numberOf(bin[limitField]), 0)),
         0
       )
-      if (otherBinsWeight + nextValue > Math.max(numberOf(selectedRack.maxWeight), 0)) {
-        setError('The total Bin weight limit cannot exceed the Rack limit.')
+      const rackLimit = Math.max(numberOf(selectedRack[limitField]), 0)
+      if (rackLimit > 0 && otherBinsWeight + nextValue > rackLimit) {
+        setError(`The total Bin ${field === 'maxWeight' ? 'weight' : 'volume'} limit cannot exceed the Rack limit.`)
         return
       }
     }
@@ -863,20 +968,21 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       ['width', 'length', 'height', 'coordinateX', 'coordinateY', 'positionZ'].includes(field)
     ) {
       const candidate = { ...selectedEntity, [field]: nextValue }
+      const candidateRack = isDimensionField ? fitBinsToRack(candidate) : candidate
       const outsideLayout =
-        candidate.coordinateX < 0 ||
-        candidate.coordinateY < 0 ||
-        candidate.positionZ < 0 ||
-        candidate.coordinateX + candidate.width > layout.width ||
-        candidate.coordinateY + candidate.length > layout.length ||
-        candidate.positionZ + candidate.height > layout.height
-      const binOutsideRack = candidate.bins.some(
+        candidateRack.coordinateX < 0 ||
+        candidateRack.coordinateY < 0 ||
+        candidateRack.positionZ < 0 ||
+        candidateRack.coordinateX + candidateRack.width > layout.width ||
+        candidateRack.coordinateY + candidateRack.length > layout.length ||
+        candidateRack.positionZ + candidateRack.height > layout.height
+      const binOutsideRack = candidateRack.bins.some(
         (bin) =>
-          bin.coordinateX + bin.width > candidate.width ||
-          bin.coordinateY + bin.length > candidate.length ||
-          bin.positionZ + bin.height > candidate.height
+          bin.coordinateX + bin.width > candidateRack.width ||
+          bin.coordinateY + bin.length > candidateRack.length ||
+          bin.positionZ + bin.height > candidateRack.height
       )
-      if (outsideLayout || binOutsideRack || rectangleOverlapsBlockedCell(candidate, layout)) {
+      if (outsideLayout || binOutsideRack || rectangleOverlapsBlockedCell(candidateRack, layout)) {
         setError('The rack and its bins must remain within the warehouse boundaries.')
         return
       }
@@ -901,7 +1007,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     setLayout((current) => {
       if (selection.type === 'layout') return { ...current, [field]: nextValue }
       if (selection.type === 'rack') {
-        return updateRack(current, selection.key, (rack) => ({ ...rack, [field]: nextValue }))
+        const updatedRack = { ...selectedEntity, [field]: nextValue }
+        return updateRack(current, selection.key, (rack) =>
+          isDimensionField ? fitBinsToRack({ ...rack, [field]: nextValue }) : updatedRack
+        )
       }
       return updateBin(current, selection.key, (bin) => ({ ...bin, [field]: nextValue }))
     })
@@ -958,7 +1067,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Header />
-      {isMobileOpen && (
+      {isMobileOpen && !isMandatorySetup && (
         <button
           type="button"
           aria-label="Close the menu"
@@ -967,7 +1076,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         />
       )}
       <div className="flex pt-14">
-        <Sidebar currentRole={currentRole} />
+        {!isMandatorySetup && <Sidebar currentRole={currentRole} />}
         <div
           className={`min-w-0 flex-1 transition-all duration-150 ${
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
@@ -1035,7 +1144,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               <select
                 value={selectedWarehouseId}
                 onChange={(event) => setPreferredWarehouseId(event.target.value)}
-                disabled={loadingOptions || !warehouses.length}
+                disabled={isMandatorySetup || loadingOptions || !warehouses.length}
                 className={inputClass}
               >
                 {!warehouses.length && <option value="">There is no suitable warehouse</option>}
@@ -1055,6 +1164,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             {message && (
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
                 {message}
+              </div>
+            )}
+            {isMandatorySetup && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                This warehouse post is not complete yet. Create and save its layout before leaving
+                this page.
               </div>
             )}
             {tenantDefault && !isReadOnly && (
@@ -1617,7 +1732,15 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         </span>
                         <input
                           type={isText ? 'text' : 'number'}
-                          min={isText ? undefined : 0}
+                          min={
+                            isText
+                              ? undefined
+                              : selection.type === 'bin' && ['width', 'length', 'height'].includes(field)
+                                ? MIN_BIN_SIZE
+                                : selection.type === 'rack' && ['width', 'length', 'height'].includes(field)
+                                  ? MIN_ENTITY_SIZE
+                                  : 0
+                          }
                           step={
                             isText || ['shelfLevel', 'rotation'].includes(field)
                               ? undefined

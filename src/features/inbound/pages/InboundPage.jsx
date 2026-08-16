@@ -17,6 +17,8 @@ import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
 
+const CAPACITY_EPSILON = 1e-9
+
 const InboundPage = () => {
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -78,8 +80,10 @@ const InboundPage = () => {
           const sku = skuById.get(String(batch.skuId))
           const usage = result[key] || { units: 0, weightKg: 0, volumeM3: 0 }
           usage.units += quantity
-          usage.weightKg += quantity * (Number(sku?.unitWeightKg) || 0)
-          usage.volumeM3 += quantity * (Number(sku?.unitVolumeM3) || 0)
+          usage.weightKg +=
+            quantity * (Number(sku?.unitWeightKg ?? batch.unitWeightKg) || 0)
+          usage.volumeM3 +=
+            quantity * (Number(sku?.unitVolumeM3 ?? batch.unitVolumeM3) || 0)
           result[key] = usage
           return result
         }, {})
@@ -221,6 +225,12 @@ const InboundPage = () => {
       return
     }
 
+    const requestedQuantity = Number(formTotalQuantity)
+    if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
+      toast.error('Total quantity must be a positive whole number')
+      return
+    }
+
     // Filter out bins with 0 or empty quantity
     const activeAllocations = Object.entries(allocations).filter(([, qty]) => Number(qty) > 0)
 
@@ -231,15 +241,69 @@ const InboundPage = () => {
 
     let totalAllocated = 0
     const payloadItems = []
+    const binsById = new Map()
+    const racksById = new Map()
+    layout?.racks?.forEach((rack) => {
+      racksById.set(String(rack.id), {
+        rack,
+        incomingUnits: 0,
+        incomingWeightKg: 0,
+        incomingVolumeM3: 0,
+      })
+      rack.bins?.forEach((bin) => {
+        binsById.set(String(bin.id), { bin, rack })
+      })
+    })
 
     for (const [binId, qtyStr] of activeAllocations) {
       const qty = Number(qtyStr)
+      if (!Number.isInteger(qty) || qty <= 0) {
+        toast.error('Each Bin quantity must be a positive whole number.')
+        return
+      }
       totalAllocated += qty
 
-      let rackId = null
-      layout?.racks?.forEach((r) => {
-        if (r.bins?.some((b) => b.id === binId)) rackId = r.id
-      })
+      const binContext = binsById.get(String(binId))
+      const rackId = binContext?.rack?.id
+      if (!binContext || rackId == null || rackId === '') {
+        toast.error('Unable to find the Rack for one of the selected Bins.')
+        return
+      }
+
+      const capacity = binCapacities[binId] || {
+        currentWeightKg: 0,
+        currentVolumeM3: 0,
+        maxWeight: Number(binContext.bin.maxWeight) || 0,
+        maxVolume: Number(binContext.bin.maxVolume) || 0,
+      }
+      const incomingWeightKg = qty * selectedUnitWeightKg
+      const incomingVolumeM3 = qty * selectedUnitVolumeM3
+      const projectedBinWeight =
+        (Number(capacity.currentWeightKg) || 0) + incomingWeightKg
+      const projectedBinVolume =
+        (Number(capacity.currentVolumeM3) || 0) + incomingVolumeM3
+      if (
+        Number(capacity.maxWeight) > 0 &&
+        projectedBinWeight > Number(capacity.maxWeight) + CAPACITY_EPSILON
+      ) {
+        toast.error(
+          `${binContext.bin.name || binContext.bin.code || 'Bin'} exceeds its maximum weight.`
+        )
+        return
+      }
+      if (
+        Number(capacity.maxVolume) > 0 &&
+        projectedBinVolume > Number(capacity.maxVolume) + CAPACITY_EPSILON
+      ) {
+        toast.error(
+          `${binContext.bin.name || binContext.bin.code || 'Bin'} exceeds its maximum volume.`
+        )
+        return
+      }
+      const rackTotals = racksById.get(String(rackId))
+      rackTotals.incomingUnits += qty
+      rackTotals.incomingWeightKg += incomingWeightKg
+      rackTotals.incomingVolumeM3 += incomingVolumeM3
 
       payloadItems.push({
         skuId: formSkuId,
@@ -250,9 +314,36 @@ const InboundPage = () => {
       })
     }
 
-    if (totalAllocated !== Number(formTotalQuantity)) {
+    for (const { rack, incomingWeightKg, incomingVolumeM3 } of racksById.values()) {
+      const currentWeightKg = (rack.bins || []).reduce(
+        (total, bin) => total + (Number(binCapacities[bin.id]?.currentWeightKg) || 0),
+        0
+      )
+      const currentVolumeM3 = (rack.bins || []).reduce(
+        (total, bin) => total + (Number(binCapacities[bin.id]?.currentVolumeM3) || 0),
+        0
+      )
+      const rackMaxWeight = Number(rack.maxWeight) || 0
+      const rackMaxVolume = Number(rack.maxVolume) || 0
+      if (
+        rackMaxWeight > 0 &&
+        currentWeightKg + incomingWeightKg > rackMaxWeight + CAPACITY_EPSILON
+      ) {
+        toast.error(`${rack.name || rack.code || 'Rack'} exceeds its maximum weight.`)
+        return
+      }
+      if (
+        rackMaxVolume > 0 &&
+        currentVolumeM3 + incomingVolumeM3 > rackMaxVolume + CAPACITY_EPSILON
+      ) {
+        toast.error(`${rack.name || rack.code || 'Rack'} exceeds its maximum volume.`)
+        return
+      }
+    }
+
+    if (totalAllocated !== requestedQuantity) {
       toast.error(
-        `Total allocated (${totalAllocated}) must equal the total quantity (${formTotalQuantity})`
+        `Total allocated (${totalAllocated}) must equal the total quantity (${requestedQuantity})`
       )
       return
     }
@@ -575,8 +666,13 @@ const InboundPage = () => {
                               0
                             )
                             const rackIncomingWeightKg = rackIncomingUnits * selectedUnitWeightKg
+                            const rackIncomingVolumeM3 = rackIncomingUnits * selectedUnitVolumeM3
                             const totalBinWeightLimit = (rack.bins || []).reduce(
                               (total, bin) => total + (Number(bin.maxWeight) || 0),
+                              0
+                            )
+                            const totalBinVolumeLimit = (rack.bins || []).reduce(
+                              (total, bin) => total + (Number(bin.maxVolume) || 0),
                               0
                             )
                             return (
@@ -603,7 +699,11 @@ const InboundPage = () => {
                                       {rackIncomingWeightKg.toLocaleString('en-US', {
                                         maximumFractionDigits: 6,
                                       })}{' '}
-                                      kg
+                                      kg · Incoming volume{' '}
+                                      {rackIncomingVolumeM3.toLocaleString('en-US', {
+                                        maximumFractionDigits: 6,
+                                      })}{' '}
+                                      m³
                                     </p>
                                   </div>
                                   <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600">
@@ -615,6 +715,16 @@ const InboundPage = () => {
                                     </span>
                                     <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
                                       Bin limits: {totalBinWeightLimit.toLocaleString('en-US')} kg
+                                    </span>
+                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+                                      Rack volume:{' '}
+                                      {Number(rack.maxVolume) > 0
+                                        ? `${Number(rack.maxVolume).toLocaleString('en-US')} m³`
+                                        : 'Not set'}
+                                    </span>
+                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+                                      Bin volume limits: {totalBinVolumeLimit.toLocaleString('en-US')}{' '}
+                                      m³
                                     </span>
                                   </div>
                                 </div>
@@ -686,6 +796,9 @@ const InboundPage = () => {
                                       ),
                                       0
                                     )
+                                    const inputMaximum = Number.isFinite(maximumForBin)
+                                      ? maximumForBin
+                                      : undefined
                                     return (
                                       <article
                                         key={bin.id}
@@ -705,7 +818,7 @@ const InboundPage = () => {
                                             <input
                                               type="number"
                                               min="0"
-                                              max={maximumForBin}
+                                              max={inputMaximum}
                                               disabled={
                                                 !selectedSku ||
                                                 selectedUnitWeightKg <= 0 ||
@@ -720,7 +833,7 @@ const InboundPage = () => {
                                                   rawValue === ''
                                                     ? ''
                                                     : Math.min(
-                                                        Math.max(Number(rawValue) || 0, 0),
+                                                        Math.floor(Math.max(Number(rawValue) || 0, 0)),
                                                         maximumForBin
                                                       )
                                                 setAllocations((previous) => ({
@@ -751,6 +864,23 @@ const InboundPage = () => {
                                             <strong>
                                               {capacity.maxWeight > 0
                                                 ? `${capacity.maxWeight.toLocaleString('en-US')} kg`
+                                              : 'Not set'}
+                                            </strong>
+                                          </div>
+                                          <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
+                                            <span className="block text-slate-400">Current volume</span>
+                                            <strong>
+                                              {capacity.currentVolumeM3.toLocaleString('en-US', {
+                                                maximumFractionDigits: 6,
+                                              })}{' '}
+                                              m³
+                                            </strong>
+                                          </div>
+                                          <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
+                                            <span className="block text-slate-400">Volume limit</span>
+                                            <strong>
+                                              {capacity.maxVolume > 0
+                                                ? `${capacity.maxVolume.toLocaleString('en-US')} m³`
                                                 : 'Not set'}
                                             </strong>
                                           </div>
@@ -785,6 +915,7 @@ const InboundPage = () => {
                       isLoading={isSubmitting}
                       disabled={
                         isSubmitting ||
+                        isCapacityLoading ||
                         !formSkuId ||
                         selectedUnitWeightKg <= 0 ||
                         selectedUnitVolumeM3 <= 0 ||

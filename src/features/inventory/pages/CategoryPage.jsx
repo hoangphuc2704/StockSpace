@@ -40,6 +40,8 @@ const CategoryPage = () => {
   }
 
   useEffect(() => {
+    // Fetch the server-backed category list when the screen mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCategories()
   }, [])
 
@@ -59,22 +61,22 @@ const CategoryPage = () => {
     }
   }
 
-  const handleDeleteCategory = (categoryId) => {
-    confirmDialog({
+  const handleDeleteCategory = async (categoryId) => {
+    const confirmed = await confirmDialog({
       title: 'Delete Category',
       message: 'Are you sure you want to delete this category?',
       type: 'danger',
       confirmText: 'Delete',
-      onConfirm: async () => {
-        try {
-          await productApi.deleteCategory(categoryId)
-          toast.success('Category deleted successfully')
-          fetchCategories()
-        } catch (error) {
-          toast.error(error.response?.data?.message || 'Failed to delete category')
-        }
-      },
     })
+    if (!confirmed) return
+
+    try {
+      await productApi.deleteCategory(categoryId)
+      toast.success('Category deleted successfully')
+      fetchCategories()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete category')
+    }
   }
 
   const columns = [
@@ -87,14 +89,18 @@ const CategoryPage = () => {
       render: (row) => (
         <TableActionMenu
           label={`Actions for ${row.name}`}
-          items={[
-            {
-              label: 'Delete',
-              icon: Trash2,
-              danger: true,
-              onClick: () => handleDeleteCategory(row.id),
-            },
-          ]}
+          items={
+            row.tenantId
+              ? [
+                  {
+                    label: 'Delete',
+                    icon: Trash2,
+                    danger: true,
+                    onClick: () => handleDeleteCategory(row.id),
+                  },
+                ]
+              : []
+          }
         />
       ),
     },

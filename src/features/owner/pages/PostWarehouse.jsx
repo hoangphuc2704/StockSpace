@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import {
   Warehouse,
   MapPin,
@@ -26,15 +27,15 @@ import ownerApi from '../../../services/warehouse/warehouseApi'
 import walletApi from '../../../services/wallet/walletApi'
 import addressApi from '../../../services/addressApi'
 import { toast } from 'react-hot-toast'
-import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 
 // Phí tạo bài đăng (VND) - chỉnh lại theo quy định thực tế của hệ thống
 const POSTING_FEE = 50000
 const layoutDimensionsKey = (warehouseId) => `stockspace:warehouse-layout-dimensions:${warehouseId}`
+const pendingOwnerLayoutKey = 'stockspace:pending-owner-layout'
 
 const CreateWarehouse = () => {
   const navigate = useNavigate()
-  const confirmDialog = useConfirmDialog()
+  const user = useSelector((state) => state.auth.user)
   const [isLoading, setIsLoading] = useState(false)
   const [warehouseTypes, setWarehouseTypes] = useState([])
   const [wards, setWards] = useState([])
@@ -294,19 +295,28 @@ const CreateWarehouse = () => {
         }
 
         toast.success('Warehouse posted successfully!')
-        const shouldCreateLayout = await confirmDialog({
-          title: 'Create warehouse layout?',
-          message:
-            'The post was created successfully. Would you like to configure racks, bins, and locked areas now?',
-          confirmText: 'Create layout',
-          cancelText: 'Not now',
-        })
+        if (!createdWarehouseId) {
+          toast.error('Warehouse created, but its ID was not returned. Please contact support.')
+          return
+        }
+
+        try {
+          sessionStorage.setItem(
+            pendingOwnerLayoutKey,
+            JSON.stringify({
+              ownerId: user?.userId || null,
+              warehouseId: createdWarehouseId,
+              width: warehouseWidth,
+              length: warehouseLength,
+              height: warehouseHeight,
+            })
+          )
+        } catch {
+          // Query parameters still keep the layout setup flow targeted to this warehouse.
+        }
+
         navigate(
-          shouldCreateLayout
-            ? createdWarehouseId
-              ? `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${warehouseWidth}&length=${warehouseLength}&height=${warehouseHeight}`
-              : '/owner/layoutwarehouses'
-            : '/owner/listwarehouse'
+          `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${warehouseWidth}&length=${warehouseLength}&height=${warehouseHeight}&setupRequired=true`
         )
       } else {
         toast.error(response?.data?.message || 'Posting failed, please check your data again.')

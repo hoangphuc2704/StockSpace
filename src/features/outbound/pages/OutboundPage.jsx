@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
@@ -35,7 +35,6 @@ const OutboundPage = () => {
   const [receipts, setReceipts] = useState([])
   const [warehouses, setWarehouses] = useState([])
   const [skus, setSkus] = useState([])
-  const [layout, setLayout] = useState(null)
 
   // Selection states
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
@@ -49,42 +48,77 @@ const OutboundPage = () => {
   const [allocations, setAllocations] = useState({}) // { binId: quantity }
   const [skuLocations, setSkuLocations] = useState([])
   const [formNote, setFormNote] = useState('')
+  const availableWarehouseQuantity = useMemo(
+    () => skuLocations.reduce((total, location) => total + (Number(location.quantity) || 0), 0),
+    [skuLocations]
+  )
+
+  const distributeQuantityAcrossBins = useCallback((requestedQuantity, locations = []) => {
+    let remaining = Math.max(Math.floor(Number(requestedQuantity) || 0), 0)
+    return locations.reduce((result, location) => {
+      if (remaining <= 0) return result
+      const quantity = Math.min(remaining, Number(location.quantity) || 0)
+      if (quantity > 0) {
+        result[location.binId] = quantity
+        remaining -= quantity
+      }
+      return result
+    }, {})
+  }, [])
 
   useEffect(() => {
+    let active = true
     const fetchLocations = async () => {
-      if (!formSkuId || !selectedWarehouseId || !layout) {
-        setSkuLocations([])
+      if (!formSkuId || !selectedWarehouseId) {
+        if (active) setSkuLocations([])
         return
       }
       try {
-        const res = await stockApi.getStockBySku(formSkuId)
-        const locations = res.data?.data?.locations || []
+        // Load every stock batch in the selected warehouse. The SKU summary endpoint
+        // is tenant-wide, so using it here could miss bins or mix locations from other warehouses.
+        const allStock = await stockApi.getAllStock(selectedWarehouseId)
+        const locationsByBin = new Map()
 
-        // Match Rack/Bin names with Layout to get IDs
-        const matchedLocations = locations
-          .filter((loc) => loc.warehouseId === selectedWarehouseId)
-          .map((loc) => {
-            const rack = layout.racks?.find((r) => r.name === loc.rackName)
-            const bin = rack?.bins?.find((b) => b.name === loc.binName)
-            return {
-              ...loc,
-              rackId: rack?.id,
-              binId: bin?.id,
+        allStock
+          .filter(
+            (batch) =>
+              String(batch.skuId) === String(formSkuId) &&
+              String(batch.warehouseId) === String(selectedWarehouseId) &&
+              Number(batch.quantity) > 0 &&
+              batch.rackId &&
+              batch.binId
+          )
+          .forEach((batch) => {
+            const key = `${batch.rackId}:${batch.binId}`
+            const existing = locationsByBin.get(key)
+            if (existing) {
+              existing.quantity += Number(batch.quantity) || 0
+            } else {
+              locationsByBin.set(key, {
+                ...batch,
+                quantity: Number(batch.quantity) || 0,
+                rackId: String(batch.rackId),
+                binId: String(batch.binId),
+              })
             }
           })
-          .filter((loc) => loc.rackId && loc.binId)
 
-        setSkuLocations(matchedLocations)
+        const nextLocations = Array.from(locationsByBin.values())
+        if (!active) return
+        setSkuLocations(nextLocations)
 
-        // Reset allocations if previous selected bins are no longer valid
+        // Reset allocations when the available warehouse locations change.
         setAllocations({})
       } catch (error) {
         console.error('Failed to fetch SKU stock locations', error)
-        setSkuLocations([])
+        if (active) setSkuLocations([])
       }
     }
     fetchLocations()
-  }, [formSkuId, selectedWarehouseId, layout])
+    return () => {
+      active = false
+    }
+  }, [formSkuId, selectedWarehouseId])
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -114,21 +148,6 @@ const OutboundPage = () => {
       }
     }
   }, [])
-
-  const fetchLayout = useCallback(async () => {
-    try {
-      const res =
-        currentRole === 'STAFF'
-          ? await warehouseApi.getPublicWarehouseLayout(selectedWarehouseId)
-          : await warehouseApi.getTenantWarehouseLayout(selectedWarehouseId)
-      setLayout(res.data?.data)
-    } catch (error) {
-      setLayout(null)
-      if (error.response?.status !== 404) {
-        console.error('Error fetching layout:', error)
-      }
-    }
-  }, [currentRole, selectedWarehouseId])
 
   const fetchReceipts = useCallback(async () => {
     setIsLoading(true)
@@ -162,9 +181,8 @@ const OutboundPage = () => {
       // Refresh server-backed data whenever the active warehouse changes.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchReceipts()
-      fetchLayout()
     }
-  }, [fetchLayout, fetchReceipts, selectedWarehouseId])
+  }, [fetchReceipts, selectedWarehouseId])
 
   const handleExport = async () => {
     if (!selectedWarehouseId) return
@@ -191,6 +209,18 @@ const OutboundPage = () => {
     e.preventDefault()
     if (!formSkuId) {
       toast.error('Please select a product')
+      return
+    }
+
+    const requestedQuantity = Number(formTotalQuantity)
+    if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
+      toast.error('Total quantity must be a positive whole number')
+      return
+    }
+    if (requestedQuantity > availableWarehouseQuantity) {
+      toast.error(
+        `The selected warehouse only has ${availableWarehouseQuantity} units of this SKU across all bins.`
+      )
       return
     }
 
@@ -229,9 +259,9 @@ const OutboundPage = () => {
       })
     }
 
-    if (totalAllocated !== Number(formTotalQuantity)) {
+    if (totalAllocated !== requestedQuantity) {
       toast.error(
-        `Total allocated (${totalAllocated}) must equal the total quantity (${formTotalQuantity})`
+        `Total allocated (${totalAllocated}) must equal the total quantity (${requestedQuantity})`
       )
       return
     }
@@ -491,7 +521,11 @@ const OutboundPage = () => {
                         min="1"
                         required
                         value={formTotalQuantity}
-                        onChange={(e) => setFormTotalQuantity(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          setFormTotalQuantity(value)
+                          setAllocations(distributeQuantityAcrossBins(value, skuLocations))
+                        }}
                       />
                     </div>
                   </div>
@@ -499,14 +533,19 @@ const OutboundPage = () => {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-sm font-medium text-slate-700">Pick from Bins</label>
-                      <span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                        Total Picked:{' '}
-                        {Object.values(allocations).reduce(
-                          (acc, val) => acc + (Number(val) || 0),
-                          0
-                        )}{' '}
-                        / {formTotalQuantity}
-                      </span>
+                      <div className="flex flex-wrap justify-end gap-2 text-xs font-semibold">
+                        <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">
+                          Available in warehouse: {availableWarehouseQuantity}
+                        </span>
+                        <span className="rounded bg-slate-100 px-2 py-1 text-slate-600">
+                          Total picked:{' '}
+                          {Object.values(allocations).reduce(
+                            (acc, val) => acc + (Number(val) || 0),
+                            0
+                          )}{' '}
+                          / {formTotalQuantity}
+                        </span>
+                      </div>
                     </div>
 
                     {!formSkuId ? (

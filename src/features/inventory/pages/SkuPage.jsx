@@ -230,22 +230,22 @@ const SkuPage = () => {
     }
   }
 
-  const handleDelete = (id) => {
-    confirmDialog({
+  const handleDelete = async (id) => {
+    const confirmed = await confirmDialog({
       title: 'Delete SKU',
       message: 'Are you sure you want to delete this SKU? This action cannot be undone.',
       type: 'danger',
       confirmText: 'Delete',
-      onConfirm: async () => {
-        try {
-          await productApi.deleteSKU(id)
-          toast.success('SKU deleted successfully')
-          fetchData()
-        } catch (error) {
-          toast.error(error.response?.data?.message || 'Failed to delete SKU')
-        }
-      },
     })
+    if (!confirmed) return
+
+    try {
+      await productApi.deleteSKU(id)
+      toast.success('SKU deleted successfully')
+      fetchData()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete SKU')
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -308,21 +308,24 @@ const SkuPage = () => {
     },
     {
       header: 'Actions',
-      render: (row) => (
-        <TableActionMenu
-          label={`Actions for ${row.name}`}
-          items={[
-            { label: 'View details', icon: Eye, onClick: () => handleViewDetail(row.id) },
-            { label: 'Edit', icon: Edit, onClick: () => handleOpenEdit(row) },
-            {
-              label: 'Delete',
-              icon: Trash2,
-              danger: true,
-              onClick: () => handleDelete(row.id),
-            },
-          ]}
-        />
-      ),
+      render: (row) => {
+        const canManageSku = Boolean(row.tenantId)
+        return (
+          <TableActionMenu
+            label={`Actions for ${row.name}`}
+            items={[
+              { label: 'View details', icon: Eye, onClick: () => handleViewDetail(row.id) },
+              canManageSku && { label: 'Edit', icon: Edit, onClick: () => handleOpenEdit(row) },
+              canManageSku && {
+                label: 'Delete',
+                icon: Trash2,
+                danger: true,
+                onClick: () => handleDelete(row.id),
+              },
+            ]}
+          />
+        )
+      },
     },
   ]
 
