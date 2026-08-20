@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { showApiErrorToast } from '@/config/apiError'
 // ==================== Main Axios Instance ====================
 
 const api = axios.create({
@@ -52,6 +53,12 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
+
+    // A 401 may be recovered by the refresh flow, so wait before notifying.
+    // Individual requests can opt out when they intentionally render the
+    // error inline (for example, the login and reset-password forms).
+    const shouldShowErrorToast =
+      !error.config?.skipErrorToast && error.response?.status !== 401
 
     // Chỉ xử lý 401 và chưa retry
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -122,6 +129,8 @@ api.interceptors.response.use(
         isRefreshing = false
       }
     }
+
+    if (shouldShowErrorToast) showApiErrorToast(error)
 
     return Promise.reject(error)
   }

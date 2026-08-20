@@ -46,6 +46,8 @@ import walletApi from '../../../services/wallet/walletApi'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import ownerStatsApi from '../../../services/owner/ownerStatsApi'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
+import { positiveNumber, required } from '@/config/validation'
 
 // Mock Data giữ nguyên
 const defaultRevenueData = [
@@ -233,8 +235,9 @@ const OwnerDashboard = () => {
     e.preventDefault()
 
     const amountNumber = Number(inputAmount)
-    if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Enter a valid amount.')
+    const amountError = positiveNumber(amountNumber, 'Enter a valid amount.')
+    if (amountError) {
+      toast.error(amountError)
       return
     }
 
@@ -253,11 +256,11 @@ const OwnerDashboard = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl // Chuyển hướng sang VNPay
       } else {
-        toast.error(res?.data?.message || 'Payment link unavailable.')
+        showApiErrorToast({ response: { data: res?.data } }, 'Payment link unavailable.')
       }
     } catch (error) {
       console.error('Deposit error:', error)
-      toast.error('Deposit failed. Try again.')
+      showApiErrorToast(error, 'Deposit failed. Try again.')
     } finally {
       setDepositLoading(false)
     }
@@ -299,7 +302,7 @@ const OwnerDashboard = () => {
       toast.success('Rental request accepted.')
       fetchRequests() // Refresh data
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not accept request.')
+      showApiErrorToast(error, 'Could not accept request.')
     }
   }
 
@@ -310,7 +313,7 @@ const OwnerDashboard = () => {
   }
 
   const submitReject = async () => {
-    if (!rejectReason.trim()) {
+    if (required(rejectReason, 'Rejection reason')) {
       toast.error('Enter a rejection reason.')
       return
     }
@@ -323,7 +326,7 @@ const OwnerDashboard = () => {
       setRejectModalOpen(false)
       setRejectTargetId(null)
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not reject request.')
+      showApiErrorToast(error, 'Could not reject request.')
     } finally {
       setRejectLoading(false)
     }

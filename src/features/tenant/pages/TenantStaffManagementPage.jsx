@@ -26,6 +26,8 @@ import staffApi from '@/services/staff/staffApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
+import { showApiErrorToast } from '@/config/apiError'
+import { email, required } from '@/config/validation'
 
 const TenantStaffManagementPage = () => {
   const confirmDialog = useConfirmDialog()
@@ -70,7 +72,7 @@ const TenantStaffManagementPage = () => {
       setMyWarehouses(res.data?.data?.content || res.data?.data || [])
     } catch (err) {
       if (err.response?.status === 403) {
-        toast.error('Warehouse access expired.')
+        showApiErrorToast(err, 'Warehouse access expired.')
       } else {
         console.error('Failed to load warehouses', err)
       }
@@ -85,7 +87,7 @@ const TenantStaffManagementPage = () => {
       setStaffList(data?.content || [])
       setTotalElements(data?.totalElements || 0)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not load staff.')
+      showApiErrorToast(err, 'Could not load staff.')
     } finally {
       setIsLoading(false)
     }
@@ -97,7 +99,7 @@ const TenantStaffManagementPage = () => {
       const res = await staffApi.getWarehouseAssignments(staffUserId)
       setAssignments(res.data?.data || [])
     } catch (err) {
-      toast.error('Could not load assignments.')
+      showApiErrorToast(err, 'Could not load assignments.')
       setAssignments([])
     } finally {
       setIsAssignmentsLoading(false)
@@ -127,8 +129,9 @@ const TenantStaffManagementPage = () => {
 
   const handleInvite = async (e) => {
     e.preventDefault()
-    if (!inviteForm.email || !inviteForm.fullName) {
-      toast.error('Enter name and email.')
+    const inviteError = required(inviteForm.fullName, 'Name') || email(inviteForm.email)
+    if (inviteError) {
+      toast.error(inviteError)
       return
     }
     setIsInviting(true)
@@ -139,8 +142,7 @@ const TenantStaffManagementPage = () => {
       setInviteForm({ email: '', fullName: '', phone: '' })
       fetchStaffs()
     } catch (err) {
-      const msg = err.response?.data?.message || 'Sending invitation failed'
-      toast.error(msg)
+      showApiErrorToast(err, 'Sending invitation failed.')
     } finally {
       setIsInviting(false)
     }
@@ -160,7 +162,7 @@ const TenantStaffManagementPage = () => {
       toast.success(`${name} removed.`)
       fetchStaffs()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not remove staff.')
+      showApiErrorToast(err, 'Could not remove staff.')
     } finally {
       setRemovingId(null)
     }
@@ -200,7 +202,7 @@ const TenantStaffManagementPage = () => {
       setAssignForm({ warehouseId: '', customTitle: '', notes: '' })
       fetchAssignments(staffUserId)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not assign warehouse.')
+      showApiErrorToast(err, 'Could not assign warehouse.')
     } finally {
       setIsAssigning(false)
     }
@@ -220,7 +222,7 @@ const TenantStaffManagementPage = () => {
       toast.success('Assignment revoked.')
       fetchAssignments(selectedStaff.userId || selectedStaff.memberId)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not revoke assignment.')
+      showApiErrorToast(err, 'Could not revoke assignment.')
     } finally {
       setRevokingId(null)
     }

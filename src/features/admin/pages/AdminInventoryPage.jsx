@@ -12,6 +12,7 @@ import { useSelector } from 'react-redux'
 import adminApi from '../../../services/admin/adminApi'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { showApiErrorToast } from '@/config/apiError'
 import { HiBars3 } from 'react-icons/hi2'
 
 const AdminInventoryPage = () => {
@@ -70,7 +71,7 @@ const AdminInventoryPage = () => {
       }
     } catch (error) {
       console.error('Error fetching warehouses:', error)
-      toast.error('Could not load inventory.')
+      showApiErrorToast(error, 'Could not load inventory.')
     } finally {
       setLoadingWarehouses(false)
     }
@@ -87,7 +88,7 @@ const AdminInventoryPage = () => {
       setStockPage(data?.pageNo ?? data?.page ?? 0)
     } catch (error) {
       console.error('Error fetching stock:', error)
-      toast.error(error.response?.data?.message || 'Could not load inventory.')
+      showApiErrorToast(error, 'Could not load inventory.')
     } finally {
       setLoading(false)
     }
@@ -109,7 +110,7 @@ const AdminInventoryPage = () => {
       setReceiptPage(data?.pageNo ?? data?.page ?? 0)
     } catch (error) {
       console.error('Error fetching receipts:', error)
-      toast.error(error.response?.data?.message || 'Could not load receipts.')
+      showApiErrorToast(error, 'Could not load receipts.')
     } finally {
       setLoading(false)
     }

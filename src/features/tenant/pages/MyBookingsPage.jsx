@@ -18,6 +18,7 @@ import Button from '@/components/atoms/Button'
 import { Link } from 'react-router-dom'
 import tenantApi from '@/services/tenant/tenantApi'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
 import { formatVND } from '@/utils/currency'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 
@@ -66,7 +67,7 @@ const MyBookingsPage = () => {
       toast.success('Booking canceled.')
       fetchBookings()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not cancel booking.')
+      showApiErrorToast(err, 'Could not cancel booking.')
     } finally {
       setIsCanceling(null)
     }

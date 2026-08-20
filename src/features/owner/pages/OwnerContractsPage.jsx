@@ -23,6 +23,8 @@ import contractApi from '@/services/contractApi'
 import uploadApi from '@/services/uploadApi'
 import disputeApi from '@/services/disputeApi'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
+import { required, validateDateRange } from '@/config/validation'
 import { formatVND } from '@/utils/currency'
 import DisputeContractInfo from '@/features/dispute/components/DisputeContractInfo'
 
@@ -56,8 +58,9 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!reason.trim()) {
-      setError('Please enter the reason for the dispute.')
+    const reasonError = required(reason, 'Dispute reason')
+    if (reasonError) {
+      setError(reasonError)
       return
     }
     setError(null)
@@ -214,8 +217,9 @@ const CancelDealModal = ({ contractId, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!reason.trim()) {
-      setError('Please enter the reason.')
+    const reasonError = required(reason, 'Reason')
+    if (reasonError) {
+      setError(reasonError)
       return
     }
     setError(null)
@@ -522,7 +526,8 @@ const OwnerContractsPage = () => {
 
   const handleSubmitContract = async (e) => {
     e.preventDefault()
-    if (!startDate || !endDate || contractFiles.length === 0) {
+    const dateError = validateDateRange(startDate, endDate)
+    if (dateError || contractFiles.length === 0) {
       toast.error('Complete the dates and contract file.')
       return
     }
@@ -549,7 +554,7 @@ const OwnerContractsPage = () => {
       setIsModalOpen(false)
       fetchContracts()
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Could not upload contract.')
+      showApiErrorToast(error, 'Could not upload contract.')
     } finally {
       setSubmitLoading(false)
     }
@@ -569,8 +574,8 @@ const OwnerContractsPage = () => {
           'Dispute details are unavailable.'
         )
       }
-    } catch {
-      toast.error('Could not load dispute details.')
+    } catch (error) {
+      showApiErrorToast(error, 'Could not load dispute details.')
     } finally {
       setLoadingDispute(false)
     }

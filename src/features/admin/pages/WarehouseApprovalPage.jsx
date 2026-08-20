@@ -34,6 +34,7 @@ import WarehouseLayoutPreview3D from '../../../components/WarehouseLayoutPreview
 import TableActionMenu from '@/components/TableActionMenu'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { required } from '@/config/validation'
 
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
 const numberOf = (value, fallback = 0) => {
@@ -196,7 +197,7 @@ const WarehouseApprovalPage = () => {
   }
 
   const submitReject = () => {
-    if (!rejectReason.trim()) {
+    if (required(rejectReason, 'Rejection reason')) {
       toast.error('Enter a rejection reason.')
       return
     }

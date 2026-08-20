@@ -14,7 +14,7 @@ import { toast } from 'react-hot-toast'
 import moment from 'moment'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
-import { getEnglishApiMessage } from '@/utils/englishMessages'
+import { showApiErrorToast } from '@/config/apiError'
 
 const STATUS_CONFIG = {
   PENDING: { label: 'Pending', type: 'warning' },
@@ -51,7 +51,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         setTotalPages(res.data.data.totalPages || 1)
       }
     } catch (error) {
-      toast.error(getEnglishApiMessage(error, 'Could not load audits.'))
+      showApiErrorToast(error, 'Could not load audits.')
     } finally {
       setLoading(false)
     }
@@ -64,7 +64,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         setWarehouses(res.data.data || [])
       }
     } catch (error) {
-      toast.error('Could not load warehouses.')
+      showApiErrorToast(error, 'Could not load warehouses.')
     }
   }
 
@@ -95,7 +95,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         fetchAudits()
       }
     } catch (error) {
-      toast.error(getEnglishApiMessage(error, 'Could not create audit.'))
+      showApiErrorToast(error, 'Could not create audit.')
     } finally {
       setCreating(false)
     }

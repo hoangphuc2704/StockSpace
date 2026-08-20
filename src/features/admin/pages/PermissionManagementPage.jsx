@@ -30,6 +30,7 @@ import {
 import { HiBars3 } from 'react-icons/hi2'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { required } from '@/config/validation'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const shortId = (id) => (id ? `#${String(id).slice(0, 6).toUpperCase()}` : '—')
@@ -49,8 +50,9 @@ const CreatePermissionModal = ({ onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!name.trim()) {
-      setLocalError('The Permission name cannot be empty.')
+    const validationError = required(name, 'Permission name')
+    if (validationError) {
+      setLocalError(validationError)
       return
     }
     setLocalError(null)
@@ -152,8 +154,9 @@ const RoleModal = ({ role, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!name.trim()) {
-      setLocalError('Role name cannot be empty.')
+    const validationError = required(name, 'Role name')
+    if (validationError) {
+      setLocalError(validationError)
       return
     }
     setLocalError(null)

@@ -6,13 +6,13 @@ import {
   HiOutlineCalendar,
   HiOutlineUser,
 } from 'react-icons/hi2'
-import toast from 'react-hot-toast'
 import { useSelector } from 'react-redux'
 import adminApi from '../../../services/admin/adminApi'
 import Modal from '../../../components/organisms/Modal'
 import TableActionMenu from '@/components/TableActionMenu'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { showApiErrorToast } from '@/config/apiError'
 import { HiBars3 } from 'react-icons/hi2'
 
 const AdminAuditsPage = () => {
@@ -46,7 +46,7 @@ const AdminAuditsPage = () => {
       setPage(data?.pageNo ?? data?.page ?? 0)
     } catch (error) {
       console.error('Error fetching audits:', error)
-      toast.error(error.response?.data?.message || 'Could not load inventory.')
+      showApiErrorToast(error, 'Could not load inventory.')
     } finally {
       setLoading(false)
     }

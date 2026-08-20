@@ -24,6 +24,7 @@ import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { required } from '@/config/validation'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
@@ -62,8 +63,9 @@ const EditConfigModal = ({ configItem, packages, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!configValue.trim()) {
-      setLocalError('Please enter a value.')
+    const validationError = required(configValue, 'Value')
+    if (validationError) {
+      setLocalError(validationError)
       return
     }
     setLocalError(null)

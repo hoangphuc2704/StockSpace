@@ -12,6 +12,8 @@ import { closeMobileSidebar } from '@/store/uiSlide'
 import productApi from '../../../services/wms/productApi'
 import { toast } from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
+import { showApiErrorToast } from '@/config/apiError'
+import { required } from '@/config/validation'
 
 const LEGACY_SPECIFICATION_KEYS = new Set([
   'barcode',
@@ -104,7 +106,7 @@ const SkuPage = () => {
       setUoms(uomsList)
     } catch (error) {
       console.error('Error fetching data:', error)
-      toast.error(error.response?.data?.message || 'Could not load SKU data.')
+      showApiErrorToast(error, 'Could not load SKU data.')
     } finally {
       setIsLoading(false)
     }
@@ -169,8 +171,9 @@ const SkuPage = () => {
     event.preventDefault()
     event.stopPropagation()
     const categoryName = newCategoryName.trim()
-    if (!categoryName) {
-      toast.error('Enter a category name.')
+    const categoryNameError = required(categoryName, 'Category name')
+    if (categoryNameError) {
+      toast.error(categoryNameError)
       return
     }
 
@@ -192,7 +195,7 @@ const SkuPage = () => {
       setIsCategoryFormOpen(false)
       toast.success('Category created.')
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not create category.')
+      showApiErrorToast(error, 'Could not create category.')
     } finally {
       setIsCreatingCategory(false)
     }
@@ -223,7 +226,7 @@ const SkuPage = () => {
       }
       setDetailData({ ...raw, specsObj: removeLegacySpecifications(specs) })
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not load SKU details.')
+      showApiErrorToast(error, 'Could not load SKU details.')
       setIsDetailOpen(false)
     } finally {
       setIsDetailLoading(false)
@@ -244,7 +247,7 @@ const SkuPage = () => {
       toast.success('SKU deleted.')
       fetchData()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not delete SKU.')
+      showApiErrorToast(error, 'Could not delete SKU.')
     }
   }
 
@@ -291,7 +294,7 @@ const SkuPage = () => {
       setIsModalOpen(false)
       await fetchData()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not save SKU.')
+      showApiErrorToast(error, 'Could not save SKU.')
     } finally {
       setIsSubmitting(false)
     }

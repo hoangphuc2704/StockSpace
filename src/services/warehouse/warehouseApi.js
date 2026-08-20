@@ -16,8 +16,8 @@ const onwerwarehouseApi = {
     return api.get(`/warehouses/${warehouseId}`)
   },
 
-  getPublicWarehouseLayout: (warehouseId) => {
-    return api.get(`/warehouses/${warehouseId}/layout`, { skipAuth: true })
+  getPublicWarehouseLayout: (warehouseId, config = {}) => {
+    return api.get(`/warehouses/${warehouseId}/layout`, { skipAuth: true, ...config })
   },
 
   // Layout của Owner
@@ -30,8 +30,8 @@ const onwerwarehouseApi = {
   },
 
   // Layout riêng của Tenant
-  getTenantWarehouseLayout: (warehouseId) => {
-    return api.get(`/tenant/warehouses/${warehouseId}/layout`)
+  getTenantWarehouseLayout: (warehouseId, config = {}) => {
+    return api.get(`/tenant/warehouses/${warehouseId}/layout`, config)
   },
 
   saveTenantWarehouseLayout: (warehouseId, data) => {

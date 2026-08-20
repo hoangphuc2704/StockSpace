@@ -24,6 +24,7 @@ import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { required } from '@/config/validation'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (dt) => dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—'
@@ -42,8 +43,9 @@ const CreatePolicyModal = ({ onClose }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        if (!version.trim()) { setLocalError("Please enter version."); return }
-        if (!content.trim()) { setLocalError("Please enter content."); return }
+        const versionError = required(version, 'Version')
+        const contentError = required(content, 'Content')
+        if (versionError || contentError) { setLocalError(versionError || contentError); return }
         setLocalError(null)
 
         const result = await dispatch(createSystemPolicy({ version: version.trim(), content: content.trim() }))

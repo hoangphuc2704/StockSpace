@@ -35,6 +35,8 @@ import Header from '../../../components/HeaderDashboard'
 import walletApi from '../../../services/wallet/walletApi'
 import adminApi from '../../../services/admin/adminApi'
 import { toast } from 'react-hot-toast'
+import { positiveNumber } from '@/config/validation'
+import { showApiErrorToast } from '@/config/apiError'
 
 const WalletAdmin = () => {
   const dispatch = useDispatch()
@@ -182,8 +184,9 @@ const WalletAdmin = () => {
     e.preventDefault()
 
     const amountNumber = Number(inputAmount)
-    if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Enter a valid amount.')
+    const amountError = positiveNumber(amountNumber, 'Enter a valid amount.')
+    if (amountError) {
+      toast.error(amountError)
       return
     }
 
@@ -200,11 +203,11 @@ const WalletAdmin = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-      toast.error(res?.data?.message || 'Payment link unavailable.')
+        showApiErrorToast({ response: { data: res?.data } }, 'Payment link unavailable.')
       }
     } catch (error) {
       console.error('Failed to create deposit request:', error)
-      toast.error('Deposit failed. Try again.')
+      showApiErrorToast(error, 'Deposit failed. Try again.')
     } finally {
       setDepositLoading(false)
     }

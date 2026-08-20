@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
 import Header from '@/components/HeaderDashboard'
 import Sidebar from '@/components/SideBar'
 import productApi from '@/services/wms/productApi'
@@ -93,7 +94,7 @@ export default function ProductManagementPage() {
       setTotalElements(skuData?.totalElements ?? 0)
       setUoms(Array.isArray(uomData?.content) ? uomData.content : [])
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not load products.')
+      showApiErrorToast(error, 'Could not load products.')
     } finally {
       setLoading(false)
     }
@@ -138,7 +139,7 @@ export default function ProductManagementPage() {
       setCategoryAttributes('{}')
       await loadData()
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Could not create category.')
+      showApiErrorToast(error, 'Could not create category.')
     } finally {
       setSaving(false)
     }
@@ -162,7 +163,7 @@ export default function ProductManagementPage() {
       setSkuForm(null)
       await loadData()
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || 'Could not save SKU.')
+      showApiErrorToast(error, 'Could not save SKU.')
     } finally {
       setSaving(false)
     }
@@ -180,7 +181,7 @@ export default function ProductManagementPage() {
       setDeleteTarget(null)
       await loadData()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not delete item.')
+      showApiErrorToast(error, 'Could not delete item.')
     } finally {
       setSaving(false)
     }

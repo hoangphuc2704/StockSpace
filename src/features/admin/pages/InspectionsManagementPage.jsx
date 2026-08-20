@@ -33,6 +33,7 @@ import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import adminApi from '../../../services/admin/adminApi'
+import { required } from '@/config/validation'
 
 // ─── Enum / Constants từ BE ─────────────────────────────────────────────────
 // InspectionStatus: PENDING | IN_PROGRESS | PASSED | FAILED
@@ -83,8 +84,9 @@ const AssignModal = ({ inspection, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!inspectorId.trim()) {
-      setLocalError('Please select Inspector.')
+    const validationError = required(inspectorId, 'Inspector')
+    if (validationError) {
+      setLocalError(validationError)
       return
     }
     setLocalError(null)

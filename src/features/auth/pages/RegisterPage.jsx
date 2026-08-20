@@ -10,6 +10,7 @@ import Loading from '../../../components/Loading'
 import { registerUser, clearError } from '@/store/authSlice'
 import LoginGoogle from './LoginGoogle'
 import useEscapeKey from '@/hooks/useEscapeKey'
+import { firstError, validateRegistrationForm } from '@/config/validation'
 
 const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   useEscapeKey(isOpen, onClose)
@@ -47,12 +48,11 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     dispatch(clearError())
     setLocalError('')
 
-    if (password !== confirmPassword) {
-      setLocalError('Passwords do not match')
-      return
-    }
-    if (!agreeTerms) {
-      setLocalError('You must agree to the Terms of Service')
+    const validationError = firstError(
+      validateRegistrationForm({ fullName, email, password, confirmPassword, phone, agreeTerms })
+    )
+    if (validationError) {
+      setLocalError(validationError)
       return
     }
     

@@ -22,6 +22,8 @@ import {
 import contractApi from '@/services/contractApi'
 import disputeApi from '@/services/disputeApi'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
+import { required } from '@/config/validation'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import DisputeContractInfo from '@/features/dispute/components/DisputeContractInfo'
 
@@ -55,8 +57,9 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!reason.trim()) {
-      setError('Please enter the reason for the dispute.')
+    const reasonError = required(reason, 'Dispute reason')
+    if (reasonError) {
+      setError(reasonError)
       return
     }
     setError(null)
@@ -197,8 +200,9 @@ const ReportFailedModal = ({ contractId, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!reason.trim()) {
-      setError('Please enter the reason.')
+    const reasonError = required(reason, 'Reason')
+    if (reasonError) {
+      setError(reasonError)
       return
     }
     setError(null)
@@ -470,7 +474,7 @@ const TenantContractsPage = () => {
       toast.success('Contract confirmed and activated.')
       fetchContracts()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not confirm contract.')
+      showApiErrorToast(error, 'Could not confirm contract.')
     }
   }
 
@@ -489,7 +493,7 @@ const TenantContractsPage = () => {
       toast.success(agree ? 'Deal canceled.' : 'Dispute opened.')
       fetchContracts()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Action failed.')
+      showApiErrorToast(error, 'Action failed.')
     }
   }
 
@@ -542,7 +546,7 @@ const TenantContractsPage = () => {
         )
       }
     } catch (err) {
-      toast.error('Could not load dispute details.')
+      showApiErrorToast(err, 'Could not load dispute details.')
     } finally {
       setLoadingDispute(false)
     }

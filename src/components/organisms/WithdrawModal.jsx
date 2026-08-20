@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import { Wallet, X, Loader2 } from 'lucide-react'
 import walletApi from '../../services/wallet/walletApi'
 import useEscapeKey from '../../hooks/useEscapeKey'
+import { positiveNumber } from '@/config/validation'
+import { showApiErrorToast } from '@/config/apiError'
 
 const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
   useEscapeKey(isOpen, onClose)
@@ -32,8 +34,9 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
     setError('')
 
     const amountNum = Number(formData.amount)
-    if (isNaN(amountNum) || amountNum <= 0) {
-      setError('Withdrawal amount must be greater than 0.')
+    const amountError = positiveNumber(amountNum, 'Withdrawal amount must be greater than 0.')
+    if (amountError) {
+      setError(amountError)
       return
     }
     if (amountNum > currentBalance) {
@@ -56,11 +59,12 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
         onSuccess && onSuccess()
         onClose()
       } else {
-        setError(res?.data?.message || 'Withdrawal request failed.')
+        const backendError = { response: { data: res?.data } }
+        setError(showApiErrorToast(backendError, 'Withdrawal request failed.'))
       }
     } catch (err) {
       console.error('Error when withdrawing money:', err)
-      setError('An error occurred, please try again later.')
+      setError(showApiErrorToast(err, 'An error occurred, please try again later.'))
     } finally {
       setLoading(false)
     }

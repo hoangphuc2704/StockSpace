@@ -7,6 +7,7 @@ import packageApi from '../../../services/packageApi'
 import subscriptionApi from '../../../services/tenant/subscriptionApi'
 import { isInternalFeePackage, parseFeaturesToList } from '../../../utils/formatFeatures'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
 import Modal from '@/components/organisms/Modal'
 import Button from '@/components/atoms/Button'
 import TranslatableText from '@/components/TranslatableText'
@@ -61,7 +62,7 @@ const PackageDetail = () => {
       const data = res.data?.data || res.data
 
       if (data && data.canProceed === false) {
-      toast.error(data.message || 'Transaction unavailable.')
+        showApiErrorToast({ response: { data } }, 'Transaction unavailable.')
         return
       }
 
@@ -69,7 +70,7 @@ const PackageDetail = () => {
       setShowBuyConfirm(true)
     } catch (error) {
       const errorCode = error.response?.data?.errorCode
-      toast.error(error.response?.data?.message || 'Could not preview transaction.')
+      showApiErrorToast(error, 'Could not preview transaction.')
       if (errorCode === 'PACKAGE_NOT_FOUND' || error.response?.status === 404) {
         navigate('/packages', { replace: true })
       }
@@ -90,12 +91,12 @@ const PackageDetail = () => {
       if (errorCode === 'WALLET_INSUFFICIENT_BALANCE') {
         setShowWalletConfirm(true)
       } else if (errorCode === 'PACKAGE_NOT_FOUND' || error.response?.status === 404) {
-      toast.error('Package no longer available.')
+        showApiErrorToast(error, 'Package no longer available.')
         navigate('/packages', { replace: true })
       } else if (errorCode === 'SUBSCRIPTION_ALREADY_ACTIVE') {
-      toast.error('You already have an active plan.')
+        showApiErrorToast(error, 'You already have an active plan.')
       } else {
-      toast.error(error.response?.data?.message || 'Subscription failed.')
+        showApiErrorToast(error, 'Subscription failed.')
       }
     } finally {
       setIsPurchasing(false)

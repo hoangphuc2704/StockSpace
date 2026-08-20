@@ -28,6 +28,7 @@ import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { required } from '@/config/validation'
 
 // ─── Enum / Constants từ BE ─────────────────────────────────────────────────
 // ApprovalStatus enum: PENDING | APPROVED | REJECTED
@@ -61,8 +62,9 @@ const RejectModal = ({ withdrawal, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!adminNotes.trim()) {
-      setLocalError('Please enter reason for refusal.')
+    const validationError = required(adminNotes, 'Reason for refusal')
+    if (validationError) {
+      setLocalError(validationError)
       return
     }
     setLocalError(null)

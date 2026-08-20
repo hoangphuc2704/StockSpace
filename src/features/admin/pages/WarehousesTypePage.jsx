@@ -30,6 +30,7 @@ import {
 import { HiBars3 } from 'react-icons/hi2'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { required } from '@/config/validation'
 
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
@@ -50,7 +51,8 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!name.trim()) return setLocalError('Please enter the warehouse type name.')
+    const validationError = required(name, 'Warehouse type name')
+    if (validationError) return setLocalError(validationError)
 
     setLocalError(null)
 

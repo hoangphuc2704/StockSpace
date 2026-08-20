@@ -1,4 +1,5 @@
 import api from '@/services/apiConfig'
+import { showApiErrorToast } from '@/config/apiError'
 
 const CHAT_TOKEN_KEY = 'stockspace_guest_chat_token'
 const CHAT_SESSION_KEY = 'stockspace_guest_chat_session'
@@ -104,6 +105,13 @@ export const chatApi = {
 
     if (!response.ok || !response.body) {
       const apiMessage = await parseErrorMessage(response)
+      const apiError = {
+        response: {
+          status: response.status,
+          data: { message: apiMessage },
+        },
+      }
+      showApiErrorToast(apiError, 'Unable to connect to the AI assistant.')
       if (response.status === 401) {
         if (!isAuthenticatedChat) guestChatStorage.clear()
         throw new Error(

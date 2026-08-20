@@ -12,6 +12,7 @@ import {
   clearActionError,
 } from '../../../store/adminPackagesSubcription'
 import { motion, AnimatePresence } from 'framer-motion'
+import { firstError, validatePackageForm } from '@/config/validation'
 import {
   Package,
   History,
@@ -66,13 +67,8 @@ const PackageFormModal = ({ pkg, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!name.trim()) return setLocalError('Please enter package name')
-    if (price === '' || isNaN(price) || Number(price) < 0)
-      return setLocalError('Price is not valid')
-    if (!durationDays || isNaN(durationDays) || Number(durationDays) < 1)
-      return setLocalError('Minimum duration 1 day')
-    if (maxStaff === '' || isNaN(maxStaff) || Number(maxStaff) < 0)
-      return setLocalError('The employee limit cannot be negative')
+    const validationError = firstError(validatePackageForm({ name, price, durationDays, maxStaff }))
+    if (validationError) return setLocalError(validationError)
 
     setLocalError(null)
 

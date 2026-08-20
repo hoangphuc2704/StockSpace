@@ -7,6 +7,7 @@ import { HiEye, HiEyeOff } from 'react-icons/hi'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import { resetPasswordThunk, clearError, clearPasswordResetMessage } from '@/store/authSlice'
+import { firstError, validateResetPasswordForm } from '@/config/validation'
 
 const ResetPasswordPage = () => {
   const dispatch = useDispatch()
@@ -50,16 +51,19 @@ const ResetPasswordPage = () => {
     dispatch(clearError())
     setLocalError('')
 
-    if (newPassword.length < 6) {
-      setLocalError('Password must be at least 6 characters')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      setLocalError('Passwords do not match')
-      return
-    }
-    if (!tokenFromUrl) {
-      setLocalError('Invalid reset link. Please request a new one.')
+    const validationError = firstError(
+      validateResetPasswordForm({
+        newPassword,
+        confirmPassword,
+        token: tokenFromUrl,
+      })
+    )
+    if (validationError) {
+      setLocalError(
+        validationError === 'Reset link token cannot be empty.'
+          ? 'Invalid reset link. Please request a new one.'
+          : validationError
+      )
       return
     }
 

@@ -16,6 +16,7 @@ import productApi from '../../../services/wms/productApi'
 import stockApi from '../../../services/wms/stockApi'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
 
 const InventoryPage = () => {
   const [products, setProducts] = useState([])
@@ -40,7 +41,7 @@ const InventoryPage = () => {
       const res = await stockApi.getStockTransactions(batchId)
       setBatchHistory(res.data?.data?.content || [])
     } catch (err) {
-      toast.error('Could not load batch history.')
+      showApiErrorToast(err, 'Could not load batch history.')
     } finally {
       setIsHistoryLoading(false)
     }
@@ -66,7 +67,7 @@ const InventoryPage = () => {
       return list
     } catch (error) {
       console.error('Error loading warehouses:', error)
-      toast.error('Could not load warehouses.')
+      showApiErrorToast(error, 'Could not load warehouses.')
       setIsLoading(false)
       return null
     }
@@ -102,7 +103,7 @@ const InventoryPage = () => {
           'This rental contract has expired or access to the selected warehouse was revoked.'
         )
       } else {
-        toast.error('Could not load inventory.')
+        showApiErrorToast(error, 'Could not load inventory.')
       }
     } finally {
       setIsLoading(false)
@@ -166,7 +167,7 @@ const InventoryPage = () => {
           'This rental contract has expired or access to the selected warehouse was revoked.'
         )
       } else {
-        toast.error('Could not load stock batches.')
+        showApiErrorToast(error, 'Could not load stock batches.')
       }
     } finally {
       setIsDetailsLoading(false)

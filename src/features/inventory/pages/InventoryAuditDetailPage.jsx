@@ -12,7 +12,7 @@ import { toast } from 'react-hot-toast'
 import moment from 'moment'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
-import { getEnglishApiMessage } from '@/utils/englishMessages'
+import { showApiErrorToast } from '@/config/apiError'
 
 const STATUS_CONFIG = {
   PENDING: { label: 'Pending', type: 'warning' },
@@ -58,7 +58,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         )
       }
     } catch (error) {
-      toast.error(getEnglishApiMessage(error, 'Could not load audit details.'))
+      showApiErrorToast(error, 'Could not load audit details.')
       handleBack()
     } finally {
       setLoading(false)
@@ -108,7 +108,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         fetchAuditDetail()
       }
     } catch (error) {
-      toast.error(getEnglishApiMessage(error, 'Could not submit count.'))
+      showApiErrorToast(error, 'Could not submit count.')
     } finally {
       setSubmitting(false)
     }
@@ -123,7 +123,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         fetchAuditDetail()
       }
     } catch (error) {
-      toast.error(getEnglishApiMessage(error, 'Could not approve audit.'))
+      showApiErrorToast(error, 'Could not approve audit.')
     } finally {
       setApproving(false)
     }
@@ -140,7 +140,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         fetchAuditDetail()
       }
     } catch (error) {
-      toast.error(getEnglishApiMessage(error, 'Could not reject audit.'))
+      showApiErrorToast(error, 'Could not reject audit.')
     } finally {
       setRejecting(false)
     }

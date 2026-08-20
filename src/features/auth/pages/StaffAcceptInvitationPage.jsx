@@ -4,6 +4,7 @@ import { authApi } from '@/services/authApi'
 import { Loader2, CheckCircle, AlertCircle, Building2, Eye, EyeOff } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
+import { firstError, validateStaffInvitationForm } from '@/config/validation'
 
 const StaffAcceptInvitationPage = () => {
   const [searchParams] = useSearchParams()
@@ -53,16 +54,9 @@ const StaffAcceptInvitationPage = () => {
     e.preventDefault()
     setFormError('')
 
-    if (password.length < 8) {
-      setFormError("Password must have at least 8 characters.")
-      return
-    }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-      setFormError("Password must contain at least 1 uppercase letter, 1 lowercase letter and 1 number.")
-      return
-    }
-    if (password !== confirmPassword) {
-      setFormError("Confirmation password does not match.")
+    const validationError = firstError(validateStaffInvitationForm({ password, confirmPassword }))
+    if (validationError) {
+      setFormError(validationError)
       return
     }
 

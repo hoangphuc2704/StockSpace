@@ -6,8 +6,7 @@ import Header from '@/components/HeaderDashboard'
 import { Briefcase, Building2, Calendar, MapPin, ShieldCheck, Loader2 } from 'lucide-react'
 import Badge from '@/components/atoms/Badge'
 import staffApi from '@/services/staff/staffApi'
-import { toast } from 'react-hot-toast'
-import { getEnglishApiMessage } from '@/utils/englishMessages'
+import { showApiErrorToast } from '@/config/apiError'
 
 const StaffCareerHistoryPage = () => {
   const dispatch = useDispatch()
@@ -27,7 +26,7 @@ const StaffCareerHistoryPage = () => {
       const res = await staffApi.getMyWorkHistory()
       setHistoryData(res.data?.data)
     } catch (err) {
-      toast.error(getEnglishApiMessage(err, 'Could not load work history.'))
+      showApiErrorToast(err, 'Could not load work history.')
     } finally {
       setIsLoading(false)
     }

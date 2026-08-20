@@ -12,6 +12,8 @@ import { closeMobileSidebar } from '@/store/uiSlide'
 import productApi from '../../../services/wms/productApi'
 import { toast } from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
+import { showApiErrorToast } from '@/config/apiError'
+import { required } from '@/config/validation'
 
 const CategoryPage = () => {
   const confirmDialog = useConfirmDialog()
@@ -33,7 +35,7 @@ const CategoryPage = () => {
       setCategories(res.data?.data || [])
     } catch (error) {
       console.error('Error fetching categories:', error)
-      toast.error(error.response?.data?.message || 'Could not load categories.')
+      showApiErrorToast(error, 'Could not load categories.')
     } finally {
       setIsLoading(false)
     }
@@ -47,6 +49,11 @@ const CategoryPage = () => {
 
   const handleCreateCategory = async (e) => {
     e.preventDefault()
+    const validationError = required(newCategoryName, 'Category name')
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
     setIsCreatingCategory(true)
     try {
       await productApi.createCategory({ name: newCategoryName })
@@ -55,7 +62,7 @@ const CategoryPage = () => {
       setNewCategoryName('')
       fetchCategories()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not create category.')
+      showApiErrorToast(error, 'Could not create category.')
     } finally {
       setIsCreatingCategory(false)
     }
@@ -75,7 +82,7 @@ const CategoryPage = () => {
       toast.success('Category deleted.')
       fetchCategories()
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not delete category.')
+      showApiErrorToast(error, 'Could not delete category.')
     }
   }
 

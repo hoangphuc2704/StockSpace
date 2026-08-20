@@ -32,6 +32,7 @@ import {
   setPage,
   submitReport,
 } from '../../../store/inspectorManagement'
+import { validateInspectionResult } from '@/config/validation'
 
 const formatDate = (value) => (value ? new Date(value).toLocaleDateString('en-US') : '---')
 
@@ -256,13 +257,14 @@ const SubmitReportModal = ({ inspection, onClose }) => {
   const handleSubmit = async (event) => {
     event.preventDefault()
 
-    if (!notes.trim()) {
-      setLocalError('Please enter the report conclusion before saving the inspection result.')
-      return
-    }
-
-    if (status === 'PASSED' && passedCount !== CHECKLIST_ITEMS.length) {
-      setLocalError('All checklist items must pass before the inspection can be marked as passed.')
+    const validationError = validateInspectionResult({
+      notes,
+      status,
+      passedCount,
+      checklistLength: CHECKLIST_ITEMS.length,
+    })
+    if (validationError) {
+      setLocalError(validationError)
       return
     }
 

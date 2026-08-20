@@ -29,6 +29,7 @@ import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import Header from '../../../components/HeaderDashboard'
 import DisputeContractInfo from '../../dispute/components/DisputeContractInfo'
+import { required } from '@/config/validation'
 
 // ─── Enum / Constants ────────────────────────────────────────────────────────
 const STATUS_OPTIONS = ['', 'OPEN', 'RESOLVED']
@@ -63,12 +64,14 @@ const ResolveModal = ({ dispute, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!adminNote.trim()) {
-      setLocalError('Admin notes cannot be empty.')
+    const noteError = required(adminNote, 'Admin notes')
+    if (noteError) {
+      setLocalError(noteError)
       return
     }
-    if (!depositResolution) {
-      setLocalError('Please select a deposit handling decision.')
+    const resolutionError = required(depositResolution, 'Deposit handling decision')
+    if (resolutionError) {
+      setLocalError(resolutionError)
       return
     }
     setLocalError(null)

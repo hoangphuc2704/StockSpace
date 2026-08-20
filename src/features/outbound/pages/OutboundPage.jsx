@@ -16,7 +16,8 @@ import productApi from '@/services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
-import { getEnglishApiMessage } from '@/utils/englishMessages'
+import { showApiErrorToast } from '@/config/apiError'
+import { positiveInteger, required } from '@/config/validation'
 
 const OutboundPage = () => {
   const dispatch = useDispatch()
@@ -143,9 +144,9 @@ const OutboundPage = () => {
     } catch (error) {
       console.error('Error fetching initial data:', error)
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
-        toast.error('Subscription required for outbound.')
+        showApiErrorToast(error, 'Subscription required for outbound.')
       } else {
-        toast.error(getEnglishApiMessage(error, 'Could not load outbound data.'))
+        showApiErrorToast(error, 'Could not load outbound data.')
       }
     }
   }, [])
@@ -164,7 +165,7 @@ const OutboundPage = () => {
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
         // Only show if not already shown by initial data
       } else {
-        toast.error(getEnglishApiMessage(error, 'Could not load receipts.'))
+        showApiErrorToast(error, 'Could not load receipts.')
       }
     } finally {
       setIsLoading(false)
@@ -200,7 +201,7 @@ const OutboundPage = () => {
       toast.success('File exported.')
     } catch (error) {
       console.error('Error when exporting file:', error)
-      toast.error('Export failed.')
+      showApiErrorToast(error, 'Export failed.')
     } finally {
       setIsExporting(false)
     }
@@ -208,14 +209,16 @@ const OutboundPage = () => {
 
   const handleCreateReceipt = async (e) => {
     e.preventDefault()
-    if (!formSkuId) {
+    const skuError = required(formSkuId, 'Product')
+    if (skuError) {
       toast.error('Select a product.')
       return
     }
 
     const requestedQuantity = Number(formTotalQuantity)
-    if (!Number.isInteger(requestedQuantity) || requestedQuantity <= 0) {
-      toast.error('Enter a positive whole quantity.')
+    const quantityError = positiveInteger(requestedQuantity)
+    if (quantityError) {
+      toast.error(quantityError)
       return
     }
     if (requestedQuantity > availableWarehouseQuantity) {
@@ -280,7 +283,7 @@ const OutboundPage = () => {
       setSkuLocations([])
     } catch (error) {
       console.error('Error creating receipt:', error)
-      toast.error(getEnglishApiMessage(error, 'Could not create receipt.'))
+      showApiErrorToast(error, 'Could not create receipt.')
     } finally {
       setIsSubmitting(false)
     }
@@ -288,7 +291,7 @@ const OutboundPage = () => {
 
   const handleReject = async (e) => {
     e.preventDefault()
-    if (!rejectReason.trim()) {
+    if (required(rejectReason, 'Rejection reason')) {
       toast.error('Enter a rejection reason.')
       return
     }
@@ -302,7 +305,7 @@ const OutboundPage = () => {
       fetchReceipts()
     } catch (error) {
       console.error('Error rejecting receipt:', error)
-      toast.error(getEnglishApiMessage(error, 'Could not reject receipt.'))
+      showApiErrorToast(error, 'Could not reject receipt.')
     } finally {
       setIsSubmitting(false)
     }
@@ -315,7 +318,7 @@ const OutboundPage = () => {
       fetchReceipts()
     } catch (error) {
       console.error('Error approving receipt:', error)
-      toast.error(getEnglishApiMessage(error, 'Could not approve receipt.'))
+      showApiErrorToast(error, 'Could not approve receipt.')
     }
   }
 
@@ -328,7 +331,7 @@ const OutboundPage = () => {
       setDetailReceipt(response?.data?.data ?? response?.data ?? receipt)
     } catch (error) {
       setDetailReceipt(receipt)
-      toast.error(getEnglishApiMessage(error, 'Could not load receipt details.'))
+      showApiErrorToast(error, 'Could not load receipt details.')
     } finally {
       setIsDetailLoading(false)
     }

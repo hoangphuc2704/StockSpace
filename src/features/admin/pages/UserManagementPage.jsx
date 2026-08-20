@@ -41,6 +41,7 @@ import Button from '../../../components/atoms/Button'
 import Avatar from '../../../components/atoms/Avatar'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import { validateUserForm, validateUserPasswordReset } from '@/config/validation'
 
 // ==================== HELPER ====================
 const getRoleBadgeVariant = (roleName = '') => {
@@ -68,13 +69,7 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
   const [errors, setErrors] = useState({})
 
   const validate = () => {
-    const e = {}
-    if (!form.fullName.trim()) e.fullName = 'Full name cannot be empty'
-    if (!isEdit) {
-      if (!form.email.trim()) e.email = 'Email cannot be empty'
-      if (!form.password) e.password = 'Password cannot be empty'
-      else if (form.password.length < 8) e.password = 'Password minimum 8 characters'
-    }
+    const e = validateUserForm(form, isEdit)
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -209,11 +204,7 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
   const [errors, setErrors] = useState({})
 
   const validate = () => {
-    const e = {}
-    if (!form.newPassword) e.newPassword = 'Password cannot be empty'
-    else if (form.newPassword.length < 8) e.newPassword = 'Minimum 8 characters'
-    if (form.newPassword !== form.confirmPassword)
-      e.confirmPassword = 'Confirmation password does not match'
+    const e = validateUserPasswordReset(form)
     setErrors(e)
     return Object.keys(e).length === 0
   }

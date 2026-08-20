@@ -27,6 +27,8 @@ import ownerApi from '../../../services/warehouse/warehouseApi'
 import walletApi from '../../../services/wallet/walletApi'
 import addressApi from '../../../services/addressApi'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
+import { positiveNumber } from '@/config/validation'
 
 // Phí tạo bài đăng (VND) - chỉnh lại theo quy định thực tế của hệ thống
 const POSTING_FEE = 50000
@@ -319,11 +321,11 @@ const CreateWarehouse = () => {
           `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${warehouseWidth}&length=${warehouseLength}&height=${warehouseHeight}&setupRequired=true`
         )
       } else {
-        toast.error(response?.data?.message || 'Could not post warehouse.')
+        showApiErrorToast({ response: { data: response?.data } }, 'Could not post warehouse.')
       }
     } catch (error) {
       console.error('Error creating warehouse:', error)
-      toast.error(error.response?.data?.message || 'Connection error.')
+      showApiErrorToast(error, 'Connection error.')
     } finally {
       setIsLoading(false)
     }
@@ -333,8 +335,9 @@ const CreateWarehouse = () => {
   const handleDepositSubmit = async (e) => {
     e.preventDefault()
     const amountNumber = Number(depositAmount)
-    if (isNaN(amountNumber) || amountNumber <= 0) {
-      toast.error('Enter a valid amount.')
+    const amountError = positiveNumber(amountNumber, 'Enter a valid amount.')
+    if (amountError) {
+      toast.error(amountError)
       return
     }
     try {
@@ -344,11 +347,11 @@ const CreateWarehouse = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-      toast.error(res?.data?.message || 'Payment link unavailable.')
+        showApiErrorToast({ response: { data: res?.data } }, 'Payment link unavailable.')
       }
     } catch (error) {
       console.error('Deposit error:', error)
-      toast.error('Deposit failed. Try again.')
+      showApiErrorToast(error, 'Deposit failed. Try again.')
     } finally {
       setDepositLoading(false)
     }

@@ -29,6 +29,7 @@ import logoDaidien from '../../../assets/logoDaidien.png'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
 
 const WarehouseManagement = () => {
   const navigate = useNavigate()
@@ -75,11 +76,14 @@ const WarehouseManagement = () => {
         setInspectionConfirm(null)
         setRefreshTrigger((prev) => prev + 1)
       } else {
-        toast.error(res?.data?.message || res?.message || 'Inspection request failed.')
+        showApiErrorToast(
+          { response: { data: res?.data || res } },
+          'Inspection request failed.'
+        )
       }
     } catch (error) {
       console.error('Error when sending inspection request:', error)
-      toast.error(error.response?.data?.message || 'Could not request inspection.')
+      showApiErrorToast(error, 'Could not request inspection.')
     } finally {
       setRequestingIds((prev) => prev.filter((id) => id !== warehouseId))
     }

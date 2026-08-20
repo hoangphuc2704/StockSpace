@@ -8,6 +8,7 @@ import walletApi from '@/services/wallet/walletApi'
 import { useSelector, useDispatch } from 'react-redux'
 import { addBookedWarehouse } from '@/store/tenantBookingSlice'
 import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
 import PublicFooter from '@/components/PublicFooter'
 
 // Sub-components
@@ -210,8 +211,8 @@ const WarehouseDetailPage = () => {
       const balance = res?.data?.data?.balance ?? res?.data?.balance ?? 0
       setWalletBalance(balance)
       setShowConfirmModal(true)
-    } catch {
-      toast.error('Could not check wallet.')
+    } catch (error) {
+      showApiErrorToast(error, 'Could not check wallet.')
     } finally {
       setIsCheckingWallet(false)
     }
@@ -228,7 +229,7 @@ const WarehouseDetailPage = () => {
       toast.success('Booking sent. Deposit paid.')
       setShowConfirmModal(false)
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Booking failed.')
+      showApiErrorToast(err, 'Booking failed.')
     } finally {
       setIsBooking(false)
     }
