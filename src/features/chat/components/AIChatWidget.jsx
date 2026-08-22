@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { useSelector } from 'react-redux'
 import {
   Bot,
@@ -600,7 +601,7 @@ const AIChatPanel = ({ chatRole }) => {
                     {error}
                   </div>
                 )}
-                <form
+                <FormShell
                   onSubmit={handleSubmit}
                   className="flex items-end gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-100"
                 >
@@ -627,7 +628,7 @@ const AIChatPanel = ({ chatRole }) => {
                       <SendHorizontal size={18} />
                     )}
                   </button>
-                </form>
+                </FormShell>
                 <p className="mt-2 text-center text-[10px] text-slate-400">
                   AI can make mistakes. Verify important information.
                 </p>

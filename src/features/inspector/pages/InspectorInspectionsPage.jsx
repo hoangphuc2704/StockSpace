@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -313,7 +314,7 @@ const SubmitReportModal = ({ inspection, onClose }) => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
+        <FormShell onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
           <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-5">
               <div>
@@ -428,7 +429,7 @@ const SubmitReportModal = ({ inspection, onClose }) => {
               Save Inspection Result
             </button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )

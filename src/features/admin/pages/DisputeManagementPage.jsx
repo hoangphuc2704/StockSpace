@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -116,7 +117,7 @@ const ResolveModal = ({ dispute, onClose }) => {
           <p className="text-slate-600">{dispute.reason || '—'}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Decision to handle deposit <span className="text-rose-500">*</span>
@@ -181,7 +182,7 @@ const ResolveModal = ({ dispute, onClose }) => {
               Confirm resolution
             </button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )

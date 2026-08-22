@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -64,7 +65,7 @@ const CreatePolicyModal = ({ onClose }) => {
                     <button onClick={onClose} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X size={18} /></button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <FormShell onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-slate-700">Version <span className="text-rose-500">*</span></label>
                         <input value={version} onChange={(e) => setVersion(e.target.value)} maxLength={50}
@@ -89,7 +90,7 @@ const CreatePolicyModal = ({ onClose }) => {
                             <Plus size={14} /> Save Version
                         </button>
                     </div>
-                </form>
+                </FormShell>
             </motion.div>
         </div>
     )

@@ -1,13 +1,8 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { motion } from 'framer-motion'
 import {
     ArrowLeft,
-    CheckCircle,
-    Mail,
-    Phone,
-    Send,
     Shield,
     Sparkles,
     User,
@@ -16,6 +11,7 @@ import {
 import { fetchCurrentUserThunk, forgotPasswordThunk } from '@/store/authSlice'
 import Button from '@/components/atoms/Button'
 import { toast } from 'react-hot-toast'
+import { ProfileForm } from '@/form/AuthForms'
 
 const Profile = () => {
     const navigate = useNavigate()
@@ -83,8 +79,6 @@ const Profile = () => {
 
     const displayName = profileData.fullName || profileData.name || 'User'
     const roleLabel = profileData.role?.replace('ROLE_', '') || 'USER'
-    const providerLabel = profileData.provider === 'GOOGLE' ? 'Google Account' : 'Local Account'
-
     return (
         <div className="min-h-screen bg-slate-50 px-4 py-6 font-sans text-slate-900 sm:px-6 lg:px-8">
             <div className="mx-auto w-full max-w-[1200px] space-y-6">
@@ -149,94 +143,16 @@ const Profile = () => {
                             Profile details
                         </h3>
 
-                        <form onSubmit={(e) => e.preventDefault()} className="space-y-5">
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                {/* Họ và tên */}
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-600">Full name</label>
-                                    <div className="relative">
-                                        <User className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            name="fullName"
-                                            defaultValue={displayName}
-                                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pr-4 pl-10 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                            placeholder="Enter first and last name"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Số điện thoại */}
-                                <div className="space-y-1.5">
-                                    <label className="text-xs font-semibold text-slate-600">Phone number</label>
-                                    <div className="relative">
-                                        <Phone className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            name="phone"
-                                            defaultValue={profileData.phone || ''}
-                                            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pr-4 pl-10 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                            placeholder="Enter phone number"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Địa chỉ Email */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-400">
-                                    Email Address (Cannot be changed)
-                                </label>
-                                <div className="relative">
-                                    <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-300" />
-                                    <input
-                                        type="email"
-                                        defaultValue={profileData.email}
-                                        disabled
-                                        className="w-full cursor-not-allowed rounded-xl border border-slate-200 bg-slate-50 py-2.5 pr-4 pl-10 text-sm font-medium text-slate-400"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Trạng thái tài khoản (chỉ đọc) */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-600">Account Status</label>
-                                <div className="relative flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-900">
-                                    {profileData.isActive ? (
-                                        <>
-                                            <CheckCircle className="h-5 w-5 text-green-500" />
-                                            Active
-                                        </>
-                                    ) : (
-                                        <>
-                                            <XCircle className="h-5 w-5 text-red-500" />
-                                            Inactive
-                                        </>
-                                    )}
-                                    <span className="text-slate-400 ml-auto text-xs">Joined {formatDate(profileData.createdAt)}</span>
-                                </div>
-                            </div>
-
-                            {/* Giới thiệu ngắn */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-600">Short introduction</label>
-                                <textarea
-                                    name="bio"
-                                    defaultValue={profileData.bio || ''}
-                                    rows={4}
-                                    className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                                    placeholder="Describe a little about yourself..."
-                                />
-                            </div>
-
-                            {/* Nút submit */}
-                            <div className="flex justify-end pt-2">
-                                <Button type="submit" size="sm" className="px-6">
-                                    <Send className="mr-2 h-4 w-4" /> Save changes
-                                </Button>
-                            </div>
-                        </form>
+                        <ProfileForm
+                            embedded
+                            fullName={displayName}
+                            email={profileData.email}
+                            phone={profileData.phone || ''}
+                            bio={profileData.bio || ''}
+                            isActive={profileData.isActive}
+                            joinedText={formatDate(profileData.createdAt)}
+                            onSubmit={(event) => event.preventDefault()}
+                        />
                     </div>
                 </div>
             </div>

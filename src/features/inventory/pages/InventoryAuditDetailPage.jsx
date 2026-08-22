@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { ArrowLeft, Save, CheckCircle, XCircle } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
@@ -393,7 +394,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         title="Reject audit"
         size="md"
       >
-        <form onSubmit={handleReject} className="space-y-4">
+        <FormShell onSubmit={handleReject} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
               Rejection reason <span className="text-red-500">*</span>
@@ -420,7 +421,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               Reject
             </Button>
           </div>
-        </form>
+        </FormShell>
       </Modal>
     </div>
   )

@@ -2,15 +2,14 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
-import { HiX, HiEye, HiEyeOff } from 'react-icons/hi'
-
-import Button from '@/components/atoms/Button'
-import InputField from '@/components/atoms/InputField'
+import { HiX } from 'react-icons/hi'
 
 // ✅ [HEAD] Dùng Redux thunk loginUser + clearError
 import { loginUser, clearError } from '@/store/authSlice'
 import LoginGoogle from './LoginGoogle'
 import useEscapeKey from '@/hooks/useEscapeKey'
+import { LoginForm } from '@/form/AuthForms'
+import { firstError, validateLoginForm } from '@/config/validation'
 
 // ❌ [origin/owner] - Đã comment lại, không dùng
 // import { authApi } from '@/services/authApi'
@@ -33,6 +32,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
   const dispatch = useDispatch()
   const { isLoading, error } = useSelector((state) => state.auth)
   const [showPassword, setShowPassword] = useState(false)
+  const [localError, setLocalError] = useState('')
 
   // ❌ [origin/owner] - Không dùng state isRegisterOpen trong HEAD
   // const [isRegisterOpen, setIsRegisterOpen] = useState(false)
@@ -60,6 +60,13 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
   const handleLogin = async (e) => {
     e.preventDefault()
     dispatch(clearError())
+    setLocalError('')
+
+    const validationError = firstError(validateLoginForm({ email, password }))
+    if (validationError) {
+      setLocalError(validationError)
+      return
+    }
 
     try {
       // ✅ [HEAD] Dùng Redux thunk loginUser
@@ -117,29 +124,6 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
             transition={{ duration: 0.2 }}
             className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white p-8 shadow-xl"
           >
-            {/* ❌ [origin/owner] - Nút close không có dispatch clearError, không dùng */}
-            {/* <HiX className="h-5 w-5" />
-            </button>
-
-            <div className="mb-6">
-              <div className="mb-2 flex items-center gap-2">
-                <span className="text-xl font-bold text-slate-900">StockSpace</span>
-              </div>
-              <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
-            </div>
-
-            {error && (
-              <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className="space-y-4">
-              ...
-            </form>
-
-            ... (toàn bộ phần JSX của origin/owner bên dưới đây đã bị thay thế bởi HEAD) */}
-
             {/* ✅ [HEAD] Nút close có dispatch clearError */}
             <button
               onClick={() => {
@@ -158,45 +142,23 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
               <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
             </div>
 
-            {error && (
+            {(localError || error) && (
               <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-                {error}
+                {localError || error}
               </div>
             )}
 
-            <form onSubmit={handleLogin} className="space-y-4">
-              <InputField
-                label="Email"
-                type="email"
-                placeholder="name@gmail.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-
-              <div className="space-y-1">
-                <div className="relative">
-                  <InputField
-                    label="Password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute top-9.5 right-3 text-slate-400 transition-colors hover:text-slate-600"
-                  >
-                    {showPassword ? (
-                      <HiEyeOff className="h-5 w-5" />
-                    ) : (
-                      <HiEye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-
+            <LoginForm
+              embedded
+              email={email}
+              password={password}
+              onEmailChange={(event) => setEmail(event.target.value)}
+              onPasswordChange={(event) => setPassword(event.target.value)}
+              onSubmit={handleLogin}
+              isLoading={isLoading}
+              showPassword={showPassword}
+              onTogglePassword={() => setShowPassword(!showPassword)}
+              forgotPasswordLink={
                 <div className="flex justify-end">
                   <Link
                     to="/forgot-password"
@@ -206,12 +168,8 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
                     Forgot password?
                   </Link>
                 </div>
-              </div>
-
-              <Button type="submit" className="h-11 w-full bg-amber-700" isLoading={isLoading}>
-                Sign In
-              </Button>
-            </form>
+              }
+            />
 
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import TranslatableText from '@/components/TranslatableText'
 import TableActionMenu from '@/components/TableActionMenu'
@@ -106,7 +107,7 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Warehouse Type Name <span className="text-rose-500">*</span>
@@ -156,7 +157,7 @@ const WarehouseTypeFormModal = ({ item, onClose }) => {
               {isEdit ? 'Update' : 'Add new'}
             </button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )

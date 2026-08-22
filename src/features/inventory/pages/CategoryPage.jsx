@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { Plus, Trash2, LayoutGrid, Loader2 } from 'lucide-react'
 import TableActionMenu from '@/components/TableActionMenu'
 import DataTable from '@/components/organisms/DataTable'
@@ -164,7 +165,7 @@ const CategoryPage = () => {
               onClose={() => setIsCategoryModalOpen(false)}
               title="Add New Category"
             >
-              <form onSubmit={handleCreateCategory} className="space-y-4">
+              <FormShell onSubmit={handleCreateCategory} className="space-y-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">Category name *</label>
                   <InputField
@@ -186,7 +187,7 @@ const CategoryPage = () => {
                     Save Category
                   </Button>
                 </div>
-              </form>
+              </FormShell>
             </Modal>
           </main>
         </div>

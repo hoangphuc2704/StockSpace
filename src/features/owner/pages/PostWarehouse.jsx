@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
@@ -452,7 +453,7 @@ const CreateWarehouse = () => {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <FormShell onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               {/* THÔNG TIN TEXT */}
               <div className="space-y-6 lg:col-span-2">
@@ -901,7 +902,7 @@ const CreateWarehouse = () => {
                 )}
               </Button>
             </div>
-          </form>
+          </FormShell>
         </main>
       </div>
 
@@ -933,7 +934,7 @@ const CreateWarehouse = () => {
               </div>
             </div>
 
-            <form onSubmit={handleDepositSubmit} className="space-y-4">
+            <FormShell onSubmit={handleDepositSubmit} className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-bold text-slate-500 uppercase">
                   Enter the amount to deposit (VND)
@@ -981,7 +982,7 @@ const CreateWarehouse = () => {
                   )}
                 </button>
               </div>
-            </form>
+            </FormShell>
           </div>
         </div>
       )}

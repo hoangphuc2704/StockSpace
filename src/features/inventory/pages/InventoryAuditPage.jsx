@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { Plus, Search, Eye } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
@@ -212,7 +213,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         title="Create audit"
         size="md"
       >
-        <form onSubmit={handleCreateAudit} className="space-y-4">
+        <FormShell onSubmit={handleCreateAudit} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
               Warehouse <span className="text-red-500">*</span>
@@ -249,7 +250,7 @@ const InventoryAuditPage = ({ currentRole }) => {
               Create audit
             </Button>
           </div>
-        </form>
+        </FormShell>
       </Modal>
     </div>
   )

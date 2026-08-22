@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { authApi } from '@/services/authApi'
-import { Loader2, CheckCircle, AlertCircle, Building2, Eye, EyeOff } from 'lucide-react'
+import { Loader2, CheckCircle, AlertCircle, Building2 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
-import InputField from '@/components/atoms/InputField'
 import { firstError, validateStaffInvitationForm } from '@/config/validation'
+import { StaffAcceptInvitationForm } from '@/form/AuthForms'
 
 const StaffAcceptInvitationPage = () => {
   const [searchParams] = useSearchParams()
@@ -54,7 +54,7 @@ const StaffAcceptInvitationPage = () => {
     e.preventDefault()
     setFormError('')
 
-    const validationError = firstError(validateStaffInvitationForm({ password, confirmPassword }))
+    const validationError = firstError(validateStaffInvitationForm({ token, password, confirmPassword }))
     if (validationError) {
       setFormError(validationError)
       return
@@ -162,66 +162,32 @@ const StaffAcceptInvitationPage = () => {
         </div>
 
         {/* Password form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <p className="text-sm text-slate-600 font-medium">Set up a password to activate your account:</p>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">New password</label>
-            <div className="relative">
-              <InputField
-                type={showPassword ? 'text' : 'password'}
-                required
-                placeholder="At least 8 characters, including uppercase letters, lowercase letters and numbers"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Confirm password</label>
-            <div className="relative">
-              <InputField
-                type={showConfirmPassword ? 'text' : 'password'}
-                required
-                placeholder="Re-enter the password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pr-10"
-              />
-              <button
-                type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-
-          {formError && (
-            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-100 flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-              {formError}
-            </div>
-          )}
-
-          <Button type="submit" className="w-full mt-2" isLoading={isSubmitting}>
-            Confirmation of Participation
-          </Button>
-
-          <p className="text-xs text-center text-slate-400">
-            If you already have an account with this email, the old password will not change.
-          </p>
-        </form>
+        <StaffAcceptInvitationForm
+          embedded
+          token={token}
+          password={password}
+          confirmPassword={confirmPassword}
+          onPasswordChange={(event) => setPassword(event.target.value)}
+          onConfirmPasswordChange={(event) => setConfirmPassword(event.target.value)}
+          onSubmit={handleSubmit}
+          isLoading={isSubmitting}
+          showPassword={showPassword}
+          showConfirmPassword={showConfirmPassword}
+          onTogglePassword={() => setShowPassword(!showPassword)}
+          onToggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+          submitText="Confirmation of Participation"
+          extraContent={
+            formError && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-600">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                {formError}
+              </div>
+            )
+          }
+        />
+        <p className="text-center text-xs text-slate-400">
+          If you already have an account with this email, the old password will not change.
+        </p>
       </div>
     </div>
   )

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import TableActionMenu from '@/components/TableActionMenu'
 import { useDispatch, useSelector } from 'react-redux'
@@ -122,7 +123,7 @@ const PackageFormModal = ({ pkg, onClose }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Package name <span className="text-rose-500">*</span>
@@ -214,7 +215,7 @@ const PackageFormModal = ({ pkg, onClose }) => {
               {isEdit ? 'Update' : 'Add package'}
             </button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )

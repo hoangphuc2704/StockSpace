@@ -13,6 +13,8 @@ export const VALIDATION_MESSAGES = {
   passwordStrength:
     'Password must contain at least 1 uppercase letter, 1 lowercase letter and 1 number.',
   passwordMatch: 'Confirmation password does not match.',
+  vietnamesePhone: 'Please enter a valid Vietnamese mobile number.',
+  role: 'Please select a valid account role.',
   positiveAmount: 'Amount must be greater than 0.',
   positiveInteger: 'Enter a positive whole number.',
 }
@@ -22,11 +24,21 @@ export const isEmpty = (value) => value === null || value === undefined || Strin
 export const required = (value, label = 'This field') =>
   isEmpty(value) ? VALIDATION_MESSAGES.required(label) : ''
 
+export const maxLength = (value, length, message) =>
+  !isEmpty(value) && String(value).length > length ? message : ''
+
 export const email = (value) => {
   if (isEmpty(value)) return VALIDATION_MESSAGES.required('Email')
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim())
     ? ''
     : VALIDATION_MESSAGES.email
+}
+
+export const vietnameseMobile = (value) => {
+  if (isEmpty(value)) return ''
+  return /^(?:0[35789]\d{8}|\+84[35789]\d{8})$/.test(String(value).trim())
+    ? ''
+    : VALIDATION_MESSAGES.vietnamesePhone
 }
 
 export const password = (value, minLength = 8) => {
@@ -82,30 +94,61 @@ export const validateFields = (values, rules) => {
 
 export const validateRegistrationForm = (form) =>
   validateFields(form, {
-    fullName: (value) => required(value, 'Full name'),
+    fullName: [
+      (value) => required(value, 'Full name'),
+      (value) => maxLength(value, 150, 'Full name must not exceed 150 characters.'),
+    ],
     email,
     password: (value) => strongPassword(value),
-    confirmPassword: (value, values) => matchingPasswords(values.password, value),
-    phone: (value) => required(value, 'Phone number'),
+    confirmPassword: [
+      (value) => required(value, 'Confirmation password'),
+      (value, values) => matchingPasswords(values.password, value),
+    ],
+    phone: vietnameseMobile,
     agreeTerms: (value) => (value ? '' : 'You must agree to the Terms of Service.'),
+    role: (value) =>
+      value === 'ROLE_OWNER' || value === 'ROLE_TENANT' ? '' : VALIDATION_MESSAGES.role,
   })
 
-export const validateResetPasswordForm = ({ newPassword, confirmPassword, token }) =>
+export const validateLoginForm = ({ email: emailValue, password: passwordValue }) =>
   validateFields(
-    { newPassword, confirmPassword, token },
+    { email: emailValue, password: passwordValue },
     {
+      email,
+      password: (value) => password(value, 6),
+    }
+  )
+
+export const validateForgotPasswordForm = ({ email: emailValue }) =>
+  validateFields({ email: emailValue }, { email })
+
+export const validateResetPasswordForm = ({ email: emailValue, newPassword, confirmPassword, token }) =>
+  validateFields(
+    { email: emailValue, newPassword, confirmPassword, token },
+    {
+      email,
       newPassword: (value) => password(value, 6),
-      confirmPassword: (value, values) => matchingPasswords(values.newPassword, value),
+      confirmPassword: [
+        (value) => required(value, 'Confirmation password'),
+        (value, values) => matchingPasswords(values.newPassword, value),
+      ],
       token: (value) => required(value, 'Reset link token'),
     }
   )
 
-export const validateStaffInvitationForm = ({ password: value, confirmPassword }) =>
+export const validateStaffInvitationForm = ({ token, password: value, confirmPassword }) =>
   validateFields(
-    { password: value, confirmPassword },
+    { token, password: value, confirmPassword },
     {
-      password: (passwordValue) => strongPassword(passwordValue),
-      confirmPassword: (confirmation, values) => matchingPasswords(values.password, confirmation),
+      token: (tokenValue) => required(tokenValue, 'Invitation token'),
+      password: [
+        (passwordValue) => strongPassword(passwordValue),
+        (passwordValue) => maxLength(passwordValue, 100, 'Password must not exceed 100 characters.'),
+      ],
+      confirmPassword: [
+        (confirmation) => required(confirmation, 'Confirmation password'),
+        (confirmation, values) => matchingPasswords(values.password, confirmation),
+      ],
     }
   )
 

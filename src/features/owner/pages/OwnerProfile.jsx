@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { User, Mail, Phone, MapPin, Lock, Camera, Save } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 
@@ -109,7 +110,7 @@ const OwnerProfile = () => {
                   Profile details
                 </h3>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <FormShell onSubmit={handleSubmit} className="space-y-5">
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {/* Họ và tên */}
                     <div className="space-y-1.5">
@@ -196,7 +197,7 @@ const OwnerProfile = () => {
                       <Save className="mr-2 h-4 w-4" /> Save changes
                     </Button>
                   </div>
-                </form>
+                </FormShell>
               </div>
             </div>
           </main>

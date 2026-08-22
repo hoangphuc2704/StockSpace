@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { Plus, Package, Edit, Trash2, Loader2, Eye, X, Tag, Ruler, Hash } from 'lucide-react'
 import TableActionMenu from '@/components/TableActionMenu'
 import DataTable from '@/components/organisms/DataTable'
@@ -383,7 +384,7 @@ const SkuPage = () => {
               title={isEditing ? 'Edit SKU' : 'Add New SKU'}
               size="lg"
             >
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <FormShell onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-700">Product Name *</label>
@@ -566,7 +567,7 @@ const SkuPage = () => {
                     {isEditing ? 'Save Changes' : 'Create SKU'}
                   </Button>
                 </div>
-              </form>
+              </FormShell>
             </Modal>
 
             {/* SKU Detail Modal */}

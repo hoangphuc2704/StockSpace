@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import TableActionMenu from '@/components/TableActionMenu'
@@ -444,7 +445,7 @@ const TenantStaffManagementPage = () => {
         }}
         title="Invite Warehouse Staff"
       >
-        <form onSubmit={handleInvite} className="space-y-4">
+        <FormShell onSubmit={handleInvite} className="space-y-4">
           <p className="text-sm text-slate-500">
             The system will send an email containing the activation link to the address below. Link
             is valid in <strong>48 hours</strong>.
@@ -501,7 +502,7 @@ const TenantStaffManagementPage = () => {
               Send Invitations
             </Button>
           </div>
-        </form>
+        </FormShell>
       </Modal>
 
       {/* Assignment Modal */}
@@ -566,7 +567,7 @@ const TenantStaffManagementPage = () => {
           {/* Add new assignment */}
           <div>
             <h3 className="mb-3 text-sm font-semibold text-slate-800">New warehouse assignment</h3>
-            <form
+            <FormShell
               onSubmit={handleAssign}
               className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4"
             >
@@ -630,7 +631,7 @@ const TenantStaffManagementPage = () => {
                   Add Assignment
                 </Button>
               </div>
-            </form>
+            </FormShell>
           </div>
         </div>
       </Modal>

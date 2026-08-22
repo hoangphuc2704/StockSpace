@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -126,7 +127,7 @@ const RejectModal = ({ withdrawal, onClose }) => {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Reason for refusal <span className="text-rose-500">*</span>
@@ -161,7 +162,7 @@ const RejectModal = ({ withdrawal, onClose }) => {
               Confirmed refusal
             </button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )

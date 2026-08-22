@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import TableActionMenu from '@/components/TableActionMenu'
 import { useDispatch, useSelector } from 'react-redux'
@@ -110,7 +111,7 @@ const EditConfigModal = ({ configItem, packages, onClose }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm">
             <p className="mb-1 text-xs font-medium text-blue-500">Setup: {title}</p>
             <p className="text-xs text-slate-600">{configItem.description}</p>
@@ -185,7 +186,7 @@ const EditConfigModal = ({ configItem, packages, onClose }) => {
               Update
             </button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )

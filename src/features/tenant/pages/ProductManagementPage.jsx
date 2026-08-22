@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   ChevronLeft,
@@ -401,7 +402,7 @@ export default function ProductManagementPage() {
 
       {categoryFormOpen && (
         <Modal title="Add category" onClose={() => setCategoryFormOpen(false)}>
-          <form onSubmit={createCategory} className="space-y-4 p-5">
+          <FormShell onSubmit={createCategory} className="space-y-4 p-5">
             <label className="block text-sm font-semibold">
               Category name
               <input
@@ -435,13 +436,13 @@ export default function ProductManagementPage() {
                 Create
               </button>
             </div>
-          </form>
+          </FormShell>
         </Modal>
       )}
 
       {skuForm && (
         <Modal title={skuForm.id ? 'Edit SKU' : 'Add SKU'} onClose={() => setSkuForm(null)}>
-          <form onSubmit={saveSku} className="grid gap-4 p-5 sm:grid-cols-2">
+          <FormShell onSubmit={saveSku} className="grid gap-4 p-5 sm:grid-cols-2">
             <label className="block text-sm font-semibold">
               SKU code
               <input
@@ -554,7 +555,7 @@ export default function ProductManagementPage() {
                 {saving ? 'Saving...' : 'Save SKU'}
               </button>
             </div>
-          </form>
+          </FormShell>
         </Modal>
       )}
 

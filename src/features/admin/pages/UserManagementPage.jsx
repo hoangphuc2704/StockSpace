@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import TableActionMenu from '@/components/TableActionMenu'
 import { useDispatch, useSelector } from 'react-redux'
@@ -111,7 +112,7 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+        <FormShell onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
           {!isEdit && (
             <div>
               <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
@@ -191,7 +192,7 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
               {isEdit ? 'Save changes' : 'Create users'}
             </Button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )
@@ -238,7 +239,7 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
             Reset password for: <strong className="text-slate-800">{user?.fullName}</strong> (
             {user?.email})
           </p>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <FormShell onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
                 New password *
@@ -277,7 +278,7 @@ const ResetPasswordModal = ({ user, onClose, onSave, loading }) => {
                 Reset password
               </Button>
             </div>
-          </form>
+          </FormShell>
         </div>
       </motion.div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { Wallet, X, Loader2 } from 'lucide-react'
 import walletApi from '../../services/wallet/walletApi'
 import useEscapeKey from '../../hooks/useEscapeKey'
@@ -89,7 +90,7 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
           <div className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-600">{error}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-bold text-slate-500 uppercase">
               Amount to withdraw (VND)
@@ -187,7 +188,7 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
               )}
             </button>
           </div>
-        </form>
+        </FormShell>
       </div>
     </div>
   )

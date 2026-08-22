@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { FormShell } from '@/form/FormControls'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
@@ -582,7 +583,7 @@ const InboundPage = () => {
                 title="Register New Inbound Shipment"
                 className="max-h-[92vh] max-w-5xl overflow-y-auto"
               >
-                <form onSubmit={handleCreateReceipt} className="space-y-4">
+                <FormShell onSubmit={handleCreateReceipt} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-slate-700">
@@ -933,7 +934,7 @@ const InboundPage = () => {
                       Confirm Inbound
                     </Button>
                   </div>
-                </form>
+                </FormShell>
               </Modal>
 
               <Modal
@@ -941,7 +942,7 @@ const InboundPage = () => {
                 onClose={() => setIsRejectModalOpen(false)}
                 title="Reject Receipt"
               >
-                <form onSubmit={handleReject} className="space-y-4">
+                <FormShell onSubmit={handleReject} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-700">
                       Reason for rejection *
@@ -965,7 +966,7 @@ const InboundPage = () => {
                       Confirm Reject
                     </Button>
                   </div>
-                </form>
+                </FormShell>
               </Modal>
 
               <ReceiptDetailModal

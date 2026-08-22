@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
@@ -121,7 +122,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
           processing.
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-xs font-bold text-slate-500">
               Reason for dispute <span className="text-rose-500">*</span>
@@ -202,7 +203,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
               )}
             </button>
           </div>
-        </form>
+        </FormShell>
       </div>
     </div>
   )
@@ -250,7 +251,7 @@ const CancelDealModal = ({ contractId, onClose, onSuccess }) => {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-xs font-bold text-slate-500">
               Reason <span className="text-rose-500">*</span>
@@ -288,7 +289,7 @@ const CancelDealModal = ({ contractId, onClose, onSuccess }) => {
               )}
             </button>
           </div>
-        </form>
+        </FormShell>
       </div>
     </div>
   )
@@ -725,7 +726,7 @@ const OwnerContractsPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmitContract} className="space-y-4">
+            <FormShell onSubmit={handleSubmitContract} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="mb-2 block text-xs font-bold text-slate-500">Start Date</label>
@@ -827,7 +828,7 @@ const OwnerContractsPage = () => {
                   )}
                 </button>
               </div>
-            </form>
+            </FormShell>
           </div>
         </div>
       )}

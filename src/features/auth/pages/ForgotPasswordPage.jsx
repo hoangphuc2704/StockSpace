@@ -3,19 +3,28 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react'
-import Button from '@/components/atoms/Button'
-import InputField from '@/components/atoms/InputField'
 import { forgotPasswordThunk, clearError, clearPasswordResetMessage } from '@/store/authSlice'
+import { ForgotPasswordForm } from '@/form/AuthForms'
+import { firstError, validateForgotPasswordForm } from '@/config/validation'
 
 const ForgotPasswordPage = () => {
   const dispatch = useDispatch()
   const { isLoading, error, passwordResetMessage } = useSelector((state) => state.auth)
   const [email, setEmail] = useState('')
+  const [localError, setLocalError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     dispatch(clearError())
     dispatch(clearPasswordResetMessage())
+    setLocalError('')
+
+    const validationError = firstError(validateForgotPasswordForm({ email }))
+    if (validationError) {
+      setLocalError(validationError)
+      return
+    }
+
     dispatch(forgotPasswordThunk(email))
   }
 
@@ -61,27 +70,20 @@ const ForgotPasswordPage = () => {
         )}
 
         {/* Error */}
-        {error && (
+        {(localError || error) && (
           <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-            {error}
+            {localError || error}
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <InputField
-            label="Email Address"
-            type="email"
-            placeholder="name@company.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-
-          <Button type="submit" className="h-11 w-full bg-amber-700" isLoading={isLoading}>
-            Send Reset Link
-          </Button>
-        </form>
+        <ForgotPasswordForm
+          embedded
+          email={email}
+          onEmailChange={(event) => setEmail(event.target.value)}
+          onSubmit={handleSubmit}
+          isLoading={isLoading}
+        />
 
         <p className="mt-6 text-center text-sm text-slate-500">
           Remember your password?{' '}

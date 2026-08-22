@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -137,7 +138,7 @@ const AssignModal = ({ inspection, onClose }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Inspector <span className="text-rose-500">*</span>
@@ -183,7 +184,7 @@ const AssignModal = ({ inspection, onClose }) => {
               <UserPlus size={14} /> Assignment
             </button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )

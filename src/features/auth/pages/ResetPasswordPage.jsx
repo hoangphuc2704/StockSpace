@@ -3,11 +3,9 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Lock, ArrowLeft, CheckCircle } from 'lucide-react'
-import { HiEye, HiEyeOff } from 'react-icons/hi'
-import Button from '@/components/atoms/Button'
-import InputField from '@/components/atoms/InputField'
 import { resetPasswordThunk, clearError, clearPasswordResetMessage } from '@/store/authSlice'
 import { firstError, validateResetPasswordForm } from '@/config/validation'
+import { ResetPasswordForm } from '@/form/AuthForms'
 
 const ResetPasswordPage = () => {
   const dispatch = useDispatch()
@@ -53,6 +51,7 @@ const ResetPasswordPage = () => {
 
     const validationError = firstError(
       validateResetPasswordForm({
+        email: emailFromUrl,
         newPassword,
         confirmPassword,
         token: tokenFromUrl,
@@ -123,49 +122,21 @@ const ResetPasswordPage = () => {
 
         {/* Form */}
         {!passwordResetMessage && (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* New Password */}
-            <div className="relative">
-              <InputField
-                label="New Password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute top-[38px] right-3 text-slate-400 transition-colors hover:text-slate-600"
-              >
-                {showPassword ? <HiEyeOff className="h-5 w-5" /> : <HiEye className="h-5 w-5" />}
-              </button>
-            </div>
-
-            {/* Confirm Password */}
-            <div className="relative">
-              <InputField
-                label="Confirm Password"
-                type={showConfirmPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute top-[38px] right-3 text-slate-400 transition-colors hover:text-slate-600"
-              >
-                {showConfirmPassword ? <HiEyeOff className="h-5 w-5" /> : <HiEye className="h-5 w-5" />}
-              </button>
-            </div>
-
-            <Button type="submit" className="h-11 w-full bg-amber-700" isLoading={isLoading}>
-              Reset Password
-            </Button>
-          </form>
+          <ResetPasswordForm
+            embedded
+            email={emailFromUrl}
+            token={tokenFromUrl}
+            newPassword={newPassword}
+            confirmPassword={confirmPassword}
+            onNewPasswordChange={(event) => setNewPassword(event.target.value)}
+            onConfirmPasswordChange={(event) => setConfirmPassword(event.target.value)}
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+            showPassword={showPassword}
+            showConfirmPassword={showConfirmPassword}
+            onTogglePassword={() => setShowPassword(!showPassword)}
+            onToggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+          />
         )}
 
         <p className="mt-6 text-center text-sm text-slate-500">

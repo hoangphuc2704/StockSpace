@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import TableActionMenu from '@/components/TableActionMenu'
 import { useDispatch, useSelector } from 'react-redux'
@@ -87,7 +88,7 @@ const CreatePermissionModal = ({ onClose }) => {
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Permission name <span className="text-rose-500">*</span>
@@ -132,7 +133,7 @@ const CreatePermissionModal = ({ onClose }) => {
               {actionLoading && <Loader2 size={14} className="animate-spin" />}Create Permissions
             </button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )
@@ -196,7 +197,7 @@ const RoleModal = ({ role, onClose }) => {
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Role name <span className="text-rose-500">*</span>
@@ -242,7 +243,7 @@ const RoleModal = ({ role, onClose }) => {
               {isEdit ? 'Update' : 'Create Role'}
             </button>
           </div>
-        </form>
+        </FormShell>
       </motion.div>
     </div>
   )
@@ -332,7 +333,7 @@ const AssignPermModal = ({ role, allPermissions, onClose }) => {
         </div>
 
         {/* Assign new */}
-        <form onSubmit={handleAssign} className="space-y-3">
+        <FormShell onSubmit={handleAssign} className="space-y-3">
           <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">
             Add Permissions
           </p>
@@ -362,7 +363,7 @@ const AssignPermModal = ({ role, allPermissions, onClose }) => {
           {actionError && (
             <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-600">{actionError}</p>
           )}
-        </form>
+        </FormShell>
 
         <div className="mt-5 flex justify-end">
           <button

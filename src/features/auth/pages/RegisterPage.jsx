@@ -2,15 +2,14 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Warehouse } from 'lucide-react'
-import Button from '@/components/atoms/Button'
-import InputField from '@/components/atoms/InputField'
-import { HiX, HiEye, HiEyeOff } from 'react-icons/hi'
+import { HiX } from 'react-icons/hi'
 import { useDispatch, useSelector } from 'react-redux'
 import Loading from '../../../components/Loading'
 import { registerUser, clearError } from '@/store/authSlice'
 import LoginGoogle from './LoginGoogle'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { firstError, validateRegistrationForm } from '@/config/validation'
+import { RegisterForm } from '@/form/AuthForms'
 
 const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
   useEscapeKey(isOpen, onClose)
@@ -49,7 +48,7 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
     setLocalError('')
 
     const validationError = firstError(
-      validateRegistrationForm({ fullName, email, password, confirmPassword, phone, agreeTerms })
+      validateRegistrationForm({ fullName, email, password, confirmPassword, phone, agreeTerms, role: `ROLE_${roleDefault}` })
     )
     if (validationError) {
       setLocalError(validationError)
@@ -61,7 +60,7 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
         fullName,
         email,
         password,
-        phone,
+        phone: phone.trim() || null,
         role: `ROLE_${roleDefault}`
       })).unwrap()
       
@@ -169,103 +168,41 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
                 </div>
               )}
 
-              <form onSubmit={handleRegister} className="space-y-4">
-                <InputField 
-                  label="Full Name" 
-                  placeholder="John Doe" 
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required 
-                />
-                <InputField
-                  label="Email Address"
-                  type="email"
-                  placeholder="name@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-
-                {/* Password */}
-                <div className="relative">
-                  <InputField
-                    label="Password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute top-[38px] right-3 text-slate-400 transition-colors hover:text-slate-600"
-                  >
-                    {showPassword ? (
-                      <HiEyeOff className="h-5 w-5" />
-                    ) : (
-                      <HiEye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Confirm Password */}
-                <div className="relative">
-                  <InputField
-                    label="Confirm Password"
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute top-[38px] right-3 text-slate-400 transition-colors hover:text-slate-600"
-                  >
-                    {showConfirmPassword ? (
-                      <HiEyeOff className="h-5 w-5" />
-                    ) : (
-                      <HiEye className="h-5 w-5" />
-                    )}
-                  </button>
-                </div>
-
-                <InputField 
-                  label="Phone Number" 
-                  type="tel" 
-                  placeholder="1234567890" 
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required 
-                />
-
-                <div className="flex items-start gap-2 pt-1">
-                  <input
-                    type="checkbox"
-                    className="text-primary focus:ring-primary mt-1 rounded border-slate-300"
-                    checked={agreeTerms}
-                    onChange={(e) => setAgreeTerms(e.target.checked)}
-                    required
-                  />
-                  <p className="text-xs leading-relaxed text-slate-500">
+              <RegisterForm
+                embedded
+                fullName={fullName}
+                email={email}
+                password={password}
+                confirmPassword={confirmPassword}
+                phone={phone}
+                agreeTerms={agreeTerms}
+                onFullNameChange={(event) => setFullName(event.target.value)}
+                onEmailChange={(event) => setEmail(event.target.value)}
+                onPasswordChange={(event) => setPassword(event.target.value)}
+                onConfirmPasswordChange={(event) => setConfirmPassword(event.target.value)}
+                onPhoneChange={(event) => setPhone(event.target.value)}
+                onAgreeTermsChange={(event) => setAgreeTerms(event.target.checked)}
+                onSubmit={handleRegister}
+                isLoading={isLoading}
+                showPassword={showPassword}
+                showConfirmPassword={showConfirmPassword}
+                onTogglePassword={() => setShowPassword(!showPassword)}
+                onToggleConfirmPassword={() => setShowConfirmPassword(!showConfirmPassword)}
+                role={`ROLE_${roleDefault}`}
+                termsLabel={
+                  <>
                     I agree to the{' '}
-                    <a href="#" className="text-primary font-bold">
+                    <a href="#" className="font-bold text-primary">
                       Terms of Service
                     </a>{' '}
                     and{' '}
-                    <a href="#" className="text-primary font-bold">
+                    <a href="#" className="font-bold text-primary">
                       Privacy Policy
                     </a>
                     .
-                  </p>
-                </div>
-
-                <Button type="submit" className="h-12 w-full bg-amber-500" isLoading={isLoading}>
-                  Create Account
-                </Button>
-              </form>
+                  </>
+                }
+              />
 
               {/* Google OAuth Divider */}
               <div className="relative my-4">

@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
@@ -108,7 +109,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
           processing.
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-xs font-bold text-slate-500">
               Reason for dispute <span className="text-rose-500">*</span>
@@ -185,7 +186,7 @@ const DisputeModal = ({ contractId, onClose, onSuccess }) => {
               )}
             </button>
           </div>
-        </form>
+        </FormShell>
       </div>
     </div>
   )
@@ -237,7 +238,7 @@ const ReportFailedModal = ({ contractId, onClose, onSuccess }) => {
           <strong>Note:</strong> By rejecting this contract, it will be marked as disputed and sent
           to the Admin.
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-xs font-bold text-slate-500">
               Reason <span className="text-rose-500">*</span>
@@ -275,7 +276,7 @@ const ReportFailedModal = ({ contractId, onClose, onSuccess }) => {
               )}
             </button>
           </div>
-        </form>
+        </FormShell>
       </div>
     </div>
   )

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
+import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
@@ -569,7 +570,7 @@ const OwnerDashboard = () => {
               </button>
             </div>
 
-            <form onSubmit={handleDepositSubmit} className="space-y-4">
+            <FormShell onSubmit={handleDepositSubmit} className="space-y-4">
               <div>
                 <label className="mb-2 block text-xs font-bold text-slate-500 uppercase">
                   Enter the amount to deposit (VND)
@@ -618,7 +619,7 @@ const OwnerDashboard = () => {
                   )}
                 </button>
               </div>
-            </form>
+            </FormShell>
           </div>
         </div>
       )}
