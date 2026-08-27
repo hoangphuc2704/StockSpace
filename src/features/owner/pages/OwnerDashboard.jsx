@@ -3,13 +3,7 @@ import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
-import {
-  Warehouse,
-  Clock,
-  Wallet,
-  PlusCircle,
-  Loader2,
-} from 'lucide-react'
+import { Warehouse, Clock, Wallet, PlusCircle, Loader2 } from 'lucide-react'
 import {
   BarChart,
   Bar,
@@ -36,6 +30,7 @@ import ownerStatsApi from '../../../services/owner/ownerStatsApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { positiveNumber, required } from '@/config/validation'
+import Badge from '../../../components/atoms/Badge'
 
 // Mock Data giữ nguyên
 const defaultRevenueData = [
@@ -93,8 +88,6 @@ const OwnerDashboard = () => {
       setLoadingWallet(false)
     }
   }
-
-
 
   const fetchInspections = async () => {
     try {
@@ -214,8 +207,6 @@ const OwnerDashboard = () => {
       icon: Wallet,
     },
   ]
-
-
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
