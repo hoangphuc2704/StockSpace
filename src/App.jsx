@@ -270,6 +270,9 @@ const App = () => {
           <Route path="/inspector/inspections" element={<InspectorInspectionsPage />} />
         </Route>
 
+        {/* TRANG TEST API CHO DEV (ẨN) */}
+        {/* <Route path="/dev-sandbox" element={<DevApiSandbox />} />   */}
+
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
