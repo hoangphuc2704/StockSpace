@@ -398,7 +398,7 @@ const OwnerContractsPage = () => {
             row.canViewLayout && {
               label: 'View Layout',
               icon: Eye,
-              onClick: () => window.open(`/owner/contract-layout/${row.id}`, '_blank')
+              onClick: () => window.open(`/owner/layoutwarehouses?warehouseId=${row.warehouseId}`, '_blank')
             },
             row.canEdit && {
               label: 'Edit Draft',

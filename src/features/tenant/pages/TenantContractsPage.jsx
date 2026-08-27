@@ -228,7 +228,7 @@ const TenantContractsPage = () => {
             row.canViewLayout && {
               label: 'View Layout',
               icon: Eye,
-              onClick: () => window.open(`/tenant/contract-layout/${row.id}`, '_blank')
+              onClick: () => window.open(`/tenant/layoutwarehouses?warehouseId=${row.warehouseId}`, '_blank')
             },
             row.canConfirm && {
               label: 'Confirm contract',
@@ -257,7 +257,7 @@ const TenantContractsPage = () => {
             row.canManageWms && {
               label: 'Open WMS',
               icon: Box,
-              onClick: () => window.open(`/tenant/wms/${row.warehouseId}`, '_blank')
+              onClick: () => window.open(`/tenant/inventory?warehouseId=${row.warehouseId}`, '_blank')
             }
           ].filter(Boolean)}
         />
