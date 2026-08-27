@@ -43,13 +43,13 @@ import Sidebar from '../../../components/SideBar'
 import Modal from '../../../components/organisms/Modal'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import { toast } from 'react-hot-toast'
+import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
 
 // ─── Enum / Constants từ BE ───────────────────────────────────────────────────
-const STATUS_OPTIONS = ['', 'PENDING_APPROVAL', 'AVAILABLE', 'RENTED', 'INACTIVE']
+const STATUS_OPTIONS = ['', 'PENDING_APPROVAL', 'AVAILABLE', 'INACTIVE']
 
 const STATUS_CONFIG = {
   AVAILABLE: { label: 'Ready', variant: 'success', icon: CheckCircle2 },
-  RENTED: { label: 'Currently renting', variant: 'info', icon: Warehouse },
   PENDING_APPROVAL: { label: 'Waiting for approval', variant: 'warning', icon: Clock },
   INACTIVE: { label: 'Inactive', variant: 'danger', icon: XCircle },
 }
@@ -61,7 +61,6 @@ const VERIFIED_OPTIONS = [
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const formatVND = (amount) => (amount != null ? Number(amount).toLocaleString('vi-VN') + ' ₫' : '—')
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
@@ -156,9 +155,12 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-                <DollarSign size={11} /> Price/month
+                <DollarSign size={11} /> Price / m²
               </p>
-              <p className="font-bold text-slate-900">{formatVND(warehouse.pricePerMonth)}</p>
+              <p className="font-bold text-slate-900">
+                {formatWarehousePricePerSquareMeter(warehouse)}
+                {warehouse.rentalPricingType !== 'NEGOTIATED' && ' /m²'}
+              </p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 text-xs text-slate-400">Date posted</p>
@@ -617,8 +619,10 @@ const WareHouseManagementPage = () => {
                             <td className="px-4 py-3.5">
                               <p className="text-xs text-slate-500">{w.typeName || '—'}</p>
                               <p className="font-bold text-slate-800">
-                                {formatVND(w.pricePerMonth)}
-                                <span className="text-xs font-normal text-slate-400">/month</span>
+                                {formatWarehousePricePerSquareMeter(w)}
+                                {w.rentalPricingType !== 'NEGOTIATED' && (
+                                  <span className="text-xs font-normal text-slate-400">/m²</span>
+                                )}
                               </p>
                             </td>
                             <td className="px-4 py-3.5">

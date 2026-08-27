@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import {
   Warehouse,
   MapPin,
-  Layers,
   Plus,
   Search,
   Filter,
@@ -18,6 +17,8 @@ import {
   Clock,
   Loader2,
   Eye,
+  Megaphone,
+  Edit3,
 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import Modal from '@/components/organisms/Modal'
@@ -30,6 +31,9 @@ import warehouseApi from '../../../services/warehouse/warehouseApi'
 import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
+import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
+import ListingPublicationModal from '../components/ListingPublicationModal'
+import EditWarehouseModal from '../components/EditWarehouseModal'
 
 const WarehouseManagement = () => {
   const navigate = useNavigate()
@@ -55,6 +59,30 @@ const WarehouseManagement = () => {
 
   // State quản lý xem chi tiết kho bằng Modal
   const [selectedWarehouse, setSelectedWarehouse] = useState(null)
+  const [publicationWarehouse, setPublicationWarehouse] = useState(null)
+  const [editingWarehouse, setEditingWarehouse] = useState(null)
+
+  const consumePendingListingSelection = (contentList) => {
+    try {
+      const pending = JSON.parse(sessionStorage.getItem('stockspace:pending-owner-listing') || 'null')
+      const pendingWarehouse = contentList.find(
+        (warehouse) =>
+          String(warehouse.id) === String(pending?.warehouseId) &&
+          warehouse.status === 'AVAILABLE' &&
+          (warehouse.canPublish || warehouse.canRenew)
+      )
+
+      if (pendingWarehouse) {
+        setPublicationWarehouse({
+          ...pendingWarehouse,
+          preferredPackageId: pending.listingPackageId,
+        })
+        sessionStorage.removeItem('stockspace:pending-owner-listing')
+      }
+    } catch {
+      sessionStorage.removeItem('stockspace:pending-owner-listing')
+    }
+  }
 
   // Xử lý gửi yêu cầu kiểm định kho qua API
   const handleRequestInspection = async (warehouseId) => {
@@ -113,6 +141,7 @@ const WarehouseManagement = () => {
         if (apiResult) {
           const contentList = apiResult.content || []
           setWarehouses(Array.isArray(contentList) ? contentList : [])
+          consumePendingListingSelection(Array.isArray(contentList) ? contentList : [])
           setTotalPages(apiResult.totalPages || 0)
           setTotalElements(apiResult.totalElements || 0)
         } else {
@@ -151,15 +180,6 @@ const WarehouseManagement = () => {
     return () => window.removeEventListener('new_notification', handleRentalNotification)
   }, [])
 
-  // Hàm xử lý cập nhật trạng thái kho trực tiếp tại bảng
-  const handleStatusChange = (id, newStatus) => {
-    if (!Array.isArray(warehouses)) return
-    setWarehouses((prevList) =>
-      prevList.map((wh) => (wh.id === id ? { ...wh, status: newStatus } : wh))
-    )
-    toast.success(`Warehouse set to ${newStatus}.`)
-  }
-
   // Định dạng Badge hiển thị cho Trạng thái kho
   const getStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
@@ -173,19 +193,7 @@ const WarehouseManagement = () => {
         return {
           bg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
           icon: <CheckCircle2 className="mr-1 h-3.5 w-3.5" />,
-          text: 'Still empty',
-        }
-      case 'MAINTENANCE':
-        return {
-          bg: 'bg-amber-50 text-amber-700 border-amber-200',
-          icon: <AlertTriangle className="mr-1 h-3.5 w-3.5" />,
-          text: 'Maintenance',
-        }
-      case 'FULL':
-        return {
-          bg: 'bg-rose-50 text-rose-700 border-rose-200',
-          icon: <XCircle className="mr-1 h-3.5 w-3.5" />,
-          text: "It's full",
+          text: 'Available',
         }
       case 'INACTIVE':
       case 'REJECTED':
@@ -204,7 +212,7 @@ const WarehouseManagement = () => {
   }
 
   const getInspectionBadge = (warehouse, inspection) => {
-    const status = warehouse.verified ? 'PASSED' : inspection?.status
+    const status = (warehouse.isVerified ?? warehouse.verified) ? 'PASSED' : inspection?.status
     const configs = {
       PENDING: ['bg-amber-50 text-amber-700 border-amber-200', 'Waiting for assignment'],
       IN_PROGRESS: ['bg-blue-50 text-blue-700 border-blue-200', 'Inspection in progress'],
@@ -314,8 +322,7 @@ const WarehouseManagement = () => {
                   <option value="ALL">All status</option>
                   <option value="PENDING_APPROVAL">Pending</option>
                   <option value="AVAILABLE">Available</option>
-                  <option value="FULL">Full</option>
-                  <option value="MAINTENANCE">Under maintenance (Maintenance)</option>
+                  <option value="INACTIVE">Inactive</option>
                 </select>
               </div>
             </div>
@@ -329,7 +336,7 @@ const WarehouseManagement = () => {
                       <th className="px-6 py-4">Image &amp; Warehouse name</th>
                       <th className="px-6 py-4">Warehouse type</th>
                       <th className="px-6 py-4">Capacity</th>
-                      <th className="px-6 py-4">Rental price / Month</th>
+                      <th className="px-6 py-4">Rental price / m²</th>
                       <th className="px-6 py-4 text-center">Status</th>
                       <th className="px-6 py-4 text-center">Inspection</th>
                       <th className="px-6 py-4 text-center">Actions</th>
@@ -387,10 +394,13 @@ const WarehouseManagement = () => {
 
                             {/* Cột 4: Giá thuê */}
                             <td className="px-6 py-4 font-bold text-slate-900">
-                              <span className="">
-                                {wh.pricePerMonth ? wh.pricePerMonth.toLocaleString() : 0}
-                              </span>{' '}
-                              <span className="text-xs font-normal text-slate-400">d</span>
+                              <span>{formatWarehousePricePerSquareMeter(wh)}</span>{' '}
+                              {wh.rentalPricingType !== 'NEGOTIATED' && (
+                                <span className="text-xs font-normal text-slate-400">/m²</span>
+                              )}
+                              <span className="mt-1 block text-[11px] font-medium text-slate-400">
+                                {wh.rentalPricingType === 'NEGOTIATED' ? 'negotiated' : 'price per square meter'}
+                              </span>
                             </td>
 
                             {/* Cột 5: Trạng thái */}
@@ -411,6 +421,11 @@ const WarehouseManagement = () => {
                                       Lý do: {wh.reason || wh.rejectionReason || wh.rejectReason}
                                     </div>
                                   )}
+                                {wh.publicationStatus && (
+                                  <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
+                                    Listing: {wh.publicationStatus}
+                                  </span>
+                                )}
                               </div>
                             </td>
 
@@ -429,7 +444,7 @@ const WarehouseManagement = () => {
                                   )}
                                   {inspectionBadge.text}
                                 </span>
-                                {!wh.verified && (
+                                {!(wh.isVerified ?? wh.verified) && (
                                   <div className="flex flex-col items-center gap-1">
                                     <button
                                       onClick={() => setInspectionConfirm(wh)}
@@ -467,6 +482,20 @@ const WarehouseManagement = () => {
                                     icon: Eye,
                                     onClick: () => setSelectedWarehouse(wh),
                                   },
+                                  {
+                                    label: 'Edit warehouse',
+                                    icon: Edit3,
+                                    onClick: () => setEditingWarehouse(wh),
+                                  },
+                                  ...(wh.status === 'AVAILABLE' && (wh.canPublish || wh.canRenew)
+                                    ? [
+                                        {
+                                          label: wh.canRenew ? 'Renew listing' : 'Publish listing',
+                                          icon: Megaphone,
+                                          onClick: () => setPublicationWarehouse(wh),
+                                        },
+                                      ]
+                                    : []),
                                 ]}
                               />
                             </td>
@@ -605,12 +634,15 @@ const WarehouseManagement = () => {
 
             <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase">Rental price / month</p>
+                <p className="text-xs font-bold text-slate-500 uppercase">Public rental price / m²</p>
                 <p className="mt-1 text-lg font-bold text-slate-900">
-                  {selectedWarehouse.pricePerMonth
-                    ? Number(selectedWarehouse.pricePerMonth).toLocaleString('vi-VN')
-                    : 0}{' '}
-                  ₫
+                  {formatWarehousePricePerSquareMeter(selectedWarehouse)}
+                  {selectedWarehouse.rentalPricingType !== 'NEGOTIATED' && ' /m²'}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {selectedWarehouse.rentalPricingType === 'NEGOTIATED'
+                    ? 'Agreed directly with tenant'
+                    : 'Price calculated per square meter'}
                 </p>
               </div>
               <div>
@@ -634,6 +666,22 @@ const WarehouseManagement = () => {
           </div>
         )}
       </Modal>
+
+      {publicationWarehouse && (
+        <ListingPublicationModal
+          warehouse={publicationWarehouse}
+          onClose={() => setPublicationWarehouse(null)}
+          onSuccess={() => setRefreshTrigger((current) => current + 1)}
+        />
+      )}
+
+      {editingWarehouse && (
+        <EditWarehouseModal
+          warehouse={editingWarehouse}
+          onClose={() => setEditingWarehouse(null)}
+          onSaved={() => setRefreshTrigger((current) => current + 1)}
+        />
+      )}
     </div>
   )
 }

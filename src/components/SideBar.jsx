@@ -31,6 +31,7 @@ const SIDEBAR_MENUS = {
     { text: 'System Wallet', icon: HiOutlineCurrencyDollar, path: '/admin/wallet' },
     { text: 'Users', icon: HiOutlineUsers, path: '/admin/users' },
     { text: 'Warehouses Approval', icon: HiOutlineHomeModern, path: '/admin/listings' },
+    { text: 'Listing Packages', icon: HiOutlineTag, path: '/admin/listing-packages' },
     // { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },
     // { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },
     { text: 'Transactions', icon: HiOutlineExclamationCircle, path: '/admin/transactions' },

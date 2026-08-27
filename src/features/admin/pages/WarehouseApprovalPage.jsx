@@ -35,20 +35,13 @@ import TableActionMenu from '@/components/TableActionMenu'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import { required } from '@/config/validation'
+import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
 
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
 const numberOf = (value, fallback = 0) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
 }
-const formatCurrency = (value) =>
-  value == null
-    ? '—'
-    : new Intl.NumberFormat('vi-VN', {
-        style: 'currency',
-        currency: 'VND',
-        maximumFractionDigits: 0,
-      }).format(Number(value))
 const formatDate = (value) =>
   value
     ? new Intl.DateTimeFormat('en-US', {
@@ -246,10 +239,11 @@ const WarehouseApprovalPage = () => {
       ),
     },
     {
-      header: 'Price / Month',
+      header: 'Price / m²',
       render: (row) => (
         <span className="text-primary font-bold">
-          {formatCurrency(row.pricePerMonth ?? row.price)}
+          {formatWarehousePricePerSquareMeter(row)}
+          {row.rentalPricingType !== 'NEGOTIATED' && ' /m²'}
         </span>
       ),
     },
@@ -481,8 +475,9 @@ const WarehouseApprovalPage = () => {
                       ? `${warehouseDetail.area} m²`
                       : '—'}
                 </DetailItem>
-                <DetailItem icon={Package2} label="Monthly price">
-                  {formatCurrency(warehouseDetail?.pricePerMonth ?? warehouseDetail?.price)}
+                <DetailItem icon={Package2} label="Price / m²">
+                  {formatWarehousePricePerSquareMeter(warehouseDetail)}
+                  {warehouseDetail?.rentalPricingType !== 'NEGOTIATED' && ' /m²'}
                 </DetailItem>
                 <DetailItem icon={ShieldCheck} label="Owner">
                   {warehouseDetail?.ownerName || warehouseDetail?.owner}

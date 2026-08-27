@@ -70,6 +70,7 @@ import StaffDashboard from './features/staff/pages/StaffDashboard'
 import StaffTasksPage from './features/staff/pages/StaffTasksPage'
 import StaffCareerHistoryPage from './features/staff/pages/StaffCareerHistoryPage'
 import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages_SubcriptionsManagementPage'
+import ListingPackagesPage from './features/admin/pages/ListingPackagesPage'
 
 // Inspector Pages
 import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
@@ -178,6 +179,7 @@ const App = () => {
         <Route path="admin/warehouse-types" element={<WarehousesTypePage />} />
         <Route path="admin/system-config" element={<SystemConfigueManagementPage />} />
         <Route path="admin/package-subcription" element={<Packages_SubcriptionsManagementPage />} />
+        <Route path="/admin/listing-packages" element={<ListingPackagesPage />} />
         <Route path="/admin/wms-audits" element={<AdminAuditsPage />} />
         <Route path="/admin/wms-inventory" element={<AdminInventoryPage />} />
         <Route path="/admin/wallet" element={<WalletAdmin />} />

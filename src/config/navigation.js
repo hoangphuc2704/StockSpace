@@ -9,7 +9,6 @@ import {
   BarChart,
   Settings,
   HelpCircle,
-  ShieldCheck,
   CreditCard,
   Bell,
   FileText,
@@ -19,6 +18,7 @@ export const NAVIGATION_CONFIG = {
   ADMIN: [
     { id: 'dash', label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
     { id: 'warehouses', label: 'Warehouse Listings', icon: Warehouse, path: '/admin/listings' },
+    { id: 'listing-packages', label: 'Listing Packages', icon: Package, path: '/admin/listing-packages' },
     {
       id: 'finance',
       label: 'Financials',
@@ -60,7 +60,7 @@ export const NAVIGATION_CONFIG = {
   OWNER: [
     // { id: 'marketplace', label: 'Marketplace', icon: Warehouse, path: '/warehouses' },
     { id: 'dash', label: 'Dashboard', icon: LayoutDashboard, path: '/owner/dashboard' },
-    { id: 'my-warehouses', label: 'My Warehouses', icon: Warehouse, path: '/owner/warehouses' },
+    { id: 'my-warehouses', label: 'My Warehouses', icon: Warehouse, path: '/owner/listwarehouse' },
     { id: 'requests', label: 'Rental Requests', icon: FileText, path: '/owner/requests' },
     { id: 'finance', label: 'Revenue', icon: DollarSign, path: '/owner/revenue' },
   ],

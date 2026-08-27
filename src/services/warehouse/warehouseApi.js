@@ -1,9 +1,9 @@
 import api from '../apiConfig'
 
 const onwerwarehouseApi = {
-  getPublicWarehouses: ({ page, size, keyword, status, isVerified, sortBy, sortDir, minPrice, maxPrice, minCapacity } = {}) => {
+  getPublicWarehouses: ({ page, size, keyword, sortBy, sortDir, minRentalPrice, maxRentalPrice, minCapacity } = {}) => {
     return api.get('/warehouses', {
-      params: { page, size, keyword, status, isVerified, sortBy, sortDir, minPrice, maxPrice, minCapacity },
+      params: { page, size, keyword, sortBy, sortDir, minRentalPrice, maxRentalPrice, minCapacity },
     })
   },
 
@@ -14,6 +14,10 @@ const onwerwarehouseApi = {
 
   getPublicWarehouseById: (warehouseId) => {
     return api.get(`/warehouses/${warehouseId}`)
+  },
+
+  getOwnerContact: (warehouseId) => {
+    return api.get(`/warehouses/${warehouseId}/owner-contact`)
   },
 
   getPublicWarehouseLayout: (warehouseId, config = {}) => {
@@ -40,7 +44,7 @@ const onwerwarehouseApi = {
 
   //cập nhật thông tin kho
   updateWarehouseInfo: (warehouseId, data) => {
-    return api.put(`/owner/warehouses/${warehouseId}/layout`, data)
+    return api.put(`/owner/warehouses/${warehouseId}`, data)
   },
 
   //xóa kho
@@ -78,7 +82,7 @@ const onwerwarehouseApi = {
 
   //cập nhật trạng thái kho (active/inactive)
   updateWarehouseStatus: (warehouseId, status) => {
-    return api.put(`/owner/warehouses/${warehouseId}/status`, { status })
+    return api.patch(`/owner/warehouses/${warehouseId}/status`, null, { params: { status } })
   },
 
   // //yêu cầu kiểm định kho

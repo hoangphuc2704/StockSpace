@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import { FormShell } from '@/form/FormControls'
-import useEscapeKey from '@/hooks/useEscapeKey'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import {
@@ -14,27 +13,24 @@ import {
   ArrowLeft,
   Save,
   Image as ImageIcon,
-  Wallet,
-  PlusCircle,
   Loader2,
-  AlertTriangle,
   Building2,
   CheckCircle2,
   RefreshCw,
+  CalendarDays,
+  CreditCard,
 } from 'lucide-react'
 import Button from '../../../components/atoms/Button'
 import TranslatableText from '../../../components/TranslatableText'
 import ownerApi from '../../../services/warehouse/warehouseApi'
-import walletApi from '../../../services/wallet/walletApi'
+import listingApi from '../../../services/listingApi'
 import addressApi from '../../../services/addressApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
-import { positiveNumber } from '@/config/validation'
 
-// Phí tạo bài đăng (VND) - chỉnh lại theo quy định thực tế của hệ thống
-const POSTING_FEE = 50000
 const layoutDimensionsKey = (warehouseId) => `stockspace:warehouse-layout-dimensions:${warehouseId}`
 const pendingOwnerLayoutKey = 'stockspace:pending-owner-layout'
+const pendingOwnerListingKey = 'stockspace:pending-owner-listing'
 
 const CreateWarehouse = () => {
   const navigate = useNavigate()
@@ -46,17 +42,10 @@ const CreateWarehouse = () => {
   const [wardsError, setWardsError] = useState('')
   const [selectedWardCode, setSelectedWardCode] = useState('')
   const [addressDetail, setAddressDetail] = useState('')
-
-  // --- State ví ---
-  const [wallet, setWallet] = useState(null)
-  const [walletLoading, setWalletLoading] = useState(true)
-
-  // --- State modal nạp tiền ---
-  const [showDepositModal, setShowDepositModal] = useState(false)
-
-  useEscapeKey(showDepositModal, () => setShowDepositModal(false))
-  const [depositAmount, setDepositAmount] = useState('')
-  const [depositLoading, setDepositLoading] = useState(false)
+  const [listingPackages, setListingPackages] = useState([])
+  const [listingPackagesLoading, setListingPackagesLoading] = useState(true)
+  const [listingPackagesError, setListingPackagesError] = useState('')
+  const [selectedListingPackageId, setSelectedListingPackageId] = useState('')
 
   // Form text
   const [formData, setFormData] = useState({
@@ -66,7 +55,8 @@ const CreateWarehouse = () => {
     warehouseWidth: '',
     warehouseLength: '',
     warehouseHeight: '',
-    pricePerMonth: '',
+    rentalPricingType: 'PER_SQUARE_METER_MONTHLY',
+    rentalPrice: '',
   })
 
   // Ảnh bìa (bắt buộc)
@@ -95,6 +85,33 @@ const CreateWarehouse = () => {
       }
     }
     fetchWarehouseTypes()
+  }, [])
+
+  useEffect(() => {
+    let isActive = true
+
+    listingApi
+      .getPublicPackages()
+      .then((response) => {
+        const payload = response?.data?.data || response?.data
+        const activePackages = Array.isArray(payload)
+          ? payload.filter((item) => item.active ?? item.isActive)
+          : []
+        if (isActive) {
+          setListingPackages(activePackages)
+          setSelectedListingPackageId(activePackages[0]?.id || '')
+        }
+      })
+      .catch((error) => {
+        if (isActive) setListingPackagesError(error.response?.data?.message || 'Could not load listing packages.')
+      })
+      .finally(() => {
+        if (isActive) setListingPackagesLoading(false)
+      })
+
+    return () => {
+      isActive = false
+    }
   }, [])
 
   const fetchHoChiMinhCityWards = async () => {
@@ -136,33 +153,6 @@ const CreateWarehouse = () => {
     }
   }, [])
 
-  // --- Lấy thông tin ví ---
-  useEffect(() => {
-    const fetchWallet = async () => {
-      try {
-        setWalletLoading(true)
-        const res = await walletApi.getWallet()
-        if (res?.data?.success) {
-          setWallet(res.data.data)
-        } else {
-          setWallet(res?.data || res)
-        }
-      } catch (error) {
-        console.error('Error retrieving wallet data:', error)
-      } finally {
-        setWalletLoading(false)
-      }
-    }
-    fetchWallet()
-  }, [])
-
-  const formatVND = (value) => {
-    if (value === undefined || value === null) return '0 ₫'
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
-  }
-
-  const walletBalance = wallet?.balance ?? 0
-  const hasEnoughBalance = walletBalance >= POSTING_FEE
   const selectedWard = useMemo(
     () => wards.find((ward) => ward.code === selectedWardCode),
     [selectedWardCode, wards]
@@ -171,6 +161,10 @@ const CreateWarehouse = () => {
     () => warehouseTypes.find((type) => String(type.id) === String(formData.typeId)),
     [formData.typeId, warehouseTypes]
   )
+  const selectedListingPackage = useMemo(
+    () => listingPackages.find((item) => String(item.id) === String(selectedListingPackageId)),
+    [listingPackages, selectedListingPackageId]
+  )
   const fullAddress = useMemo(() => {
     const detail = addressDetail.trim()
     return detail && selectedWard ? `${detail}, ${selectedWard.name}, Thành phố Hồ Chí Minh` : ''
@@ -178,7 +172,7 @@ const CreateWarehouse = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target
     const processedValue =
-      name === 'pricePerMonth' ||
+      name === 'rentalPrice' ||
       name === 'warehouseWidth' ||
       name === 'warehouseLength' ||
       name === 'warehouseHeight'
@@ -228,21 +222,14 @@ const CreateWarehouse = () => {
     Number(formData.warehouseWidth) >= 20 &&
     Number(formData.warehouseLength) >= 20 &&
     Number(formData.warehouseHeight) >= 4 &&
-    Number(formData.pricePerMonth) > 0 &&
-    coverFile !== null
+    (formData.rentalPricingType === 'NEGOTIATED' || Number(formData.rentalPrice) > 0) &&
+    coverFile !== null &&
+    Boolean(selectedListingPackageId) &&
+    !listingPackagesLoading
 
-  // --- Submit: kiểm tra ví trước ---
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!isFormValid || isLoading) return
-
-    // Kiểm tra số dư ví
-    if (!hasEnoughBalance) {
-      setDepositAmount('')
-      setShowDepositModal(true)
-      return
-    }
-
     await doCreateWarehouse()
   }
 
@@ -253,7 +240,7 @@ const CreateWarehouse = () => {
       const warehouseWidth = Number(formData.warehouseWidth)
       const warehouseLength = Number(formData.warehouseLength)
       const warehouseHeight = Number(formData.warehouseHeight)
-      const pricePerMonth = Number(formData.pricePerMonth)
+      const rentalPrice = formData.rentalPricingType === 'NEGOTIATED' ? null : Number(formData.rentalPrice)
 
       const warehouseInfo = {
         typeId: formData.typeId,
@@ -261,7 +248,8 @@ const CreateWarehouse = () => {
         address: fullAddress,
         description: formData.description.trim(),
         capacity: warehouseWidth * warehouseLength,
-        pricePerMonth,
+        rentalPrice,
+        rentalPricingType: formData.rentalPricingType,
         imageUrls: [],
       }
 
@@ -297,9 +285,8 @@ const CreateWarehouse = () => {
           }
         }
 
-        toast.success('Warehouse posted.')
         if (!createdWarehouseId) {
-        toast.error('Warehouse created without an ID.')
+          toast.error('Warehouse created without an ID.')
           return
         }
 
@@ -314,10 +301,20 @@ const CreateWarehouse = () => {
               height: warehouseHeight,
             })
           )
+          sessionStorage.setItem(
+            pendingOwnerListingKey,
+            JSON.stringify({
+              warehouseId: createdWarehouseId,
+              listingPackageId: selectedListingPackageId,
+            })
+          )
         } catch {
-          // Query parameters still keep the layout setup flow targeted to this warehouse.
+          // The selected package remains visible in the post form; owner can select it again after approval.
         }
 
+        toast.success(
+          `Warehouse submitted for Admin approval. ${selectedListingPackage?.name || 'Listing package'} is ready to pay after approval.`
+        )
         navigate(
           `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${warehouseWidth}&length=${warehouseLength}&height=${warehouseHeight}&setupRequired=true`
         )
@@ -329,32 +326,6 @@ const CreateWarehouse = () => {
       showApiErrorToast(error, 'Connection error.')
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  // --- Xử lý nạp tiền VNPay ---
-  const handleDepositSubmit = async (e) => {
-    e.preventDefault()
-    const amountNumber = Number(depositAmount)
-    const amountError = positiveNumber(amountNumber, 'Enter a valid amount.')
-    if (amountError) {
-      toast.error(amountError)
-      return
-    }
-    try {
-      setDepositLoading(true)
-      const payload = { amount: amountNumber, paymentMethod: 'VNPAY' }
-      const res = await walletApi.requestDeposit(payload)
-      if (res?.data?.success && res?.data?.data?.paymentUrl) {
-        window.location.href = res.data.data.paymentUrl
-      } else {
-        showApiErrorToast({ response: { data: res?.data } }, 'Payment link unavailable.')
-      }
-    } catch (error) {
-      console.error('Deposit error:', error)
-      showApiErrorToast(error, 'Deposit failed. Try again.')
-    } finally {
-      setDepositLoading(false)
     }
   }
 
@@ -387,70 +358,6 @@ const CreateWarehouse = () => {
             <p className="text-sm text-slate-500">
               Fill in all information to unlock the post button.
             </p>
-          </div>
-
-          {/* THÔNG TIN SỐ DƯ VÍ */}
-          <div
-            className={`flex items-center justify-between rounded-2xl border p-4 ${
-              walletLoading
-                ? 'border-slate-200 bg-white'
-                : hasEnoughBalance
-                  ? 'border-emerald-200 bg-emerald-50'
-                  : 'border-amber-200 bg-amber-50'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                  walletLoading
-                    ? 'bg-slate-100'
-                    : hasEnoughBalance
-                      ? 'bg-emerald-100'
-                      : 'bg-amber-100'
-                }`}
-              >
-                {walletLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                ) : hasEnoughBalance ? (
-                  <Wallet className="h-5 w-5 text-emerald-600" />
-                ) : (
-                  <AlertTriangle className="h-5 w-5 text-amber-600" />
-                )}
-              </div>
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase">
-                  Your wallet balance
-                </p>
-                <p
-                  className={`text-lg font-bold ${
-                    walletLoading
-                      ? 'text-slate-400'
-                      : hasEnoughBalance
-                        ? 'text-emerald-700'
-                        : 'text-amber-700'
-                  }`}
-                >
-                  {walletLoading ? 'Loading...' : formatVND(walletBalance)}
-                </p>
-                {!walletLoading && !hasEnoughBalance && (
-                  <p className="text-xs text-amber-600">
-                    Your wallet has no funds yet — please top up before posting.
-                  </p>
-                )}
-              </div>
-            </div>
-            {!walletLoading && !hasEnoughBalance && (
-              <button
-                type="button"
-                onClick={() => {
-                  setDepositAmount('')
-                  setShowDepositModal(true)
-                }}
-                className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-amber-600"
-              >
-                <PlusCircle className="h-4 w-4" /> Deposit now
-              </button>
-            )}
           </div>
 
           <FormShell onSubmit={handleSubmit} className="space-y-6">
@@ -674,33 +581,47 @@ const CreateWarehouse = () => {
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-slate-700">
-                        Monthly rental price *
+                        Rental pricing model *
                       </label>
-                      <div className="relative">
-                        <DollarSign className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <input
-                          type="number"
-                          name="pricePerMonth"
-                          value={formData.pricePerMonth}
-                          onChange={handleInputChange}
-                          step="1"
-                          placeholder="30000000"
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-14 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
-                          min="1"
-                          required
-                        />
-                        <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
-                          VND
-                        </span>
-                      </div>
-                      <p className="text-xs leading-5 text-slate-500">
-                        Base rent charged each month, excluding deposits or platform fees.
-                        {Number(formData.pricePerMonth) > 0 && (
-                          <span className="ml-1 font-semibold text-emerald-600">
-                            Preview: {formatVND(Number(formData.pricePerMonth))}
+                      <select
+                        name="rentalPricingType"
+                        value={formData.rentalPricingType}
+                        onChange={handleInputChange}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                        required
+                      >
+                        <option value="FIXED_MONTHLY">Fixed total monthly price</option>
+                        <option value="PER_SQUARE_METER_MONTHLY">Price per m²</option>
+                        <option value="NEGOTIATED">Negotiated with tenant</option>
+                      </select>
+                      {formData.rentalPricingType === 'NEGOTIATED' ? (
+                        <p className="text-xs leading-5 text-slate-500">
+                          The final rental price will be agreed directly with the tenant.
+                        </p>
+                      ) : (
+                        <div className="relative">
+                          <DollarSign className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                          <input
+                            type="number"
+                            name="rentalPrice"
+                            value={formData.rentalPrice}
+                            onChange={handleInputChange}
+                            step="0.01"
+                            placeholder="30000000"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-3 pr-14 pl-10 text-sm transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
+                            min="0.01"
+                            required
+                          />
+                          <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
+                            VND
                           </span>
-                        )}
-                      </p>
+                        </div>
+                      )}
+                      {formData.rentalPricingType !== 'NEGOTIATED' && (
+                        <p className="text-xs leading-5 text-slate-500">
+                          This is a public listing price. The final contract rent can be negotiated directly.
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -873,31 +794,99 @@ const CreateWarehouse = () => {
               </div>
             </div>
 
+            <section className="rounded-2xl border border-blue-200 bg-white p-6 shadow-sm lg:col-span-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="flex items-center gap-2 text-sm font-bold tracking-wider text-slate-400 uppercase">
+                    <CreditCard className="h-4 w-4 text-blue-600" /> 4. Choose listing days and fee *
+                  </h3>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                    Choose the number of days and the listing package before submitting this post.
+                    Your selected package is saved with the complete post, then Admin reviews it.
+                  </p>
+                </div>
+                {selectedListingPackage && (
+                  <div className="rounded-xl bg-emerald-50 px-4 py-3 text-right">
+                    <p className="text-[10px] font-bold tracking-widest text-emerald-700 uppercase">Selected fee</p>
+                    <p className="mt-1 text-lg font-black text-emerald-800">
+                      {Number(selectedListingPackage.price).toLocaleString('vi-VN')} ₫
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {listingPackagesLoading ? (
+                <div className="mt-5 flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> Loading visibility packages...
+                </div>
+              ) : listingPackagesError ? (
+                <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {listingPackagesError}
+                </div>
+              ) : listingPackages.length === 0 ? (
+                <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  No active listing package is available. Please contact Admin before posting.
+                </div>
+              ) : (
+                <div className="mt-5 grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(240px,0.8fr)] md:items-end">
+                  <div>
+                    <label htmlFor="listing-duration" className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-800">
+                      <CalendarDays className="h-4 w-4 text-blue-600" />
+                      Number of days to publish <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      id="listing-duration"
+                      value={selectedListingPackageId}
+                      onChange={(event) => setSelectedListingPackageId(event.target.value)}
+                      disabled={listingPackagesLoading || listingPackages.length === 0}
+                      required
+                      className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      <option value="">Select the number of days</option>
+                      {listingPackages.map((listingPackage) => (
+                        <option key={listingPackage.id} value={listingPackage.id}>
+                          {listingPackage.durationDays} days — {Number(listingPackage.price).toLocaleString('vi-VN')} ₫
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-2 text-xs text-slate-500">
+                      Select a duration from the active packages configured by Admin.
+                    </p>
+                  </div>
+
+                  {selectedListingPackage && (
+                    <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-slate-600">Selected duration</span>
+                        <span className="text-base font-black text-blue-800">{selectedListingPackage.durationDays} days</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-3 border-t border-blue-100 pt-2">
+                        <span className="text-sm font-semibold text-slate-600">Listing fee</span>
+                        <span className="text-lg font-black text-slate-900">
+                          {Number(selectedListingPackage.price).toLocaleString('vi-VN')} ₫
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+
             {/* SUBMIT BUTTON */}
             <div className="flex justify-center pt-4">
               <Button
                 type="submit"
                 size="sm"
-                disabled={!isFormValid || isLoading || walletLoading}
-                className={`w-100 justify-center rounded-xl py-4 text-base font-semibold transition-all ${
-                  !isFormValid || isLoading || walletLoading
-                    ? 'cursor-not-allowed bg-slate-300 text-slate-500 opacity-40'
-                    : !hasEnoughBalance
-                      ? 'bg-amber-500 text-white hover:bg-amber-600'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
+                disabled={!isFormValid || isLoading}
+                className="w-100 justify-center rounded-xl bg-blue-600 py-4 text-base font-semibold text-white transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:opacity-40"
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing submitting...
                   </>
-                ) : !hasEnoughBalance && !walletLoading ? (
-                  <>
-                    <AlertTriangle className="mr-2 h-5 w-5" /> Top Up to Post
-                  </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-5 w-5" /> Submit
+                    <Save className="mr-2 h-5 w-5" /> Submit post for Admin approval
                   </>
                 )}
               </Button>
@@ -906,86 +895,6 @@ const CreateWarehouse = () => {
         </main>
       </div>
 
-      {/* MODAL NẠP TIỀN */}
-      {showDepositModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-            <div className="mb-1 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <Wallet className="h-5 w-5 text-blue-600" /> Top up your wallet
-              </h3>
-              <button
-                onClick={() => setShowDepositModal(false)}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {/* Cảnh báo số dư không đủ */}
-            <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800">Wallet balance is not enough</p>
-                <p className="text-xs text-amber-700">
-                  Current balance: <span className="font-bold">{formatVND(walletBalance)}</span>.
-                  Fun Please deposit more money to continue posting inventory.
-                </p>
-              </div>
-            </div>
-
-            <FormShell onSubmit={handleDepositSubmit} className="space-y-4">
-              <div>
-                <label className="mb-2 block text-xs font-bold text-slate-500 uppercase">
-                  Enter the amount to deposit (VND)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    autoFocus
-                    required
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                    placeholder="For example: 2000000"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
-                  />
-                  <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    ₫
-                  </span>
-                </div>
-                {depositAmount && !isNaN(Number(depositAmount)) && (
-                  <p className="mt-2 text-xs font-medium text-emerald-600">
-                    Preview: {formatVND(Number(depositAmount))}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDepositModal(false)}
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={depositLoading || !depositAmount}
-                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-blue-700 disabled:bg-slate-300"
-                >
-                  {depositLoading ? (
-                    <>
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Connecting...
-                    </>
-                  ) : (
-                    <>Payment via VNPay</>
-                  )}
-                </button>
-              </div>
-            </FormShell>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

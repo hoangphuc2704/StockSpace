@@ -79,6 +79,17 @@ export default function WarehouseLayoutShowcase({
                 <span className="inline-flex items-center rounded-lg bg-emerald-50 px-3 py-2 text-emerald-700">
                   <Box className="mr-1.5 h-3.5 w-3.5" />{binCount} Bin
                 </span>
+                <span className="ml-auto inline-flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-slate-500 shadow-sm">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500" /> Rack
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-fuchsia-500" /> Bin
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="h-2.5 w-2.5 rounded-full bg-blue-400" /> Floor
+                  </span>
+                </span>
               </div>
 
               <div className="relative h-[400px] overflow-hidden rounded-2xl border border-slate-200 bg-sky-50 sm:h-[560px]">

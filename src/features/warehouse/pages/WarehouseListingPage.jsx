@@ -33,7 +33,11 @@ const normalizeWarehouse = (warehouse) => ({
   name: warehouse.name || 'Warehouse',
   location: warehouse.address || warehouse.location || 'Updating address',
   area: Number(warehouse.area ?? warehouse.capacity ?? 0),
-  price: Number(warehouse.pricePerMonth ?? warehouse.price ?? 0),
+  rentalPrice:
+    warehouse.rentalPrice == null && warehouse.price == null && warehouse.pricePerMonth == null
+      ? null
+      : Number(warehouse.rentalPrice ?? warehouse.price ?? warehouse.pricePerMonth),
+  rentalPricingType: warehouse.rentalPricingType || 'PER_SQUARE_METER_MONTHLY',
   status: warehouse.status || 'UNKNOWN',
   rating: Number(warehouse.rating ?? 4.8),
   type: warehouse.warehouseType?.name || warehouse.typeName || warehouse.type || 'General',
@@ -49,8 +53,8 @@ const WarehouseListingPage = () => {
   const [warehouses, setWarehouses] = useState([])
   const [error, setError] = useState('')
   const [apiFilters, setApiFilters] = useState({
-    minPrice: '',
-    maxPrice: '',
+    minRentalPrice: '',
+    maxRentalPrice: '',
     minCapacity: '',
   })
 
@@ -63,14 +67,13 @@ const WarehouseListingPage = () => {
         const params = {
           page: 0,
           size: 24,
-          status: 'AVAILABLE',
           sortBy: 'createdAt',
           sortDir: 'desc',
           keyword: searchTerm.trim() || undefined,
         }
 
-        if (apiFilters.minPrice) params.minPrice = apiFilters.minPrice
-        if (apiFilters.maxPrice) params.maxPrice = apiFilters.maxPrice
+        if (apiFilters.minRentalPrice) params.minRentalPrice = apiFilters.minRentalPrice
+        if (apiFilters.maxRentalPrice) params.maxRentalPrice = apiFilters.maxRentalPrice
         if (apiFilters.minCapacity) params.minCapacity = apiFilters.minCapacity
 
         const response = await warehouseApi.getPublicWarehouses(params)
@@ -159,7 +162,7 @@ const WarehouseListingPage = () => {
                   <button
                     onClick={() => {
                       setSearchTerm('')
-                      setApiFilters({ minPrice: '', maxPrice: '', minCapacity: '' })
+                      setApiFilters({ minRentalPrice: '', maxRentalPrice: '', minCapacity: '' })
                     }}
                     className="text-primary text-xs font-bold hover:underline"
                   >
@@ -231,7 +234,7 @@ const WarehouseListingPage = () => {
                     className="mt-6"
                     onClick={() => {
                       setSearchTerm('')
-                      setApiFilters({ minPrice: '', maxPrice: '', minCapacity: '' })
+                      setApiFilters({ minRentalPrice: '', maxRentalPrice: '', minCapacity: '' })
                     }}
                   >
                     Reset All Filters

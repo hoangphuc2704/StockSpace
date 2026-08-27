@@ -1,22 +1,16 @@
-import { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import Button from '@/components/atoms/Button'
 import warehouseApi from '@/services/warehouse/warehouseApi'
-import systemConfigApi from '@/services/systemConfigApi'
-import tenantApi from '@/services/tenant/tenantApi'
-import walletApi from '@/services/wallet/walletApi'
-import { useSelector, useDispatch } from 'react-redux'
-import { addBookedWarehouse } from '@/store/tenantBookingSlice'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import PublicFooter from '@/components/PublicFooter'
 
-// Sub-components
 import WarehouseHeader from '../components/WarehouseHeader'
 import WarehouseGallery from '../components/WarehouseGallery'
 import WarehouseInfo from '../components/WarehouseInfo'
-import WarehouseBookingCard from '../components/WarehouseBookingCard'
-import ConfirmDepositModal from '../components/ConfirmDepositModal'
+import WarehouseContactCard from '../components/WarehouseContactCard'
 import WarehouseLayoutShowcase from '../components/WarehouseLayoutShowcase'
 
 const normalizeWarehouse = (warehouse) => ({
@@ -25,10 +19,15 @@ const normalizeWarehouse = (warehouse) => ({
   location: warehouse.address || warehouse.location || 'Updating address',
   area: Number(warehouse.area ?? warehouse.capacity ?? 0),
   width: Number(warehouse.width ?? warehouse.warehouseWidth ?? 0),
-  length: Number(warehouse.length ?? warehouse.warehouseLength ?? warehouse.height ?? 0),
+  length: Number(warehouse.length ?? warehouse.warehouseLength ?? 0),
   height: Number(warehouse.height ?? warehouse.warehouseHeight ?? 0),
-  price: Number(warehouse.pricePerMonth ?? warehouse.price ?? 0),
+  rentalPrice:
+    warehouse.rentalPrice == null && warehouse.price == null && warehouse.pricePerMonth == null
+      ? null
+      : Number(warehouse.rentalPrice ?? warehouse.price ?? warehouse.pricePerMonth),
+  rentalPricingType: warehouse.rentalPricingType || 'PER_SQUARE_METER_MONTHLY',
   status: warehouse.status || 'UNKNOWN',
+  publicationStatus: warehouse.publicationStatus || 'PUBLISHED',
   rating: Number(warehouse.rating ?? 4.8),
   type: warehouse.warehouseType?.name || warehouse.typeName || warehouse.type || 'General',
   thumbnail: warehouse.coverImageUrl || warehouse.thumbnail || warehouse.imageUrls?.[0] || '',
@@ -36,7 +35,6 @@ const normalizeWarehouse = (warehouse) => ({
   isVerified: warehouse.isVerified ?? warehouse.verified ?? false,
   imageUrls: warehouse.imageUrls || [],
   ownerName: warehouse.ownerName || 'Warehouse Owner',
-  ownerPhone: warehouse.ownerPhone || '',
 })
 
 const createClientKey = (prefix) =>
@@ -88,34 +86,25 @@ const normalizePublicLayout = (payload = {}) => ({
     : [],
 })
 
-const buildGallery = (warehouse) => {
-  return [
-    ...new Set(
-      [warehouse.thumbnail, ...(Array.isArray(warehouse.imageUrls) ? warehouse.imageUrls : [])]
-        .filter((image) => typeof image === 'string' && image.trim())
-        .map((image) => image.trim())
-    ),
-  ]
-}
+const buildGallery = (warehouse) => [
+  ...new Set(
+    [warehouse.thumbnail, ...(Array.isArray(warehouse.imageUrls) ? warehouse.imageUrls : [])]
+      .filter((image) => typeof image === 'string' && image.trim())
+      .map((image) => image.trim())
+  ),
+]
 
 const WarehouseDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const dispatch = useDispatch()
-  const bookedWarehouseIds = useSelector((state) => state.tenantBooking.bookedWarehouseIds)
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
-  const hasBooked = bookedWarehouseIds.includes(id)
 
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [warehouse, setWarehouse] = useState(null)
+  const [ownerContact, setOwnerContact] = useState(null)
+  const [isContactLoading, setIsContactLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [depositPercentage, setDepositPercentage] = useState(10)
-  const [durationMonths, setDurationMonths] = useState(3)
-  const [isBooking, setIsBooking] = useState(false)
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [walletBalance, setWalletBalance] = useState(0)
-  const [isCheckingWallet, setIsCheckingWallet] = useState(false)
   const [layout, setLayout] = useState(null)
   const [isLayoutLoading, setIsLayoutLoading] = useState(true)
   const [layoutUnavailable, setLayoutUnavailable] = useState(false)
@@ -125,7 +114,6 @@ const WarehouseDetailPage = () => {
       try {
         setIsLoading(true)
         setError('')
-
         const response = await warehouseApi.getPublicWarehouseById(id)
         const payload = response?.data?.data || response?.data
         const normalized = normalizeWarehouse(payload || {})
@@ -162,12 +150,6 @@ const WarehouseDetailPage = () => {
 
     fetchWarehouse()
     fetchLayout()
-
-    const fetchConfig = async () => {
-      const percentage = await systemConfigApi.getDepositPercentage()
-      setDepositPercentage(percentage)
-    }
-    fetchConfig()
   }, [id])
 
   const gallery = useMemo(() => buildGallery(warehouse || {}), [warehouse])
@@ -176,19 +158,17 @@ const WarehouseDetailPage = () => {
     if (!warehouse) return null
 
     return {
-      deposit: (warehouse.price * depositPercentage) / 100,
       images: gallery,
       features: [
         `${warehouse.type} storage`,
         'Admin-approved listing',
         'Flexible warehouse operations',
-        '24/7 monitoring support',
         'Loading and inbound handling',
         'Business-ready storage space',
       ],
       owner: {
-        name: warehouse.ownerName,
-        phone: warehouse.ownerPhone,
+        name: ownerContact?.ownerName || warehouse.ownerName,
+        phone: ownerContact?.phone || '',
         company: 'StockSpace Partner',
         rating: warehouse.rating,
         since: '2024',
@@ -196,42 +176,27 @@ const WarehouseDetailPage = () => {
       },
       reviews: Math.max(12, Math.round(warehouse.rating * 20)),
     }
-  }, [gallery, warehouse, depositPercentage])
+  }, [gallery, ownerContact, warehouse])
 
-  const handleDepositClick = async () => {
+  const handleContactOwner = async () => {
     if (!isAuthenticated) {
-      toast.error('Please log in to book.')
+      toast.error('Please log in to contact the owner.')
       navigate('/login')
       return
     }
 
-    setIsCheckingWallet(true)
-    try {
-      const res = await walletApi.getWallet()
-      const balance = res?.data?.data?.balance ?? res?.data?.balance ?? 0
-      setWalletBalance(balance)
-      setShowConfirmModal(true)
-    } catch (error) {
-      showApiErrorToast(error, 'Could not check wallet.')
-    } finally {
-      setIsCheckingWallet(false)
-    }
-  }
+    if (ownerContact?.phone) return
 
-  const handleConfirmDeposit = async () => {
     try {
-      setIsBooking(true)
-      await tenantApi.createBooking({
-        warehouseId: warehouse.id,
-        depositAmount: extendedData.deposit,
-      })
-      dispatch(addBookedWarehouse(warehouse.id))
-      toast.success('Booking sent. Deposit paid.')
-      setShowConfirmModal(false)
+      setIsContactLoading(true)
+      const response = await warehouseApi.getOwnerContact(id)
+      const contact = response?.data?.data || response?.data
+      setOwnerContact(contact || {})
+      if (!contact?.phone) toast.error('The owner has not updated a phone number yet.')
     } catch (err) {
-      showApiErrorToast(err, 'Booking failed.')
+      showApiErrorToast(err, 'Could not load owner contact.')
     } finally {
-      setIsBooking(false)
+      setIsContactLoading(false)
     }
   }
 
@@ -251,9 +216,7 @@ const WarehouseDetailPage = () => {
       <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
           <h2 className="mb-4 text-2xl font-bold">Warehouse not found</h2>
-          <p className="mb-6 text-slate-500">
-            {error || 'This warehouse is unavailable right now.'}
-          </p>
+          <p className="mb-6 text-slate-500">{error || 'This warehouse is unavailable right now.'}</p>
           <Button onClick={() => navigate('/warehouses')}>Back to Listings</Button>
         </div>
       </div>
@@ -267,7 +230,7 @@ const WarehouseDetailPage = () => {
           <WarehouseHeader
             warehouseName={warehouse.name}
             isBookmarked={isBookmarked}
-            onBookmarkToggle={() => setIsBookmarked(!isBookmarked)}
+            onBookmarkToggle={() => setIsBookmarked((current) => !current)}
             compact
           />
         </div>
@@ -289,29 +252,19 @@ const WarehouseDetailPage = () => {
               isAuthenticated={isAuthenticated}
             />
 
-            <WarehouseBookingCard
-              warehouse={warehouse}
-              extendedData={extendedData}
-              durationMonths={durationMonths}
-              onDurationChange={setDurationMonths}
-              depositPercentage={depositPercentage}
-              hasBooked={hasBooked}
-              isCheckingWallet={isCheckingWallet}
-              onDepositClick={handleDepositClick}
+            <WarehouseContactCard
+              isAuthenticated={isAuthenticated}
+              contact={ownerContact}
+              rentalPrice={warehouse.rentalPrice}
+              rentalPricingType={warehouse.rentalPricingType}
+              area={warehouse.area}
+              isLoading={isContactLoading}
+              onContact={handleContactOwner}
             />
           </div>
         </div>
       </main>
 
-      <ConfirmDepositModal
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        walletBalance={walletBalance}
-        depositAmount={extendedData.deposit}
-        depositPercentage={depositPercentage}
-        isBooking={isBooking}
-        onConfirm={handleConfirmDeposit}
-      />
       <PublicFooter />
     </div>
   )

@@ -1,9 +1,9 @@
-import { MapPin, Maximize2, Shield, Clock, Star, CheckCircle2, Truck, Phone } from 'lucide-react'
+import { MapPin, CheckCircle2, Phone } from 'lucide-react'
 import Badge from '@/components/atoms/Badge'
 import Avatar from '@/components/atoms/Avatar'
 import TranslatableText from '@/components/TranslatableText'
 
-const WarehouseInfo = ({ warehouse, extendedData, isAuthenticated = false }) => {
+const WarehouseInfo = ({ warehouse, extendedData }) => {
   return (
     <div className="flex-1 space-y-12">
       <section>

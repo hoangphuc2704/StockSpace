@@ -6,6 +6,7 @@ import PublicHeader from '../../../components/PublicHeader'
 import BackToTop from '../../../components/BackToTop.jsx'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import PublicFooter from '../../../components/PublicFooter'
+import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
 
 const SERVICES = [
   {
@@ -64,7 +65,6 @@ const LandingPageKhamkhao = () => {
         const response = await warehouseApi.getPublicWarehouses({
           page: 0,
           size: 6,
-          status: 'AVAILABLE',
           sortBy: 'createdAt',
           sortDir: 'desc',
         })
@@ -81,7 +81,11 @@ const LandingPageKhamkhao = () => {
           name: item.name || 'Warehouse',
           address: item.address || item.location || 'Updating address',
           area: Number(item.area ?? item.capacity ?? 0),
-          pricePerMonth: Number(item.pricePerMonth ?? item.price ?? 0),
+          rentalPrice:
+            item.rentalPrice == null && item.price == null && item.pricePerMonth == null
+              ? null
+              : Number(item.rentalPrice ?? item.price ?? item.pricePerMonth),
+          rentalPricingType: item.rentalPricingType || 'PER_SQUARE_METER_MONTHLY',
           type: item.warehouseType?.name || item.typeName || item.type || 'General',
           image: item.coverImageUrl || item.thumbnail || item.imageUrls?.[0] || '',
           isVerified: item.isVerified ?? item.verified ?? false,
@@ -271,10 +275,10 @@ const LandingPageKhamkhao = () => {
                       <div className="flex items-end justify-between gap-4 border-t border-stone-100 pt-4">
                         <div>
                           <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
-                            Price/month
+                            {warehouse.rentalPricingType === 'NEGOTIATED' ? 'Rental price' : 'Price / m²'}
                           </p>
                           <p className="mt-1 text-xl font-extrabold text-[#FF5A1F]">
-                            {warehouse.pricePerMonth.toLocaleString('vi-VN')} ₫
+                            {formatWarehousePricePerSquareMeter(warehouse)}
                           </p>
                         </div>
 
