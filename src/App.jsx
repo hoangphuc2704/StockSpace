@@ -59,6 +59,7 @@ import StaffAcceptInvitationPage from './features/auth/pages/StaffAcceptInvitati
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
 import OwnerProfile from './features/owner/pages/OwnerProfile'
 import PostWarehouse from './features/owner/pages/PostWarehouse'
+import ConfirmPostWarehouse from './features/owner/pages/ConfirmPostWarehouse'
 import ListWarehouse from './features/owner/pages/ListWarehouse'
 import OwnerContractsPage from './features/owner/pages/OwnerContractsPage'
 
@@ -235,6 +236,7 @@ const App = () => {
           <Route element={<OwnerLayoutSetupGuard />}>
             <Route path="/owner/dashboard" element={<OwnerDashboard />} />
             <Route path="/owner/postwarehouse" element={<PostWarehouse />} />
+            <Route path="/owner/confirm-postwarehouse" element={<ConfirmPostWarehouse />} />
             <Route path="/owner/listwarehouse" element={<ListWarehouse />} />
             <Route
               path="/owner/layoutwarehouses"

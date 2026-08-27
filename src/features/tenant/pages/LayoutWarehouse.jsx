@@ -9,6 +9,7 @@ import {
   Package2,
   PackagePlus,
   RotateCcw,
+  Ruler,
   Save,
   Trash2,
   Warehouse,
@@ -27,6 +28,7 @@ const DEFAULT_LAYOUT_SIZE = 100
 // minimum so the 2D/3D renderers still have a usable footprint.
 const MIN_ENTITY_SIZE = 1
 const MIN_BIN_SIZE = 0.1
+const DEFAULT_RACK_GAP = 1
 const FOOTPRINT_GRID_SIZE = 10
 const BIN_MAX_RATIO = 0.8
 const layoutDimensionsKey = (warehouseId) => `stockspace:warehouse-layout-dimensions:${warehouseId}`
@@ -37,6 +39,7 @@ const numberOf = (value, fallback = 0) => {
   const valueAsNumber = Number(value)
   return Number.isFinite(valueAsNumber) ? valueAsNumber : fallback
 }
+const formatMeters = (value) => `${numberOf(value).toFixed(2)}m`
 const integerOf = (value, fallback = 0) => Math.round(numberOf(value, fallback))
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 const totalBinWeightLimit = (rack) =>
@@ -109,13 +112,52 @@ const rectangleOverlapsBlockedCell = (rectangle, layout, blockedCells = layout.b
   })
 }
 
-const findAvailableRackPosition = (layout, width, length) => {
+const rectangleGap = (first, second) => {
+  const horizontal = Math.max(
+    first.coordinateX - (second.coordinateX + second.width),
+    second.coordinateX - (first.coordinateX + first.width),
+    0
+  )
+  const vertical = Math.max(
+    first.coordinateY - (second.coordinateY + second.length),
+    second.coordinateY - (first.coordinateY + first.length),
+    0
+  )
+
+  return {
+    horizontal,
+    vertical,
+    distance: Math.sqrt(horizontal ** 2 + vertical ** 2),
+  }
+}
+
+const rectanglesTooClose = (first, second, minimumGap = 0) => {
+  const gap = Math.max(numberOf(minimumGap), 0)
+  return (
+    first.coordinateX < second.coordinateX + second.width + gap &&
+    first.coordinateX + first.width + gap > second.coordinateX &&
+    first.coordinateY < second.coordinateY + second.length + gap &&
+    first.coordinateY + first.length + gap > second.coordinateY
+  )
+}
+
+const getBinWallClearance = (bin, rack) => ({
+  left: Math.max(numberOf(bin.coordinateX), 0),
+  right: Math.max(numberOf(rack.width) - numberOf(bin.coordinateX) - numberOf(bin.width), 0),
+  front: Math.max(numberOf(bin.coordinateY), 0),
+  back: Math.max(numberOf(rack.length) - numberOf(bin.coordinateY) - numberOf(bin.length), 0),
+})
+
+const findAvailableRackPosition = (layout, width, length, minimumRackGap = 0) => {
   const maxX = Math.max(Math.floor(layout.width - width), 0)
   const maxY = Math.max(Math.floor(layout.length - length), 0)
   for (let y = 0; y <= maxY; y += 1) {
     for (let x = 0; x <= maxX; x += 1) {
       const candidate = { coordinateX: x, coordinateY: y, width, length }
-      if (!rectangleOverlapsBlockedCell(candidate, layout)) return { x, y }
+      const tooCloseToRack = layout.racks.some((rack) =>
+        rectanglesTooClose(candidate, rack, minimumRackGap)
+      )
+      if (!tooCloseToRack && !rectangleOverlapsBlockedCell(candidate, layout)) return { x, y }
     }
   }
   return null
@@ -400,6 +442,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [preferredWarehouseId, setPreferredWarehouseId] = useState('')
   const [layout, setLayout] = useState(() => normalizeLayout())
   const [selection, setSelection] = useState({ type: 'layout', key: null })
+  const [selectedItems, setSelectedItems] = useState([])
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
+  const selectedItemsRef = useRef([])
+  const [minimumRackGap, setMinimumRackGap] = useState(DEFAULT_RACK_GAP)
   const [view, setView] = useState(stockOnly ? 'stock' : initialView)
   const [blockedMode, setBlockedMode] = useState(false)
   const [blockedTool, setBlockedTool] = useState('lock')
@@ -420,6 +466,43 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     totalQuantity: 0,
     error: '',
   })
+
+  useEffect(() => {
+    selectedItemsRef.current = selectedItems
+  }, [selectedItems])
+
+  const updateSelection = useCallback(
+    (nextSelection, additive = false, forceSingle = false) => {
+      const normalized = {
+        type: nextSelection?.type || 'layout',
+        key: nextSelection?.key ?? nextSelection?.clientKey ?? null,
+      }
+      const currentItems = selectedItemsRef.current
+      const shouldSelectMany =
+        normalized.type !== 'layout' && normalized.key !== null && !forceSingle && additive
+
+      if (!shouldSelectMany) {
+        const nextItems =
+          normalized.type === 'layout' || normalized.key === null ? [] : [normalized]
+        selectedItemsRef.current = nextItems
+        setSelection(normalized)
+        setSelectedItems(nextItems)
+        return
+      }
+
+      const existingIndex = currentItems.findIndex(
+        (item) => item.type === normalized.type && String(item.key) === String(normalized.key)
+      )
+      const nextItems =
+        existingIndex >= 0
+          ? currentItems.filter((_, index) => index !== existingIndex)
+          : [...currentItems, normalized]
+      selectedItemsRef.current = nextItems
+      setSelectedItems(nextItems)
+      setSelection(nextItems[nextItems.length - 1] || { type: 'layout', key: null })
+    },
+    []
+  )
 
   const warehouses = useMemo(() => {
     if (isOwner) {
@@ -505,6 +588,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [searchParams, selectedWarehouseId])
 
   const selectedEntity = useMemo(() => getSelected(layout, selection), [layout, selection])
+  const selectedItemSet = useMemo(
+    () => new Set(selectedItems.map((item) => `${item.type}:${item.key}`)),
+    [selectedItems]
+  )
   const selectedRack = useMemo(() => {
     if (selection.type === 'rack') return selectedEntity
     if (selection.type === 'bin') {
@@ -512,6 +599,39 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     }
     return null
   }, [layout.racks, selectedEntity, selection])
+  const spacingDetails = useMemo(() => {
+    if (selection.type === 'rack' && selectedRack) {
+      const nearestRack = layout.racks
+        .filter((rack) => rack.clientKey !== selectedRack.clientKey)
+        .map((rack) => ({ rack, ...rectangleGap(selectedRack, rack) }))
+        .sort((first, second) => first.distance - second.distance)[0]
+
+      return { type: 'rack', nearestRack }
+    }
+
+    if (selection.type === 'bin' && selectedEntity && selectedRack) {
+      const wall = getBinWallClearance(selectedEntity, selectedRack)
+      const nearestBin = selectedRack.bins
+        .filter((bin) => bin.clientKey !== selectedEntity.clientKey)
+        .map((bin) => ({ bin, ...rectangleGap(selectedEntity, bin) }))
+        .sort((first, second) => first.distance - second.distance)[0]
+
+      return { type: 'bin', wall, nearestBin }
+    }
+
+    const rackPairs = layout.racks.flatMap((firstRack, index) =>
+      layout.racks.slice(index + 1).map((secondRack) => ({
+        firstRack,
+        secondRack,
+        ...rectangleGap(firstRack, secondRack),
+      }))
+    )
+
+    return {
+      type: 'layout',
+      nearestRackPair: rackPairs.sort((first, second) => first.distance - second.distance)[0],
+    }
+  }, [layout.racks, selectedEntity, selectedRack, selection])
   const footprintSet = useMemo(() => new Set(layout.footprintCells), [layout.footprintCells])
   const blockedSet = useMemo(() => new Set(layout.blockedCells), [layout.blockedCells])
   const binCount = useMemo(
@@ -596,7 +716,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         })
       )
       setTenantDefault(!isOwner && Boolean(payload.isDefault ?? payload.default))
-      setSelection({ type: 'layout', key: null })
+      updateSelection({ type: 'layout', key: null }, false, true)
     } catch (requestError) {
       const notFound = requestError.response?.status === 404
       if (isOwner && notFound) {
@@ -628,7 +748,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     } finally {
       setLoadingLayout(false)
     }
-  }, [createdDimensions, currentRole, isOwner, selectedWarehouseId, warehouses])
+  }, [createdDimensions, currentRole, isOwner, selectedWarehouseId, updateSelection, warehouses])
 
   useEffect(() => {
     // Loading the selected warehouse is the external synchronization performed by this effect.
@@ -749,11 +869,19 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     if (isReadOnly) {
       event.preventDefault()
       event.stopPropagation()
-      setSelection({ type, key: entity.clientKey })
+      updateSelection({ type, key: entity.clientKey }, event.ctrlKey || event.metaKey)
       if (currentRole === 'STAFF' && type === 'bin') setView('stock')
       return
     }
     if (blockedMode || (mode === 'resize' && !isOwner) || !parentElement) return
+    const additiveSelection = isMultiSelectMode || event.ctrlKey || event.metaKey
+    if (additiveSelection) {
+      event.preventDefault()
+      event.stopPropagation()
+      updateSelection({ type, key: entity.clientKey }, true)
+      setBlockedMode(false)
+      return
+    }
     event.preventDefault()
     event.stopPropagation()
     const rect = parentElement.getBoundingClientRect()
@@ -786,16 +914,18 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     }
     // eslint-disable-next-line react-hooks/immutability
     document.body.style.userSelect = 'none'
-    setSelection({ type, key: entity.clientKey })
+    updateSelection({ type, key: entity.clientKey })
   }
 
-  const addRack = () => {
+  const addRack = useCallback(() => {
     if (!isOwner) return
     const width = Math.min(18, layout.width)
     const length = Math.min(18, layout.length)
-    const position = findAvailableRackPosition(layout, width, length)
+    const position = findAvailableRackPosition(layout, width, length, minimumRackGap)
     if (!position) {
-      setError('There is no unlocked area large enough for a new rack.')
+      setError(
+        `There is no unlocked area large enough for a new rack with ${minimumRackGap.toFixed(2)}m clearance.`
+      )
       return
     }
     const rack = normalizeRack({
@@ -809,12 +939,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       bins: [],
     })
     setLayout((current) => ({ ...current, racks: [...current.racks, rack] }))
-    setSelection({ type: 'rack', key: rack.clientKey })
+    updateSelection({ type: 'rack', key: rack.clientKey }, false, true)
     setBlockedMode(false)
     setError('')
-  }
+  }, [isOwner, layout, minimumRackGap, updateSelection])
 
-  const addBin = () => {
+  const addBin = useCallback(() => {
     if (!isOwner || !selectedRack) {
       setError('Please select a Rack before adding a Bin.')
       return
@@ -834,29 +964,73 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         bins: [...rack.bins, bin],
       }))
     )
-    setSelection({ type: 'bin', key: bin.clientKey })
+    updateSelection({ type: 'bin', key: bin.clientKey }, false, true)
     setError('')
-  }
+  }, [isOwner, selectedRack, updateSelection])
 
-  const removeSelected = () => {
-    if (!isOwner || selection.type === 'layout') return
+  const removeSelected = useCallback(() => {
+    if (!isOwner) return
+    const targets = selectedItems.length
+      ? selectedItems
+      : selection.type === 'layout'
+        ? []
+        : [{ type: selection.type, key: selection.key }]
+    if (!targets.length) return
+
+    const rackKeys = new Set(
+      targets.filter((item) => item.type === 'rack').map((item) => String(item.key))
+    )
+    const binKeys = new Set(
+      targets.filter((item) => item.type === 'bin').map((item) => String(item.key))
+    )
     setLayout((current) => {
-      if (selection.type === 'rack') {
-        return {
-          ...current,
-          racks: current.racks.filter((rack) => rack.clientKey !== selection.key),
-        }
-      }
       return {
         ...current,
-        racks: current.racks.map((rack) => ({
-          ...rack,
-          bins: rack.bins.filter((bin) => bin.clientKey !== selection.key),
-        })),
+        racks: current.racks
+          .filter((rack) => !rackKeys.has(String(rack.clientKey)))
+          .map((rack) => ({
+            ...rack,
+            bins: rack.bins.filter((bin) => !binKeys.has(String(bin.clientKey))),
+          })),
       }
     })
-    setSelection({ type: 'layout', key: null })
-  }
+    updateSelection({ type: 'layout', key: null }, false, true)
+    setIsMultiSelectMode(false)
+    setError('')
+  }, [isOwner, selectedItems, selection.key, selection.type, updateSelection])
+
+  useEffect(() => {
+    const handleKeyboardShortcut = (event) => {
+      if (isReadOnly) return
+      const tagName = event.target?.tagName
+      if (
+        event.target?.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)
+      ) {
+        return
+      }
+
+      const key = event.key.toLowerCase()
+      if (event.altKey && key === 'r') {
+        event.preventDefault()
+        addRack()
+        return
+      }
+      if (event.altKey && key === 'b') {
+        event.preventDefault()
+        addBin()
+        return
+      }
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return
+      if (!selectedItems.length && selection.type === 'layout') return
+
+      event.preventDefault()
+      removeSelected()
+    }
+
+    window.addEventListener('keydown', handleKeyboardShortcut)
+    return () => window.removeEventListener('keydown', handleKeyboardShortcut)
+  }, [addBin, addRack, isReadOnly, removeSelected, selectedItems.length, selection.type])
 
   const saveLayout = async () => {
     if (isReadOnly || !selectedWarehouseId || tenantDefault) return
@@ -889,7 +1063,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         : await layoutApi.saveTenantWarehouseLayout(selectedWarehouseId, toPayload(layout))
       const saved = apiData(response)
       if (saved) setLayout(normalizeLayout(saved))
-      setSelection({ type: 'layout', key: null })
+      updateSelection({ type: 'layout', key: null }, false, true)
       setMessage('Warehouse layout saved successfully.')
       if (isMandatorySetup) {
         try {
@@ -1177,6 +1351,38 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               </select>
             </section>
 
+            {isOwner && !stockOnly && (
+              <section className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4 shadow-sm">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="flex items-center gap-2 text-sm font-bold text-orange-900">
+                      <Ruler className="h-4 w-4 text-orange-600" />
+                      Rack spacing configuration
+                    </h2>
+                    <p className="mt-1 text-xs leading-5 text-orange-800/80">
+                      New Racks will be placed with at least this distance from existing Racks.
+                    </p>
+                  </div>
+                  <label className="w-full text-xs font-semibold text-orange-950 sm:max-w-52">
+                    Minimum gap (m)
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      value={minimumRackGap}
+                      onChange={(event) =>
+                        setMinimumRackGap(Math.max(numberOf(event.target.value), 0))
+                      }
+                      className="mt-1 w-full rounded-xl border border-orange-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+                    />
+                  </label>
+                </div>
+                <p className="mt-3 text-xs font-semibold text-orange-900">
+                  Current setting: {minimumRackGap.toFixed(2)}m between Rack edges.
+                </p>
+              </section>
+            )}
+
             {error && (
               <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> {error}
@@ -1224,11 +1430,33 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     >
                       <Box className="mr-2 h-4 w-4" /> Add Bin
                     </button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsMultiSelectMode((current) => !current)}
+                        className={`rounded-lg border px-2 py-2 text-xs font-semibold ${isMultiSelectMode ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        {isMultiSelectMode ? 'Multi-select: On' : 'Multi-select'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={removeSelected}
+                        disabled={!selectedItems.length}
+                        className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-200 px-2 py-2 text-xs font-semibold text-red-600 enabled:hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete {selectedItems.length ? `(${selectedItems.length})` : ''}
+                      </button>
+                    </div>
+                    <p className="text-[11px] leading-4 text-slate-500">
+                      Ctrl/Cmd + click để chọn nhiều. Phím tắt: Alt+R thêm Rack, Alt+B thêm Bin,
+                      Delete xóa.
+                    </p>
                   </div>
                 )}
                 <button
                   type="button"
-                  onClick={() => setSelection({ type: 'layout', key: null })}
+                  onClick={() => updateSelection({ type: 'layout', key: null }, false, true)}
                   className={`mb-2 w-full rounded-lg border px-3 py-2 text-left text-sm font-semibold ${selection.type === 'layout' ? 'border-blue-300 bg-blue-50' : 'border-slate-200'}`}
                 >
                   General layout
@@ -1238,11 +1466,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     <div key={rack.clientKey} className="rounded-xl border border-slate-200 p-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelection({ type: 'rack', key: rack.clientKey })
+                        onClick={(event) => {
+                          updateSelection(
+                            { type: 'rack', key: rack.clientKey },
+                            isMultiSelectMode || event.ctrlKey || event.metaKey
+                          )
                           setBlockedMode(false)
                         }}
-                        className={`w-full rounded-lg px-2 py-2 text-left text-sm font-semibold ${selection.key === rack.clientKey ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}
+                        className={`w-full rounded-lg px-2 py-2 text-left text-sm font-semibold ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50'}`}
                       >
                         <span className="flex items-center justify-between gap-2">
                           <span className="truncate">{rack.name || rack.code}</span>
@@ -1262,11 +1493,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           <button
                             key={bin.clientKey}
                             type="button"
-                            onClick={() => {
-                              setSelection({ type: 'bin', key: bin.clientKey })
+                            onClick={(event) => {
+                              updateSelection(
+                                { type: 'bin', key: bin.clientKey },
+                                isMultiSelectMode || event.ctrlKey || event.metaKey
+                              )
                               setBlockedMode(false)
                             }}
-                            className={`block w-full rounded px-2 py-1.5 text-left text-xs ${selection.key === bin.clientKey ? 'bg-emerald-50 font-semibold text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                            className={`block w-full rounded px-2 py-1.5 text-left text-xs ${selectedItemSet.has(`bin:${bin.clientKey}`) ? 'bg-emerald-50 font-semibold text-emerald-700' : 'text-slate-600 hover:bg-slate-50'}`}
                           >
                             <span className="flex items-center justify-between gap-2">
                               <span className="truncate">{bin.name || bin.code}</span>
@@ -1389,7 +1623,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         layout={layout}
                         selection={selection}
                         onSelectBin={(binKey) => {
-                          setSelection({ type: 'bin', key: binKey })
+                          updateSelection({ type: 'bin', key: binKey }, false, true)
                           setBlockedMode(false)
                         }}
                       />
@@ -1517,12 +1751,16 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       <WarehouseLayoutPreview3D
                         layout={layout}
                         selection={{ ...selection, clientKey: selection.key }}
-                        editable={!isReadOnly}
+                        selectedItems={selectedItems}
+                        editable={!isReadOnly && !isMultiSelectMode && selectedItems.length <= 1}
                         onSelect={(nextSelection) => {
-                          setSelection({
-                            type: nextSelection.type,
-                            key: nextSelection.clientKey ?? nextSelection.key ?? null,
-                          })
+                          updateSelection(
+                            {
+                              type: nextSelection.type,
+                              key: nextSelection.clientKey ?? nextSelection.key ?? null,
+                            },
+                            isMultiSelectMode || Boolean(nextSelection.multi)
+                          )
                           setBlockedMode(false)
                         }}
                       />
@@ -1579,10 +1817,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     )}
                   </>
                 ) : (
-                  <div className="overflow-auto rounded-xl bg-slate-100 p-3 sm:p-5">
+                    <div className="overflow-auto rounded-xl bg-slate-100 p-3 sm:p-5">
                     <div
-                      className="relative mx-auto aspect-square w-full max-w-205 min-w-130 overflow-hidden border-2 border-slate-300 bg-white shadow-inner"
-                      onPointerDown={() => setSelection({ type: 'layout', key: null })}
+                      className="relative mx-auto w-full max-w-205 min-w-130 overflow-hidden border-2 border-slate-300 bg-white shadow-inner"
+                      style={{
+                        aspectRatio: `${Math.max(numberOf(layout.width, 1), 1)} / ${Math.max(numberOf(layout.length, 1), 1)}`,
+                      }}
+                      onPointerDown={() => updateSelection({ type: 'layout', key: null }, false, true)}
                     >
                       <div className="absolute inset-0 grid grid-cols-10 grid-rows-10">
                         {Array.from({ length: FOOTPRINT_GRID_SIZE ** 2 }, (_, index) => {
@@ -1624,7 +1865,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                 event.currentTarget.parentElement
                               )
                             }
-                            className={`absolute touch-none overflow-hidden rounded-md border-2 bg-blue-500/80 text-white shadow-md ${selection.key === rack.clientKey ? 'z-20 border-blue-950 ring-2 ring-blue-300' : 'z-10 border-blue-700'}`}
+                            className={`absolute touch-none overflow-hidden rounded-md border-2 bg-blue-500/80 text-white shadow-md ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'z-20 border-blue-950 ring-2 ring-blue-300' : 'z-10 border-blue-700'}`}
                             style={{
                               left: `${(rack.coordinateX / layout.width) * 100}%`,
                               top: `${(rack.coordinateY / layout.length) * 100}%`,
@@ -1647,7 +1888,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                     event.currentTarget.parentElement
                                   )
                                 }
-                                className={`absolute touch-none overflow-hidden rounded-sm border bg-emerald-500/90 text-white shadow ${selection.key === bin.clientKey ? 'z-20 border-white ring-2 ring-emerald-200' : 'z-10 border-emerald-800'}`}
+                                className={`absolute touch-none overflow-hidden rounded-sm border bg-emerald-500/90 text-white shadow ${selectedItemSet.has(`bin:${bin.clientKey}`) ? 'z-20 border-white ring-2 ring-emerald-200' : 'z-10 border-emerald-800'}`}
                                 style={{
                                   left: `${(bin.coordinateX / rack.width) * 100}%`,
                                   top: `${(bin.coordinateY / rack.length) * 100}%`,
@@ -1715,12 +1956,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           : 'Bin'}
                     </p>
                   </div>
-                  {isOwner && selection.type !== 'layout' && (
+                  {isOwner && selectedItems.length > 0 && (
                     <button
                       type="button"
                       onClick={removeSelected}
                       className="rounded-lg bg-red-50 p-2 text-red-600 hover:bg-red-100"
-                      aria-label="Delete"
+                      aria-label={`Delete ${selectedItems.length} selected item${selectedItems.length > 1 ? 's' : ''}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -1775,6 +2016,69 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       </label>
                     )
                   })}
+                </div>
+                <div className="mt-4 rounded-xl border border-orange-200 bg-orange-50/70 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-xs font-bold tracking-wider text-orange-900 uppercase">
+                      Spacing / clearance
+                    </h3>
+                    {isOwner && <span className="text-[11px] font-semibold text-orange-700">Min {formatMeters(minimumRackGap)}</span>}
+                  </div>
+
+                  {spacingDetails.type === 'rack' ? (
+                    spacingDetails.nearestRack ? (
+                      <div className="mt-3 space-y-2 text-xs text-slate-700">
+                        <p>
+                          Nearest Rack:{' '}
+                          <strong className="text-slate-900">
+                            {spacingDetails.nearestRack.rack.name || spacingDetails.nearestRack.rack.code}
+                          </strong>
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <span className="rounded-lg bg-white px-2 py-1.5">
+                            Horizontal: <strong>{formatMeters(spacingDetails.nearestRack.horizontal)}</strong>
+                          </span>
+                          <span className="rounded-lg bg-white px-2 py-1.5">
+                            Vertical: <strong>{formatMeters(spacingDetails.nearestRack.vertical)}</strong>
+                          </span>
+                        </div>
+                        <p className="font-semibold text-orange-800">
+                          Edge distance: {formatMeters(spacingDetails.nearestRack.distance)}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-xs text-slate-500">No other Rack to measure yet.</p>
+                    )
+                  ) : spacingDetails.type === 'bin' ? (
+                    <div className="mt-3 space-y-2 text-xs text-slate-700">
+                      <p className="font-semibold text-slate-900">Distance from Bin to Rack walls</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <span className="rounded-lg bg-white px-2 py-1.5">Left: <strong>{formatMeters(spacingDetails.wall.left)}</strong></span>
+                        <span className="rounded-lg bg-white px-2 py-1.5">Right: <strong>{formatMeters(spacingDetails.wall.right)}</strong></span>
+                        <span className="rounded-lg bg-white px-2 py-1.5">Front: <strong>{formatMeters(spacingDetails.wall.front)}</strong></span>
+                        <span className="rounded-lg bg-white px-2 py-1.5">Back: <strong>{formatMeters(spacingDetails.wall.back)}</strong></span>
+                      </div>
+                      {spacingDetails.nearestBin && (
+                        <p className="font-semibold text-orange-800">
+                          Nearest Bin: {formatMeters(spacingDetails.nearestBin.distance)} edge distance
+                        </p>
+                      )}
+                    </div>
+                  ) : spacingDetails.nearestRackPair ? (
+                    <p className="mt-2 text-xs text-slate-700">
+                      Closest Rack pair:{' '}
+                      <strong>
+                        {spacingDetails.nearestRackPair.firstRack.name || spacingDetails.nearestRackPair.firstRack.code}
+                        {' · '}
+                        {spacingDetails.nearestRackPair.secondRack.name || spacingDetails.nearestRackPair.secondRack.code}
+                      </strong>
+                      <span className="mt-1 block font-semibold text-orange-800">
+                        Edge distance: {formatMeters(spacingDetails.nearestRackPair.distance)}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-xs text-slate-500">Add at least two Racks to see spacing.</p>
+                  )}
                 </div>
                 <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
                   Drag the Rack or Bin body to move.{' '}

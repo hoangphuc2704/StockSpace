@@ -4,11 +4,27 @@ import { Grid, OrbitControls, PivotControls } from '@react-three/drei'
 const WORLD_SIZE = 18
 const FOOTPRINT_GRID_SIZE = 10
 
+const getWorldDimensions = (layout) => {
+  const layoutWidth = Math.max(Number(layout?.width) || 1, 1)
+  const layoutLength = Math.max(Number(layout?.length) || 1, 1)
+  const scale = WORLD_SIZE / Math.max(layoutWidth, layoutLength)
+
+  return {
+    width: layoutWidth * scale,
+    depth: layoutLength * scale,
+  }
+}
+
 const colorByType = {
   zone: '#10b981',
   rack: '#f59e0b',
   bin: '#d946ef',
 }
+
+const isItemSelected = (selectedItems, type, key) =>
+  selectedItems.some(
+    (item) => item.type === type && String(item.key ?? item.clientKey) === String(key)
+  )
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
@@ -47,120 +63,6 @@ const getShelfY = (levelIndex, levels, rackHeight) => {
   const usableHeight = Math.max(rackHeight - 1.2, 0.8)
   if (levels <= 1) return 0.7 + usableHeight / 2
   return 0.7 + (levelIndex / (levels - 1)) * usableHeight
-}
-
-function WarehouseShell() {
-  return (
-    <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, -0.02, 0]}>
-        <planeGeometry args={[WORLD_SIZE + 6, WORLD_SIZE + 6]} />
-        <meshStandardMaterial color="#d1d5db" />
-      </mesh>
-
-      <mesh position={[-(WORLD_SIZE + 4) / 2, 4.8, 0]} receiveShadow>
-        <boxGeometry args={[0.35, 9.6, WORLD_SIZE + 6]} />
-        <meshStandardMaterial color="#e2e8f0" transparent opacity={0.18} />
-      </mesh>
-
-      <mesh position={[(WORLD_SIZE + 4) / 2, 4.8, 0]} receiveShadow>
-        <boxGeometry args={[0.35, 9.6, WORLD_SIZE + 6]} />
-        <meshStandardMaterial color="#e2e8f0" transparent opacity={0.18} />
-      </mesh>
-
-      {/* Front wall split into segments so the entrance stays open */}
-      <mesh position={[-6.2, 4.8, (WORLD_SIZE + 4) / 2]} receiveShadow>
-        <boxGeometry args={[6.8, 9.6, 0.35]} />
-        <meshStandardMaterial color="#e5e7eb" transparent opacity={0.14} />
-      </mesh>
-
-      <mesh position={[6.2, 4.8, (WORLD_SIZE + 4) / 2]} receiveShadow>
-        <boxGeometry args={[6.8, 9.6, 0.35]} />
-        <meshStandardMaterial color="#e5e7eb" transparent opacity={0.14} />
-      </mesh>
-
-      <mesh position={[0, 8.2, (WORLD_SIZE + 4) / 2]} receiveShadow>
-        <boxGeometry args={[6.2, 2.8, 0.35]} />
-        <meshStandardMaterial color="#dbe4ee" transparent opacity={0.18} />
-      </mesh>
-
-      {/* Entrance frame */}
-      <mesh position={[-3.15, 3.2, (WORLD_SIZE + 4) / 2 + 0.03]} castShadow receiveShadow>
-        <boxGeometry args={[0.22, 6.4, 0.24]} />
-        <meshStandardMaterial color="#475569" metalness={0.15} roughness={0.5} />
-      </mesh>
-
-      <mesh position={[3.15, 3.2, (WORLD_SIZE + 4) / 2 + 0.03]} castShadow receiveShadow>
-        <boxGeometry args={[0.22, 6.4, 0.24]} />
-        <meshStandardMaterial color="#475569" metalness={0.15} roughness={0.5} />
-      </mesh>
-
-      <mesh position={[0, 6.35, (WORLD_SIZE + 4) / 2 + 0.03]} castShadow receiveShadow>
-        <boxGeometry args={[6.5, 0.22, 0.24]} />
-        <meshStandardMaterial color="#475569" metalness={0.15} roughness={0.5} />
-      </mesh>
-
-      {/* Entrance threshold */}
-      <mesh position={[0, 0.03, (WORLD_SIZE + 4) / 2 - 0.2]} receiveShadow>
-        <boxGeometry args={[6.2, 0.08, 1.2]} />
-        <meshStandardMaterial color="#cbd5e1" />
-      </mesh>
-
-      {/* Side openings near the front so rotating camera still reveals the inside */}
-      <mesh position={[-(WORLD_SIZE + 4) / 2, 7.6, 6.8]} receiveShadow>
-        <boxGeometry args={[0.35, 4.0, 6.4]} />
-        <meshStandardMaterial color="#e2e8f0" opacity={0.1} transparent />
-      </mesh>
-
-      <mesh position={[(WORLD_SIZE + 4) / 2, 7.6, 6.8]} receiveShadow>
-        <boxGeometry args={[0.35, 4.0, 6.4]} />
-        <meshStandardMaterial color="#e2e8f0" opacity={0.1} transparent />
-      </mesh>
-    </group>
-  )
-}
-
-function FootprintFloor({ layout }) {
-  const cells = Array.isArray(layout?.footprintCells) ? layout.footprintCells : []
-  const activeCellSet = new Set(cells.map((cell) => String(cell)))
-  const blockedCellSet = new Set(
-    (layout?.positions ?? layout?.blockedCells ?? []).map((cell) => String(cell))
-  )
-  const tileSize = WORLD_SIZE / FOOTPRINT_GRID_SIZE
-
-  return (
-    <group>
-      {Array.from({ length: FOOTPRINT_GRID_SIZE }).map((_, row) =>
-        Array.from({ length: FOOTPRINT_GRID_SIZE }).map((__, col) => {
-          const cellKey = `${row}:${col}`
-          const isActive = activeCellSet.has(cellKey)
-          const isBlocked = blockedCellSet.has(cellKey)
-          const x = -WORLD_SIZE / 2 + col * tileSize + tileSize / 2
-          const z = -WORLD_SIZE / 2 + row * tileSize + tileSize / 2
-
-          return (
-            <group key={cellKey} position={[x, isBlocked || isActive ? 0.06 : 0.01, z]}>
-              <mesh receiveShadow>
-                <boxGeometry
-                  args={[tileSize * 0.94, isBlocked || isActive ? 0.12 : 0.02, tileSize * 0.94]}
-                />
-                <meshStandardMaterial
-                  color={isBlocked ? '#0f172a' : isActive ? '#bfdbfe' : '#e5e7eb'}
-                  transparent
-                  opacity={isBlocked ? 1 : isActive ? 0.92 : 0.42}
-                />
-              </mesh>
-              {isActive && !isBlocked ? (
-                <mesh position={[0, 0.08, 0]} receiveShadow>
-                  <boxGeometry args={[tileSize * 0.88, 0.02, tileSize * 0.88]} />
-                  <meshStandardMaterial color="#60a5fa" transparent opacity={0.85} />
-                </mesh>
-              ) : null}
-            </group>
-          )
-        })
-      )}
-    </group>
-  )
 }
 
 function BinMesh({
@@ -213,7 +115,11 @@ function BinMesh({
         position={[x, y, z]}
         onClick={(event) => {
           event.stopPropagation()
-          onSelect({ type: 'bin', clientKey: bin.clientKey })
+          onSelect({
+            type: 'bin',
+            clientKey: bin.clientKey,
+            multi: event.ctrlKey || event.metaKey,
+          })
         }}
         castShadow
         receiveShadow
@@ -230,15 +136,28 @@ function BinMesh({
   )
 }
 
-function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity }) {
-  const width = getWorldSize(rack.width, layout.width, WORLD_SIZE)
-  const depth = getWorldSize(rack.length, layout.length, WORLD_SIZE)
-  const x = getWorldCenter(rack.coordinateX, width, layout.width, WORLD_SIZE)
-  const z = getWorldCenter(rack.coordinateY, depth, layout.length, WORLD_SIZE)
+function RackMesh({
+  rack,
+  layout,
+  worldWidth,
+  worldDepth,
+  selection,
+  selectedItems,
+  editable,
+  onSelect,
+  onMoveEntity,
+}) {
+  const width = getWorldSize(rack.width, layout.width, worldWidth)
+  const depth = getWorldSize(rack.length, layout.length, worldDepth)
+  const x = getWorldCenter(rack.coordinateX, width, layout.width, worldWidth)
+  const z = getWorldCenter(rack.coordinateY, depth, layout.length, worldDepth)
   const levels = getRackLevels(rack)
   const rackHeight = 1.9 + levels * 0.7
   const isSelected =
-    selection?.type === 'rack' && (selection.clientKey ?? selection.key) === rack.clientKey
+    isItemSelected(selectedItems, 'rack', rack.clientKey) ||
+    (selectedItems.length === 0 &&
+      selection?.type === 'rack' &&
+      String(selection.clientKey ?? selection.key) === String(rack.clientKey))
 
   return (
     <PivotControls
@@ -251,8 +170,8 @@ function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity })
       depthTest={false}
       anchor={[0, 0, 0]}
       onDrag={(matrix) => {
-        const nextX = toCoordinateFromCenter(matrix.elements[12], width, layout.width, WORLD_SIZE)
-        const nextY = toCoordinateFromCenter(matrix.elements[14], depth, layout.length, WORLD_SIZE)
+        const nextX = toCoordinateFromCenter(matrix.elements[12], width, layout.width, worldWidth)
+        const nextY = toCoordinateFromCenter(matrix.elements[14], depth, layout.length, worldDepth)
 
         onMoveEntity('rack', rack.clientKey, Number(nextX.toFixed(2)), Number(nextY.toFixed(2)))
       }}
@@ -262,7 +181,11 @@ function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity })
           position={[0, rackHeight / 2, 0]}
           onClick={(event) => {
             event.stopPropagation()
-            onSelect({ type: 'rack', clientKey: rack.clientKey })
+            onSelect({
+              type: 'rack',
+              clientKey: rack.clientKey,
+              multi: event.ctrlKey || event.metaKey,
+            })
           }}
           castShadow
           receiveShadow
@@ -299,7 +222,10 @@ function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity })
             rackWorldDepth={depth}
             rackHeight={rackHeight}
             isSelected={
-              selection?.type === 'bin' && (selection.clientKey ?? selection.key) === bin.clientKey
+              isItemSelected(selectedItems, 'bin', bin.clientKey) ||
+              (selectedItems.length === 0 &&
+                selection?.type === 'bin' &&
+                String(selection.clientKey ?? selection.key) === String(bin.clientKey))
             }
             editable={editable}
             onSelect={onSelect}
@@ -314,6 +240,7 @@ function RackMesh({ rack, layout, selection, editable, onSelect, onMoveEntity })
 export default function WarehouseLayoutPreview3D({
   layout,
   selection,
+  selectedItems = [],
   onSelect = () => {},
   onMoveEntity = () => {},
   editable = true,
@@ -327,6 +254,8 @@ export default function WarehouseLayoutPreview3D({
           coordinateY: Number(zone.coordinateY || 0) + Number(rack.coordinateY || 0),
         }))
       )
+  const { width: worldWidth, depth: worldDepth } = getWorldDimensions(layout)
+  const gridCellSize = Math.max(Math.min(worldWidth, worldDepth) / FOOTPRINT_GRID_SIZE, 0.25)
 
   return (
     <Canvas
@@ -346,15 +275,15 @@ export default function WarehouseLayoutPreview3D({
       />
       <pointLight position={[-8, 8, -6]} intensity={0.35} />
 
-      <WarehouseShell />
-      <FootprintFloor layout={layout} />
-
       {racks.map((rack) => (
         <RackMesh
           key={rack.clientKey}
           rack={rack}
           layout={layout}
+          worldWidth={worldWidth}
+          worldDepth={worldDepth}
           selection={selection}
+          selectedItems={selectedItems}
           editable={editable}
           onSelect={onSelect}
           onMoveEntity={onMoveEntity}
@@ -363,10 +292,10 @@ export default function WarehouseLayoutPreview3D({
 
       <Grid
         position={[0, 0, 0]}
-        args={[WORLD_SIZE + 2, WORLD_SIZE + 2]}
-        cellSize={1}
+        args={[worldWidth + 2, worldDepth + 2]}
+        cellSize={gridCellSize}
         cellThickness={0.7}
-        sectionSize={3}
+        sectionSize={gridCellSize * 3}
         sectionThickness={1.2}
         cellColor="#94a3b8"
         sectionColor="#64748b"
