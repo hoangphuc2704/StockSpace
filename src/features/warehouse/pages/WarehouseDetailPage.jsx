@@ -216,7 +216,9 @@ const WarehouseDetailPage = () => {
       <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="text-center">
           <h2 className="mb-4 text-2xl font-bold">Warehouse not found</h2>
-          <p className="mb-6 text-slate-500">{error || 'This warehouse is unavailable right now.'}</p>
+          <p className="mb-6 text-slate-500">
+            {error || 'This warehouse is unavailable right now.'}
+          </p>
           <Button onClick={() => navigate('/warehouses')}>Back to Listings</Button>
         </div>
       </div>

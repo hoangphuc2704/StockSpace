@@ -5,19 +5,10 @@ import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
 import {
   Warehouse,
-  FileCheck,
-  PieChart,
-  Check,
-  X,
-  Eye,
-  ArrowUpRight,
   Clock,
   Wallet,
   PlusCircle,
   Loader2,
-  Search,
-  Filter,
-  RotateCcw,
 } from 'lucide-react'
 import {
   BarChart,
@@ -31,12 +22,8 @@ import {
   PieChart as RePieChart,
   Pie,
 } from 'recharts'
-import DataTable from '@/components/organisms/DataTable'
-import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import StatCard from '@/components/molecules/StatCard'
-import TableActionMenu from '@/components/TableActionMenu'
-import Modal from '@/components/organisms/Modal'
 
 // Import Sidebar và Header
 import Sidebar from '../../../components/SideBar'
@@ -73,15 +60,6 @@ const OwnerDashboard = () => {
   const [loadingWallet, setLoadingWallet] = useState(true)
   const [depositLoading, setDepositLoading] = useState(false)
 
-  // --- STATE YÊU CẦU THUÊ KHO ---
-  const [incomingRequests, setIncomingRequests] = useState([])
-  const [loadingRequests, setLoadingRequests] = useState(true)
-  const [requestFilters, setRequestFilters] = useState({
-    keyword: '',
-    status: 'ALL',
-    warehouse: 'ALL',
-  })
-
   // --- STATE KIỂM ĐỊNH KHO ---
   const [inspections, setInspections] = useState([])
   const [loadingInspections, setLoadingInspections] = useState(true)
@@ -97,49 +75,7 @@ const OwnerDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [inputAmount, setInputAmount] = useState('')
 
-  // State điều khiển Modal từ chối yêu cầu thuê
-  const [rejectModalOpen, setRejectModalOpen] = useState(false)
-  const [rejectTargetId, setRejectTargetId] = useState(null)
-  const [rejectReason, setRejectReason] = useState('')
-  const [rejectLoading, setRejectLoading] = useState(false)
-
-  // State điều khiển Modal chi tiết yêu cầu thuê
-  const [viewDetailModalOpen, setViewDetailModalOpen] = useState(false)
-  const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null)
-
   useEscapeKey(isModalOpen, () => setIsModalOpen(false))
-  useEscapeKey(rejectModalOpen, () => setRejectModalOpen(false))
-  useEscapeKey(viewDetailModalOpen, () => setViewDetailModalOpen(false))
-
-  const requestWarehouseOptions = useMemo(
-    () =>
-      [...new Set(incomingRequests.map((request) => request.warehouseName).filter(Boolean))].sort(
-        (a, b) => a.localeCompare(b)
-      ),
-    [incomingRequests]
-  )
-
-  const filteredIncomingRequests = useMemo(() => {
-    const keyword = requestFilters.keyword.trim().toLowerCase()
-    return incomingRequests.filter((request) => {
-      const matchesKeyword =
-        !keyword ||
-        [request.tenantName, request.warehouseName, request.tenantEmail]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(keyword))
-      const matchesStatus =
-        requestFilters.status === 'ALL' ||
-        String(request.status).toUpperCase() === requestFilters.status
-      const matchesWarehouse =
-        requestFilters.warehouse === 'ALL' || request.warehouseName === requestFilters.warehouse
-      return matchesKeyword && matchesStatus && matchesWarehouse
-    })
-  }, [incomingRequests, requestFilters])
-
-  const hasRequestFilters = requestFilters.keyword.trim() || requestFilters.status !== 'ALL'
-
-  const clearRequestFilters = () =>
-    setRequestFilters({ keyword: '', status: 'ALL', warehouse: 'ALL' })
 
   // --- LẤY DỮ LIỆU VÍ TỪ API ---
   const fetchWallet = async () => {
@@ -158,19 +94,7 @@ const OwnerDashboard = () => {
     }
   }
 
-  const fetchRequests = async () => {
-    try {
-      setLoadingRequests(true)
-      const res = await warehouseApi.getIncomingRequests({ page: 0, size: 10 })
-      if (res?.data?.success) {
-        setIncomingRequests(res.data.data.content || [])
-      }
-    } catch (error) {
-      console.error('Error getting list of rental requests:', error)
-    } finally {
-      setLoadingRequests(false)
-    }
-  }
+
 
   const fetchInspections = async () => {
     try {
@@ -226,7 +150,6 @@ const OwnerDashboard = () => {
 
   useEffect(() => {
     fetchWallet()
-    fetchRequests()
     fetchInspections()
     fetchStats()
   }, [])
@@ -283,110 +206,16 @@ const OwnerDashboard = () => {
     {
       title: 'Total Revenue',
       value: formatVND(totalRevenue),
-      icon: PieChart,
+      icon: PlusCircle,
     },
     {
       title: 'Wallet Balance',
       value: loadingWallet ? 'Loading...' : formatVND(wallet?.balance),
       icon: Wallet,
     },
-    {
-      title: 'Pending Requests',
-      value: incomingRequests.length.toString(),
-      icon: FileCheck,
-    },
   ]
 
-  const handleApprove = async (id) => {
-    try {
-      await warehouseApi.approveBooking(id)
-      toast.success('Rental request accepted.')
-      fetchRequests() // Refresh data
-    } catch (error) {
-      showApiErrorToast(error, 'Could not accept request.')
-    }
-  }
 
-  const handleReject = (id) => {
-    setRejectTargetId(id)
-    setRejectReason('')
-    setRejectModalOpen(true)
-  }
-
-  const submitReject = async () => {
-    if (required(rejectReason, 'Rejection reason')) {
-      toast.error('Enter a rejection reason.')
-      return
-    }
-
-    try {
-      setRejectLoading(true)
-      await warehouseApi.rejectBooking(rejectTargetId, { reason: rejectReason })
-      toast.success('Rental request rejected.')
-      fetchRequests() // Refresh data
-      setRejectModalOpen(false)
-      setRejectTargetId(null)
-    } catch (error) {
-      showApiErrorToast(error, 'Could not reject request.')
-    } finally {
-      setRejectLoading(false)
-    }
-  }
-
-  const handleViewDetail = (row) => {
-    setSelectedRequestForDetail(row)
-    setViewDetailModalOpen(true)
-  }
-
-  const columns = [
-    {
-      header: 'Tenant',
-      render: (row) => (
-        <div>
-          <p className="font-bold text-slate-900">{row.tenantName}</p>
-          <p className="text-[10px] text-slate-400">{row.id.substring(0, 8)}...</p>
-        </div>
-      ),
-    },
-    { header: 'Warehouse', accessor: 'warehouseName' },
-    {
-      header: 'Deposit',
-      render: (row) => (
-        <span className="text-primary font-semibold">{formatVND(row.depositAmount)}</span>
-      ),
-    },
-    {
-      header: 'Status',
-      render: (row) => (
-        <Badge
-          variant={
-            row.status === 'APPROVED' ? 'success' : row.status === 'REJECTED' ? 'danger' : 'warning'
-          }
-        >
-          {row.status}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Date',
-      render: (row) => <span>{new Date(row.createdAt).toLocaleDateString('en-US')}</span>,
-    },
-    {
-      header: 'Actions',
-      render: (row) => (
-        <TableActionMenu
-          items={
-            row.status === 'PENDING'
-              ? [
-                  { label: 'Approve', icon: Check, onClick: () => handleApprove(row.id) },
-                  { label: 'Reject', icon: X, onClick: () => handleReject(row.id), danger: true },
-                ]
-              : [{ label: 'View', icon: Eye, onClick: () => handleViewDetail(row) }]
-          }
-        />
-      ),
-    },
-  ]
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -451,68 +280,8 @@ const OwnerDashboard = () => {
 
             {/* Biểu đồ (Giữ nguyên) */}
 
-            {/* Bảng dữ liệu & Kiểm định (Giữ nguyên) */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
-                <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
-                  <div className="mb-3 flex items-center gap-2 text-xs font-bold tracking-wide text-slate-500 uppercase">
-                    <Filter className="h-4 w-4" />
-                    Filter requests
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_170px_200px_auto]">
-                    <label className="relative block">
-                      <span className="sr-only">Search requests</span>
-                      <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="search"
-                        value={requestFilters.keyword}
-                        onChange={(event) =>
-                          setRequestFilters((current) => ({
-                            ...current,
-                            keyword: event.target.value,
-                          }))
-                        }
-                        placeholder="Search tenant or warehouse..."
-                        className="h-10 w-full rounded-lg border border-slate-200 bg-white pr-3 pl-9 text-sm transition outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </label>
-                    <select
-                      value={requestFilters.status}
-                      onChange={(event) =>
-                        setRequestFilters((current) => ({
-                          ...current,
-                          status: event.target.value,
-                        }))
-                      }
-                      className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm transition outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                    >
-                      <option value="ALL">All statuses</option>
-                      <option value="PENDING">Pending</option>
-                      <option value="APPROVED">Approved</option>
-                      <option value="REJECTED">Rejected</option>
-                    </select>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={!hasRequestFilters}
-                      onClick={clearRequestFilters}
-                      className="h-10 justify-center gap-2 whitespace-nowrap"
-                    >
-                      <RotateCcw className="h-3.5 w-3.5" />
-                      Clear
-                    </Button>
-                  </div>
-                  <p className="mt-2 text-xs text-slate-400">
-                    Showing {filteredIncomingRequests.length} of {incomingRequests.length} requests
-                  </p>
-                </div>
-                <DataTable
-                  columns={columns}
-                  data={filteredIncomingRequests}
-                  isLoading={loadingRequests}
-                />
-              </div>
+              {/* Other elements like charts can be added here if needed */}
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <h3 className="mb-6 font-bold text-slate-900">Pending Inspections</h3>
@@ -623,127 +392,6 @@ const OwnerDashboard = () => {
           </div>
         </div>
       )}
-
-      {/* --- POPUP MODAL TỪ CHỐI THUÊ KHO --- */}
-      <Modal
-        isOpen={rejectModalOpen}
-        onClose={() => setRejectModalOpen(false)}
-        title="Từ chối yêu cầu thuê kho"
-      >
-        <div className="p-4 sm:p-6">
-          <p className="mb-4 text-sm text-slate-600">
-            Bạn đang từ chối yêu cầu thuê kho này. Vui lòng cung cấp lý do để khách thuê có thể biết
-            và khắc phục.
-          </p>
-          <textarea
-            className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-            rows={4}
-            placeholder="Nhập lý do từ chối (bắt buộc)..."
-            value={rejectReason}
-            onChange={(e) => setRejectReason(e.target.value)}
-          />
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              onClick={() => setRejectModalOpen(false)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-            >
-              Hủy
-            </button>
-            <button
-              onClick={submitReject}
-              disabled={!rejectReason.trim() || rejectLoading}
-              className="flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {rejectLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Đang xử lý...
-                </>
-              ) : (
-                'Xác nhận từ chối'
-              )}
-            </button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* --- POPUP MODAL CHI TIẾT YÊU CẦU THUÊ --- */}
-      <Modal
-        isOpen={viewDetailModalOpen}
-        onClose={() => setViewDetailModalOpen(false)}
-        title="Chi tiết yêu cầu thuê kho"
-      >
-        <div className="space-y-4 p-4 sm:p-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Khách thuê</p>
-              <p className="text-sm font-semibold text-slate-900">
-                {selectedRequestForDetail?.tenantName}
-              </p>
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Kho hàng</p>
-              <p className="text-sm font-semibold text-slate-900">
-                {selectedRequestForDetail?.warehouseName}
-              </p>
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Tiền cọc</p>
-              <p className="text-sm font-semibold text-emerald-600">
-                {formatVND(selectedRequestForDetail?.depositAmount)}
-              </p>
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Trạng thái</p>
-              <Badge
-                variant={
-                  selectedRequestForDetail?.status === 'APPROVED'
-                    ? 'success'
-                    : selectedRequestForDetail?.status === 'REJECTED'
-                      ? 'danger'
-                      : 'warning'
-                }
-              >
-                {selectedRequestForDetail?.status}
-              </Badge>
-            </div>
-            <div>
-              <p className="mb-1 text-xs font-bold text-slate-500 uppercase">Ngày tạo</p>
-              <p className="text-sm font-semibold text-slate-900">
-                {selectedRequestForDetail?.createdAt
-                  ? new Date(selectedRequestForDetail.createdAt).toLocaleDateString('vi-VN')
-                  : ''}
-              </p>
-            </div>
-          </div>
-
-          {selectedRequestForDetail?.status === 'REJECTED' &&
-            (selectedRequestForDetail.reason ||
-              selectedRequestForDetail.rejectionReason ||
-              selectedRequestForDetail.rejectReason) && (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
-                <p className="mb-1 flex items-center gap-1 text-xs font-bold text-red-600 uppercase">
-                  <X className="h-3.5 w-3.5" />
-                  Lý do từ chối
-                </p>
-                <p className="text-sm font-medium whitespace-pre-wrap text-red-800">
-                  {selectedRequestForDetail.reason ||
-                    selectedRequestForDetail.rejectionReason ||
-                    selectedRequestForDetail.rejectReason}
-                </p>
-              </div>
-            )}
-
-          <div className="mt-6 flex justify-end">
-            <button
-              onClick={() => setViewDetailModalOpen(false)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-            >
-              Đóng
-            </button>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }

@@ -31,7 +31,6 @@ import { required } from '@/config/validation'
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 
 const CONFIG_KEY_LABELS = {
-  deposit_percentage: 'Warehouse rental deposit rate (%)',
   contract_expiry_days: 'Contract signing deadline (Day)',
   inspection_fee: 'Inspection request fee (VND)',
   warehouse_publish_package_id: 'Warehouse registration fee',
@@ -40,7 +39,6 @@ const CONFIG_KEY_LABELS = {
 const formatConfigValue = (key, val, packages = []) => {
   if (!val) return '—'
   if (key === 'inspection_fee') return Number(val).toLocaleString('vi-VN') + ' ₫'
-  if (key === 'deposit_percentage') return val + '%'
   if (key === 'contract_expiry_days') return val + 'day'
   if (key === 'warehouse_publish_package_id') {
     const pkg = packages.find((p) => p.id === val)
@@ -143,7 +141,6 @@ const EditConfigModal = ({ configItem, packages, onClose }) => {
               />
             )}
             <p className="mt-1 text-xs text-slate-400">
-              {configItem.configKey === 'deposit_percentage' && 'For example: 10 (represents 10%)'}
               {configItem.configKey === 'inspection_fee' && 'Enter the amount in VND (no commas)'}
               {configItem.configKey === 'warehouse_publish_package_id' &&
                 'Select the default warehouse posting package'}

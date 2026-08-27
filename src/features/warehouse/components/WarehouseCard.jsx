@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { MapPin, Maximize2, ArrowRight } from 'lucide-react'
+import { MapPin, Maximize2, Clock, ArrowRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/utils/cn'
 import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
@@ -50,6 +50,11 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
               Approved
             </div>
           )}
+        </div>
+        <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-4 left-4 z-20 hidden transition-all group-hover:block">
+          <div className="flex items-center gap-1.5 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg backdrop-blur-md">
+            <Clock size={14} className="text-primary" /> Contact Owner
+          </div>
         </div>
       </div>
 

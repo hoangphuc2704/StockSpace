@@ -15,6 +15,7 @@ import receiptApi from '@/services/wms/receiptApi'
 import stockApi from '@/services/wms/stockApi'
 import productApi from '../../../services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
+import layoutApi from '@/services/layoutApi'
 import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
 import { showApiErrorToast } from '@/config/apiError'
@@ -150,9 +151,7 @@ const InboundPage = () => {
           ? await warehouseApi.getPublicWarehouseLayout(selectedWarehouseId, {
               skipErrorToast: true,
             })
-          : await warehouseApi.getTenantWarehouseLayout(selectedWarehouseId, {
-              skipErrorToast: true,
-            })
+          : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
       setLayout(res.data?.data)
     } catch (error) {
       setLayout(null)
