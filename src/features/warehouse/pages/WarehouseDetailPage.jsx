@@ -3,10 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import Button from '@/components/atoms/Button'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import systemConfigApi from '@/services/systemConfigApi'
-import tenantApi from '@/services/tenant/tenantApi'
-import walletApi from '@/services/wallet/walletApi'
-import { useSelector, useDispatch } from 'react-redux'
-import { addBookedWarehouse } from '@/store/tenantBookingSlice'
+import { useSelector } from 'react-redux'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import PublicFooter from '@/components/PublicFooter'
@@ -15,8 +12,6 @@ import PublicFooter from '@/components/PublicFooter'
 import WarehouseHeader from '../components/WarehouseHeader'
 import WarehouseGallery from '../components/WarehouseGallery'
 import WarehouseInfo from '../components/WarehouseInfo'
-import WarehouseBookingCard from '../components/WarehouseBookingCard'
-import ConfirmDepositModal from '../components/ConfirmDepositModal'
 import WarehouseLayoutShowcase from '../components/WarehouseLayoutShowcase'
 
 const normalizeWarehouse = (warehouse) => ({
@@ -26,8 +21,8 @@ const normalizeWarehouse = (warehouse) => ({
   area: Number(warehouse.area ?? warehouse.capacity ?? 0),
   width: Number(warehouse.width ?? warehouse.warehouseWidth ?? 0),
   length: Number(warehouse.length ?? warehouse.warehouseLength ?? warehouse.height ?? 0),
-  height: Number(warehouse.height ?? warehouse.warehouseHeight ?? 0),
-  price: Number(warehouse.pricePerMonth ?? warehouse.price ?? 0),
+  rentalPrice: Number(warehouse.rentalPrice ?? warehouse.pricePerMonth ?? warehouse.price ?? 0),
+  rentalPricingType: warehouse.rentalPricingType || 'NEGOTIATED',
   status: warehouse.status || 'UNKNOWN',
   rating: Number(warehouse.rating ?? 4.8),
   type: warehouse.warehouseType?.name || warehouse.typeName || warehouse.type || 'General',
@@ -101,21 +96,12 @@ const buildGallery = (warehouse) => {
 const WarehouseDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const dispatch = useDispatch()
-  const bookedWarehouseIds = useSelector((state) => state.tenantBooking.bookedWarehouseIds)
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated)
-  const hasBooked = bookedWarehouseIds.includes(id)
 
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [warehouse, setWarehouse] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
-  const [depositPercentage, setDepositPercentage] = useState(10)
-  const [durationMonths, setDurationMonths] = useState(3)
-  const [isBooking, setIsBooking] = useState(false)
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [walletBalance, setWalletBalance] = useState(0)
-  const [isCheckingWallet, setIsCheckingWallet] = useState(false)
   const [layout, setLayout] = useState(null)
   const [isLayoutLoading, setIsLayoutLoading] = useState(true)
   const [layoutUnavailable, setLayoutUnavailable] = useState(false)
@@ -162,12 +148,6 @@ const WarehouseDetailPage = () => {
 
     fetchWarehouse()
     fetchLayout()
-
-    const fetchConfig = async () => {
-      const percentage = await systemConfigApi.getDepositPercentage()
-      setDepositPercentage(percentage)
-    }
-    fetchConfig()
   }, [id])
 
   const gallery = useMemo(() => buildGallery(warehouse || {}), [warehouse])
@@ -176,7 +156,6 @@ const WarehouseDetailPage = () => {
     if (!warehouse) return null
 
     return {
-      deposit: (warehouse.price * depositPercentage) / 100,
       images: gallery,
       features: [
         `${warehouse.type} storage`,
@@ -196,43 +175,16 @@ const WarehouseDetailPage = () => {
       },
       reviews: Math.max(12, Math.round(warehouse.rating * 20)),
     }
-  }, [gallery, warehouse, depositPercentage])
+  }, [gallery, warehouse])
 
-  const handleDepositClick = async () => {
+  const handleContactOwner = () => {
     if (!isAuthenticated) {
-      toast.error('Please log in to book.')
+      toast.error('Please log in to contact the owner.')
       navigate('/login')
       return
     }
-
-    setIsCheckingWallet(true)
-    try {
-      const res = await walletApi.getWallet()
-      const balance = res?.data?.data?.balance ?? res?.data?.balance ?? 0
-      setWalletBalance(balance)
-      setShowConfirmModal(true)
-    } catch (error) {
-      showApiErrorToast(error, 'Could not check wallet.')
-    } finally {
-      setIsCheckingWallet(false)
-    }
-  }
-
-  const handleConfirmDeposit = async () => {
-    try {
-      setIsBooking(true)
-      await tenantApi.createBooking({
-        warehouseId: warehouse.id,
-        depositAmount: extendedData.deposit,
-      })
-      dispatch(addBookedWarehouse(warehouse.id))
-      toast.success('Booking sent. Deposit paid.')
-      setShowConfirmModal(false)
-    } catch (err) {
-      showApiErrorToast(err, 'Booking failed.')
-    } finally {
-      setIsBooking(false)
-    }
+    // You could open a chat modal, or just toast for now
+    toast.success(`Owner contact: ${extendedData.owner.phone || 'Available for tenants'}`)
   }
 
   if (isLoading) {
@@ -289,29 +241,19 @@ const WarehouseDetailPage = () => {
               isAuthenticated={isAuthenticated}
             />
 
-            <WarehouseBookingCard
-              warehouse={warehouse}
-              extendedData={extendedData}
-              durationMonths={durationMonths}
-              onDurationChange={setDurationMonths}
-              depositPercentage={depositPercentage}
-              hasBooked={hasBooked}
-              isCheckingWallet={isCheckingWallet}
-              onDepositClick={handleDepositClick}
-            />
+            <div className="w-full lg:w-1/3">
+              <div className="sticky top-24 rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+                <h3 className="mb-4 text-xl font-bold text-slate-900">Interested?</h3>
+                <p className="mb-6 text-sm text-slate-500">Contact the warehouse owner directly to negotiate the rental contract.</p>
+                <Button className="w-full" onClick={handleContactOwner}>
+                  Contact Owner
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </main>
 
-      <ConfirmDepositModal
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        walletBalance={walletBalance}
-        depositAmount={extendedData.deposit}
-        depositPercentage={depositPercentage}
-        isBooking={isBooking}
-        onConfirm={handleConfirmDeposit}
-      />
       <PublicFooter />
     </div>
   )

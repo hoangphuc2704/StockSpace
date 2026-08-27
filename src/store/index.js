@@ -6,7 +6,6 @@ import adminWarehouseReducer from './adminWarehouseSlice'
 import adminTransactionReducer from './adminTransactionSlice'
 import adminSystemPolicysReducer from './adminSystemPolicysSlice'
 import adminUserReducer from './adminUserSlice'
-import adminDisputeReducer from './adminDisputeManagement'
 import adminWithdrawalsReducer from './adminWithdrawals'
 import adminPermissionReducer from './adminPermissionManagement'
 import adminInspectionsReducer from './adminInspectionsManagement'
@@ -17,7 +16,6 @@ import inspectorManagementReducer from './inspectorManagement'
 import adminWarehouseTypeReducer from './adminWarehouseType'
 import adminSystemConfigReducer from './adminSystemConfigueManagement'
 import uiReducer from './uiSlide'
-import tenantBookingReducer from './tenantBookingSlice'
 
 const store = configureStore({
   reducer: {
@@ -28,7 +26,6 @@ const store = configureStore({
     adminTransaction: adminTransactionReducer,
     adminSystemPolicysSlice: adminSystemPolicysReducer,
     adminUser: adminUserReducer,
-    adminDispute: adminDisputeReducer,
     adminWithdrawals: adminWithdrawalsReducer,
     adminPermission: adminPermissionReducer,
     adminInspections: adminInspectionsReducer,
@@ -39,7 +36,6 @@ const store = configureStore({
     adminWarehouseType: adminWarehouseTypeReducer,
     adminSystemConfig: adminSystemConfigReducer,
     ui: uiReducer,
-    tenantBooking: tenantBookingReducer,
   },
 })
 

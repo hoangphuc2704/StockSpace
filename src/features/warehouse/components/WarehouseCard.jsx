@@ -53,7 +53,7 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
         </div>
         <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-4 left-4 z-20 hidden transition-all group-hover:block">
           <div className="flex items-center gap-1.5 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg backdrop-blur-md">
-            <Clock size={14} className="text-primary" /> Instant Booking
+            <Clock size={14} className="text-primary" /> Contact Owner
           </div>
         </div>
       </div>
@@ -87,11 +87,19 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
         <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-5">
           <div className="relative z-20">
             <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
-              Monthly Price
+              {warehouse.rentalPricingType === 'NEGOTIATED' ? 'Negotiable Price' : 'Rental Price'}
             </p>
             <p className="text-primary flex items-baseline gap-1 text-2xl font-black">
-              {formatVND(warehouse.price, '0 ₫')}
-              <span className="text-sm font-medium text-slate-400">/mo</span>
+              {warehouse.rentalPricingType === 'NEGOTIATED' ? (
+                'Negotiated'
+              ) : (
+                <>
+                  {formatVND(warehouse.rentalPrice || warehouse.price || 0, '0 ₫')}
+                  <span className="text-sm font-medium text-slate-400">
+                    {warehouse.rentalPricingType === 'PER_SQUARE_METER_MONTHLY' ? '/m²/mo' : '/mo'}
+                  </span>
+                </>
+              )}
             </p>
           </div>
           <div className="relative z-20">

@@ -28,7 +28,6 @@ import AnalyticsPage from './features/admin/pages/AnalyticsPage'
 // import PlatformSettingsPage from './features/admin/pages/PlatformSettingsPage'
 import SystemPolicyPage from './features/admin/pages/SystemPolicyPage'
 import UserManagementPage from './features/admin/pages/UserManagementPage'
-import DisputeManagementPage from './features/admin/pages/DisputeManagementPage'
 import AdminWithdrawalsPage from './features/admin/pages/AdminWithdrawalsPage'
 import PermissionManagementPage from './features/admin/pages/PermissionManagementPage'
 import InspectionsManagementPage from './features/admin/pages/InspectionsManagementPage'
@@ -47,13 +46,11 @@ import InboundPage from './features/inbound/pages/InboundPage'
 import OutboundPage from './features/outbound/pages/OutboundPage'
 import InventoryAuditPage from './features/inventory/pages/InventoryAuditPage'
 import InventoryAuditDetailPage from './features/inventory/pages/InventoryAuditDetailPage'
-import MyBookingsPage from './features/tenant/pages/MyBookingsPage'
 import SubscriptionPage from './features/tenant/pages/SubscriptionPage'
 import LayoutWarehouse from './features/tenant/pages/LayoutWarehouse'
 import WalletTenant from './features/tenant/pages/WalletTenant'
 import WalletCallback from './features/tenant/pages/WalletCallback'
 import TenantContractsPage from './features/tenant/pages/TenantContractsPage'
-import MyDisputesPage from './features/dispute/pages/MyDisputesPage'
 import TenantStaffManagementPage from './features/tenant/pages/TenantStaffManagementPage'
 import ProductManagementPage from './features/tenant/pages/ProductManagementPage'
 import StaffAcceptInvitationPage from './features/auth/pages/StaffAcceptInvitationPage'
@@ -75,6 +72,9 @@ import Packages_SubcriptionsManagementPage from './features/admin/pages/Packages
 import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
 import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
 import AIChatWidget from './features/chat/components/AIChatWidget'
+
+// Dev Sandbox
+import DevApiSandbox from './features/dev/DevApiSandbox'
 
 const PENDING_OWNER_LAYOUT_KEY = 'stockspace:pending-owner-layout'
 
@@ -170,7 +170,6 @@ const App = () => {
         <Route path="/admin/analytics" element={<AnalyticsPage />} />
         <Route path="/admin/system-policies" element={<SystemPolicyPage />} />
         <Route path="/admin/users" element={<UserManagementPage />} />
-        <Route path="/admin/disputes" element={<DisputeManagementPage />} />
         <Route path="/admin/withdrawals" element={<AdminWithdrawalsPage />} />
         <Route path="/admin/permissions" element={<PermissionManagementPage />} />
         <Route path="admin/inspections" element={<InspectionsManagementPage />} />
@@ -199,7 +198,6 @@ const App = () => {
           />
           <Route path="/tenant/inbound" element={<InboundPage />} />
           <Route path="/tenant/outbound" element={<OutboundPage />} />
-          <Route path="/tenant/warehouses" element={<MyBookingsPage />} />
 
           <Route path="/tenant/subscription" element={<SubscriptionPage />} />
           <Route
@@ -226,7 +224,6 @@ const App = () => {
           />
           <Route path="/tenant/wallet" element={<WalletTenant />} />
           <Route path="/tenant/contracts" element={<TenantContractsPage />} />
-          <Route path="/tenant/disputes" element={<MyDisputesPage currentRole="TENANT" />} />
           <Route path="/tenant/staff" element={<TenantStaffManagementPage />} />
           <Route path="/tenant/products" element={<ProductManagementPage />} />
         </Route>
@@ -244,7 +241,6 @@ const App = () => {
             <Route path="/owner/wallet/withdraws" element={<WithdrawsHistory />} />
             <Route path="/owner/profile" element={<OwnerProfile />} />
             <Route path="/owner/contracts" element={<OwnerContractsPage />} />
-            <Route path="/owner/disputes" element={<MyDisputesPage currentRole="OWNER" />} />
           </Route>
         </Route>
 
@@ -271,6 +267,9 @@ const App = () => {
         <Route element={<RoleGuard allowedRoles={['ROLE_INSPECTOR']} />}>
           <Route path="/inspector/inspections" element={<InspectorInspectionsPage />} />
         </Route>
+        
+        {/* TRANG TEST API CHO DEV (ẨN) */}
+        <Route path="/dev-sandbox" element={<DevApiSandbox />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

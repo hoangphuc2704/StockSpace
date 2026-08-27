@@ -1,9 +1,9 @@
 import api from '../apiConfig'
 
 const onwerwarehouseApi = {
-  getPublicWarehouses: ({ page, size, keyword, status, isVerified, sortBy, sortDir, minPrice, maxPrice, minCapacity } = {}) => {
+  getPublicWarehouses: ({ page, size, keyword, sortBy, sortDir, minRentalPrice, maxRentalPrice, minCapacity } = {}) => {
     return api.get('/warehouses', {
-      params: { page, size, keyword, status, isVerified, sortBy, sortDir, minPrice, maxPrice, minCapacity },
+      params: { page, size, keyword, sortBy, sortDir, minRentalPrice, maxRentalPrice, minCapacity },
     })
   },
 
@@ -29,18 +29,9 @@ const onwerwarehouseApi = {
     return api.put(`/owner/warehouses/${warehouseId}/layout`, data)
   },
 
-  // Layout riêng của Tenant
-  getTenantWarehouseLayout: (warehouseId, config = {}) => {
-    return api.get(`/tenant/warehouses/${warehouseId}/layout`, config)
-  },
-
-  saveTenantWarehouseLayout: (warehouseId, data) => {
-    return api.put(`/tenant/warehouses/${warehouseId}/layout`, data)
-  },
-
   //cập nhật thông tin kho
   updateWarehouseInfo: (warehouseId, data) => {
-    return api.put(`/owner/warehouses/${warehouseId}/layout`, data)
+    return api.put(`/owner/warehouses/${warehouseId}`, data)
   },
 
   //xóa kho
@@ -78,7 +69,21 @@ const onwerwarehouseApi = {
 
   //cập nhật trạng thái kho (active/inactive)
   updateWarehouseStatus: (warehouseId, status) => {
-    return api.put(`/owner/warehouses/${warehouseId}/status`, { status })
+    return api.patch(`/owner/warehouses/${warehouseId}/status`, null, { params: { status } })
+  },
+  
+  // xem số điện thoại Owner
+  getOwnerContact: (warehouseId) => {
+    return api.get(`/warehouses/${warehouseId}/owner-contact`)
+  },
+
+  // Owner mua / gia hạn đăng bài
+  purchasePublication: (warehouseId, payload) => {
+    return api.post(`/owner/warehouses/${warehouseId}/publications`, payload)
+  },
+  
+  getPublications: (warehouseId) => {
+    return api.get(`/owner/warehouses/${warehouseId}/publications`)
   },
 
   // //yêu cầu kiểm định kho
@@ -95,23 +100,7 @@ const onwerwarehouseApi = {
     return api.get('/owner/inspections', { params: { page, size } })
   },
 
-  // --- API Xét duyệt Booking của Owner ---
 
-  // Lấy danh sách yêu cầu thuê kho gửi đến (phân trang)
-  getIncomingRequests: ({ page, size } = {}) => {
-    return api.get('/owner/bookings', { params: { page, size } })
-  },
-
-  // Chấp nhận yêu cầu thuê
-  approveBooking: (bookingId) => {
-    return api.patch(`/owner/bookings/${bookingId}/approve`)
-  },
-
-  // Từ chối yêu cầu thuê
-  rejectBooking: (bookingId, data) => {
-    // data = { reason: "..." }
-    return api.patch(`/owner/bookings/${bookingId}/reject`, data)
-  },
 }
 
 export default onwerwarehouseApi
