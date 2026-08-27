@@ -74,7 +74,7 @@ import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
 import AIChatWidget from './features/chat/components/AIChatWidget'
 
 // Dev Sandbox
-import DevApiSandbox from './features/dev/DevApiSandbox'
+// import DevApiSandbox from './features/dev/DevApiSandbox'
 
 const PENDING_OWNER_LAYOUT_KEY = 'stockspace:pending-owner-layout'
 
@@ -267,9 +267,9 @@ const App = () => {
         <Route element={<RoleGuard allowedRoles={['ROLE_INSPECTOR']} />}>
           <Route path="/inspector/inspections" element={<InspectorInspectionsPage />} />
         </Route>
-        
+
         {/* TRANG TEST API CHO DEV (ẨN) */}
-        <Route path="/dev-sandbox" element={<DevApiSandbox />} />
+        {/* <Route path="/dev-sandbox" element={<DevApiSandbox />} />   */}
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
