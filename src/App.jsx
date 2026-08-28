@@ -227,6 +227,10 @@ const App = () => {
           />
           <Route path="/tenant/wallet" element={<WalletTenant />} />
           <Route path="/tenant/contracts" element={<TenantContractsPage />} />
+          <Route
+            path="/tenant/contracts/:contractId/layout"
+            element={<LayoutWarehouse currentRole="TENANT" />}
+          />
           <Route path="/tenant/staff" element={<TenantStaffManagementPage />} />
           <Route path="/tenant/products" element={<ProductManagementPage />} />
         </Route>
@@ -245,6 +249,10 @@ const App = () => {
             <Route path="/owner/wallet/withdraws" element={<WithdrawsHistory />} />
             <Route path="/owner/profile" element={<OwnerProfile />} />
             <Route path="/owner/contracts" element={<OwnerContractsPage />} />
+            <Route
+              path="/owner/contracts/:contractId/layout"
+              element={<LayoutWarehouse currentRole="OWNER" />}
+            />
           </Route>
         </Route>
 

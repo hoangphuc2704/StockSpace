@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Bell, CheckCheck, Loader2, Info, Wallet, CalendarCheck, FileText, AlertTriangle, Warehouse, ClipboardCheck, Boxes } from 'lucide-react'
+import { useCallback, useState, useEffect, useRef } from 'react'
+import { Bell, CheckCheck, Loader2, Info, Wallet, CalendarCheck, FileText, Warehouse, ClipboardCheck, Boxes } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import notificationApi from '../services/notificationApi'
@@ -58,13 +58,6 @@ const NotificationDropdown = () => {
           bg: 'bg-green-100', 
           route: role === 'ROLE_TENANT' ? '/tenant/wallet' : (role === 'ROLE_ADMIN' ? '/admin/deposits' : null) 
         }
-      case 'BOOKING':
-        return { 
-          Icon: CalendarCheck, 
-          color: 'text-blue-500', 
-          bg: 'bg-blue-100', 
-          route: role === 'ROLE_TENANT' ? '/tenant/warehouses' : '/owner/listwarehouse'
-        }
       case 'CONTRACT':
         return { 
           Icon: FileText, 
@@ -78,13 +71,6 @@ const NotificationDropdown = () => {
           color: 'text-indigo-500',
           bg: 'bg-indigo-100',
           route: role === 'ROLE_TENANT' ? '/tenant/contracts' : '/owner/contracts',
-        }
-      case 'DISPUTE':
-        return { 
-          Icon: AlertTriangle, 
-          color: 'text-red-500', 
-          bg: 'bg-red-100', 
-          route: role === 'ROLE_TENANT' ? '/tenant/disputes' : '/owner/disputes' 
         }
       case 'WAREHOUSE':
         return { 
@@ -128,15 +114,6 @@ const NotificationDropdown = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Load số lượng thông báo chưa đọc lần đầu tiên
-  useEffect(() => {
-    fetchUnreadCount()
-    
-    // Auto refresh unread count mỗi phút
-    const interval = setInterval(fetchUnreadCount, 60000)
-    return () => clearInterval(interval)
-  }, [])
-
   // Lắng nghe thông báo mới từ WebSocket
   useEffect(() => {
     const handleNewNotification = (e) => {
@@ -154,7 +131,7 @@ const NotificationDropdown = () => {
     return () => window.removeEventListener('new_notification', handleNewNotification)
   }, [])
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = useCallback(async () => {
     try {
       const res = await notificationApi.getUnreadCount()
       if (res.success) {
@@ -163,7 +140,17 @@ const NotificationDropdown = () => {
     } catch (error) {
       console.error("Error getting number of notifications:", error)
     }
-  }
+  }, [])
+
+  // Load số lượng thông báo chưa đọc lần đầu tiên
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchUnreadCount()
+
+    // Auto refresh unread count mỗi phút
+    const interval = setInterval(fetchUnreadCount, 60000)
+    return () => clearInterval(interval)
+  }, [fetchUnreadCount])
 
   const fetchNotifications = async (isLoadMore = false) => {
     try {

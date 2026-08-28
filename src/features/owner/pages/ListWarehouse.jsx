@@ -17,8 +17,10 @@ import {
   Clock,
   Loader2,
   Eye,
+  History,
   Megaphone,
   Edit3,
+  Trash2,
 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import Modal from '@/components/organisms/Modal'
@@ -60,29 +62,10 @@ const WarehouseManagement = () => {
   // State quản lý xem chi tiết kho bằng Modal
   const [selectedWarehouse, setSelectedWarehouse] = useState(null)
   const [publicationWarehouse, setPublicationWarehouse] = useState(null)
+  const [publicationHistoryWarehouse, setPublicationHistoryWarehouse] = useState(null)
   const [editingWarehouse, setEditingWarehouse] = useState(null)
-
-  const consumePendingListingSelection = (contentList) => {
-    try {
-      const pending = JSON.parse(sessionStorage.getItem('stockspace:pending-owner-listing') || 'null')
-      const pendingWarehouse = contentList.find(
-        (warehouse) =>
-          String(warehouse.id) === String(pending?.warehouseId) &&
-          warehouse.status === 'AVAILABLE' &&
-          (warehouse.canPublish || warehouse.canRenew)
-      )
-
-      if (pendingWarehouse) {
-        setPublicationWarehouse({
-          ...pendingWarehouse,
-          preferredPackageId: pending.listingPackageId,
-        })
-        sessionStorage.removeItem('stockspace:pending-owner-listing')
-      }
-    } catch {
-      sessionStorage.removeItem('stockspace:pending-owner-listing')
-    }
-  }
+  const [deleteWarehouseConfirm, setDeleteWarehouseConfirm] = useState(null)
+  const [deletingWarehouseId, setDeletingWarehouseId] = useState(null)
 
   // Xử lý gửi yêu cầu kiểm định kho qua API
   const handleRequestInspection = async (warehouseId) => {
@@ -117,6 +100,24 @@ const WarehouseManagement = () => {
     }
   }
 
+  const handleDeleteWarehouse = async () => {
+    if (!deleteWarehouseConfirm || deletingWarehouseId) return
+
+    const warehouseId = deleteWarehouseConfirm.id
+    try {
+      setDeletingWarehouseId(warehouseId)
+      await warehouseApi.deleteWarehouse(warehouseId)
+      toast.success('Warehouse listing deleted.')
+      setDeleteWarehouseConfirm(null)
+      setRefreshTrigger((current) => current + 1)
+    } catch (error) {
+      console.error('Error deleting warehouse listing:', error)
+      showApiErrorToast(error, 'Could not delete warehouse listing.')
+    } finally {
+      setDeletingWarehouseId(null)
+    }
+  }
+
   // Gọi API lấy dữ liệu mỗi khi số trang, kích thước trang hoặc refreshTrigger thay đổi
   useEffect(() => {
     const fetchWarehouses = async () => {
@@ -141,7 +142,6 @@ const WarehouseManagement = () => {
         if (apiResult) {
           const contentList = apiResult.content || []
           setWarehouses(Array.isArray(contentList) ? contentList : [])
-          consumePendingListingSelection(Array.isArray(contentList) ? contentList : [])
           setTotalPages(apiResult.totalPages || 0)
           setTotalElements(apiResult.totalElements || 0)
         } else {
@@ -426,6 +426,11 @@ const WarehouseManagement = () => {
                                     Listing: {wh.publicationStatus}
                                   </span>
                                 )}
+                                {wh.status === 'PENDING_APPROVAL' && wh.visibleUntil && (
+                                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
+                                    Payment: paid · waiting for approval
+                                  </span>
+                                )}
                               </div>
                             </td>
 
@@ -486,6 +491,17 @@ const WarehouseManagement = () => {
                                     label: 'Edit warehouse',
                                     icon: Edit3,
                                     onClick: () => setEditingWarehouse(wh),
+                                  },
+                                  {
+                                    label: 'Payment history',
+                                    icon: History,
+                                    onClick: () => setPublicationHistoryWarehouse(wh),
+                                  },
+                                  {
+                                    label: 'Delete listing',
+                                    icon: Trash2,
+                                    onClick: () => setDeleteWarehouseConfirm(wh),
+                                    danger: true,
                                   },
                                   ...(wh.status === 'AVAILABLE' && (wh.canPublish || wh.canRenew)
                                     ? [
@@ -597,6 +613,46 @@ const WarehouseManagement = () => {
         </div>
       )}
 
+      <Modal
+        isOpen={!!deleteWarehouseConfirm}
+        onClose={() => {
+          if (!deletingWarehouseId) setDeleteWarehouseConfirm(null)
+        }}
+        title="Delete warehouse listing"
+        className="max-w-md"
+      >
+        {deleteWarehouseConfirm && (
+          <div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <Trash2 className="h-5 w-5" />
+            </div>
+            <h2 className="mt-4 text-lg font-bold text-slate-900">Delete this listing?</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              The listing <strong>{deleteWarehouseConfirm.name}</strong> will be removed from your
+              warehouse list. This action cannot be undone from the interface.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeleteWarehouseConfirm(null)}
+                disabled={!!deletingWarehouseId}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleDeleteWarehouse}
+                isLoading={!!deletingWarehouseId}
+                className="bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete listing
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* MODAL XEM CHI TIẾT KHO */}
       <Modal
         isOpen={!!selectedWarehouse}
@@ -672,6 +728,14 @@ const WarehouseManagement = () => {
           warehouse={publicationWarehouse}
           onClose={() => setPublicationWarehouse(null)}
           onSuccess={() => setRefreshTrigger((current) => current + 1)}
+        />
+      )}
+
+      {publicationHistoryWarehouse && (
+        <ListingPublicationModal
+          warehouse={publicationHistoryWarehouse}
+          historyOnly
+          onClose={() => setPublicationHistoryWarehouse(null)}
         />
       )}
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
@@ -12,9 +12,7 @@ import TableActionMenu from '@/components/TableActionMenu'
 import {
   FileText,
   CheckCircle,
-  Loader2,
   X,
-  AlertCircle,
   Eye,
   Edit3,
   Box
@@ -35,6 +33,7 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setReason('')
       setError(null)
     }
@@ -144,6 +143,7 @@ const TenantContractsPage = () => {
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchContracts()
   }, [fetchContracts])
 
@@ -171,7 +171,7 @@ const TenantContractsPage = () => {
       if (!imageArray || imageArray.length === 0) throw new Error('Invalid URL')
       setViewerImages(imageArray)
       setViewerOpen(true)
-    } catch (error) {
+    } catch {
       toast.error('Contract file unavailable.')
     }
   }
@@ -228,7 +228,7 @@ const TenantContractsPage = () => {
             row.canViewLayout && {
               label: 'View Layout',
               icon: Eye,
-              onClick: () => window.open(`/tenant/layoutwarehouses?warehouseId=${row.warehouseId}`, '_blank')
+              onClick: () => window.open(`/tenant/contracts/${row.id}/layout`, '_blank')
             },
             row.canConfirm && {
               label: 'Confirm contract',

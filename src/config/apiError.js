@@ -24,7 +24,7 @@ export const getApiErrorMessage = (
   { message: overrideMessage, byCode = {}, byStatus = {} } = {}
 ) => {
   const payload = error?.response?.data
-  const errorCode = payload?.errorCode
+  const errorCode = payload?.errorCode || payload?.code
   const status = error?.response?.status
   const customMessage =
     overrideMessage ||
@@ -48,16 +48,17 @@ export const getApiErrorMessage = (
 export const showApiErrorToast = (error, fallback = DEFAULT_API_ERROR, options = {}) => {
   const customMessage =
     options.message ||
-    options.byCode?.[error?.response?.data?.errorCode] ||
+    options.byCode?.[error?.response?.data?.errorCode || error?.response?.data?.code] ||
     options.byStatus?.[error?.response?.status] ||
     error?.config?.toastMessage ||
-    error?.config?.toastMessages?.[error?.response?.data?.errorCode] ||
-    API_ERROR_MESSAGE_OVERRIDES[error?.response?.data?.errorCode]
+    error?.config?.toastMessages?.[error?.response?.data?.errorCode || error?.response?.data?.code] ||
+    API_ERROR_MESSAGE_OVERRIDES[error?.response?.data?.errorCode || error?.response?.data?.code]
   const errorMessage = getApiErrorMessage(error, fallback, options)
   if (error?.__apiErrorToastShown && !customMessage) return errorMessage
 
-  const toastId = error?.response?.data?.errorCode
-    ? `api-error-${error.response.data.errorCode}`
+  const responseCode = error?.response?.data?.errorCode || error?.response?.data?.code
+  const toastId = responseCode
+    ? `api-error-${responseCode}`
     : error?.__apiErrorToastId || `api-error-${errorMessage}`
 
   toast.error(errorMessage, { id: toastId })

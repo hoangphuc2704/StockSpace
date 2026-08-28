@@ -30,7 +30,7 @@ const SIDEBAR_MENUS = {
     { text: 'Overview', icon: HiOutlineRectangleGroup, path: '/admin/dashboard' },
     { text: 'System Wallet', icon: HiOutlineCurrencyDollar, path: '/admin/wallet' },
     { text: 'Users', icon: HiOutlineUsers, path: '/admin/users' },
-    { text: 'Warehouses Approval', icon: HiOutlineHomeModern, path: '/admin/listings' },
+    // Temporarily hidden; warehouse approvals are handled from Warehouse Management.
     { text: 'Listing Packages', icon: HiOutlineTag, path: '/admin/listing-packages' },
     // { text: 'Analytics', icon: HiOutlineChartBar, path: '/admin/analytics' },
     // { text: 'Deposits', icon: HiOutlineCheckCircle, path: '/admin/deposits' },

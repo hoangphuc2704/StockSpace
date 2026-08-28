@@ -16,7 +16,7 @@ const addDays = (date, days) => {
   return result
 }
 
-const ListingPublicationModal = ({ warehouse, onClose, onSuccess }) => {
+const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = false }) => {
   const [packages, setPackages] = useState([])
   const [history, setHistory] = useState([])
   const [selectedPackageId, setSelectedPackageId] = useState(warehouse.preferredPackageId || '')
@@ -30,23 +30,32 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess }) => {
 
   useEffect(() => {
     let isActive = true
-    Promise.all([listingApi.getPublicPackages(), listingApi.getOwnerPublicationHistory(warehouse.id)])
-      .then(([packagesResponse, historyResponse]) => {
-        const payload = packagesResponse?.data?.data || packagesResponse?.data
-        const historyPayload = historyResponse?.data?.data || historyResponse?.data
-        const activePackages = Array.isArray(payload)
-          ? payload.filter((item) => item.isActive ?? item.active)
-          : []
-        if (isActive) {
-          setPackages(activePackages)
-          setSelectedPackageId(
-            activePackages.find((item) => String(item.id) === String(warehouse.preferredPackageId))?.id ||
-              activePackages[0]?.id ||
-              ''
-          )
-          setHistory(Array.isArray(historyPayload) ? historyPayload : [])
-        }
-      })
+    const loadData = historyOnly
+      ? listingApi.getOwnerPublicationHistory(warehouse.id).then((historyResponse) => {
+          const historyPayload = historyResponse?.data?.data || historyResponse?.data
+          if (isActive) setHistory(Array.isArray(historyPayload) ? historyPayload : [])
+        })
+      : Promise.all([
+          listingApi.getPublicPackages(),
+          listingApi.getOwnerPublicationHistory(warehouse.id),
+        ]).then(([packagesResponse, historyResponse]) => {
+          const payload = packagesResponse?.data?.data || packagesResponse?.data
+          const historyPayload = historyResponse?.data?.data || historyResponse?.data
+          const activePackages = Array.isArray(payload)
+            ? payload.filter((item) => item.isActive ?? item.active)
+            : []
+          if (isActive) {
+            setPackages(activePackages)
+            setSelectedPackageId(
+              activePackages.find((item) => String(item.id) === String(warehouse.preferredPackageId))?.id ||
+                activePackages[0]?.id ||
+                ''
+            )
+            setHistory(Array.isArray(historyPayload) ? historyPayload : [])
+          }
+        })
+
+    loadData
       .catch((error) => showApiErrorToast(error, 'Could not load listing packages.'))
       .finally(() => {
         if (isActive) setIsLoading(false)
@@ -55,7 +64,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess }) => {
     return () => {
       isActive = false
     }
-  }, [warehouse.id, warehouse.preferredPackageId])
+  }, [historyOnly, warehouse.id, warehouse.preferredPackageId])
 
   const handlePurchase = async () => {
     if (!selectedPackageId || isPurchasing) return
@@ -80,10 +89,16 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess }) => {
           <div>
             <div className="flex items-center gap-2 text-blue-600">
               <Megaphone className="h-5 w-5" />
-              <span className="text-xs font-bold tracking-[0.18em] uppercase">Warehouse visibility</span>
+              <span className="text-xs font-bold tracking-[0.18em] uppercase">
+                {historyOnly ? 'Listing payment records' : 'Warehouse visibility'}
+              </span>
             </div>
             <h2 className="mt-2 text-xl font-bold text-slate-900">
-              {warehouse.canRenew ? 'Renew listing' : 'Publish warehouse'}
+              {historyOnly
+                ? 'Payment history'
+                : warehouse.canRenew
+                  ? 'Renew listing'
+                  : 'Publish warehouse'}
             </h2>
             <p className="mt-1 text-sm text-slate-500">{warehouse.name}</p>
           </div>
@@ -103,6 +118,49 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess }) => {
 
           {isLoading ? (
             <div className="flex min-h-36 items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-blue-600" /></div>
+          ) : historyOnly ? (
+            history.length > 0 ? (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold tracking-widest text-slate-500 uppercase">
+                    Paid listing packages
+                  </p>
+                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                    {history.length} payment{history.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="mt-3 space-y-3">
+                  {history.map((order) => (
+                    <div key={order.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-bold text-slate-800">
+                            {order.listingPackageName || 'Listing package'}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            {order.durationDays ? `${order.durationDays} days` : 'Duration unavailable'}
+                            {' · '}
+                            {formatDate(order.periodStart)} – {formatDate(order.periodEnd)}
+                          </p>
+                        </div>
+                        <span className="font-black text-emerald-700">{formatVND(order.price)}</span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-400">
+                        <span>Paid</span>
+                        {order.transactionId && <span>Transaction: {order.transactionId}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center">
+                <p className="font-semibold text-slate-700">No listing payment found</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  The selected warehouse has not paid for a 10, 15 or 30-day listing package yet.
+                </p>
+              </div>
+            )
           ) : packages.length === 0 ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               No active listing packages are available right now.
@@ -174,12 +232,14 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess }) => {
 
         <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 p-6">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="button" onClick={handlePurchase} isLoading={isPurchasing} disabled={isLoading || packages.length === 0 || !selectedPackageId}>
-            <CreditCard className="mr-2 h-4 w-4" />
-            {selectedPackage
-              ? `Pay ${formatVND(selectedPackage.price)} & ${warehouse.canRenew ? 'renew' : 'publish'}`
-              : 'Select a package'}
-          </Button>
+          {!historyOnly && (
+            <Button type="button" onClick={handlePurchase} isLoading={isPurchasing} disabled={isLoading || packages.length === 0 || !selectedPackageId}>
+              <CreditCard className="mr-2 h-4 w-4" />
+              {selectedPackage
+                ? `Pay ${formatVND(selectedPackage.price)} & ${warehouse.canRenew ? 'renew' : 'publish'}`
+                : 'Select a package'}
+            </Button>
+          )}
         </div>
       </div>
     </div>

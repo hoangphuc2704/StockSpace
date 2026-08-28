@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   AlertCircle,
@@ -19,6 +19,7 @@ import Sidebar from '@/components/SideBar'
 import WarehouseLayoutPreview3D from '@/components/WarehouseLayoutPreview3D'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import layoutApi from '@/services/layoutApi'
+import contractApi from '@/services/contractApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import stockApi from '@/services/wms/stockApi'
 import { getEnglishApiMessage } from '@/utils/englishMessages'
@@ -47,6 +48,21 @@ const totalBinWeightLimit = (rack) =>
 const totalBinVolumeLimit = (rack) =>
   (rack?.bins || []).reduce((total, bin) => total + Math.max(numberOf(bin.maxVolume), 0), 0)
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
+const isCurrentActiveContract = (contract) => {
+  if (contract?.status !== 'ACTIVE') return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const startDate = contract.startDate ? new Date(`${contract.startDate}T00:00:00`) : null
+  const endDate = contract.endDate ? new Date(`${contract.endDate}T23:59:59`) : null
+  return Boolean(
+    startDate &&
+      endDate &&
+      !Number.isNaN(startDate.getTime()) &&
+      !Number.isNaN(endDate.getTime()) &&
+      startDate <= today &&
+      endDate >= today
+  )
+}
 const normalizeCreatedDimensions = (dimensions) => {
   const width = numberOf(dimensions?.width)
   const length = numberOf(dimensions?.length)
@@ -196,10 +212,10 @@ const normalizeRack = (rack = {}) => ({
   bins: Array.isArray(rack.bins) ? rack.bins.map(normalizeBin) : [],
 })
 
-const normalizeLayout = (payload = {}) => ({
-  width: Math.max(numberOf(payload.width, DEFAULT_LAYOUT_SIZE), 20),
-  length: Math.max(numberOf(payload.length, DEFAULT_LAYOUT_SIZE), 20),
-  height: Math.max(numberOf(payload.height, DEFAULT_LAYOUT_SIZE), MIN_ENTITY_SIZE),
+const normalizeLayout = (payload = {}, { preserveDimensions = false } = {}) => ({
+  width: Math.max(numberOf(payload.width, DEFAULT_LAYOUT_SIZE), preserveDimensions ? 0.01 : 20),
+  length: Math.max(numberOf(payload.length, DEFAULT_LAYOUT_SIZE), preserveDimensions ? 0.01 : 20),
+  height: Math.max(numberOf(payload.height, DEFAULT_LAYOUT_SIZE), preserveDimensions ? 0.01 : MIN_ENTITY_SIZE),
   footprintCells: normalizeFootprint(payload.footprintCells),
   // `positions` is the BE field that stores the painted/locked grid cells.
   // Keep the legacy fallback so layouts returned by an older deployment still render correctly.
@@ -292,9 +308,11 @@ const fitBinsToRack = (rack) => {
   }
 }
 
-const toPayload = (layout) => {
-  const width = Math.max(numberOf(layout.width, DEFAULT_LAYOUT_SIZE), 20)
-  const length = Math.max(numberOf(layout.length, DEFAULT_LAYOUT_SIZE), 20)
+const toPayload = (layout, { preserveDimensions = false } = {}) => {
+  const minimumWidth = preserveDimensions ? 0.01 : 20
+  const minimumLength = preserveDimensions ? 0.01 : 20
+  const width = Math.max(numberOf(layout.width, DEFAULT_LAYOUT_SIZE), minimumWidth)
+  const length = Math.max(numberOf(layout.length, DEFAULT_LAYOUT_SIZE), minimumLength)
   return {
     width,
     length,
@@ -430,15 +448,19 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
+  const { contractId: routeContractId } = useParams()
   const [searchParams] = useSearchParams()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const dragRef = useRef(null)
   const blockedPaintRef = useRef(false)
   const isOwner = currentRole === 'OWNER'
-  const isReadOnly = currentRole === 'STAFF' || stockOnly
+  const contractId = routeContractId || searchParams.get('contractId') || ''
+  const isContractLayout = Boolean(contractId)
 
   const [rentedWarehouses, setRentedWarehouses] = useState([])
   const [ownedWarehouses, setOwnedWarehouses] = useState([])
+  const [ownerLockedWarehouseIds, setOwnerLockedWarehouseIds] = useState(() => new Set())
+  const [tenantCapabilities, setTenantCapabilities] = useState({})
   const [preferredWarehouseId, setPreferredWarehouseId] = useState('')
   const [layout, setLayout] = useState(() => normalizeLayout())
   const [selection, setSelection] = useState({ type: 'layout', key: null })
@@ -454,6 +476,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [contractCanEdit, setContractCanEdit] = useState(false)
   const [layoutSetupComplete, setLayoutSetupComplete] = useState(false)
   const [tenantDefault, setTenantDefault] = useState(false)
   const [stockRefreshKey, setStockRefreshKey] = useState(0)
@@ -552,6 +575,29 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     return warehouses[0].id
   }, [pendingOwnerLayout, preferredWarehouseId, searchParams, warehouses])
 
+  const tenantCanManageLayout = Boolean(
+    !isOwner &&
+      currentRole === 'TENANT' &&
+      !isContractLayout &&
+      selectedWarehouseId &&
+      tenantCapabilities[selectedWarehouseId]?.canManageWms
+  )
+  const ownerWarehouseLayoutLocked = Boolean(
+    isOwner &&
+      !isContractLayout &&
+      selectedWarehouseId &&
+      ownerLockedWarehouseIds.has(String(selectedWarehouseId))
+  )
+  const canEditLayout =
+    (isOwner && (!isContractLayout || contractCanEdit) && !ownerWarehouseLayoutLocked) ||
+    tenantCanManageLayout
+  const isReadOnly =
+    currentRole === 'STAFF' ||
+    stockOnly ||
+    (isContractLayout && (!isOwner || !contractCanEdit)) ||
+    ownerWarehouseLayoutLocked ||
+    (currentRole === 'TENANT' && !tenantCanManageLayout)
+
   const isMandatorySetup = useMemo(() => {
     if (!isOwner || layoutSetupComplete) return false
     return searchParams.get('setupRequired') === 'true' || Boolean(pendingOwnerLayout)
@@ -644,6 +690,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   useEffect(() => {
     let alive = true
     const load = async () => {
+      if (isContractLayout) {
+        setLoadingOptions(false)
+        return
+      }
       try {
         setLoadingOptions(true)
         setError('')
@@ -655,11 +705,46 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             sortDir: 'desc',
           })
           if (alive) setOwnedWarehouses(apiData(response)?.content ?? [])
+          try {
+            const contractsResponse = await contractApi.getMyContracts({ page: 0, size: 100 })
+            const contractsPayload = apiData(contractsResponse)
+            const contractList = Array.isArray(contractsPayload)
+              ? contractsPayload
+              : contractsPayload?.content ?? []
+            const lockedIds = contractList
+              .filter(isCurrentActiveContract)
+              .map((contract) => String(contract.warehouseId))
+            if (alive) setOwnerLockedWarehouseIds(new Set(lockedIds))
+          } catch {
+            if (alive) setOwnerLockedWarehouseIds(new Set())
+          }
         } else {
           const response = await warehouseApi.getMyWarehouses()
           const payload = apiData(response)
           if (alive) {
             setRentedWarehouses(Array.isArray(payload) ? payload : (payload?.content ?? []))
+          }
+
+          try {
+            const contractsResponse = await contractApi.getMyContracts({ page: 0, size: 100 })
+            const contractsPayload = apiData(contractsResponse)
+            const contractList = Array.isArray(contractsPayload)
+              ? contractsPayload
+              : contractsPayload?.content ?? []
+            const capabilities = contractList.reduce((result, contract) => {
+              const warehouseId = contract?.warehouseId
+              if (!warehouseId) return result
+              const key = String(warehouseId)
+              result[key] = {
+                canViewLayout: Boolean(result[key]?.canViewLayout || contract.canViewLayout),
+                canManageWms: Boolean(result[key]?.canManageWms || contract.canManageWms),
+              }
+              return result
+            }, {})
+            if (alive) setTenantCapabilities(capabilities)
+          } catch {
+            // The warehouse list remains usable in read-only mode if contract flags fail to load.
+            if (alive) setTenantCapabilities({})
           }
         }
       } catch (requestError) {
@@ -678,7 +763,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     return () => {
       alive = false
     }
-  }, [isOwner, rentalRefreshKey])
+  }, [isContractLayout, isOwner, rentalRefreshKey])
 
   // Contract expiry/cancellation can remove the selected rented warehouse and
   // revoke its layout/stock access. Reload the warehouse options immediately
@@ -695,31 +780,49 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [isOwner])
 
   const loadLayout = useCallback(async () => {
-    if (!selectedWarehouseId) return
+    if (!selectedWarehouseId && !isContractLayout) return
     const warehouse = warehouses.find((item) => item.id === selectedWarehouseId)
     try {
       setLoadingLayout(true)
       setError('')
       setMessage('')
-      const response = isOwner
-        ? await warehouseApi.getOwnerWarehouseLayout(selectedWarehouseId)
-        : currentRole === 'STAFF'
-          ? await warehouseApi.getPublicWarehouseLayout(selectedWarehouseId)
-          : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
+      let response
+      if (isContractLayout) {
+        if (isOwner) {
+          const contractResponse = await contractApi.getById(contractId)
+          const contract = apiData(contractResponse) || {}
+          const editableStatuses = ['DRAFT', 'CHANGES_REQUESTED']
+          setContractCanEdit(
+            Boolean(contract.canEdit ?? editableStatuses.includes(contract.status))
+          )
+        }
+        response = isOwner
+          ? await contractApi.getOwnerLayout(contractId)
+          : await contractApi.getTenantLayout(contractId)
+      } else {
+        response = isOwner
+          ? await warehouseApi.getOwnerWarehouseLayout(selectedWarehouseId)
+          : currentRole === 'STAFF'
+            ? await warehouseApi.getPublicWarehouseLayout(selectedWarehouseId)
+            : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
+      }
       const payload = apiData(response) || {}
+      const payloadWithDimensions = isContractLayout
+        ? payload
+        : {
+            ...payload,
+            width: createdDimensions?.width ?? warehouse?.width ?? payload.width,
+            length: createdDimensions?.length ?? warehouse?.length ?? payload.length,
+            height: createdDimensions?.height ?? warehouse?.height ?? payload.height,
+          }
       setLayout(
-        normalizeLayout({
-          ...payload,
-          width: createdDimensions?.width ?? warehouse?.width ?? payload.width,
-          length: createdDimensions?.length ?? warehouse?.length ?? payload.length,
-          height: createdDimensions?.height ?? warehouse?.height ?? payload.height,
-        })
+        normalizeLayout(payloadWithDimensions, { preserveDimensions: isContractLayout || !isOwner })
       )
-      setTenantDefault(!isOwner && Boolean(payload.isDefault ?? payload.default))
+      setTenantDefault(!isOwner && !isContractLayout && Boolean(payload.isDefault ?? payload.default))
       updateSelection({ type: 'layout', key: null }, false, true)
     } catch (requestError) {
       const notFound = requestError.response?.status === 404
-      if (isOwner && notFound) {
+      if (isOwner && notFound && !isContractLayout) {
         setLayout(
           normalizeLayout({
             width: createdDimensions?.width ?? warehouse?.width,
@@ -748,7 +851,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     } finally {
       setLoadingLayout(false)
     }
-  }, [createdDimensions, currentRole, isOwner, selectedWarehouseId, updateSelection, warehouses])
+  }, [contractId, createdDimensions, currentRole, isContractLayout, isOwner, selectedWarehouseId, updateSelection, warehouses])
 
   useEffect(() => {
     // Loading the selected warehouse is the external synchronization performed by this effect.
@@ -873,7 +976,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       if (currentRole === 'STAFF' && type === 'bin') setView('stock')
       return
     }
-    if (blockedMode || (mode === 'resize' && !isOwner) || !parentElement) return
+    if (blockedMode || (mode === 'resize' && !canEditLayout) || !parentElement) return
     const additiveSelection = isMultiSelectMode || event.ctrlKey || event.metaKey
     if (additiveSelection) {
       event.preventDefault()
@@ -918,7 +1021,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }
 
   const addRack = useCallback(() => {
-    if (!isOwner) return
+    if (!canEditLayout) return
     const width = Math.min(18, layout.width)
     const length = Math.min(18, layout.length)
     const position = findAvailableRackPosition(layout, width, length, minimumRackGap)
@@ -942,10 +1045,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     updateSelection({ type: 'rack', key: rack.clientKey }, false, true)
     setBlockedMode(false)
     setError('')
-  }, [isOwner, layout, minimumRackGap, updateSelection])
+  }, [canEditLayout, layout, minimumRackGap, updateSelection])
 
   const addBin = useCallback(() => {
-    if (!isOwner || !selectedRack) {
+    if (!canEditLayout || !selectedRack) {
       setError('Please select a Rack before adding a Bin.')
       return
     }
@@ -966,10 +1069,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     )
     updateSelection({ type: 'bin', key: bin.clientKey }, false, true)
     setError('')
-  }, [isOwner, selectedRack, updateSelection])
+  }, [canEditLayout, selectedRack, updateSelection])
 
   const removeSelected = useCallback(() => {
-    if (!isOwner) return
+    if (!canEditLayout) return
     const targets = selectedItems.length
       ? selectedItems
       : selection.type === 'layout'
@@ -997,7 +1100,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     updateSelection({ type: 'layout', key: null }, false, true)
     setIsMultiSelectMode(false)
     setError('')
-  }, [isOwner, selectedItems, selection.key, selection.type, updateSelection])
+  }, [canEditLayout, selectedItems, selection.key, selection.type, updateSelection])
 
   useEffect(() => {
     const handleKeyboardShortcut = (event) => {
@@ -1033,7 +1136,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [addBin, addRack, isReadOnly, removeSelected, selectedItems.length, selection.type])
 
   const saveLayout = async () => {
-    if (isReadOnly || !selectedWarehouseId || tenantDefault) return
+    if (isReadOnly || (!selectedWarehouseId && !isContractLayout)) return
     if (layout.racks.some((rack) => rectangleOverlapsBlockedCell(rack, layout))) {
       setError('A rack overlaps a locked cell. Move it before saving the layout.')
       return
@@ -1046,7 +1149,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         (maxVolume > 0 && totalBinVolumeLimit(rack) > maxVolume)
       )
     })
-    if (isOwner && overloadedRack) {
+    if (canEditLayout && overloadedRack) {
       const weightOverloaded =
         Math.max(numberOf(overloadedRack.maxWeight), 0) > 0 &&
         totalBinWeightLimit(overloadedRack) > Math.max(numberOf(overloadedRack.maxWeight), 0)
@@ -1058,13 +1161,16 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     try {
       setSaving(true)
       setError('')
-      const response = isOwner
-        ? await warehouseApi.saveOwnerWarehouseLayout(selectedWarehouseId, toPayload(layout))
-        : await layoutApi.saveTenantWarehouseLayout(selectedWarehouseId, toPayload(layout))
+      const payload = toPayload(layout, { preserveDimensions: isContractLayout })
+      const response = isContractLayout
+        ? await contractApi.saveOwnerLayout(contractId, payload)
+        : isOwner
+          ? await warehouseApi.saveOwnerWarehouseLayout(selectedWarehouseId, payload)
+          : await layoutApi.saveTenantWarehouseLayout(selectedWarehouseId, payload)
       const saved = apiData(response)
-      if (saved) setLayout(normalizeLayout(saved))
+      if (saved) setLayout(normalizeLayout(saved, { preserveDimensions: isContractLayout || !isOwner }))
       updateSelection({ type: 'layout', key: null }, false, true)
-      setMessage('Warehouse layout saved successfully.')
+      setMessage(isContractLayout ? 'Contract layout saved successfully.' : 'Warehouse layout saved successfully.')
       if (isMandatorySetup) {
         try {
           sessionStorage.removeItem(pendingOwnerLayoutKey)
@@ -1286,23 +1392,38 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   ) : (
                     <Warehouse className="h-7 w-7 text-blue-600" />
                   )}
-                  {stockOnly ? 'Goods in Bin' : 'Warehouse Layout'}
+                  {stockOnly ? (isContractLayout ? 'Contract Layout' : 'Goods in Bin') : isContractLayout ? 'Contract Layout' : 'Warehouse Layout'}
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
                   {stockOnly
                     ? 'Select warehouse and Bin to view items, units and inventory quantity. This screen is for viewing only.'
-                    : isOwner
+                    : isContractLayout
+                      ? isOwner && canEditLayout
+                        ? 'Configure the leased area layout before submitting this contract. Contract dimensions are fixed.'
+                        : 'Review the layout proposed for this rental contract. Editing is disabled.'
+                      : ownerWarehouseLayoutLocked
+                        ? 'This warehouse layout is locked while a tenant rental contract is active.'
+                      : isOwner
                       ? 'Create Rack, Bin and warehouse shapes. Data is stored in the correct BE structure, without Zone.'
                       : isReadOnly
-                        ? 'View the warehouse layout. Editing is disabled for Staff.'
-                        : "Move Rack and Bin on Tenant's own layout."}
+                        ? 'View the warehouse layout. Editing is disabled until WMS access is available.'
+                        : "Customize Rack and Bin on Tenant's own layout."}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
+                {isContractLayout && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(isOwner ? '/owner/contracts' : '/tenant/contracts')}
+                    className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+                  >
+                    Back to contracts
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={loadLayout}
-                  disabled={!selectedWarehouseId || loadingLayout}
+                  disabled={(!selectedWarehouseId && !isContractLayout) || loadingLayout}
                   className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
                 >
                   <RotateCcw className={`mr-2 h-4 w-4 ${loadingLayout ? 'animate-spin' : ''}`} />{' '}
@@ -1313,10 +1434,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     type="button"
                     onClick={saveLayout}
                     disabled={
-                      !selectedWarehouseId ||
+                      (!selectedWarehouseId && !isContractLayout) ||
                       saving ||
                       loadingLayout ||
-                      tenantDefault ||
+                      (tenantDefault && !canEditLayout) ||
                       view === 'stock'
                     }
                     className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-slate-300"
@@ -1332,7 +1453,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               </div>
             </div>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            {!isContractLayout && <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <label className="mb-2 block text-xs font-bold tracking-wider text-slate-400 uppercase">
                 Select warehouse
               </label>
@@ -1349,9 +1470,27 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   </option>
                 ))}
               </select>
-            </section>
+            </section>}
 
-            {isOwner && !stockOnly && (
+            {isContractLayout && (
+              <section className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold tracking-wider text-blue-700 uppercase">
+                      Contract layout snapshot
+                    </p>
+                    <p className="mt-1 text-sm text-blue-950">
+                      The overall dimensions below are read-only and must match the rental contract.
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-blue-900 shadow-sm">
+                    {formatMeters(layout.width)} × {formatMeters(layout.length)} × {formatMeters(layout.height)}
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {canEditLayout && !stockOnly && (
               <section className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4 shadow-sm">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
@@ -1399,12 +1538,36 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                 this page.
               </div>
             )}
-            {tenantDefault && !isReadOnly && (
+            {tenantDefault && !canEditLayout && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                 This is the Owner's default layout. Layout Tenant has not been cloned yet so it
-                cannot be saved own mind.
+                can be viewed only. An active WMS subscription is required to customize it.
+                <button
+                  type="button"
+                  onClick={() => navigate('/tenant/subscription')}
+                  className="ml-2 font-bold underline underline-offset-2"
+                >
+                  Open subscription
+                </button>
               </div>
             )}
+            {currentRole === 'TENANT' &&
+              !isContractLayout &&
+              !stockOnly &&
+              !tenantDefault &&
+              isReadOnly && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  You can view this layout, but an active WMS subscription is required to customize
+                  Rack and Bin.
+                  <button
+                    type="button"
+                    onClick={() => navigate('/tenant/subscription')}
+                    className="ml-2 font-bold underline underline-offset-2"
+                  >
+                    Open subscription
+                  </button>
+                </div>
+              )}
 
             <div className="grid min-w-0 gap-4 xl:grid-cols-[240px_minmax(0,1fr)_300px]">
               <aside className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -1414,7 +1577,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     {layout.racks.length} Rack · {binCount} Bin
                   </span>
                 </div>
-                {isOwner && (
+                {canEditLayout && (
                   <div className="mb-4 grid gap-2">
                     <button
                       type="button"
@@ -1481,7 +1644,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             {rack.bins.length} Bin
                           </span>
                         </span>
-                        {!isOwner && (
+                {!isOwner && (
                           <span className="mt-1 block text-[11px] font-normal text-slate-500">
                             Load: {numberOf(rack.maxWeight).toLocaleString('en-US')} kg · Volume:{' '}
                             {numberOf(rack.maxVolume).toLocaleString('en-US')} m³
@@ -1560,7 +1723,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       </>
                     )}
                   </div>
-                  {isOwner && view === '2d' && (
+                  {canEditLayout && view === '2d' && (
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
@@ -1604,7 +1767,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   )}
                 </div>
 
-                {isOwner && view === '2d' && blockedMode && (
+                {canEditLayout && view === '2d' && blockedMode && (
                   <div className="mb-3 flex items-start gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600">
                     <span className="mt-1 h-3 w-3 shrink-0 rounded-sm bg-slate-900" />
                     Click or drag across cells to paint locked areas. Racks and bins cannot be
@@ -1899,7 +2062,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                 <span className="pointer-events-none block truncate px-1 text-[9px] font-semibold">
                                   {bin.name || bin.code}
                                 </span>
-                                {isOwner && (
+                                {canEditLayout && (
                                   <button
                                     type="button"
                                     aria-label="Resize Bin"
@@ -1919,7 +2082,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                 )}
                               </div>
                             ))}
-                            {isOwner && (
+                            {canEditLayout && (
                               <button
                                 type="button"
                                 aria-label="Resize Rack"
@@ -1956,7 +2119,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           : 'Bin'}
                     </p>
                   </div>
-                  {isOwner && selectedItems.length > 0 && (
+                  {canEditLayout && selectedItems.length > 0 && (
                     <button
                       type="button"
                       onClick={removeSelected}
@@ -1977,15 +2140,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                 <div className="space-y-3">
                   {propertyFields.map(([field, label, unit]) => {
                     const isText = field === 'name' || field === 'code'
-                    const tenantEditable =
-                      !isReadOnly &&
-                      !isOwner &&
-                      ['coordinateX', 'coordinateY', 'positionZ', 'rotation'].includes(field)
+                    const tenantEditable = !isOwner && canEditLayout
                     const disabled =
                       isReadOnly ||
                       view === 'stock' ||
                       selection.type === 'layout' ||
-                      (!isOwner && !tenantEditable)
+                      (!canEditLayout && !tenantEditable)
                     return (
                       <label key={field} className="block text-xs font-semibold text-slate-600">
                         <span className="mb-1 flex items-center justify-between gap-2">
@@ -2022,7 +2182,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     <h3 className="text-xs font-bold tracking-wider text-orange-900 uppercase">
                       Spacing / clearance
                     </h3>
-                    {isOwner && <span className="text-[11px] font-semibold text-orange-700">Min {formatMeters(minimumRackGap)}</span>}
+                    {canEditLayout && <span className="text-[11px] font-semibold text-orange-700">Min {formatMeters(minimumRackGap)}</span>}
                   </div>
 
                   {spacingDetails.type === 'rack' ? (
@@ -2082,7 +2242,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                 </div>
                 <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
                   Drag the Rack or Bin body to move.{' '}
-                  {isOwner && 'Drag ◢ in the lower right corner to resize. Bin max 80% Rack.'}
+                  {canEditLayout && 'Drag ◢ in the lower right corner to resize. Bin max 80% Rack.'}
                 </div>
               </aside>
             </div>

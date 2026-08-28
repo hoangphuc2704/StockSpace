@@ -21,7 +21,6 @@ import { showApiErrorToast } from '@/config/apiError'
 
 const layoutDimensionsKey = (warehouseId) => `stockspace:warehouse-layout-dimensions:${warehouseId}`
 const pendingOwnerLayoutKey = 'stockspace:pending-owner-layout'
-const pendingOwnerListingKey = 'stockspace:pending-owner-listing'
 
 const ConfirmPostWarehouse = () => {
   const navigate = useNavigate()
@@ -102,19 +101,12 @@ const ConfirmPostWarehouse = () => {
             height: warehouseHeight,
           })
         )
-        sessionStorage.setItem(
-          pendingOwnerListingKey,
-          JSON.stringify({
-            warehouseId: createdWarehouseId,
-            listingPackageId: draft.selectedListingPackageId,
-          })
-        )
       } catch {
         // Query parameters below still carry the dimensions for the immediate layout flow.
       }
 
       toast.success(
-        `Warehouse submitted for Admin approval. ${selectedPackage?.name || 'Listing package'} is ready to pay after approval.`
+        'Warehouse submitted for Admin approval. You can pay for the listing after approval.'
       )
       navigate(
         `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${warehouseWidth}&length=${warehouseLength}&height=${warehouseHeight}&setupRequired=true`
@@ -276,8 +268,7 @@ const ConfirmPostWarehouse = () => {
                   </div>
                   <div className="mt-4 flex items-start gap-2 text-xs leading-5 text-slate-600">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" />
-                    Your selected package will be saved with the post. Payment is available after
-                    Admin approval.
+                    Your selected package is ready to be paid after Admin approval.
                   </div>
                 </div>
               </div>
