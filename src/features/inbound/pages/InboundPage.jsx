@@ -16,6 +16,7 @@ import stockApi from '@/services/wms/stockApi'
 import productApi from '../../../services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import layoutApi from '@/services/layoutApi'
+import putawayApi from '@/services/wms/putawayApi'
 import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
 import { showApiErrorToast } from '@/config/apiError'
@@ -374,6 +375,46 @@ const InboundPage = () => {
     }
   }
 
+  const handleGetSuggestions = async () => {
+    if (!selectedWarehouseId || !formSkuId || formTotalQuantity <= 0) {
+      toast.error('Please select a warehouse, a product, and enter a valid quantity.')
+      return
+    }
+    try {
+      setIsLoading(true)
+      const res = await putawayApi.getSuggestions({
+        warehouseId: selectedWarehouseId,
+        context: 'INBOUND',
+        items: [{ skuId: formSkuId, quantity: Number(formTotalQuantity) }]
+      })
+      
+      const data = res.data?.data || {}
+      
+      if (data.unallocatedQuantity > 0) {
+        toast.error(`Warning: ${data.unallocatedQuantity} units could not be allocated due to capacity limits!`)
+      } else {
+        toast.success('Suggestions loaded successfully.')
+      }
+
+      const newAllocations = {}
+      data.items?.forEach(item => {
+        item.suggestions?.forEach(sugg => {
+          if (sugg.binId) {
+            newAllocations[sugg.binId] = (newAllocations[sugg.binId] || 0) + sugg.quantity
+          }
+        })
+      })
+      
+      setAllocations(newAllocations)
+      
+    } catch (error) {
+      console.error('Error getting suggestions:', error)
+      showApiErrorToast(error, 'Could not load put-away suggestions.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleReject = async (e) => {
     e.preventDefault()
     if (required(rejectReason, 'Rejection reason')) {
@@ -617,9 +658,14 @@ const InboundPage = () => {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-slate-700">
-                        Allocate into Bins
-                      </label>
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium text-slate-700">
+                          Allocate into Bins
+                        </label>
+                        <Button type="button" size="sm" onClick={handleGetSuggestions} disabled={!formSkuId}>
+                          ✨ Auto-Suggest
+                        </Button>
+                      </div>
                       <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">
                         Allocated: {allocatedQuantity} / {formTotalQuantity}{' '}
                         {selectedSku?.uomCode || selectedSku?.uomName || 'units'}

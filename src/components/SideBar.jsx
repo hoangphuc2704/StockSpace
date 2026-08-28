@@ -62,6 +62,7 @@ const SIDEBAR_MENUS = {
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/tenant/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/tenant/outbound' },
     { text: 'Audits', icon: HiOutlineClipboardDocumentList, path: '/tenant/inventory-audits' },
+    { text: 'Transfers', icon: HiOutlineArrowRightOnRectangle, path: '/tenant/transfers' },
     { text: 'My Contracts', icon: HiOutlineDocumentText, path: '/tenant/contracts' },
     { text: 'Subscription', icon: HiOutlineCurrencyDollar, path: '/tenant/subscription' },
     { text: 'Warehouse Layout', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
@@ -89,6 +90,7 @@ const SIDEBAR_MENUS = {
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/staff/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/staff/outbound' },
     { text: 'Audits', icon: HiOutlineClipboardDocumentList, path: '/staff/inventory-audits' },
+    { text: 'Transfers', icon: HiOutlineArrowRightOnRectangle, path: '/staff/transfers' },
     { text: 'Warehouse Layout', icon: HiOutlineSquaresPlus, path: '/staff/layoutwarehouses' },
   ],
   INSPECTOR: [

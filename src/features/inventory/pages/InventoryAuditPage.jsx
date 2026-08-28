@@ -43,10 +43,12 @@ const InventoryAuditPage = ({ currentRole }) => {
   const [formNote, setFormNote] = useState('')
   const [creating, setCreating] = useState(false)
 
+  const currentWarehouseId = useSelector((state) => state.auth.warehouseId)
+
   const fetchAudits = async () => {
     try {
       setLoading(true)
-      const res = await auditApi.getAudits({ page, size: pageSize })
+      const res = await auditApi.getAudits(currentWarehouseId || '', { page, size: pageSize })
       if (res.data?.success) {
         setAudits(res.data.data.content || [])
         setTotalPages(res.data.data.totalPages || 1)
@@ -71,7 +73,7 @@ const InventoryAuditPage = ({ currentRole }) => {
 
   useEffect(() => {
     fetchAudits()
-  }, [page, pageSize])
+  }, [page, pageSize, currentWarehouseId])
 
   const handleCreateAudit = async (e) => {
     e.preventDefault()

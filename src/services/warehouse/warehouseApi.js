@@ -1,9 +1,9 @@
 import api from '../apiConfig'
 
 const onwerwarehouseApi = {
-  getPublicWarehouses: ({ page, size, keyword, sortBy, sortDir, minRentalPrice, maxRentalPrice, minCapacity } = {}) => {
+  getPublicWarehouses: ({ page, size, keyword, sortBy, sortDir, minRentalPrice, maxRentalPrice, minCapacity, maxCapacity, provinceCode, districtCode, warehouseTypeId, status, isVerified } = {}) => {
     return api.get('/warehouses', {
-      params: { page, size, keyword, sortBy, sortDir, minRentalPrice, maxRentalPrice, minCapacity },
+      params: { page, size, keyword, sortBy, sortDir, minRentalPrice, maxRentalPrice, minCapacity, maxCapacity, provinceCode, districtCode, warehouseTypeId, status, isVerified },
     })
   },
 

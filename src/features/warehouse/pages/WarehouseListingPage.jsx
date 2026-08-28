@@ -50,8 +50,8 @@ const WarehouseListingPage = () => {
   const [warehouses, setWarehouses] = useState([])
   const [error, setError] = useState('')
   const [apiFilters, setApiFilters] = useState({
-    minPrice: '',
-    maxPrice: '',
+    minRentalPrice: '',
+    maxRentalPrice: '',
     minCapacity: '',
   })
 
@@ -70,8 +70,8 @@ const WarehouseListingPage = () => {
           keyword: searchTerm.trim() || undefined,
         }
 
-        if (apiFilters.minPrice) params.minPrice = apiFilters.minPrice
-        if (apiFilters.maxPrice) params.maxPrice = apiFilters.maxPrice
+        if (apiFilters.minRentalPrice) params.minRentalPrice = apiFilters.minRentalPrice
+        if (apiFilters.maxRentalPrice) params.maxRentalPrice = apiFilters.maxRentalPrice
         if (apiFilters.minCapacity) params.minCapacity = apiFilters.minCapacity
 
         const response = await warehouseApi.getPublicWarehouses(params)
@@ -160,7 +160,7 @@ const WarehouseListingPage = () => {
                   <button
                     onClick={() => {
                       setSearchTerm('')
-                      setApiFilters({ minPrice: '', maxPrice: '', minCapacity: '' })
+                      setApiFilters({ minRentalPrice: '', maxRentalPrice: '', minCapacity: '' })
                     }}
                     className="text-primary text-xs font-bold hover:underline"
                   >

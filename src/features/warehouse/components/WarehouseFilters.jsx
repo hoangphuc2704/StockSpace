@@ -5,8 +5,8 @@ import Button from '@/components/atoms/Button'
 
 const WarehouseFilters = ({ onFilterChange }) => {
   const [filters, setFilters] = useState({
-    minPrice: '',
-    maxPrice: '',
+    minRentalPrice: '',
+    maxRentalPrice: '',
     minCapacity: '',
   })
 
@@ -21,8 +21,8 @@ const WarehouseFilters = ({ onFilterChange }) => {
 
   const handleClear = () => {
     const emptyFilters = {
-      minPrice: '',
-      maxPrice: '',
+      minRentalPrice: '',
+      maxRentalPrice: '',
       minCapacity: '',
     }
     setFilters(emptyFilters)
@@ -41,8 +41,8 @@ const WarehouseFilters = ({ onFilterChange }) => {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₫</span>
             <input 
               type="number"
-              name="minPrice"
-              value={filters.minPrice}
+              name="minRentalPrice"
+              value={filters.minRentalPrice}
               onChange={handleChange}
               placeholder="Min" 
               className="w-full pl-7 pr-3 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
@@ -52,8 +52,8 @@ const WarehouseFilters = ({ onFilterChange }) => {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₫</span>
             <input 
               type="number" 
-              name="maxPrice"
-              value={filters.maxPrice}
+              name="maxRentalPrice"
+              value={filters.maxRentalPrice}
               onChange={handleChange}
               placeholder="Max" 
               className="w-full pl-7 pr-3 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
