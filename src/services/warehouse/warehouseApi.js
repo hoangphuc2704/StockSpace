@@ -115,19 +115,15 @@ const onwerwarehouseApi = {
     return api.get(`/owner/warehouses/${warehouseId}/publications`)
   },
 
-  // //yêu cầu kiểm định kho
-  // requestInspection: ({ warehouseId } = {}) => {
-  //   return api.post(`/owner/inspections`, { params: { warehouseId } })
-  // },
-
+  // Owner có thể yêu cầu kiểm định độc lập với trạng thái duyệt và thanh toán listing.
   requestInspection: (warehouseId) => {
-    // Tham số thứ 2 là body (để trống hoặc {}), tham số thứ 3 mới là config chứa params
     return api.post(`/owner/inspections`, {}, { params: { warehouseId } })
   },
 
   getOwnerInspections: ({ page = 0, size = 100 } = {}) => {
     return api.get('/owner/inspections', { params: { page, size } })
   },
+
 }
 
 export default onwerwarehouseApi

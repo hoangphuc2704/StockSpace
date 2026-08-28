@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import {
   ArrowLeft,
-  CalendarDays,
   CheckCircle2,
   CreditCard,
   DollarSign,
@@ -30,7 +29,6 @@ const ConfirmPostWarehouse = () => {
   const draft = location.state?.draft
 
   const formData = draft?.formData || {}
-  const selectedPackage = draft?.selectedListingPackage
   const relatedImages = draft?.relatedImages || []
   const warehouseWidth = Number(formData.warehouseWidth)
   const warehouseLength = Number(formData.warehouseLength)
@@ -249,26 +247,15 @@ const ConfirmPostWarehouse = () => {
 
                 <div className="self-start rounded-2xl border border-[#fed7aa] bg-[#fff7ed] p-5">
                   <p className="flex items-center gap-2 text-xs font-bold tracking-wider text-[#ea580c] uppercase">
-                    <CreditCard className="h-4 w-4" /> Listing package
+                    <CreditCard className="h-4 w-4" /> Listing payment
                   </p>
-                  <p className="mt-4 flex items-center gap-2 text-2xl font-black text-slate-950">
-                    <CalendarDays className="h-6 w-6 text-[#f97316]" />
-                    {selectedPackage?.durationDays || '—'} days
+                  <p className="mt-4 text-sm leading-6 text-slate-700">
+                    Listing payment is not required at this step. After Admin approves the
+                    warehouse, choose a 10, 15 or 30-day package and pay from My Warehouses.
                   </p>
-                  <p className="mt-2 text-sm text-slate-600">
-                    {selectedPackage?.name || 'Selected listing package'}
-                  </p>
-                  <div className="mt-5 flex items-center justify-between border-t border-[#fbd8c5] pt-4">
-                    <span className="text-sm font-semibold text-slate-600">Listing fee</span>
-                    <span className="text-xl font-black text-[#c2410c]">
-                      {selectedPackage
-                        ? `${Number(selectedPackage.price).toLocaleString('vi-VN')} ₫`
-                        : '—'}
-                    </span>
-                  </div>
                   <div className="mt-4 flex items-start gap-2 text-xs leading-5 text-slate-600">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" />
-                    Your selected package is ready to be paid after Admin approval.
+                    Inspection is optional. The warehouse only waits for Admin approval at this step.
                   </div>
                 </div>
               </div>

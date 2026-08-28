@@ -12,18 +12,14 @@ import {
   ArrowLeft,
   ArrowRight,
   Image as ImageIcon,
-  Loader2,
   Building2,
   CheckCircle2,
   RefreshCw,
-  CalendarDays,
-  CreditCard,
 } from 'lucide-react'
 import Button from '../../../components/atoms/Button'
 import TranslatableText from '../../../components/TranslatableText'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import ownerApi from '../../../services/warehouse/warehouseApi'
-import listingApi from '../../../services/listingApi'
 import addressApi from '../../../services/addressApi'
 
 const CreateWarehouse = () => {
@@ -36,12 +32,6 @@ const CreateWarehouse = () => {
   const [wardsError, setWardsError] = useState('')
   const [selectedWardCode, setSelectedWardCode] = useState(() => draft?.selectedWardCode || '')
   const [addressDetail, setAddressDetail] = useState(() => draft?.addressDetail || '')
-  const [listingPackages, setListingPackages] = useState([])
-  const [listingPackagesLoading, setListingPackagesLoading] = useState(true)
-  const [listingPackagesError, setListingPackagesError] = useState('')
-  const [selectedListingPackageId, setSelectedListingPackageId] = useState(
-    () => draft?.selectedListingPackageId || ''
-  )
 
   // Form text
   const [formData, setFormData] = useState(
@@ -84,36 +74,6 @@ const CreateWarehouse = () => {
       }
     }
     fetchWarehouseTypes()
-  }, [])
-
-  useEffect(() => {
-    let isActive = true
-
-    listingApi
-      .getPublicPackages()
-      .then((response) => {
-        const payload = response?.data?.data || response?.data
-        const activePackages = Array.isArray(payload)
-          ? payload.filter((item) => item.active ?? item.isActive)
-          : []
-        if (isActive) {
-          setListingPackages(activePackages)
-          setSelectedListingPackageId((currentId) => currentId || activePackages[0]?.id || '')
-        }
-      })
-      .catch((error) => {
-        if (isActive)
-          setListingPackagesError(
-            error.response?.data?.message || 'Could not load listing packages.'
-          )
-      })
-      .finally(() => {
-        if (isActive) setListingPackagesLoading(false)
-      })
-
-    return () => {
-      isActive = false
-    }
   }, [])
 
   const fetchHoChiMinhCityWards = async () => {
@@ -162,10 +122,6 @@ const CreateWarehouse = () => {
   const selectedWarehouseType = useMemo(
     () => warehouseTypes.find((type) => String(type.id) === String(formData.typeId)),
     [formData.typeId, warehouseTypes]
-  )
-  const selectedListingPackage = useMemo(
-    () => listingPackages.find((item) => String(item.id) === String(selectedListingPackageId)),
-    [listingPackages, selectedListingPackageId]
   )
   const fullAddress = useMemo(() => {
     const detail = addressDetail.trim()
@@ -225,9 +181,7 @@ const CreateWarehouse = () => {
     Number(formData.warehouseLength) > 0 &&
     Number(formData.warehouseHeight) > 0 &&
     (formData.rentalPricingType === 'NEGOTIATED' || Number(formData.rentalPrice) > 0) &&
-    coverFile !== null &&
-    Boolean(selectedListingPackageId) &&
-    !listingPackagesLoading
+    coverFile !== null
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -240,8 +194,6 @@ const CreateWarehouse = () => {
           selectedWardCode,
           addressDetail,
           fullAddress,
-          selectedListingPackageId,
-          selectedListingPackage,
           selectedWarehouseType,
           coverFile,
           coverPreview,
@@ -695,86 +647,6 @@ const CreateWarehouse = () => {
                   </div>
                 </div>
               </div>
-
-              <section className="border-t border-[#f6e2d6] px-5 py-7 sm:px-8">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h3 className="flex items-center gap-2 text-sm font-bold tracking-wider text-slate-400 uppercase">
-                      <CreditCard className="h-4 w-4 text-[#f97316]" /> 4. Choose listing days and
-                      fee *
-                    </h3>
-                  </div>
-                </div>
-
-                {listingPackagesLoading ? (
-                  <div className="mt-5 flex items-center gap-2 rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-500">
-                    <Loader2 className="h-4 w-4 animate-spin text-[#f97316]" /> Loading visibility
-                    packages...
-                  </div>
-                ) : listingPackagesError ? (
-                  <div className="mt-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                    {listingPackagesError}
-                  </div>
-                ) : listingPackages.length === 0 ? (
-                  <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                    No active listing package is available. Please contact Admin before posting.
-                  </div>
-                ) : (
-                  <div className="mt-5">
-                    <div>
-                      <p className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-800">
-                        <CalendarDays className="h-4 w-4 text-[#f97316]" />
-                        Number of days to publish <span className="text-rose-500">*</span>
-                      </p>
-                      <div
-                        className="grid gap-3 sm:grid-cols-3"
-                        role="radiogroup"
-                        aria-label="Number of days to publish"
-                      >
-                        {listingPackages.map((listingPackage) => {
-                          const isSelected =
-                            String(listingPackage.id) === String(selectedListingPackageId)
-
-                          return (
-                            <button
-                              key={listingPackage.id}
-                              type="button"
-                              role="radio"
-                              aria-checked={isSelected}
-                              onClick={() => setSelectedListingPackageId(listingPackage.id)}
-                              className={`relative rounded-2xl border px-4 py-4 text-left transition-all focus:ring-4 focus:ring-[#ffedd5] focus:outline-none ${
-                                isSelected
-                                  ? 'border-[#f97316] bg-[#fff7ed] shadow-[0_8px_18px_rgba(249,115,22,0.14)]'
-                                  : 'border-[#eadfd7] bg-white hover:border-[#fdba74] hover:bg-[#fffaf7]'
-                              }`}
-                            >
-                              <span className="flex items-start justify-between gap-3">
-                                <span>
-                                  <span className="block text-base font-black text-slate-900">
-                                    {listingPackage.durationDays} days
-                                  </span>
-                                  <span className="mt-1 block text-xs text-slate-500">
-                                    {listingPackage.name || 'Listing package'}
-                                  </span>
-                                </span>
-                                {isSelected && (
-                                  <CheckCircle2 className="h-5 w-5 shrink-0 text-[#f97316]" />
-                                )}
-                              </span>
-                              <span className="mt-3 block text-lg font-black text-[#c2410c]">
-                                {Number(listingPackage.price).toLocaleString('vi-VN')} ₫
-                              </span>
-                            </button>
-                          )
-                        })}
-                      </div>
-                      <p className="mt-2 text-xs text-slate-500">
-                        Select a duration from the active packages configured by Admin.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </section>
 
               <div className="border-t border-[#f6e2d6] px-5 py-7 sm:px-8">
                 <div className="space-y-1.5">

@@ -53,7 +53,7 @@ const WarehouseManagement = () => {
   const [totalPages, setTotalPages] = useState(0) // API trả về "totalPages": 1
   const [totalElements, setTotalElements] = useState(0) // API trả về "totalElements": 2
 
-  // Các trạng thái phục vụ tính năng yêu cầu kiểm duyệt & tải lại dữ liệu
+  // Trạng thái kiểm định và tải lại dữ liệu sau khi cập nhật kho hoặc thanh toán listing
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [requestingIds, setRequestingIds] = useState([])
   const [inspectionsByWarehouse, setInspectionsByWarehouse] = useState({})
@@ -67,12 +67,10 @@ const WarehouseManagement = () => {
   const [deleteWarehouseConfirm, setDeleteWarehouseConfirm] = useState(null)
   const [deletingWarehouseId, setDeletingWarehouseId] = useState(null)
 
-  // Xử lý gửi yêu cầu kiểm định kho qua API
+  // Inspection is optional and does not gate Admin approval or listing payment.
   const handleRequestInspection = async (warehouseId) => {
     try {
       setRequestingIds((prev) => [...prev, warehouseId])
-
-      // TRUYỀN THẲNG BIẾN: Không viết { warehouseId }, chỉ viết warehouseId thôi
       const res = await warehouseApi.requestInspection(warehouseId)
 
       if (res?.data?.success || res?.success || res?.status === 200 || res?.status === 201) {
@@ -129,7 +127,11 @@ const WarehouseManagement = () => {
             sortBy: 'createdAt',
             sortDir: 'desc',
           }),
-          warehouseApi.getOwnerInspections({ page: 0, size: 200 }),
+          // Inspection is optional; an inspection API failure must not block listing payment.
+          warehouseApi.getOwnerInspections({ page: 0, size: 200 }).catch((inspectionError) => {
+            console.error('Could not load optional inspection data:', inspectionError)
+            return null
+          }),
         ])
 
         let apiResult = null
@@ -159,6 +161,7 @@ const WarehouseManagement = () => {
           if (!current || timestamp > currentTimestamp) latestByWarehouse[key] = inspection
         })
         setInspectionsByWarehouse(latestByWarehouse)
+
       } catch (error) {
         console.error('Error getting inventory list:', error)
         setWarehouses([])
@@ -426,15 +429,15 @@ const WarehouseManagement = () => {
                                     Listing: {wh.publicationStatus}
                                   </span>
                                 )}
-                                {wh.status === 'PENDING_APPROVAL' && wh.visibleUntil && (
-                                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700">
-                                    Payment: paid · waiting for approval
+                                {wh.status === 'PENDING_APPROVAL' && (
+                                  <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
+                                    Listing payment starts after approval
                                   </span>
                                 )}
                               </div>
                             </td>
 
-                            {/* Cột 6: Kiểm định */}
+                            {/* Cột 6: Kiểm định (không ảnh hưởng luồng thanh toán) */}
                             <td className="px-6 py-4 text-center">
                               <div className="flex flex-col items-center justify-center gap-1.5">
                                 <span
@@ -585,9 +588,8 @@ const WarehouseManagement = () => {
             </div>
             <h2 className="mt-4 text-xl font-bold text-slate-900">Confirm inspection request</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              Submit <strong>{inspectionConfirm.name}</strong> for inspection? An inspection fee may
-              be charged according to the current system policy. The request button will be disabled
-              while this request is pending or in progress.
+              Submit <strong>{inspectionConfirm.name}</strong> for inspection? The inspection is
+              optional and does not affect Admin approval or listing payment.
             </p>
             <div className="mt-6 flex justify-end gap-2">
               <button

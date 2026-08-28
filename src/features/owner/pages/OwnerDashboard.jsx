@@ -1,21 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
-import { Warehouse, Clock, Wallet, PlusCircle, Loader2 } from 'lucide-react'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-  PieChart as RePieChart,
-  Pie,
-} from 'recharts'
+import { Warehouse, Clock, Wallet, PlusCircle, Loader2, X } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import StatCard from '@/components/molecules/StatCard'
 
@@ -29,22 +17,8 @@ import warehouseApi from '../../../services/warehouse/warehouseApi'
 import ownerStatsApi from '../../../services/owner/ownerStatsApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
-import { positiveNumber, required } from '@/config/validation'
+import { positiveNumber } from '@/config/validation'
 import Badge from '../../../components/atoms/Badge'
-
-// Mock Data giữ nguyên
-const defaultRevenueData = [
-  { name: 'Jan', value: 0 },
-  { name: 'Feb', value: 0 },
-  { name: 'Mar', value: 0 },
-  { name: 'Apr', value: 0 },
-  { name: 'May', value: 0 },
-]
-
-const defaultOccupancyData = [
-  { name: 'Currently renting', value: 0, color: '#2563eb' },
-  { name: 'Still empty', value: 0, color: '#e2e8f0' },
-]
 
 const OwnerDashboard = () => {
   const dispatch = useDispatch()
@@ -55,14 +29,11 @@ const OwnerDashboard = () => {
   const [loadingWallet, setLoadingWallet] = useState(true)
   const [depositLoading, setDepositLoading] = useState(false)
 
-  // --- STATE KIỂM ĐỊNH KHO ---
+  // Kiểm định là chức năng tùy chọn, không chặn duyệt hoặc thanh toán listing.
   const [inspections, setInspections] = useState([])
   const [loadingInspections, setLoadingInspections] = useState(true)
 
   // --- STATE THỐNG KÊ ---
-  const [revenueData, setRevenueData] = useState(defaultRevenueData)
-  const [occupancyData, setOccupancyData] = useState(defaultOccupancyData)
-  const [occupancyRate, setOccupancyRate] = useState(0)
   const [totalWarehouses, setTotalWarehouses] = useState(0)
   const [totalRevenue, setTotalRevenue] = useState(0)
 
@@ -115,24 +86,12 @@ const OwnerDashboard = () => {
         if (revData) {
           setTotalRevenue(revData.totalRevenue || 0)
         }
-        if (revData?.monthlyRevenue) {
-          const formatted = revData.monthlyRevenue.map((item) => ({
-            name: `T${item.month}`,
-            value: item.revenue,
-          }))
-          setRevenueData(formatted)
-        }
       }
 
       // Map Occupancy Data
       if (occupancyRes?.data) {
         const occData = occupancyRes.data.data || occupancyRes.data
         if (occData) {
-          setOccupancyData([
-            { name: 'Currently renting', value: occData.rentedWarehousesCount, color: '#2563eb' },
-            { name: 'Still empty', value: occData.availableWarehousesCount, color: '#e2e8f0' },
-          ])
-          setOccupancyRate(occData.occupancyRatePercentage)
           setTotalWarehouses(occData.totalWarehouses)
         }
       }
@@ -142,6 +101,8 @@ const OwnerDashboard = () => {
   }
 
   useEffect(() => {
+    // These functions load remote data and update local state after the dashboard mounts.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchWallet()
     fetchInspections()
     fetchStats()
@@ -269,20 +230,16 @@ const OwnerDashboard = () => {
               ))}
             </div>
 
-            {/* Biểu đồ (Giữ nguyên) */}
-
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              {/* Other elements like charts can be added here if needed */}
-
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-6 font-bold text-slate-900">Pending Inspections</h3>
+                <h3 className="mb-6 font-bold text-slate-900">Inspections (optional)</h3>
                 <div className="space-y-4">
                   {loadingInspections ? (
                     <div className="flex justify-center p-4">
                       <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
                     </div>
                   ) : inspections.length === 0 ? (
-                    <p className="text-sm text-slate-500">No pending inspections.</p>
+                    <p className="text-sm text-slate-500">No inspection requests.</p>
                   ) : (
                     inspections.map((insp, i) => (
                       <div
@@ -297,17 +254,23 @@ const OwnerDashboard = () => {
                             {insp.warehouseName || 'Unknown Warehouse'}
                           </p>
                           <p className="text-xs text-slate-500">
-                            Status: <Badge variant="warning">{insp.status || 'PENDING'}</Badge> •{' '}
+                            Status: <Badge variant="warning">{insp.status || 'PENDING'}</Badge> ·{' '}
                             {insp.createdAt ? new Date(insp.createdAt).toLocaleDateString() : 'N/A'}
                           </p>
                         </div>
                       </div>
                     ))
                   )}
-                  <Button variant="outline" className="mt-4 w-full">
-                    View All Schedule
-                  </Button>
                 </div>
+              </div>
+
+              <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-6 shadow-sm">
+                <h3 className="font-bold text-slate-900">Listing workflow</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Submit a warehouse for Admin approval first. After it is approved, choose a listing
+                  package and pay from My Warehouses to make it visible to tenants. Inspection is
+                  optional and does not affect this flow.
+                </p>
               </div>
             </div>
           </main>
