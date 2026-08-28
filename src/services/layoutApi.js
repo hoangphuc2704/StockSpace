@@ -7,6 +7,9 @@ const layoutApi = {
 
   saveTenantWarehouseLayout: (warehouseId, data) =>
     api.put(`/tenant/warehouses/${warehouseId}/layout`, data),
+
+  getCapacity: (warehouseId) => 
+    api.get(`/tenant/warehouses/${warehouseId}/layout/capacity`),
 }
 
 export default layoutApi

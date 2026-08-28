@@ -12,7 +12,22 @@ const onwerwarehouseApi = {
     minCapacity,
   }) => {
     return api.get('/warehouses', {
-      params: { page, size, keyword, sortBy, sortDir, minRentalPrice, maxRentalPrice, minCapacity },
+      params: {
+        page,
+        size,
+        keyword,
+        sortBy,
+        sortDir,
+        minRentalPrice,
+        maxRentalPrice,
+        minCapacity,
+        maxCapacity,
+        provinceCode,
+        districtCode,
+        warehouseTypeId,
+        status,
+        isVerified,
+      },
     })
   },
 

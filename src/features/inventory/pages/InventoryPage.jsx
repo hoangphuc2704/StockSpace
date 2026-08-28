@@ -15,6 +15,7 @@ import { closeMobileSidebar } from '@/store/uiSlide'
 import productApi from '../../../services/wms/productApi'
 import stockApi from '../../../services/wms/stockApi'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
+import layoutApi from '../../../services/layoutApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 
@@ -27,6 +28,7 @@ const InventoryPage = () => {
   const [warehouses, setWarehouses] = useState([])
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
   const [accessError, setAccessError] = useState('')
+  const [capacity, setCapacity] = useState(null)
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [historyBatchId, setHistoryBatchId] = useState(null)
@@ -78,8 +80,15 @@ const InventoryPage = () => {
     try {
       setIsLoading(true)
       setAccessError('')
-      const res = await stockApi.getStockOverview(selectedWarehouseId, { page: 0, size: 50 })
-      const content = res.data?.data?.content || []
+      
+      const [stockRes, capRes] = await Promise.all([
+        stockApi.getStockOverview(selectedWarehouseId, { page: 0, size: 50 }),
+        layoutApi.getCapacity(selectedWarehouseId)
+      ])
+      
+      setCapacity(capRes.data?.data)
+
+      const content = stockRes.data?.data?.content || []
       
       const enrichedSkus = content.map((item) => {
         const qty = item.totalQuantity || 0
@@ -96,9 +105,10 @@ const InventoryPage = () => {
       
       setProducts(enrichedSkus)
     } catch (error) {
-      console.error('Error fetching stock overview:', error)
+      console.error('Error fetching inventory or capacity:', error)
       if (error.response?.status === 403) {
         setProducts([])
+        setCapacity(null)
         setAccessError(
           'This rental contract has expired or access to the selected warehouse was revoked.'
         )
@@ -361,6 +371,47 @@ const InventoryPage = () => {
                 </div>
               </motion.div>
             </div>
+
+            {/* Capacity Metrics */}
+            {capacity && !accessError && (
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-bold text-slate-900">Weight Utilization</h3>
+                    <span className="text-sm font-bold text-slate-600">
+                      {Math.round(capacity.weightUtilizationPercent || 0)}%
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-500"
+                      style={{ width: `${Math.min(capacity.weightUtilizationPercent || 0, 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {capacity.currentWeightKg?.toLocaleString()} / {capacity.maxWeightKg?.toLocaleString()} kg
+                  </p>
+                </div>
+                
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-bold text-slate-900">Volume Utilization</h3>
+                    <span className="text-sm font-bold text-slate-600">
+                      {Math.round(capacity.volumeUtilizationPercent || 0)}%
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: `${Math.min(capacity.volumeUtilizationPercent || 0, 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {capacity.currentVolumeM3?.toLocaleString()} / {capacity.maxVolumeM3?.toLocaleString()} m³
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -2,9 +2,9 @@ import api from '../apiConfig'
 
 const auditApi = {
   // Danh sách phiếu kiểm kê của Tenant (có phân trang)
-  getAudits: ({ page, size } = {}) => {
+  getAudits: (warehouseId, { page, size } = {}) => {
     return api.get('/tenant/inventory/audits', {
-      params: { page, size }
+      params: { warehouseId, page, size }
     })
   },
 

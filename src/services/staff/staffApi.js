@@ -45,6 +45,16 @@ const staffApi = {
     return api.get('/staff/my-work-history')
   },
 
+  /** GET /api/staff/operations - Xem danh sách operations cho Staff */
+  getOperations: ({ warehouseId, type, status, page, size } = {}) => {
+    return api.get('/staff/operations', { params: { warehouseId, type, status, page, size } })
+  },
+
+  /** GET /api/staff/warehouses/{warehouseId}/layout - Xem layout bằng quyền Staff */
+  getStaffLayout: (warehouseId) => {
+    return api.get(`/staff/warehouses/${warehouseId}/layout`)
+  },
+
   // ========================
   // Staff Invitation (Public — không cần JWT)
   // ========================

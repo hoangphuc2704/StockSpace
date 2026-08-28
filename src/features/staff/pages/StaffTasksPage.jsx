@@ -7,38 +7,35 @@ import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import TableActionMenu from '@/components/TableActionMenu'
 import { ListTodo, CheckCircle2, Clock } from 'lucide-react'
-
-const MOCK_TASKS = [
-  {
-    id: 'TSK-001',
-    title: 'Audit Zone A',
-    type: 'INVENTORY_AUDIT',
-    priority: 'HIGH',
-    status: 'PENDING',
-    dueDate: '2026-07-24',
-  },
-  {
-    id: 'TSK-002',
-    title: 'Putaway Shipment #1022',
-    type: 'PUTAWAY',
-    priority: 'MEDIUM',
-    status: 'IN_PROGRESS',
-    dueDate: '2026-07-24',
-  },
-  {
-    id: 'TSK-003',
-    title: 'Pick Order #551',
-    type: 'PICKING',
-    priority: 'HIGH',
-    status: 'COMPLETED',
-    dueDate: '2026-07-23',
-  },
-]
+import staffApi from '@/services/staff/staffApi'
+import { toast } from 'react-hot-toast'
+import { showApiErrorToast } from '@/config/apiError'
 
 const StaffTasksPage = () => {
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
-  const [tasks, setTasks] = useState(MOCK_TASKS)
+  const currentWarehouseId = useSelector((state) => state.auth.warehouseId)
+  const [tasks, setTasks] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        setLoading(true)
+        const params = { page: 0, size: 50 }
+        if (currentWarehouseId) {
+          params.warehouseId = currentWarehouseId
+        }
+        const res = await staffApi.getOperations(params)
+        setTasks(res.data?.data?.content || [])
+      } catch (error) {
+        showApiErrorToast(error, 'Could not load tasks.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchTasks()
+  }, [currentWarehouseId])
 
   const columns = [
     {
@@ -46,21 +43,17 @@ const StaffTasksPage = () => {
       render: (row) => <span className="font-bold text-slate-900">{row.title}</span>,
     },
     {
-      header: 'Type',
+      header: 'Operation Type',
       render: (row) => (
         <Badge variant="primary" size="sm">
-          {row.type}
+          {row.operationType}
         </Badge>
       ),
     },
     {
-      header: 'Priority',
+      header: 'Operation ID',
       render: (row) => (
-        <span
-          className={`text-xs font-bold ${row.priority === 'HIGH' ? 'text-danger' : 'text-warning'}`}
-        >
-          {row.priority}
-        </span>
+        <span className="text-xs font-mono">{row.operationId?.split('-')[0]}...</span>
       ),
     },
     {
@@ -79,7 +72,7 @@ const StaffTasksPage = () => {
         </Badge>
       ),
     },
-    { header: 'Due Date', accessor: 'dueDate' },
+    { header: 'Created At', render: (row) => new Date(row.createdAt).toLocaleDateString() },
     {
       header: 'Actions',
       render: (row) => (
@@ -130,7 +123,7 @@ const StaffTasksPage = () => {
               </div>
 
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <DataTable columns={columns} data={tasks} />
+                <DataTable columns={columns} data={tasks} isLoading={loading} />
               </div>
             </div>
           </main>

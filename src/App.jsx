@@ -54,6 +54,7 @@ import TenantContractsPage from './features/tenant/pages/TenantContractsPage'
 import TenantStaffManagementPage from './features/tenant/pages/TenantStaffManagementPage'
 import ProductManagementPage from './features/tenant/pages/ProductManagementPage'
 import StaffAcceptInvitationPage from './features/auth/pages/StaffAcceptInvitationPage'
+import TransferPage from './features/transfer/pages/TransferPage'
 
 // Owner Pages
 import OwnerDashboard from './features/owner/pages/OwnerDashboard'
@@ -233,6 +234,7 @@ const App = () => {
           />
           <Route path="/tenant/staff" element={<TenantStaffManagementPage />} />
           <Route path="/tenant/products" element={<ProductManagementPage />} />
+          <Route path="/tenant/transfers" element={<TransferPage currentRole="TENANT" />} />
         </Route>
 
         {/* Owner Routes */}
@@ -273,6 +275,7 @@ const App = () => {
           <Route path="/staff/outbound" element={<OutboundPage />} />
           <Route path="/staff/layoutwarehouses" element={<LayoutWarehouse currentRole="STAFF" />} />
           <Route path="/staff/career-history" element={<StaffCareerHistoryPage />} />
+          <Route path="/staff/transfers" element={<TransferPage currentRole="STAFF" />} />
         </Route>
 
         {/* Inspector Routes */}
@@ -281,7 +284,7 @@ const App = () => {
         </Route>
 
         {/* TRANG TEST API CHO DEV (ẨN) */}
-        {/* <Route path="/dev-sandbox" element={<DevApiSandbox />} />   */}
+        {/* <Route path="/dev-sandbox" element={<DevApiSandbox />} /> */}
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

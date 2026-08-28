@@ -6,12 +6,14 @@ const WarehouseFilters = ({ onFilterChange }) => {
   const [filters, setFilters] = useState({
     minRentalPrice: '',
     maxRentalPrice: '',
+    minRentalPrice: '',
+    maxRentalPrice: '',
     minCapacity: '',
   })
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFilters(prev => ({ ...prev, [name]: value }))
+    setFilters((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleApply = () => {
@@ -20,8 +22,10 @@ const WarehouseFilters = ({ onFilterChange }) => {
 
   const handleClear = () => {
     const emptyFilters = {
-        minRentalPrice: '',
-        maxRentalPrice: '',
+      minRentalPrice: '',
+      maxRentalPrice: '',
+      minRentalPrice: '',
+      maxRentalPrice: '',
       minCapacity: '',
     }
     setFilters(emptyFilters)
@@ -32,30 +36,36 @@ const WarehouseFilters = ({ onFilterChange }) => {
     <div className="space-y-8">
       {/* Price Range */}
       <div className="space-y-4">
-        <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+        <h4 className="flex items-center gap-2 text-xs font-black tracking-[0.2em] text-slate-400 uppercase">
           Price per m² (VNĐ)
         </h4>
         <div className="grid grid-cols-2 gap-3">
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₫</span>
-            <input 
+            <span className="absolute top-1/2 left-3 -translate-y-1/2 text-xs text-slate-400">
+              ₫
+            </span>
+            <input
               type="number"
               name="minRentalPrice"
               value={filters.minRentalPrice}
+              name="minRentalPrice"
+              value={filters.minRentalPrice}
               onChange={handleChange}
-              placeholder="Min" 
-              className="w-full pl-7 pr-3 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              placeholder="Min"
+              className="focus:ring-primary/20 focus:border-primary w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pr-3 pl-7 text-sm transition-all focus:ring-2 focus:outline-none"
             />
           </div>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₫</span>
-            <input 
-              type="number" 
+            <span className="absolute top-1/2 left-3 -translate-y-1/2 text-xs text-slate-400">
+              ₫
+            </span>
+            <input
+              type="number"
               name="maxRentalPrice"
               value={filters.maxRentalPrice}
               onChange={handleChange}
-              placeholder="Max" 
-              className="w-full pl-7 pr-3 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              placeholder="Max"
+              className="focus:ring-primary/20 focus:border-primary w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pr-3 pl-7 text-sm transition-all focus:ring-2 focus:outline-none"
             />
           </div>
         </div>
@@ -63,27 +73,36 @@ const WarehouseFilters = ({ onFilterChange }) => {
 
       {/* Area Size */}
       <div className="space-y-4">
-        <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2">
+        <h4 className="flex items-center gap-2 text-xs font-black tracking-[0.2em] text-slate-400 uppercase">
           Min Capacity (m²)
         </h4>
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"><Maximize size={14} /></span>
-          <input 
+          <span className="absolute top-1/2 left-3 -translate-y-1/2 text-xs text-slate-400">
+            <Maximize size={14} />
+          </span>
+          <input
             type="number"
             name="minCapacity"
             value={filters.minCapacity}
             onChange={handleChange}
-            placeholder="e.g. 1000" 
-            className="w-full pl-9 pr-3 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+            placeholder="e.g. 1000"
+            className="focus:ring-primary/20 focus:border-primary w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pr-3 pl-9 text-sm transition-all focus:ring-2 focus:outline-none"
           />
         </div>
       </div>
 
-      <div className="pt-6 space-y-3">
-        <Button onClick={handleApply} className="w-full h-11 flex items-center justify-center gap-2">
+      <div className="space-y-3 pt-6">
+        <Button
+          onClick={handleApply}
+          className="flex h-11 w-full items-center justify-center gap-2"
+        >
           <Filter size={16} /> Apply Filters
         </Button>
-        <Button onClick={handleClear} variant="outline" className="w-full border-slate-200 text-slate-600 hover:bg-slate-50 h-11">
+        <Button
+          onClick={handleClear}
+          variant="outline"
+          className="h-11 w-full border-slate-200 text-slate-600 hover:bg-slate-50"
+        >
           Clear Filters
         </Button>
       </div>
