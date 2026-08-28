@@ -17,8 +17,8 @@ const getWorldDimensions = (layout) => {
 
 const colorByType = {
   zone: '#10b981',
-  rack: '#f59e0b',
-  bin: '#d946ef',
+  rack: '#c2410c',
+  bin: '#f97316',
 }
 
 const isItemSelected = (selectedItems, type, key) =>
@@ -87,6 +87,8 @@ function BinMesh({
   )
   const levels = getRackLevels(rack)
   const y = getShelfY(level - 1, levels, rackHeight) + 0.25
+  const isBinSelected = isSelected
+  const binFrontColor = isBinSelected ? '#bfdbfe' : '#ffedd5'
 
   return (
     <PivotControls
@@ -111,7 +113,7 @@ function BinMesh({
         onMoveEntity('bin', bin.clientKey, Number(nextX.toFixed(2)), Number(nextY.toFixed(2)))
       }}
     >
-      <mesh
+      <group
         position={[x, y, z]}
         onClick={(event) => {
           event.stopPropagation()
@@ -124,15 +126,77 @@ function BinMesh({
         castShadow
         receiveShadow
       >
-        <boxGeometry args={[width, 0.5, depth]} />
-        <meshStandardMaterial
-          color={colorByType.bin}
-          emissive={isSelected ? '#f472b6' : '#000000'}
-          emissiveIntensity={isSelected ? 0.5 : 0}
-          roughness={0.45}
-        />
-      </mesh>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[width, 0.5, depth]} />
+          <meshStandardMaterial
+            color={isBinSelected ? '#2563eb' : colorByType.bin}
+            emissive={isBinSelected ? '#60a5fa' : '#000000'}
+            emissiveIntensity={isBinSelected ? 0.35 : 0}
+            roughness={0.45}
+          />
+        </mesh>
+        <mesh position={[0, 0, depth / 2 + 0.006]} castShadow>
+          <boxGeometry args={[Math.max(width * 0.68, 0.08), 0.16, 0.012]} />
+          <meshStandardMaterial color={binFrontColor} roughness={0.55} />
+        </mesh>
+      </group>
     </PivotControls>
+  )
+}
+
+function RackFrame({ width, depth, rackHeight, levels, isSelected }) {
+  const postSize = clamp(Math.min(width, depth) * 0.07, 0.06, 0.16)
+  const shelfThickness = clamp(rackHeight * 0.035, 0.06, 0.11)
+  const railThickness = clamp(Math.min(width, depth) * 0.045, 0.05, 0.1)
+  const frameColor = isSelected ? '#1d4ed8' : colorByType.rack
+  const shelfColor = isSelected ? '#dbeafe' : '#fed7aa'
+  const postX = Math.max(width / 2 - postSize / 2, 0)
+  const postZ = Math.max(depth / 2 - postSize / 2, 0)
+  const shelfWidth = Math.max(width - postSize * 1.25, postSize)
+  const shelfDepth = Math.max(depth - postSize * 1.25, postSize)
+  const shelfY = (levelIndex) => getShelfY(levelIndex, levels, rackHeight)
+
+  const postPositions = [
+    [-postX, rackHeight / 2, -postZ],
+    [postX, rackHeight / 2, -postZ],
+    [-postX, rackHeight / 2, postZ],
+    [postX, rackHeight / 2, postZ],
+  ]
+
+  return (
+    <>
+      {postPositions.map((position, index) => (
+        <mesh key={`post-${index}`} position={position} castShadow receiveShadow>
+          <boxGeometry args={[postSize, rackHeight, postSize]} />
+          <meshStandardMaterial color={frameColor} roughness={0.34} metalness={0.2} />
+        </mesh>
+      ))}
+
+      {Array.from({ length: levels }).map((_, levelIndex) => {
+        const y = shelfY(levelIndex)
+        return (
+          <group key={`shelf-${levelIndex}`}>
+            <mesh position={[0, y, 0]} castShadow receiveShadow>
+              <boxGeometry args={[shelfWidth, shelfThickness, shelfDepth]} />
+              <meshStandardMaterial color={shelfColor} roughness={0.48} metalness={0.08} />
+            </mesh>
+            <mesh position={[0, y + shelfThickness / 2, postZ]} castShadow>
+              <boxGeometry args={[shelfWidth, railThickness, railThickness]} />
+              <meshStandardMaterial color={frameColor} roughness={0.38} metalness={0.18} />
+            </mesh>
+            <mesh position={[0, y + shelfThickness / 2, -postZ]} castShadow>
+              <boxGeometry args={[shelfWidth, railThickness, railThickness]} />
+              <meshStandardMaterial color={frameColor} roughness={0.38} metalness={0.18} />
+            </mesh>
+          </group>
+        )
+      })}
+
+      <mesh position={[0, rackHeight - railThickness / 2, -postZ]} castShadow>
+        <boxGeometry args={[shelfWidth, railThickness, railThickness]} />
+        <meshStandardMaterial color={frameColor} roughness={0.38} metalness={0.18} />
+      </mesh>
+    </>
   )
 }
 
@@ -187,31 +251,18 @@ function RackMesh({
               multi: event.ctrlKey || event.metaKey,
             })
           }}
-          castShadow
-          receiveShadow
         >
           <boxGeometry args={[width, rackHeight, depth]} />
-          <meshStandardMaterial
-            color={colorByType.rack}
-            opacity={isSelected ? 0.35 : 0.2}
-            transparent
-            emissive={isSelected ? '#fdba74' : '#000000'}
-            emissiveIntensity={isSelected ? 0.35 : 0}
-            roughness={0.48}
-          />
+          <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
 
-        {Array.from({ length: levels }).map((_, levelIndex) => (
-          <mesh
-            key={`${rack.clientKey}-shelf-${levelIndex}`}
-            position={[0, getShelfY(levelIndex, levels, rackHeight), 0]}
-            castShadow
-            receiveShadow
-          >
-            <boxGeometry args={[width * 0.96, 0.08, depth * 0.92]} />
-            <meshStandardMaterial color="#fef3c7" roughness={0.42} />
-          </mesh>
-        ))}
+        <RackFrame
+          width={width}
+          depth={depth}
+          rackHeight={rackHeight}
+          levels={levels}
+          isSelected={isSelected}
+        />
 
         {rack.bins.map((bin) => (
           <BinMesh

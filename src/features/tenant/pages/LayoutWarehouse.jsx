@@ -29,6 +29,7 @@ const DEFAULT_LAYOUT_SIZE = 100
 // minimum so the 2D/3D renderers still have a usable footprint.
 const MIN_ENTITY_SIZE = 1
 const MIN_BIN_SIZE = 0.1
+const MIN_LAYOUT_SIZE = 0.000001
 const DEFAULT_RACK_GAP = 1
 const FOOTPRINT_GRID_SIZE = 10
 const BIN_MAX_RATIO = 0.8
@@ -67,7 +68,7 @@ const normalizeCreatedDimensions = (dimensions) => {
   const width = numberOf(dimensions?.width)
   const length = numberOf(dimensions?.length)
   const height = numberOf(dimensions?.height)
-  return width >= 20 && length >= 20 && height >= MIN_ENTITY_SIZE ? { width, length, height } : null
+  return width > 0 && length > 0 && height > 0 ? { width, length, height } : null
 }
 const nullableId = (value) => (value == null || value === '' ? null : String(value))
 const cellKey = (row, column) => `${row}:${column}`
@@ -212,10 +213,10 @@ const normalizeRack = (rack = {}) => ({
   bins: Array.isArray(rack.bins) ? rack.bins.map(normalizeBin) : [],
 })
 
-const normalizeLayout = (payload = {}, { preserveDimensions = false } = {}) => ({
-  width: Math.max(numberOf(payload.width, DEFAULT_LAYOUT_SIZE), preserveDimensions ? 0.01 : 20),
-  length: Math.max(numberOf(payload.length, DEFAULT_LAYOUT_SIZE), preserveDimensions ? 0.01 : 20),
-  height: Math.max(numberOf(payload.height, DEFAULT_LAYOUT_SIZE), preserveDimensions ? 0.01 : MIN_ENTITY_SIZE),
+const normalizeLayout = (payload = {}) => ({
+  width: Math.max(numberOf(payload.width, DEFAULT_LAYOUT_SIZE), MIN_LAYOUT_SIZE),
+  length: Math.max(numberOf(payload.length, DEFAULT_LAYOUT_SIZE), MIN_LAYOUT_SIZE),
+  height: Math.max(numberOf(payload.height, DEFAULT_LAYOUT_SIZE), MIN_LAYOUT_SIZE),
   footprintCells: normalizeFootprint(payload.footprintCells),
   // `positions` is the BE field that stores the painted/locked grid cells.
   // Keep the legacy fallback so layouts returned by an older deployment still render correctly.
@@ -308,15 +309,15 @@ const fitBinsToRack = (rack) => {
   }
 }
 
-const toPayload = (layout, { preserveDimensions = false } = {}) => {
-  const minimumWidth = preserveDimensions ? 0.01 : 20
-  const minimumLength = preserveDimensions ? 0.01 : 20
+const toPayload = (layout) => {
+  const minimumWidth = MIN_LAYOUT_SIZE
+  const minimumLength = MIN_LAYOUT_SIZE
   const width = Math.max(numberOf(layout.width, DEFAULT_LAYOUT_SIZE), minimumWidth)
   const length = Math.max(numberOf(layout.length, DEFAULT_LAYOUT_SIZE), minimumLength)
   return {
     width,
     length,
-    height: Math.max(numberOf(layout.height, DEFAULT_LAYOUT_SIZE), MIN_ENTITY_SIZE),
+    height: Math.max(numberOf(layout.height, DEFAULT_LAYOUT_SIZE), MIN_LAYOUT_SIZE),
     positions: normalizeBlockedCells(layout.blockedCells),
     racks: layout.racks.map((rack, rackIndex) =>
       serializeRack(
@@ -816,7 +817,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             height: createdDimensions?.height ?? warehouse?.height ?? payload.height,
           }
       setLayout(
-        normalizeLayout(payloadWithDimensions, { preserveDimensions: isContractLayout || !isOwner })
+        normalizeLayout(payloadWithDimensions)
       )
       setTenantDefault(!isOwner && !isContractLayout && Boolean(payload.isDefault ?? payload.default))
       updateSelection({ type: 'layout', key: null }, false, true)
@@ -1161,14 +1162,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     try {
       setSaving(true)
       setError('')
-      const payload = toPayload(layout, { preserveDimensions: isContractLayout })
+      const payload = toPayload(layout)
       const response = isContractLayout
         ? await contractApi.saveOwnerLayout(contractId, payload)
         : isOwner
           ? await warehouseApi.saveOwnerWarehouseLayout(selectedWarehouseId, payload)
           : await layoutApi.saveTenantWarehouseLayout(selectedWarehouseId, payload)
       const saved = apiData(response)
-      if (saved) setLayout(normalizeLayout(saved, { preserveDimensions: isContractLayout || !isOwner }))
+      if (saved) setLayout(normalizeLayout(saved))
       updateSelection({ type: 'layout', key: null }, false, true)
       setMessage(isContractLayout ? 'Contract layout saved successfully.' : 'Warehouse layout saved successfully.')
       if (isMandatorySetup) {
@@ -1211,7 +1212,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     ])
     const parsedValue = numericFields.has(field) ? numberOf(value) : value
     const isDimensionField = ['width', 'length', 'height'].includes(field)
-    const dimensionMinimum = selection.type === 'bin' ? MIN_BIN_SIZE : MIN_ENTITY_SIZE
+    const dimensionMinimum =
+      selection.type === 'bin'
+        ? MIN_BIN_SIZE
+        : selection.type === 'layout'
+          ? MIN_LAYOUT_SIZE
+          : MIN_ENTITY_SIZE
     const nextValue = isDimensionField
       ? Math.max(parsedValue, dimensionMinimum)
       : ['maxWeight', 'maxVolume'].includes(field)
@@ -1249,12 +1255,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         return
       }
     }
-    if (selection.type === 'layout' && ['width', 'length'].includes(field)) {
-      const candidateLayout = { ...layout, [field]: Math.max(nextValue, 20) }
+    if (selection.type === 'layout' && ['width', 'length', 'height'].includes(field)) {
+      const candidateLayout = { ...layout, [field]: Math.max(nextValue, MIN_LAYOUT_SIZE) }
       const invalidRack = candidateLayout.racks.some(
         (rack) =>
           rack.coordinateX + rack.width > candidateLayout.width ||
           rack.coordinateY + rack.length > candidateLayout.length ||
+          rack.positionZ + rack.height > candidateLayout.height ||
           rectangleOverlapsBlockedCell(rack, candidateLayout)
       )
       if (invalidRack) {

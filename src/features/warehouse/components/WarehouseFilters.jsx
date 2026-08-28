@@ -48,8 +48,6 @@ const WarehouseFilters = ({ onFilterChange }) => {
               type="number"
               name="minRentalPrice"
               value={filters.minRentalPrice}
-              name="minRentalPrice"
-              value={filters.minRentalPrice}
               onChange={handleChange}
               placeholder="Min"
               className="focus:ring-primary/20 focus:border-primary w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2.5 pr-3 pl-7 text-sm transition-all focus:ring-2 focus:outline-none"

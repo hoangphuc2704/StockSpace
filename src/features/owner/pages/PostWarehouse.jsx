@@ -221,9 +221,9 @@ const CreateWarehouse = () => {
     fullAddress !== '' &&
     formData.description.trim() !== '' &&
     formData.typeId !== '' &&
-    Number(formData.warehouseWidth) >= 20 &&
-    Number(formData.warehouseLength) >= 20 &&
-    Number(formData.warehouseHeight) >= 4 &&
+    Number(formData.warehouseWidth) > 0 &&
+    Number(formData.warehouseLength) > 0 &&
+    Number(formData.warehouseHeight) > 0 &&
     (formData.rentalPricingType === 'NEGOTIATED' || Number(formData.rentalPrice) > 0) &&
     coverFile !== null &&
     Boolean(selectedListingPackageId) &&
@@ -439,7 +439,6 @@ const CreateWarehouse = () => {
                             onChange={handleInputChange}
                             placeholder="30"
                             className="w-full rounded-xl border border-[#e8e1de] bg-white py-3 pr-10 pl-10 text-sm transition focus:border-[#f97316] focus:bg-white focus:ring-2 focus:ring-[#ffedd5] focus:outline-none"
-                            min="20"
                             required
                           />
                           <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
@@ -465,7 +464,6 @@ const CreateWarehouse = () => {
                             onChange={handleInputChange}
                             placeholder="40"
                             className="w-full rounded-xl border border-[#e8e1de] bg-white py-3 pr-10 pl-10 text-sm transition focus:border-[#f97316] focus:bg-white focus:ring-2 focus:ring-[#ffedd5] focus:outline-none"
-                            min="20"
                             required
                           />
                           <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">
@@ -493,7 +491,6 @@ const CreateWarehouse = () => {
                             onChange={handleInputChange}
                             placeholder="10"
                             className="w-full rounded-xl border border-[#e8e1de] bg-white py-3 pr-12 pl-10 text-sm transition focus:border-[#f97316] focus:bg-white focus:ring-2 focus:ring-[#ffedd5] focus:outline-none"
-                            min="4"
                             required
                           />
                           <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">

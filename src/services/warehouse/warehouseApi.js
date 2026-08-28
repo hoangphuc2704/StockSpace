@@ -10,6 +10,12 @@ const onwerwarehouseApi = {
     minRentalPrice,
     maxRentalPrice,
     minCapacity,
+    maxCapacity,
+    provinceCode,
+    districtCode,
+    warehouseTypeId,
+    status,
+    isVerified,
   }) => {
     return api.get('/warehouses', {
       params: {
