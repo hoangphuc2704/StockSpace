@@ -27,7 +27,11 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (!isOpen || !sourceWarehouseId) return
+    if (!isOpen) return
+    if (!sourceWarehouseId) {
+      setLoadingInitial(false)
+      return
+    }
 
     const initData = async () => {
       setLoadingInitial(true)
@@ -173,7 +177,12 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
           </button>
         </div>
 
-        {loadingInitial ? (
+        {!sourceWarehouseId ? (
+          <div className="flex flex-col items-center justify-center p-12 text-slate-500">
+            <p className="mb-4">No source warehouse selected.</p>
+            <p className="text-sm">Please select a warehouse from the top menu first.</p>
+          </div>
+        ) : loadingInitial ? (
           <div className="flex items-center justify-center p-12">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
           </div>
