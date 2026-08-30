@@ -12,10 +12,12 @@ import Button from '@/components/atoms/Button'
 const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) => {
   useEscapeKey(isOpen, onClose)
 
-  const [warehouses, setWarehouses] = useState([])
+  const [allWarehouses, setAllWarehouses] = useState([])
   const [products, setProducts] = useState([])
   const [loadingInitial, setLoadingInitial] = useState(true)
+  const [loadingProducts, setLoadingProducts] = useState(false)
 
+  const [selectedSourceWarehouseId, setSelectedSourceWarehouseId] = useState('')
   const [destinationWarehouseId, setDestinationWarehouseId] = useState('')
   const [selectedSkuId, setSelectedSkuId] = useState('')
   const [stockBatches, setStockBatches] = useState([])
@@ -28,39 +30,49 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
 
   useEffect(() => {
     if (!isOpen) return
-    if (!sourceWarehouseId) {
-      setLoadingInitial(false)
-      return
-    }
 
-    const initData = async () => {
+    const fetchWarehouses = async () => {
       setLoadingInitial(true)
       try {
-        const [whRes, stockRes] = await Promise.all([
-          warehouseApi.getMyWarehouses(),
-          stockApi.getStockOverview(sourceWarehouseId, { page: 0, size: 200 })
-        ])
-        
-        // Exclude current source warehouse
-        const whList = (whRes.data?.data || []).filter(w => w.id !== sourceWarehouseId)
-        setWarehouses(whList)
-
-        const stockList = stockRes.data?.data?.content || []
-        // Only show SKUs that have stock > 0
-        setProducts(stockList.filter(s => s.totalQuantity > 0))
+        const whRes = await warehouseApi.getMyWarehouses()
+        setAllWarehouses(whRes.data?.data || [])
       } catch (error) {
-        showApiErrorToast(error, 'Could not load required data.')
+        showApiErrorToast(error, 'Could not load warehouses.')
       } finally {
         setLoadingInitial(false)
       }
     }
-    initData()
+    fetchWarehouses()
+
+    setSelectedSourceWarehouseId(sourceWarehouseId || '')
     setDestinationWarehouseId('')
     setSelectedSkuId('')
     setStockBatches([])
     setAllocations({})
     setNote('')
   }, [isOpen, sourceWarehouseId])
+
+  useEffect(() => {
+    if (!selectedSourceWarehouseId) {
+      setProducts([])
+      return
+    }
+
+    const fetchProducts = async () => {
+      setLoadingProducts(true)
+      try {
+        const stockRes = await stockApi.getStockOverview(selectedSourceWarehouseId, { page: 0, size: 200 })
+        const stockList = stockRes.data?.data?.content || []
+        // Only show SKUs that have stock > 0
+        setProducts(stockList.filter(s => s.totalQuantity > 0))
+      } catch (error) {
+        showApiErrorToast(error, 'Could not load products.')
+      } finally {
+        setLoadingProducts(false)
+      }
+    }
+    fetchProducts()
+  }, [selectedSourceWarehouseId])
 
   useEffect(() => {
     if (!selectedSkuId) {
@@ -79,7 +91,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
         
         // Filter by source warehouse and has quantity > 0
         const sourceBatches = allBatches.filter(
-          b => b.warehouseId === sourceWarehouseId && b.quantity > 0
+          b => b.warehouseId === selectedSourceWarehouseId && b.quantity > 0
         )
         setStockBatches(sourceBatches)
         setAllocations({})
@@ -90,7 +102,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
       }
     }
     fetchBatches()
-  }, [selectedSkuId, sourceWarehouseId])
+  }, [selectedSkuId, selectedSourceWarehouseId])
 
   if (!isOpen) return null
 
@@ -137,7 +149,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
     }
 
     const payload = {
-      sourceWarehouseId,
+      sourceWarehouseId: selectedSourceWarehouseId,
       destinationWarehouseId,
       note,
       items: [
@@ -177,12 +189,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
           </button>
         </div>
 
-        {!sourceWarehouseId ? (
-          <div className="flex flex-col items-center justify-center p-12 text-slate-500">
-            <p className="mb-4">No source warehouse selected.</p>
-            <p className="text-sm">Please select a warehouse from the top menu first.</p>
-          </div>
-        ) : loadingInitial ? (
+        {loadingInitial ? (
           <div className="flex items-center justify-center p-12">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
           </div>
@@ -190,29 +197,52 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
           <FormShell onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">Destination Warehouse <span className="text-rose-500">*</span></label>
+                <label className="mb-2 block text-sm font-bold text-slate-700">Source Warehouse <span className="text-rose-500">*</span></label>
                 <select
                   required
-                  value={destinationWarehouseId}
-                  onChange={(e) => setDestinationWarehouseId(e.target.value)}
+                  value={selectedSourceWarehouseId}
+                  onChange={(e) => {
+                    setSelectedSourceWarehouseId(e.target.value)
+                    setSelectedSkuId('')
+                    setDestinationWarehouseId('')
+                  }}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="">Select destination...</option>
-                  {warehouses.map(w => (
+                  <option value="">Select source...</option>
+                  {allWarehouses.map(w => (
                     <option key={w.id} value={w.id}>{w.name}</option>
                   ))}
                 </select>
               </div>
 
               <div>
+                <label className="mb-2 block text-sm font-bold text-slate-700">Destination Warehouse <span className="text-rose-500">*</span></label>
+                <select
+                  required
+                  value={destinationWarehouseId}
+                  onChange={(e) => setDestinationWarehouseId(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  disabled={!selectedSourceWarehouseId}
+                >
+                  <option value="">Select destination...</option>
+                  {allWarehouses
+                    .filter(w => w.id !== selectedSourceWarehouseId)
+                    .map(w => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="col-span-2">
                 <label className="mb-2 block text-sm font-bold text-slate-700">Product SKU <span className="text-rose-500">*</span></label>
                 <select
                   required
                   value={selectedSkuId}
                   onChange={(e) => setSelectedSkuId(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  disabled={!selectedSourceWarehouseId || loadingProducts}
                 >
-                  <option value="">Select product...</option>
+                  <option value="">{loadingProducts ? 'Loading products...' : 'Select product...'}</option>
                   {products.map(p => (
                     <option key={p.skuId} value={p.skuId}>[{p.skuCode}] {p.skuName} (Available: {p.totalQuantity})</option>
                   ))}
