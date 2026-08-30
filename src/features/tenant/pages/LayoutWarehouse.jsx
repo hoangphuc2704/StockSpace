@@ -457,13 +457,21 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const isOwner = currentRole === 'OWNER'
   const contractId = routeContractId || searchParams.get('contractId') || ''
   const isContractLayout = Boolean(contractId)
+  const pendingOwnerDraft = isOwner && !isContractLayout ? location.state?.draft : null
+  const pendingDraftDimensions = normalizeCreatedDimensions({
+    width: searchParams.get('width') || pendingOwnerDraft?.formData?.warehouseWidth,
+    length: searchParams.get('length') || pendingOwnerDraft?.formData?.warehouseLength,
+    height: searchParams.get('height') || pendingOwnerDraft?.formData?.warehouseHeight,
+  })
 
   const [rentedWarehouses, setRentedWarehouses] = useState([])
   const [ownedWarehouses, setOwnedWarehouses] = useState([])
   const [ownerLockedWarehouseIds, setOwnerLockedWarehouseIds] = useState(() => new Set())
   const [tenantCapabilities, setTenantCapabilities] = useState({})
   const [preferredWarehouseId, setPreferredWarehouseId] = useState('')
-  const [layout, setLayout] = useState(() => normalizeLayout())
+  const [layout, setLayout] = useState(() => normalizeLayout(pendingDraftDimensions || {}))
+  const [draftWarehouseId, setDraftWarehouseId] = useState('')
+  const draftWarehouseIdRef = useRef('')
   const [selection, setSelection] = useState({ type: 'layout', key: null })
   const [selectedItems, setSelectedItems] = useState([])
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false)
@@ -561,6 +569,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [isOwner, layoutSetupComplete])
 
   const selectedWarehouseId = useMemo(() => {
+    if (pendingOwnerDraft && !draftWarehouseId) return ''
+    if (draftWarehouseId) return draftWarehouseId
     if (!warehouses.length) return ''
     if (
       pendingOwnerLayout?.warehouseId &&
@@ -574,7 +584,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       return preferredWarehouseId
     }
     return warehouses[0].id
-  }, [pendingOwnerLayout, preferredWarehouseId, searchParams, warehouses])
+  }, [draftWarehouseId, pendingOwnerDraft, pendingOwnerLayout, preferredWarehouseId, searchParams, warehouses])
+
+  const isUnsavedOwnerDraft = Boolean(
+    isOwner && !isContractLayout && pendingOwnerDraft && !draftWarehouseId
+  )
 
   const tenantCanManageLayout = Boolean(
     !isOwner &&
@@ -601,8 +615,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
   const isMandatorySetup = useMemo(() => {
     if (!isOwner || layoutSetupComplete) return false
-    return searchParams.get('setupRequired') === 'true' || Boolean(pendingOwnerLayout)
-  }, [isOwner, layoutSetupComplete, pendingOwnerLayout, searchParams])
+    return (
+      searchParams.get('setupRequired') === 'true' ||
+      Boolean(pendingOwnerLayout) ||
+      Boolean(pendingOwnerDraft)
+    )
+  }, [isOwner, layoutSetupComplete, pendingOwnerDraft, pendingOwnerLayout, searchParams])
+
+  const hasLayoutTarget = Boolean(selectedWarehouseId || isContractLayout || pendingOwnerDraft)
 
   useEffect(() => {
     if (!isMandatorySetup) return undefined
@@ -615,9 +635,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [isMandatorySetup])
 
   const createdDimensions = useMemo(() => {
-    if (!selectedWarehouseId) return null
     const requestedWarehouseId = searchParams.get('warehouseId')
-    if (requestedWarehouseId === selectedWarehouseId) {
+    if (!requestedWarehouseId || requestedWarehouseId === selectedWarehouseId) {
       const fromQuery = normalizeCreatedDimensions({
         width: searchParams.get('width'),
         length: searchParams.get('length'),
@@ -625,6 +644,15 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       })
       if (fromQuery) return fromQuery
     }
+    if (pendingOwnerDraft) {
+      const fromDraft = normalizeCreatedDimensions({
+        width: pendingOwnerDraft.formData?.warehouseWidth,
+        length: pendingOwnerDraft.formData?.warehouseLength,
+        height: pendingOwnerDraft.formData?.warehouseHeight,
+      })
+      if (fromDraft) return fromDraft
+    }
+    if (!selectedWarehouseId) return null
     try {
       return normalizeCreatedDimensions(
         JSON.parse(localStorage.getItem(layoutDimensionsKey(selectedWarehouseId)) || 'null')
@@ -632,7 +660,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     } catch {
       return null
     }
-  }, [searchParams, selectedWarehouseId])
+  }, [pendingOwnerDraft, searchParams, selectedWarehouseId])
 
   const selectedEntity = useMemo(() => getSelected(layout, selection), [layout, selection])
   const selectedItemSet = useMemo(
@@ -781,7 +809,23 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [isOwner])
 
   const loadLayout = useCallback(async () => {
-    if (!selectedWarehouseId && !isContractLayout) return
+    // Keep the local draft visible while the first create + layout save request is in flight.
+    if (pendingOwnerDraft && draftWarehouseId && isMandatorySetup) return
+    if (!selectedWarehouseId && !isContractLayout) {
+      if (isUnsavedOwnerDraft) {
+        setLayout((current) =>
+          normalizeLayout({
+            ...current,
+            ...(createdDimensions || {}),
+            racks: current.racks,
+          })
+        )
+        setTenantDefault(false)
+        updateSelection({ type: 'layout', key: null }, false, true)
+        setMessage('Draft layout ready. Save the layout to create and submit this warehouse.')
+      }
+      return
+    }
     const warehouse = warehouses.find((item) => item.id === selectedWarehouseId)
     try {
       setLoadingLayout(true)
@@ -852,7 +896,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     } finally {
       setLoadingLayout(false)
     }
-  }, [contractId, createdDimensions, currentRole, isContractLayout, isOwner, selectedWarehouseId, updateSelection, warehouses])
+  }, [contractId, createdDimensions, currentRole, draftWarehouseId, isContractLayout, isMandatorySetup, isOwner, isUnsavedOwnerDraft, pendingOwnerDraft, selectedWarehouseId, updateSelection, warehouses])
 
   useEffect(() => {
     // Loading the selected warehouse is the external synchronization performed by this effect.
@@ -1136,8 +1180,72 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     return () => window.removeEventListener('keydown', handleKeyboardShortcut)
   }, [addBin, addRack, isReadOnly, removeSelected, selectedItems.length, selection.type])
 
+  const createWarehouseFromDraft = useCallback(async () => {
+    if (draftWarehouseIdRef.current) return draftWarehouseIdRef.current
+    if (!pendingOwnerDraft) throw new Error('No warehouse draft found.')
+
+    const draftFormData = pendingOwnerDraft.formData || {}
+    const width = numberOf(draftFormData.warehouseWidth)
+    const length = numberOf(draftFormData.warehouseLength)
+    const height = numberOf(draftFormData.warehouseHeight)
+    const rentalPrice = numberOf(draftFormData.rentalPrice)
+    const formPayload = new FormData()
+    const warehouseInfo = {
+      typeId: draftFormData.typeId,
+      name: String(draftFormData.name || '').trim(),
+      address: pendingOwnerDraft.fullAddress,
+      description: String(draftFormData.description || '').trim(),
+      capacity: width * length,
+      rentalPrice: draftFormData.rentalPricingType === 'NEGOTIATED' ? null : rentalPrice,
+      rentalPricingType: draftFormData.rentalPricingType,
+      imageUrls: [],
+    }
+
+    formPayload.append(
+      'request',
+      new Blob([JSON.stringify(warehouseInfo)], { type: 'application/json' })
+    )
+    if (pendingOwnerDraft.coverFile) formPayload.append('files', pendingOwnerDraft.coverFile)
+    const relatedImages = pendingOwnerDraft.relatedImages || []
+    relatedImages.forEach((image) => {
+      if (image.file) formPayload.append('files', image.file)
+    })
+
+    const response = await warehouseApi.createWarehouse(formPayload)
+    if (!response?.data?.success) {
+      throw new Error(response?.data?.message || 'Could not create warehouse.')
+    }
+
+    const createdId = response?.data?.data?.id ?? response?.data?.data?.warehouseId
+    if (!createdId) throw new Error('Warehouse created without an ID.')
+
+    const normalizedId = String(createdId)
+    draftWarehouseIdRef.current = normalizedId
+    setDraftWarehouseId(normalizedId)
+    setOwnedWarehouses((current) => [
+      {
+        id: normalizedId,
+        name: warehouseInfo.name || 'Warehouse',
+        width,
+        length,
+        height,
+      },
+      ...current.filter((warehouse) => String(warehouse.id) !== normalizedId),
+    ])
+    try {
+      localStorage.setItem(
+        layoutDimensionsKey(normalizedId),
+        JSON.stringify({ width, length, height })
+      )
+    } catch {
+      // The layout payload still contains the dimensions if local storage is unavailable.
+    }
+    return normalizedId
+  }, [pendingOwnerDraft])
+
   const saveLayout = async () => {
-    if (isReadOnly || (!selectedWarehouseId && !isContractLayout)) return
+    const hasPendingOwnerDraft = Boolean(isOwner && !isContractLayout && pendingOwnerDraft)
+    if (isReadOnly || (!selectedWarehouseId && !isContractLayout && !hasPendingOwnerDraft)) return
     if (layout.racks.some((rack) => rectangleOverlapsBlockedCell(rack, layout))) {
       setError('A rack overlaps a locked cell. Move it before saving the layout.')
       return
@@ -1163,11 +1271,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       setSaving(true)
       setError('')
       const payload = toPayload(layout)
+      const targetWarehouseId =
+        selectedWarehouseId ||
+        (hasPendingOwnerDraft ? await createWarehouseFromDraft() : '')
       const response = isContractLayout
         ? await contractApi.saveOwnerLayout(contractId, payload)
         : isOwner
-          ? await warehouseApi.saveOwnerWarehouseLayout(selectedWarehouseId, payload)
-          : await layoutApi.saveTenantWarehouseLayout(selectedWarehouseId, payload)
+          ? await warehouseApi.saveOwnerWarehouseLayout(targetWarehouseId, payload)
+          : await layoutApi.saveTenantWarehouseLayout(targetWarehouseId, payload)
       const saved = apiData(response)
       if (saved) setLayout(normalizeLayout(saved))
       updateSelection({ type: 'layout', key: null }, false, true)
@@ -1179,15 +1290,18 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           // Ignore storage cleanup errors; the saved layout is still valid.
         }
         setLayoutSetupComplete(true)
-        setMessage('Warehouse layout saved successfully. You can now leave this page.')
+        setMessage(
+          'Warehouse created and submitted for Admin approval. Listing packages will be available after approval.'
+        )
         const nextParams = new URLSearchParams(searchParams)
         nextParams.delete('setupRequired')
+        if (targetWarehouseId) nextParams.set('warehouseId', targetWarehouseId)
         navigate(
           {
             pathname: location.pathname,
             search: nextParams.toString() ? `?${nextParams.toString()}` : '',
           },
-          { replace: true }
+          { replace: true, state: null }
         )
       }
     } catch (requestError) {
@@ -1430,7 +1544,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                 <button
                   type="button"
                   onClick={loadLayout}
-                  disabled={(!selectedWarehouseId && !isContractLayout) || loadingLayout}
+                  disabled={!hasLayoutTarget || loadingLayout}
                   className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
                 >
                   <RotateCcw className={`mr-2 h-4 w-4 ${loadingLayout ? 'animate-spin' : ''}`} />{' '}
@@ -1441,7 +1555,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     type="button"
                     onClick={saveLayout}
                     disabled={
-                      (!selectedWarehouseId && !isContractLayout) ||
+                      !hasLayoutTarget ||
                       saving ||
                       loadingLayout ||
                       (tenantDefault && !canEditLayout) ||
@@ -1460,24 +1574,41 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               </div>
             </div>
 
-            {!isContractLayout && <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <label className="mb-2 block text-xs font-bold tracking-wider text-slate-400 uppercase">
-                Select warehouse
-              </label>
-              <select
-                value={selectedWarehouseId}
-                onChange={(event) => setPreferredWarehouseId(event.target.value)}
-                disabled={isMandatorySetup || loadingOptions || !warehouses.length}
-                className={inputClass}
-              >
-                {!warehouses.length && <option value="">There is no suitable warehouse</option>}
-                {warehouses.map((warehouse) => (
-                  <option key={warehouse.id} value={warehouse.id}>
-                    {warehouse.name}
-                  </option>
-                ))}
-              </select>
-            </section>}
+            {!isContractLayout && (
+              isUnsavedOwnerDraft ? (
+                <section className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4 shadow-sm">
+                  <p className="text-xs font-bold tracking-wider text-orange-700 uppercase">
+                    New warehouse draft
+                  </p>
+                  <p className="mt-1 text-base font-bold text-orange-950">
+                    {pendingOwnerDraft.formData?.name || 'Untitled warehouse'}
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-orange-900/80">
+                    Configure the layout below. The warehouse will be created and submitted only
+                    when you click Save layout.
+                  </p>
+                </section>
+              ) : (
+                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <label className="mb-2 block text-xs font-bold tracking-wider text-slate-400 uppercase">
+                    Select warehouse
+                  </label>
+                  <select
+                    value={selectedWarehouseId}
+                    onChange={(event) => setPreferredWarehouseId(event.target.value)}
+                    disabled={isMandatorySetup || loadingOptions || !warehouses.length}
+                    className={inputClass}
+                  >
+                    {!warehouses.length && <option value="">There is no suitable warehouse</option>}
+                    {warehouses.map((warehouse) => (
+                      <option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name}
+                      </option>
+                    ))}
+                  </select>
+                </section>
+              )
+            )}
 
             {isContractLayout && (
               <section className="rounded-2xl border border-blue-200 bg-blue-50/70 p-4 shadow-sm">

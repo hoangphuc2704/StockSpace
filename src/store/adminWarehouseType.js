@@ -82,8 +82,8 @@ const adminWarehouseTypeSlice = createSlice({
         state.loading = false
         const paged = action.payload
         state.data = paged?.content || []
-        state.page = paged?.pageNumber ?? paged?.number ?? 0
-        state.size = paged?.pageSize ?? paged?.size ?? 10
+        state.page = paged?.page ?? paged?.pageNumber ?? paged?.number ?? 0
+        state.size = paged?.size ?? paged?.pageSize ?? 10
         state.totalPages = paged?.totalPages ?? 0
         state.totalElements = paged?.totalElements ?? 0
       })

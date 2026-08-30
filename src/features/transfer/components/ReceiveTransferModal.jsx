@@ -24,7 +24,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
     const fetchLayout = async () => {
       setLoadingLayout(true)
       try {
-        const res = await layoutApi.getLayout(transfer.destinationWarehouse?.id)
+        const res = await layoutApi.getTenantWarehouseLayout(transfer.destinationWarehouse?.id)
         const payload = res.data?.data || res.data || {}
         setLayout(payload)
       } catch (error) {

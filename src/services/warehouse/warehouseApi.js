@@ -14,7 +14,6 @@ const onwerwarehouseApi = {
     provinceCode,
     districtCode,
     warehouseTypeId,
-    status,
     isVerified,
   }) => {
     return api.get('/warehouses', {
@@ -31,7 +30,6 @@ const onwerwarehouseApi = {
         provinceCode,
         districtCode,
         warehouseTypeId,
-        status,
         isVerified,
       },
     })

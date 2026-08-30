@@ -1,13 +1,30 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import adminApi from '../services/admin/adminApi'
 
+const getPagedPayload = (response) => {
+  const payload = response?.data?.data ?? response?.data
+
+  if (Array.isArray(payload)) {
+    return {
+      content: payload,
+      page: 0,
+      size: payload.length,
+      totalPages: payload.length ? 1 : 0,
+      totalElements: payload.length,
+      last: true,
+    }
+  }
+
+  return payload || {}
+}
+
 /**
  * BE response: ApiResponse<PagedResponse<WarehouseResponse>>
  * PagedResponse: { content, totalElements, totalPages, number (page index), size }
  * WarehouseResponse: { id, name, address, area, status, isVerified, ownerId, ... }
  *
  * verifyWarehouse / rejectWarehouse:
- *   POST /api/admin/warehouses/{id}/verify  (no body)
+ *   POST /api/admin/warehouses/{id}/approve (no body)
  *   POST /api/admin/warehouses/{id}/reject  (no body)
  *   response: ApiResponse<WarehouseResponse>
  */
@@ -18,8 +35,9 @@ export const fetchWarehouses = createAsyncThunk(
   async (params, { rejectWithValue }) => {
     try {
       const res = await adminApi.getWarehouses(params)
-      // BE wraps: { success, message, data: PagedResponse }
-      return res.data.data
+      // BE wraps: { success, message, data: PagedResponse }.
+      // Fallback này giúp page cũ vẫn đọc được nếu API trả mảng trực tiếp.
+      return getPagedPayload(res)
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }
@@ -31,7 +49,7 @@ export const verifyWarehouse = createAsyncThunk(
   'adminWarehouse/verifyWarehouse',
   async (id, { rejectWithValue }) => {
     try {
-      const res = await adminApi.verifyWarehouse(id)
+      const res = await adminApi.approveWarehouse(id)
       return res.data.data // WarehouseResponse mới nhất
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
@@ -88,7 +106,7 @@ const adminWarehouseSlice = createSlice({
         state.data = pagedResponse?.content || []
         state.totalPages = pagedResponse?.totalPages || 0
         state.totalElements = pagedResponse?.totalElements || 0
-        state.page = pagedResponse?.number || 0
+        state.page = pagedResponse?.page ?? pagedResponse?.number ?? 0
       })
       .addCase(fetchWarehouses.rejected, (state, action) => {
         state.loading = false

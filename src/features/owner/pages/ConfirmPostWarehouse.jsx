@@ -1,6 +1,4 @@
-import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useSelector } from 'react-redux'
 import {
   ArrowLeft,
   CheckCircle2,
@@ -14,18 +12,11 @@ import {
 } from 'lucide-react'
 import Button from '../../../components/atoms/Button'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import ownerApi from '../../../services/warehouse/warehouseApi'
-import { toast } from 'react-hot-toast'
-import { showApiErrorToast } from '@/config/apiError'
-
-const layoutDimensionsKey = (warehouseId) => `stockspace:warehouse-layout-dimensions:${warehouseId}`
 const pendingOwnerLayoutKey = 'stockspace:pending-owner-layout'
 
 const ConfirmPostWarehouse = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const user = useSelector((state) => state.auth.user)
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const draft = location.state?.draft
 
   const formData = draft?.formData || {}
@@ -39,82 +30,20 @@ const ConfirmPostWarehouse = () => {
     navigate('/owner/postwarehouse', { state: { draft } })
   }
 
-  const handleConfirmSubmit = async (event) => {
+  const handleConfirmSubmit = (event) => {
     event.preventDefault()
-    if (!draft || isSubmitting) return
+    if (!draft) return
 
-    setIsSubmitting(true)
+    // The draft is carried in router state. It is not created on the server yet.
     try {
-      const formPayload = new FormData()
-      const warehouseInfo = {
-        typeId: formData.typeId,
-        name: String(formData.name || '').trim(),
-        address: draft.fullAddress,
-        description: String(formData.description || '').trim(),
-        capacity: warehouseWidth * warehouseLength,
-        rentalPrice: formData.rentalPricingType === 'NEGOTIATED' ? null : rentalPrice,
-        rentalPricingType: formData.rentalPricingType,
-        imageUrls: [],
-      }
-
-      formPayload.append(
-        'request',
-        new Blob([JSON.stringify(warehouseInfo)], { type: 'application/json' })
-      )
-      if (draft.coverFile) {
-        formPayload.append('files', draft.coverFile)
-      }
-      relatedImages.forEach((image) => {
-        if (image.file) formPayload.append('files', image.file)
-      })
-
-      const response = await ownerApi.createWarehouse(formPayload)
-      if (!response?.data?.success) {
-        showApiErrorToast({ response: { data: response?.data } }, 'Could not post warehouse.')
-        return
-      }
-
-      const createdWarehouseId = response?.data?.data?.id ?? response?.data?.data?.warehouseId
-      if (!createdWarehouseId) {
-        toast.error('Warehouse created without an ID.')
-        return
-      }
-
-      try {
-        localStorage.setItem(
-          layoutDimensionsKey(createdWarehouseId),
-          JSON.stringify({
-            width: warehouseWidth,
-            length: warehouseLength,
-            height: warehouseHeight,
-          })
-        )
-        sessionStorage.setItem(
-          pendingOwnerLayoutKey,
-          JSON.stringify({
-            ownerId: user?.userId || null,
-            warehouseId: createdWarehouseId,
-            width: warehouseWidth,
-            length: warehouseLength,
-            height: warehouseHeight,
-          })
-        )
-      } catch {
-        // Query parameters below still carry the dimensions for the immediate layout flow.
-      }
-
-      toast.success(
-        'Warehouse submitted for Admin approval. You can pay for the listing after approval.'
-      )
-      navigate(
-        `/owner/layoutwarehouses?warehouseId=${encodeURIComponent(String(createdWarehouseId))}&width=${warehouseWidth}&length=${warehouseLength}&height=${warehouseHeight}&setupRequired=true`
-      )
-    } catch (error) {
-      console.error('Error creating warehouse:', error)
-      showApiErrorToast(error, 'Connection error.')
-    } finally {
-      setIsSubmitting(false)
+      sessionStorage.removeItem(pendingOwnerLayoutKey)
+    } catch {
+      // The layout page still receives the draft through router state.
     }
+    navigate(
+      `/owner/layoutwarehouses?width=${warehouseWidth}&length=${warehouseLength}&height=${warehouseHeight}&setupRequired=true`,
+      { state: { draft } }
+    )
   }
 
   if (!draft) {
@@ -159,7 +88,8 @@ const ConfirmPostWarehouse = () => {
               Confirm warehouse post
             </h1>
             <p className="text-sm text-slate-500">
-              Review all information before submitting this warehouse for Admin approval.
+              Review all information before continuing to layout. The warehouse is still a local
+              draft.
             </p>
           </div>
 
@@ -183,7 +113,7 @@ const ConfirmPostWarehouse = () => {
                       <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">
                         Warehouse information
                       </p>
-                      <h2 className="mt-1 break-words text-xl font-black text-slate-950">
+                      <h2 className="mt-1 text-xl font-black break-words text-slate-950">
                         {formData.name}
                       </h2>
                       <p className="mt-2 flex items-start gap-1.5 text-sm leading-5 text-slate-500">
@@ -244,31 +174,29 @@ const ConfirmPostWarehouse = () => {
                     </div>
                   )}
                 </div>
-
-                <div className="self-start rounded-2xl border border-[#fed7aa] bg-[#fff7ed] p-5">
-                  <p className="flex items-center gap-2 text-xs font-bold tracking-wider text-[#ea580c] uppercase">
-                    <CreditCard className="h-4 w-4" /> Listing payment
-                  </p>
-                  <p className="mt-4 text-sm leading-6 text-slate-700">
-                    Listing payment is not required at this step. After Admin approves the
-                    warehouse, choose a 10, 15 or 30-day package and pay from My Warehouses.
-                  </p>
-                  <div className="mt-4 flex items-start gap-2 text-xs leading-5 text-slate-600">
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" />
-                    Inspection is optional. The warehouse only waits for Admin approval at this step.
-                  </div>
-                </div>
               </div>
 
               <div className="border-t border-[#f6e2d6] px-5 py-7 sm:px-8">
                 <p className="flex items-center gap-2 text-xs font-bold tracking-wider text-slate-400 uppercase">
                   <FileText className="h-4 w-4 text-[#f97316]" /> Detailed description
                 </p>
-                <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">
+                <p className="mt-3 text-sm leading-7 whitespace-pre-line text-slate-600">
                   {formData.description}
                 </p>
               </div>
-
+              <div className="self-start rounded-2xl border border-[#fed7aa] bg-[#fff7ed] p-5">
+                <p className="flex items-center gap-2 text-xs font-bold tracking-wider text-[#ea580c] uppercase">
+                  <CreditCard className="h-4 w-4" /> Listing payment
+                </p>
+                <p className="mt-4 text-sm leading-6 text-slate-700">
+                  Save the layout first to create and submit the warehouse for Admin approval. After
+                  approval, choose a 10, 15 or 30-day package and pay from My Warehouses.
+                </p>
+                <div className="mt-4 flex items-start gap-2 text-xs leading-5 text-slate-600">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#f97316]" />
+                  Inspection is optional. The warehouse only waits for Admin approval at this step.
+                </div>
+              </div>
               <div className="flex flex-col-reverse gap-3 border-t border-[#f6e2d6] bg-white/95 px-5 py-4 sm:flex-row sm:justify-between sm:px-8">
                 <Button
                   type="button"
@@ -282,10 +210,9 @@ const ConfirmPostWarehouse = () => {
                 <Button
                   type="submit"
                   size="sm"
-                  isLoading={isSubmitting}
                   className="w-full justify-center rounded-xl bg-[#f97316] py-4 text-base font-semibold text-white shadow-[0_8px_18px_rgba(249,115,22,0.24)] hover:bg-[#ea580c] sm:w-auto sm:px-8"
                 >
-                  Confirm &amp; submit for Admin approval
+                  Continue to layout
                 </Button>
               </div>
             </div>

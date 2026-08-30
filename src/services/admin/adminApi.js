@@ -98,10 +98,21 @@ const adminApi = {
   //   response: ApiResponse<PagedResponse<WarehouseResponse>>
   // =========================
   getWarehouses: ({ keyword, status, isVerified, page = 0, size = 10, sortBy = 'createdAt', sortDir = 'desc' } = {}) =>
-    api.get('/admin/warehouses', { params: { keyword, status, isVerified, page, size, sortBy, sortDir } }),
+    api.get('/admin/warehouses', {
+      params: {
+        ...(keyword ? { keyword } : {}),
+        ...(status ? { status } : {}),
+        ...(isVerified !== undefined && isVerified !== '' ? { isVerified } : {}),
+        page,
+        size,
+        sortBy,
+        sortDir,
+      },
+    }),
 
-  verifyWarehouse: (id) =>
-    api.post(`/admin/warehouses/${id}/verify`),
+  // BE hiện tại dùng /approve; giữ tên verify ở thunk chỉ để không ảnh hưởng UI cũ.
+  approveWarehouse: (id) =>
+    api.post(`/admin/warehouses/${id}/approve`),
 
   rejectWarehouse: (id, payload) =>
     api.post(`/admin/warehouses/${id}/reject`, payload),

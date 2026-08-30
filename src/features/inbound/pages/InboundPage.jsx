@@ -389,22 +389,30 @@ const InboundPage = () => {
       })
       
       const data = res.data?.data || {}
-      
-      if (data.unallocatedQuantity > 0) {
-        toast.error(`Warning: ${data.unallocatedQuantity} units could not be allocated due to capacity limits!`)
+      const suggestionItems = Array.isArray(data.items) ? data.items : []
+      const unallocatedQuantity = suggestionItems.reduce(
+        (total, item) => total + (Number(item.unallocatedQuantity) || 0),
+        0
+      )
+
+      if (unallocatedQuantity > 0) {
+        toast.error(
+          `Warning: ${unallocatedQuantity} units could not be allocated due to capacity limits!`
+        )
       } else {
         toast.success('Suggestions loaded successfully.')
       }
 
       const newAllocations = {}
-      data.items?.forEach(item => {
-        item.suggestions?.forEach(sugg => {
-          if (sugg.binId) {
-            newAllocations[sugg.binId] = (newAllocations[sugg.binId] || 0) + sugg.quantity
+      suggestionItems.forEach((item) => {
+        item.allocations?.forEach((allocation) => {
+          if (allocation.binId && Number(allocation.quantity) > 0) {
+            newAllocations[allocation.binId] =
+              (newAllocations[allocation.binId] || 0) + Number(allocation.quantity)
           }
         })
       })
-      
+
       setAllocations(newAllocations)
       
     } catch (error) {

@@ -4,7 +4,11 @@ const auditApi = {
   // Danh sách phiếu kiểm kê của Tenant (có phân trang)
   getAudits: (warehouseId, { page, size } = {}) => {
     return api.get('/tenant/inventory/audits', {
-      params: { warehouseId, page, size }
+      params: {
+        ...(warehouseId ? { warehouseId } : {}),
+        page,
+        size,
+      }
     })
   },
 

@@ -1,6 +1,23 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import adminApi from '../services/admin/adminApi'
 
+const getPagedPayload = (response) => {
+  const payload = response?.data?.data ?? response?.data
+
+  if (Array.isArray(payload)) {
+    return {
+      content: payload,
+      page: 0,
+      size: payload.length,
+      totalPages: payload.length ? 1 : 0,
+      totalElements: payload.length,
+      last: true,
+    }
+  }
+
+  return payload || {}
+}
+
 /**
  * BE APIs:
  *
@@ -8,7 +25,7 @@ import adminApi from '../services/admin/adminApi'
  *   params: { keyword, status (WarehouseStatus), isVerified (Boolean), page, size, sortBy, sortDir }
  *   response: ApiResponse<PagedResponse<WarehouseResponse>>
  *
- * POST /admin/warehouses/{id}/verify  → ApiResponse<WarehouseResponse>
+ * POST /admin/warehouses/{id}/approve → ApiResponse<WarehouseResponse>
  * POST /admin/warehouses/{id}/reject  → ApiResponse<WarehouseResponse>
  *
  * WarehouseResponse:
@@ -37,8 +54,9 @@ export const fetchWarehouses = createAsyncThunk(
         sortBy,
         sortDir,
       })
-      // res.data = ApiResponse { success, message, data: PagedResponse<WarehouseResponse> }
-      return res.data.data
+      // BE hiện tại trả ApiResponse { success, message, data: PagedResponse }.
+      // Giữ fallback cho response list cũ để trang Admin không bị trắng khi BE trả mảng trực tiếp.
+      return getPagedPayload(res)
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }
@@ -49,7 +67,7 @@ export const verifyWarehouse = createAsyncThunk(
   'adminWarehouseManage/verify',
   async (id, { rejectWithValue }) => {
     try {
-      const res = await adminApi.verifyWarehouse(id)
+      const res = await adminApi.approveWarehouse(id)
       return res.data.data  // WarehouseResponse
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
@@ -126,7 +144,7 @@ const adminWarehouseManageSlice = createSlice({
         state.loading = false
         const paged = action.payload
         state.data = paged?.content || []
-        state.page = paged?.page ?? 0
+        state.page = paged?.page ?? paged?.number ?? 0
         state.size = paged?.size || 10
         state.totalPages = paged?.totalPages || 0
         state.totalElements = paged?.totalElements || 0

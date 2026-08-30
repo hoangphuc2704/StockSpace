@@ -55,12 +55,16 @@ const DraftModal = ({
   const [error, setError] = useState(null)
   const [previewData, setPreviewData] = useState(null)
   const [previewPayload, setPreviewPayload] = useState(null)
+  const [defaultLayout, setDefaultLayout] = useState(null)
+  const [defaultLayoutLoading, setDefaultLayoutLoading] = useState(false)
+  const [defaultLayoutError, setDefaultLayoutError] = useState(null)
 
   const selectedWarehouse = warehouses.find(
     (warehouse) => String(warehouse.id) === String(warehouseId)
   )
   const pricingType = existingData.pricingType || selectedWarehouse?.rentalPricingType || ''
   const isNegotiated = pricingType === 'NEGOTIATED'
+  const isFixedPricing = pricingType === 'FIXED_MONTHLY'
 
   useEffect(() => {
     if (isOpen) {
@@ -81,8 +85,73 @@ const DraftModal = ({
       setError(null)
       setPreviewData(null)
       setPreviewPayload(null)
+      setDefaultLayout(null)
+      setDefaultLayoutError(null)
     }
   }, [isOpen, existingData])
+
+  useEffect(() => {
+    let active = true
+
+    if (!isOpen || !warehouseId) {
+      setDefaultLayout(null)
+      setDefaultLayoutLoading(false)
+      setDefaultLayoutError(null)
+      return () => {
+        active = false
+      }
+    }
+
+    setDefaultLayoutLoading(true)
+    setDefaultLayoutError(null)
+
+    warehouseApi
+      .getOwnerWarehouseLayout(warehouseId)
+      .then((response) => {
+        const layout = apiData(response)
+        const dimensions = {
+          width: Number(layout?.width),
+          length: Number(layout?.length),
+          height: Number(layout?.height),
+        }
+
+        if (
+          !Number.isFinite(dimensions.width) ||
+          !Number.isFinite(dimensions.length) ||
+          !Number.isFinite(dimensions.height) ||
+          dimensions.width <= 0 ||
+          dimensions.length <= 0 ||
+          dimensions.height <= 0
+        ) {
+          throw new Error('The selected warehouse has no valid default layout dimensions.')
+        }
+
+        if (active) {
+          setDefaultLayout(dimensions)
+          if (!isEdit) {
+            setLeasedWidth(String(dimensions.width))
+            setLeasedLength(String(dimensions.length))
+            setLeasedHeight(String(dimensions.height))
+          }
+        }
+      })
+      .catch((requestError) => {
+        if (!active) return
+        setDefaultLayout(null)
+        setDefaultLayoutError(
+          requestError?.response?.data?.message ||
+            requestError?.message ||
+            'Could not load the warehouse default layout.'
+        )
+      })
+      .finally(() => {
+        if (active) setDefaultLayoutLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [isOpen, isEdit, warehouseId])
 
   if (!isOpen) return null
 
@@ -115,10 +184,47 @@ const DraftModal = ({
       setError('Please select a warehouse.')
       return
     }
-    if ([leasedWidth, leasedLength, leasedHeight].some((value) => Number(value) <= 0)) {
+    const requestedDimensions = {
+      width: Number(leasedWidth),
+      length: Number(leasedLength),
+      height: Number(leasedHeight),
+    }
+    if (Object.values(requestedDimensions).some((value) => !Number.isFinite(value) || value <= 0)) {
       setError('Leased width, length and height must be greater than 0.')
       return
     }
+    if (defaultLayoutLoading) {
+      setError('Please wait while the warehouse default layout is loading.')
+      return
+    }
+    if (!defaultLayout) {
+      setError(defaultLayoutError || 'The warehouse default layout could not be loaded.')
+      return
+    }
+
+    const exceedsDefaultLayout =
+      requestedDimensions.width > defaultLayout.width ||
+      requestedDimensions.length > defaultLayout.length ||
+      requestedDimensions.height > defaultLayout.height
+    if (exceedsDefaultLayout) {
+      setError(
+        `Leased dimensions must not exceed the default layout (${defaultLayout.width} × ${defaultLayout.length} × ${defaultLayout.height} m).`
+      )
+      return
+    }
+
+    if (
+      isFixedPricing &&
+      ['width', 'length', 'height'].some(
+        (dimension) => Math.abs(requestedDimensions[dimension] - defaultLayout[dimension]) > 1e-9
+      )
+    ) {
+      setError(
+        `FIXED_MONTHLY requires the complete default layout (${defaultLayout.width} × ${defaultLayout.length} × ${defaultLayout.height} m).`
+      )
+      return
+    }
+
     if (isNegotiated && Number(negotiatedMonthlyRent) <= 0) {
       setError('Negotiated monthly rent must be greater than 0.')
       return
@@ -140,9 +246,9 @@ const DraftModal = ({
         tenantEmail: !isEdit ? tenantEmail : undefined,
         startDate,
         endDate,
-        leasedWidth: Number(leasedWidth),
-        leasedLength: Number(leasedLength),
-        leasedHeight: Number(leasedHeight),
+        leasedWidth: requestedDimensions.width,
+        leasedLength: requestedDimensions.length,
+        leasedHeight: requestedDimensions.height,
         negotiatedMonthlyRent: isNegotiated ? Number(negotiatedMonthlyRent) : null,
         ownerNote,
         paperContractFiles: uploadedUrls,
@@ -234,6 +340,29 @@ const DraftModal = ({
             </div>
           )}
 
+          {warehouseId && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              {defaultLayoutLoading ? (
+                'Loading the selected warehouse default layout...'
+              ) : defaultLayout ? (
+                <>
+                  Default layout:{' '}
+                  <strong>
+                    {defaultLayout.width} × {defaultLayout.length} × {defaultLayout.height} m
+                  </strong>
+                  .
+                  {isFixedPricing
+                    ? ' Fixed monthly contracts must use all of this space.'
+                    : ' You can enter a smaller valid area.'}
+                </>
+              ) : (
+                <span className="text-rose-600">
+                  {defaultLayoutError || 'The warehouse default layout is unavailable.'}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-500">
@@ -270,11 +399,14 @@ const DraftModal = ({
               </label>
               <input
                 type="number"
-                step="0.1"
+                min="1"
+                max={defaultLayout?.width}
+                step="1"
                 required
                 value={leasedWidth}
                 onChange={(e) => setLeasedWidth(e.target.value)}
                 disabled={Boolean(previewData)}
+                readOnly={isFixedPricing && Boolean(defaultLayout)}
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none"
               />
             </div>
@@ -284,11 +416,14 @@ const DraftModal = ({
               </label>
               <input
                 type="number"
-                step="0.1"
+                min="1"
+                max={defaultLayout?.length}
+                step="1"
                 required
                 value={leasedLength}
                 onChange={(e) => setLeasedLength(e.target.value)}
                 disabled={Boolean(previewData)}
+                readOnly={isFixedPricing && Boolean(defaultLayout)}
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none"
               />
             </div>
@@ -298,11 +433,14 @@ const DraftModal = ({
               </label>
               <input
                 type="number"
-                step="0.1"
+                min="1"
+                max={defaultLayout?.height}
+                step="1"
                 required
                 value={leasedHeight}
                 onChange={(e) => setLeasedHeight(e.target.value)}
                 disabled={Boolean(previewData)}
+                readOnly={isFixedPricing && Boolean(defaultLayout)}
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none"
               />
             </div>
