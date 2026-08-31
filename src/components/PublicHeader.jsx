@@ -111,8 +111,16 @@ const PublicHeader = () => {
                 <NotificationDropdown />
                 <div className="group relative">
                   <button className="flex items-center gap-2 text-sm font-bold text-stone-700 hover:text-[#FF5A1F]">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-stone-200 text-stone-600">
-                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                    <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-stone-200 text-stone-600">
+                      {user?.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.name || 'User'}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        user?.name?.charAt(0)?.toUpperCase() || 'U'
+                      )}
                     </div>
                     <span>{user?.name || 'User'}</span>
                   </button>

@@ -25,6 +25,7 @@ const NOTIFICATION_FALLBACKS = {
   INSPECTION: { title: 'Inspection update', message: 'An inspection needs your attention.' },
   AUDIT: { title: 'Inventory audit', message: 'An inventory audit needs your attention.' },
   RECEIPT: { title: 'Receipt update', message: 'A warehouse receipt needs your attention.' },
+  TRANSFER: { title: 'Transfer update', message: 'A stock transfer needs your attention.' },
   DEFAULT: { title: 'New notification', message: 'You have a new notification.' },
 }
 

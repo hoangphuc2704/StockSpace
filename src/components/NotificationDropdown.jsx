@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect, useRef } from 'react'
-import { Bell, CheckCheck, Loader2, Info, Wallet, CalendarCheck, FileText, Warehouse, ClipboardCheck, Boxes } from 'lucide-react'
+import { Bell, CheckCheck, Loader2, Info, Wallet, CalendarCheck, FileText, Warehouse, ClipboardCheck, Boxes, ArrowRightLeft, AlertTriangle, Receipt } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import notificationApi from '../services/notificationApi'
@@ -13,19 +13,19 @@ const timeAgo = (dateString) => {
   const seconds = Math.floor((now - date) / 1000)
 
   let interval = seconds / 31536000
-  if (interval > 1) return Math.floor(interval) + "last year"
+  if (interval > 1) return <>{Math.floor(interval)} <span>last year</span></>
   
   interval = seconds / 2592000
-  if (interval > 1) return Math.floor(interval) + "last month"
+  if (interval > 1) return <>{Math.floor(interval)} <span>last month</span></>
   
   interval = seconds / 86400
-  if (interval > 1) return Math.floor(interval) + "days ago"
+  if (interval > 1) return <>{Math.floor(interval)} <span>days ago</span></>
   
   interval = seconds / 3600
-  if (interval > 1) return Math.floor(interval) + "hours ago"
+  if (interval > 1) return <>{Math.floor(interval)} <span>hours ago</span></>
   
   interval = seconds / 60
-  if (interval > 1) return Math.floor(interval) + "minutes ago"
+  if (interval > 1) return <>{Math.floor(interval)} <span>minutes ago</span></>
   
   return "A few seconds ago"
 }
@@ -91,7 +91,28 @@ const NotificationDropdown = () => {
           Icon: Boxes, 
           color: 'text-slate-700', 
           bg: 'bg-slate-200', 
-          route: role === 'ROLE_TENANT' ? '/tenant/inventory' : '/staff/inventory' 
+          route: role === 'ROLE_TENANT' ? '/tenant/inventory-audits' : (role === 'ROLE_STAFF' ? '/staff/inventory-audits' : '/admin/wms-audits') 
+        }
+      case 'TRANSFER':
+        return {
+          Icon: ArrowRightLeft,
+          color: 'text-blue-500',
+          bg: 'bg-blue-100',
+          route: role === 'ROLE_TENANT' ? '/tenant/transfers' : (role === 'ROLE_STAFF' ? '/staff/transfers' : null)
+        }
+      case 'DISPUTE':
+        return {
+          Icon: AlertTriangle,
+          color: 'text-red-500',
+          bg: 'bg-red-100',
+          route: role === 'ROLE_ADMIN' ? '/admin/listings' : null
+        }
+      case 'RECEIPT':
+        return {
+          Icon: Receipt,
+          color: 'text-emerald-500',
+          bg: 'bg-emerald-100',
+          route: role === 'ROLE_TENANT' ? '/tenant/inventory' : (role === 'ROLE_STAFF' ? '/staff/inventory' : null)
         }
       default:
         return { 

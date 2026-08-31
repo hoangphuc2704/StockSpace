@@ -8,15 +8,21 @@ import {
     User,
     XCircle,
 } from 'lucide-react'
-import { fetchCurrentUserThunk, forgotPasswordThunk } from '@/store/authSlice'
+import { fetchCurrentUserThunk, forgotPasswordThunk, updateProfileThunk } from '@/store/authSlice'
 import Button from '@/components/atoms/Button'
 import { toast } from 'react-hot-toast'
 import { ProfileForm } from '@/form/AuthForms'
+import uploadApi from '@/services/uploadApi'
+import { useRef, useState } from 'react'
 
 const Profile = () => {
     const navigate = useNavigate()
     const dispatch = useDispatch()
     const { user: profileData, isLoading, error } = useSelector((state) => state.auth)
+
+    const fileInputRef = useRef(null)
+    const [avatarFile, setAvatarFile] = useState(null)
+    const [avatarPreview, setAvatarPreview] = useState(null)
 
     const handleResetPassword = async () => {
         if (!profileData?.email) return
@@ -26,6 +32,34 @@ const Profile = () => {
             toast.success('Password reset link sent.')
         } catch (err) {
             toast.error(err || 'Could not send reset link.')
+        }
+    }
+
+    const handleUpdateProfile = async (event) => {
+        event.preventDefault()
+        const formData = new FormData(event.target)
+        
+        let newAvatarUrl = profileData?.avatarUrl || null
+
+        try {
+            if (avatarFile) {
+                const res = await uploadApi.uploadImage(avatarFile)
+                if (!res?.data?.success) throw new Error(res?.data?.message || 'Upload avatar failed')
+                newAvatarUrl = res.data.data
+            }
+
+            const payload = {
+                fullName: formData.get('fullName'),
+                phone: formData.get('phone') || null,
+                avatarUrl: newAvatarUrl
+            }
+
+            await dispatch(updateProfileThunk(payload)).unwrap()
+            toast.success('Profile updated successfully.')
+            setAvatarFile(null)
+            setAvatarPreview(null)
+        } catch (err) {
+            toast.error(err.message || err || 'Failed to update profile.')
         }
     }
 
@@ -102,11 +136,24 @@ const Profile = () => {
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     {/* CỘT TRÁI: AVATAR & THAO TÁC NHANH */}
                     <div className="flex h-fit flex-col items-center rounded-[2rem] border border-slate-200 bg-white p-6 text-center shadow-sm">
-                        <div className="group relative mb-4 cursor-pointer">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            ref={fileInputRef}
+                            onChange={(e) => {
+                                if (e.target.files && e.target.files.length > 0) {
+                                    const file = e.target.files[0]
+                                    setAvatarFile(file)
+                                    setAvatarPreview(URL.createObjectURL(file))
+                                }
+                            }}
+                        />
+                        <div className="group relative mb-4 cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                             <div className="relative h-28 w-28 rounded-full border-4 border-slate-100 bg-slate-200 flex items-center justify-center overflow-hidden">
-                                {profileData.avatarUrl ? (
+                                {avatarPreview || profileData.avatarUrl ? (
                                     <img
-                                        src={profileData.avatarUrl}
+                                        src={avatarPreview || profileData.avatarUrl}
                                         alt={displayName}
                                         className="h-full w-full object-cover"
                                     />
@@ -151,7 +198,8 @@ const Profile = () => {
                             bio={profileData.bio || ''}
                             isActive={profileData.isActive}
                             joinedText={formatDate(profileData.createdAt)}
-                            onSubmit={(event) => event.preventDefault()}
+                            onSubmit={handleUpdateProfile}
+                            isLoading={isLoading}
                         />
                     </div>
                 </div>

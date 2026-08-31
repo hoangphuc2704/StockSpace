@@ -105,6 +105,35 @@ export const fetchCurrentUserThunk = createAsyncThunk(
   }
 )
 
+export const updateProfileThunk = createAsyncThunk(
+  'auth/updateProfile',
+  async (profileData, { rejectWithValue }) => {
+    try {
+      const response = await authApi.updateProfile(profileData)
+      if (response.success && response.data) {
+        const userData = {
+          name: response.data.fullName,
+          fullName: response.data.fullName,
+          role: response.data.role,
+          userId: response.data.userId,
+          email: response.data.email,
+          phone: response.data.phone,
+          avatarUrl: response.data.avatarUrl,
+          provider: response.data.provider,
+          isActive: response.data.isActive,
+          createdAt: response.data.createdAt,
+          tenantId: response.data.tenantId || null,
+        }
+        localStorage.setItem('user', JSON.stringify(userData))
+        return userData
+      }
+      return rejectWithValue(response.message || 'Failed to update profile')
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || 'Failed to update profile')
+    }
+  }
+)
+
 export const forgotPasswordThunk = createAsyncThunk(
   'auth/forgotPassword',
   async (email, { rejectWithValue }) => {
@@ -289,6 +318,20 @@ const authSlice = createSlice({
         state.user = null
         state.token = null
         state.isAuthenticated = false
+      })
+
+      // ==================== Update Profile ====================
+      .addCase(updateProfileThunk.pending, (state) => {
+        state.isLoading = true
+        state.error = null
+      })
+      .addCase(updateProfileThunk.fulfilled, (state, action) => {
+        state.isLoading = false
+        state.user = action.payload
+      })
+      .addCase(updateProfileThunk.rejected, (state, action) => {
+        state.isLoading = false
+        state.error = action.payload
       })
 
       // ==================== Forgot Password ====================
