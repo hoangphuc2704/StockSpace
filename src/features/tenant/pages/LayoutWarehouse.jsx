@@ -1775,7 +1775,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           nextShelfLevel == null
             ? currentBin.shelfLevel
             : clamp(integerOf(nextShelfLevel, currentBin.shelfLevel), 1, levels)
-        const levelChanged = shelfLevel !== currentBin.shelfLevel
         const updatedRack = {
           ...rack,
           bins: bins.map((bin) =>
@@ -1785,9 +1784,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           ),
         }
 
-        return levelChanged
-          ? fitBinsToRack(updatedRack, { arrangePositions: true })
-          : distributeRackCapacities(updatedRack)
+        return updateRack(current, rack.clientKey, () =>
+          distributeRackCapacities(updatedRack)
+        )
       })
     },
     [canEditLayout]
