@@ -6,13 +6,14 @@ import Header from '@/components/HeaderDashboard'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import TableActionMenu from '@/components/TableActionMenu'
-import { CheckCircle, X, Send, Download, Truck, PackageCheck } from 'lucide-react'
+import { CheckCircle, X, Send, Download, Truck, PackageCheck, Eye } from 'lucide-react'
 import transferApi from '@/services/wms/transferApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import CreateTransferModal from '../components/CreateTransferModal'
 import ReceiveTransferModal from '../components/ReceiveTransferModal'
+import TransferDetailModal from '../components/TransferDetailModal'
 
 const TransferPage = ({ currentRole }) => {
   const confirmDialog = useConfirmDialog()
@@ -26,6 +27,9 @@ const TransferPage = ({ currentRole }) => {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [receiveModalOpen, setReceiveModalOpen] = useState(false)
   const [selectedTransferForReceive, setSelectedTransferForReceive] = useState(null)
+  
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [selectedTransferIdForDetail, setSelectedTransferIdForDetail] = useState(null)
 
   const fetchTransfers = useCallback(async () => {
     try {
@@ -102,11 +106,11 @@ const TransferPage = ({ currentRole }) => {
     },
     {
       header: 'Source Warehouse',
-      accessor: 'sourceWarehouseName'
+      render: (row) => <span>{row.sourceWarehouse?.name || '-'}</span>
     },
     {
       header: 'Destination Warehouse',
-      accessor: 'destinationWarehouseName'
+      render: (row) => <span>{row.destinationWarehouse?.name || '-'}</span>
     },
     {
       header: 'Items',
@@ -130,6 +134,14 @@ const TransferPage = ({ currentRole }) => {
       render: (row) => (
         <TableActionMenu
           items={[
+            {
+              label: 'View Details',
+              icon: Eye,
+              onClick: () => {
+                setSelectedTransferIdForDetail(row.id)
+                setDetailModalOpen(true)
+              }
+            },
             row.status === 'PENDING' && currentRole === 'TENANT' && {
               label: 'Approve Dispatch',
               icon: Truck,
@@ -212,6 +224,15 @@ const TransferPage = ({ currentRole }) => {
         }}
         transfer={selectedTransferForReceive}
         onSuccess={fetchTransfers}
+      />
+
+      <TransferDetailModal
+        isOpen={detailModalOpen}
+        onClose={() => {
+          setDetailModalOpen(false)
+          setSelectedTransferIdForDetail(null)
+        }}
+        transferId={selectedTransferIdForDetail}
       />
     </div>
   )

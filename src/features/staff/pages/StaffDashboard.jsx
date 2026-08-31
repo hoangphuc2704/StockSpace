@@ -18,8 +18,10 @@ import StatCard from '@/components/molecules/StatCard'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
-import Sidebar from '../../../components/SideBar' // Đường dẫn tới file Sidebar dùng chung của bạn
-import logoDaidien from '../../../assets/logoDaidien.png'
+import Sidebar from '@/components/SideBar'
+import Header from '@/components/HeaderDashboard'
+import { useSelector, useDispatch } from 'react-redux'
+import { closeMobileSidebar } from '@/store/uiSlide'
 
 // ==================== MOCK DATA & COLUMNS ====================
 const revenueData = [
@@ -40,17 +42,9 @@ const activityData = [
 ]
 
 const StaffDashboard = () => {
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true)
-  const [isMobileOpen, setIsMobileOpen] = useState(false)
+  const dispatch = useDispatch()
+  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const navigate = useNavigate()
-
-  const toggleSidebar = () => {
-    if (window.innerWidth < 768) {
-      setIsMobileOpen(!isMobileOpen)
-    } else {
-      setIsSidebarExpanded(!isSidebarExpanded)
-    }
-  }
 
   const stats = [
     { title: 'Total Inventory', value: '12,450', icon: Package, trend: 'up', trendValue: 12 },
@@ -121,47 +115,21 @@ const StaffDashboard = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* 1. TOP HEADER */}
-      <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={toggleSidebar}
-            className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
-          >
-            <HiBars3 className="h-6 w-6" />
-          </button>
-
-          <div className="flex cursor-pointer items-center gap-2">
-            <div className="shrink-0 rounded-lg bg-white p-1.5 text-white">
-              <a href="/" aria-label="Back to landing page">
-                <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
-              </a>
-            </div>
-            <span className="font-display text-xl font-bold tracking-tight text-slate-950">
-              StockSpace Tenant
-            </span>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* MOBILE OVERLAY */}
       <div className="md:hidden">
         {isMobileOpen && (
           <div
             className="fixed inset-0 z-40 bg-slate-900/30"
-            onClick={() => setIsMobileOpen(false)}
+            onClick={() => dispatch(closeMobileSidebar())}
           />
         )}
       </div>
 
       <div className="flex pt-14">
         {/* 2. SIDEBAR */}
-        <Sidebar
-          isSidebarExpanded={isSidebarExpanded}
-          isMobileOpen={isMobileOpen}
-          setIsMobileOpen={setIsMobileOpen}
-          currentRole="STAFF"
-        />
+        <Sidebar currentRole="STAFF" />
 
         {/* 3. MAIN CONTENT CONTAINER */}
         <div

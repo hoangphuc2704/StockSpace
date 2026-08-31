@@ -84,14 +84,13 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
     const fetchBatches = async () => {
       setLoadingBatches(true)
       try {
-        const res = await stockApi.getStockBySku(selectedSkuId)
-        const allBatches = Array.isArray(res.data?.data) 
-          ? res.data.data 
-          : res.data?.data?.locations || res.data?.data?.batches || []
+        // We use getAllStock to get StockBatchResponse objects which contain rackId and binId.
+        // getStockBySku returns StockLocationDto which lacks rackId and binId.
+        const allWarehouseBatches = await stockApi.getAllStock(selectedSourceWarehouseId)
         
-        // Filter by source warehouse and has quantity > 0
-        const sourceBatches = allBatches.filter(
-          b => b.warehouseId === selectedSourceWarehouseId && b.quantity > 0
+        // Filter by SKU and has quantity > 0
+        const sourceBatches = allWarehouseBatches.filter(
+          b => b.skuId === selectedSkuId && b.quantity > 0
         )
         setStockBatches(sourceBatches)
         setAllocations({})
@@ -132,18 +131,20 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
     }
 
     const sourceAllocations = []
-    for (const batch of stockBatches) {
-      const q = allocations[batch.id] || 0
+    for (let i = 0; i < stockBatches.length; i++) {
+      const batch = stockBatches[i]
+      const bKey = batch.id || batch.stockBatchId || `batch-${i}`
+      const q = allocations[bKey] || 0
       if (q > 0) {
         if (q > batch.quantity) {
           toast.error(`Quantity for batch in ${batch.rackName} exceeds available stock.`)
           return
         }
         sourceAllocations.push({
-          sourceStockBatchId: batch.id || batch.stockBatchId,
+          sourceStockBatchId: batch.id || batch.stockBatchId || batch.batchId || null,
           sourceRackId: batch.rackId,
           sourceBinId: batch.binId,
-          quantity: q
+          quantity: Number(q)
         })
       }
     }
@@ -266,8 +267,10 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                 <p className="text-center text-sm text-slate-500 py-4">No stock batches found for this product.</p>
               ) : (
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                  {stockBatches.map(batch => (
-                    <div key={batch.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                  {stockBatches.map((batch, index) => {
+                    const bKey = batch.id || batch.stockBatchId || `batch-${index}`
+                    return (
+                    <div key={bKey} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                       <div>
                         <p className="text-sm font-bold text-slate-900">{batch.rackName} - {batch.binName}</p>
                         <p className="text-xs text-slate-500">Available: {batch.quantity}</p>
@@ -278,13 +281,13 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                           min="0"
                           max={batch.quantity}
                           placeholder="0"
-                          value={allocations[batch.id] || ''}
-                          onChange={(e) => handleAllocationChange(batch.id, e.target.value)}
+                          value={allocations[bKey] || ''}
+                          onChange={(e) => handleAllocationChange(bKey, e.target.value)}
                           className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         />
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
             </div>

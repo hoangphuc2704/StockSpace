@@ -16,7 +16,7 @@ const Header = () => {
       user.role.replace('ROLE_', '').slice(1).toLowerCase()
     : 'Owner'
 
-  const isOwner = user?.role === 'ROLE_OWNER'
+  const isTenant = user?.role === 'ROLE_TENANT'
 
   return (
     <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
@@ -30,16 +30,16 @@ const Header = () => {
         </button>
 
         <div
-          className={`flex items-center gap-2 ${!isOwner ? 'cursor-pointer' : ''}`}
+          className={`flex items-center gap-2 ${isTenant ? 'cursor-pointer' : ''}`}
           onClick={() => {
-            if (!isOwner) navigate('/')
+            if (isTenant) navigate('/')
           }}
-          role={!isOwner ? "link" : "presentation"}
-          tabIndex={!isOwner ? 0 : undefined}
+          role={isTenant ? "link" : "presentation"}
+          tabIndex={isTenant ? 0 : undefined}
           onKeyDown={(event) => {
-            if (!isOwner && (event.key === 'Enter' || event.key === ' ')) navigate('/')
+            if (isTenant && (event.key === 'Enter' || event.key === ' ')) navigate('/')
           }}
-          aria-label={!isOwner ? "Back to landing page" : undefined}
+          aria-label={isTenant ? "Back to landing page" : undefined}
         >
           <div className="shrink-0 rounded-lg bg-white p-1.5">
             <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />

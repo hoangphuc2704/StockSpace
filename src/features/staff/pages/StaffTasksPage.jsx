@@ -39,8 +39,10 @@ const StaffTasksPage = () => {
 
   const columns = [
     {
-      header: 'Title',
-      render: (row) => <span className="font-bold text-slate-900">{row.title}</span>,
+      header: 'Operation ID',
+      render: (row) => (
+        <span className="text-xs font-mono">{row.operationId?.split('-')[0]}...</span>
+      ),
     },
     {
       header: 'Operation Type',
@@ -51,40 +53,55 @@ const StaffTasksPage = () => {
       ),
     },
     {
-      header: 'Operation ID',
-      render: (row) => (
-        <span className="text-xs font-mono">{row.operationId?.split('-')[0]}...</span>
-      ),
+      header: 'Warehouse Context',
+      render: (row) => {
+        if (row.operationType === 'TRANSFER') {
+          return (
+            <div className="flex flex-col text-sm">
+              <span className="text-slate-500 text-xs">Source ➔ Destination</span>
+              <span className="font-medium">{row.sourceWarehouseName || '-'} ➔ {row.destinationWarehouseName || '-'}</span>
+            </div>
+          )
+        }
+        return <span className="text-sm font-medium">{row.warehouseName || '-'}</span>
+      },
     },
     {
       header: 'Status',
-      render: (row) => (
-        <Badge
-          variant={
-            row.status === 'COMPLETED'
-              ? 'success'
-              : row.status === 'IN_PROGRESS'
-                ? 'warning'
-                : 'primary'
-          }
-        >
-          {row.status}
-        </Badge>
-      ),
+      render: (row) => {
+        const variants = {
+          PENDING: 'warning',
+          IN_PROGRESS: 'primary',
+          IN_TRANSIT: 'secondary',
+          COMPLETED: 'success',
+          REJECTED: 'danger',
+          CANCELLED: 'slate'
+        }
+        return (
+          <Badge variant={variants[row.status] || 'slate'}>
+            {row.status}
+          </Badge>
+        )
+      },
     },
-    { header: 'Created At', render: (row) => new Date(row.createdAt).toLocaleDateString() },
+    { 
+      header: 'Created At', 
+      render: (row) => <span className="text-sm">{new Date(row.createdAt).toLocaleDateString()}</span>
+    },
     {
       header: 'Actions',
-      render: (row) => (
-        <TableActionMenu
-          items={[
-            {
-              label: row.status === 'COMPLETED' ? 'Done' : 'Update Status',
-              disabled: row.status === 'COMPLETED',
-            },
-          ]}
-        />
-      ),
+      render: (row) => {
+        const actionItems = (row.allowedActions || []).map(action => ({
+          label: action,
+          onClick: () => toast.info(`Action ${action} clicked for ${row.operationId}`)
+        }))
+
+        if (actionItems.length === 0) {
+           return <span className="text-xs text-slate-400 italic">No actions</span>
+        }
+
+        return <TableActionMenu items={actionItems} />
+      },
     },
   ]
 

@@ -143,7 +143,13 @@ const TenantStaffManagementPage = () => {
       setInviteForm({ email: '', fullName: '', phone: '' })
       fetchStaffs()
     } catch (err) {
-      showApiErrorToast(err, 'Sending invitation failed.')
+      const responseData = err.response?.data
+      if (responseData?.message === 'Validation failed' && responseData?.data && typeof responseData.data === 'object') {
+        const validationErrors = Object.values(responseData.data).join(', ')
+        toast.error(validationErrors)
+      } else {
+        showApiErrorToast(err, 'Sending invitation failed.')
+      }
     } finally {
       setIsInviting(false)
     }
