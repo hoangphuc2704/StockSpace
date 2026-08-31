@@ -12,7 +12,6 @@ import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
 import TableActionMenu from '@/components/TableActionMenu'
 import receiptApi from '@/services/wms/receiptApi'
-import stockApi from '@/services/wms/stockApi'
 import productApi from '../../../services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import layoutApi from '@/services/layoutApi'
@@ -55,6 +54,7 @@ const InboundPage = () => {
   const [formTotalQuantity, setFormTotalQuantity] = useState(1)
   const [allocations, setAllocations] = useState({}) // { binId: quantity }
   const [binCapacities, setBinCapacities] = useState({})
+  const [rackCapacities, setRackCapacities] = useState({})
   const [isCapacityLoading, setIsCapacityLoading] = useState(false)
   const [capacityRefreshKey, setCapacityRefreshKey] = useState(0)
   const [formNote, setFormNote] = useState('')
@@ -65,6 +65,13 @@ const InboundPage = () => {
   )
   const selectedUnitWeightKg = Number(selectedSku?.unitWeightKg) || 0
   const selectedUnitVolumeM3 = Number(selectedSku?.unitVolumeM3) || 0
+  const getRackCapacity = (rack) =>
+    rackCapacities[String(rack?.id)] || {
+      currentWeightKg: 0,
+      currentVolumeM3: 0,
+      maxWeight: Number(rack?.maxWeight) || 0,
+      maxVolume: Number(rack?.maxVolume) || 0,
+    }
   const allocatedQuantity = useMemo(
     () => Object.values(allocations).reduce((total, value) => total + (Number(value) || 0), 0),
     [allocations]
@@ -76,36 +83,65 @@ const InboundPage = () => {
       if (!selectedWarehouseId || !layout) return
       setIsCapacityLoading(true)
       try {
-        const allStock = await stockApi.getAllStock(selectedWarehouseId)
-        const skuById = new Map(skus.map((sku) => [String(sku.id), sku]))
-        const usageByBin = allStock.reduce((result, batch) => {
-          if (!batch.binId) return result
-          const key = String(batch.binId)
-          const quantity = Number(batch.quantity) || 0
-          const sku = skuById.get(String(batch.skuId))
-          const usage = result[key] || { units: 0, weightKg: 0, volumeM3: 0 }
-          usage.units += quantity
-          usage.weightKg += quantity * (Number(sku?.unitWeightKg ?? batch.unitWeightKg) || 0)
-          usage.volumeM3 += quantity * (Number(sku?.unitVolumeM3 ?? batch.unitVolumeM3) || 0)
-          result[key] = usage
-          return result
-        }, {})
         const nextCapacities = {}
+        const nextRackCapacities = {}
+        const response = await layoutApi.getCapacity(selectedWarehouseId)
+        const capacityPayload = response?.data?.data ?? response?.data ?? {}
+
+        // Capacity API is the source of truth for physical load. It already
+        // calculates current kg/m³ independently for each Rack and Bin.
+        const capacityRacks = Array.isArray(capacityPayload.racks) ? capacityPayload.racks : []
+        capacityRacks.forEach((rackMetric) => {
+            if (rackMetric?.rackId) {
+              nextRackCapacities[String(rackMetric.rackId)] = {
+                currentWeightKg: Number(rackMetric.currentWeightKg) || 0,
+                currentVolumeM3: Number(rackMetric.currentVolumeM3) || 0,
+                maxWeight: Number(rackMetric.maxWeightKg) || 0,
+                maxVolume: Number(rackMetric.maxVolumeM3) || 0,
+              }
+            }
+
+            const capacityBins = Array.isArray(rackMetric?.bins) ? rackMetric.bins : []
+            capacityBins.forEach((binMetric) => {
+              if (!binMetric?.binId) return
+              nextCapacities[String(binMetric.binId)] = {
+                currentUnits: (binMetric.storedSkus || []).reduce(
+                  (total, sku) => total + (Number(sku.quantity) || 0),
+                  0
+                ),
+                currentWeightKg: Number(binMetric.currentWeightKg) || 0,
+                currentVolumeM3: Number(binMetric.currentVolumeM3) || 0,
+                maxWeight: Number(binMetric.maxWeightKg) || 0,
+                maxVolume: Number(binMetric.maxVolumeM3) || 0,
+              }
+            })
+          })
+
+        // Keep newly-created/legacy layout bins usable if the capacity
+        // response does not contain them yet.
         layout.racks?.forEach((rack) => {
           rack.bins?.forEach((bin) => {
-            nextCapacities[bin.id] = {
-              currentUnits: usageByBin[String(bin.id)]?.units || 0,
-              currentWeightKg: usageByBin[String(bin.id)]?.weightKg || 0,
-              currentVolumeM3: usageByBin[String(bin.id)]?.volumeM3 || 0,
-              maxWeight: Number(bin.maxWeight) || 0,
-              maxVolume: Number(bin.maxVolume) || 0,
+            const binId = String(bin.id)
+            if (!nextCapacities[binId]) {
+              nextCapacities[binId] = {
+                currentUnits: 0,
+                currentWeightKg: 0,
+                currentVolumeM3: 0,
+                maxWeight: Number(bin.maxWeight) || 0,
+                maxVolume: Number(bin.maxVolume) || 0,
+              }
             }
           })
         })
+
         if (active) setBinCapacities(nextCapacities)
+        if (active) setRackCapacities(nextRackCapacities)
       } catch (error) {
         console.error('Error fetching Bin usage', error)
-        if (active) setBinCapacities({})
+        if (active) {
+          setBinCapacities({})
+          setRackCapacities({})
+        }
       } finally {
         if (active) setIsCapacityLoading(false)
       }
@@ -114,7 +150,7 @@ const InboundPage = () => {
     return () => {
       active = false
     }
-  }, [selectedWarehouseId, layout, capacityRefreshKey, skus])
+  }, [selectedWarehouseId, layout, capacityRefreshKey])
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -320,16 +356,11 @@ const InboundPage = () => {
     }
 
     for (const { rack, incomingWeightKg, incomingVolumeM3 } of racksById.values()) {
-      const currentWeightKg = (rack.bins || []).reduce(
-        (total, bin) => total + (Number(binCapacities[bin.id]?.currentWeightKg) || 0),
-        0
-      )
-      const currentVolumeM3 = (rack.bins || []).reduce(
-        (total, bin) => total + (Number(binCapacities[bin.id]?.currentVolumeM3) || 0),
-        0
-      )
-      const rackMaxWeight = Number(rack.maxWeight) || 0
-      const rackMaxVolume = Number(rack.maxVolume) || 0
+      const rackCapacity = getRackCapacity(rack)
+      const currentWeightKg = Number(rackCapacity.currentWeightKg) || 0
+      const currentVolumeM3 = Number(rackCapacity.currentVolumeM3) || 0
+      const rackMaxWeight = Number(rackCapacity.maxWeight) || 0
+      const rackMaxVolume = Number(rackCapacity.maxVolume) || 0
       if (
         rackMaxWeight > 0 &&
         currentWeightKg + incomingWeightKg > rackMaxWeight + CAPACITY_EPSILON
@@ -709,18 +740,13 @@ const InboundPage = () => {
                       ) : (
                         <div className="space-y-4">
                           {layout.racks.map((rack) => {
-                            const rackCurrentWeightKg = (rack.bins || []).reduce(
-                              (total, bin) => total + (binCapacities[bin.id]?.currentWeightKg || 0),
-                              0
-                            )
+                            const rackCapacity = getRackCapacity(rack)
+                            const rackCurrentWeightKg = Number(rackCapacity.currentWeightKg) || 0
                             const rackIncomingUnits = (rack.bins || []).reduce(
                               (total, bin) => total + (Number(allocations[bin.id]) || 0),
                               0
                             )
-                            const rackCurrentVolumeM3 = (rack.bins || []).reduce(
-                              (total, bin) => total + (binCapacities[bin.id]?.currentVolumeM3 || 0),
-                              0
-                            )
+                            const rackCurrentVolumeM3 = Number(rackCapacity.currentVolumeM3) || 0
                             const rackIncomingWeightKg = rackIncomingUnits * selectedUnitWeightKg
                             const rackIncomingVolumeM3 = rackIncomingUnits * selectedUnitVolumeM3
                             const totalBinWeightLimit = (rack.bins || []).reduce(
@@ -765,8 +791,8 @@ const InboundPage = () => {
                                   <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600">
                                     <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
                                       Rack limit:{' '}
-                                      {Number(rack.maxWeight) > 0
-                                        ? `${Number(rack.maxWeight).toLocaleString('en-US')} kg`
+                                      {Number(rackCapacity.maxWeight) > 0
+                                        ? `${Number(rackCapacity.maxWeight).toLocaleString('en-US')} kg`
                                         : 'Not set'}
                                     </span>
                                     <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
@@ -774,8 +800,8 @@ const InboundPage = () => {
                                     </span>
                                     <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
                                       Rack volume:{' '}
-                                      {Number(rack.maxVolume) > 0
-                                        ? `${Number(rack.maxVolume).toLocaleString('en-US')} m³`
+                                      {Number(rackCapacity.maxVolume) > 0
+                                        ? `${Number(rackCapacity.maxVolume).toLocaleString('en-US')} m³`
                                         : 'Not set'}
                                     </span>
                                     <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
@@ -821,10 +847,10 @@ const InboundPage = () => {
                                     const otherRackIncomingUnits =
                                       rackIncomingUnits - currentAllocation
                                     const rackWeightUnits =
-                                      Number(rack.maxWeight) > 0 && selectedUnitWeightKg > 0
+                                      Number(rackCapacity.maxWeight) > 0 && selectedUnitWeightKg > 0
                                         ? Math.floor(
                                             Math.max(
-                                              Number(rack.maxWeight) -
+                                              Number(rackCapacity.maxWeight) -
                                                 rackCurrentWeightKg -
                                                 otherRackIncomingUnits * selectedUnitWeightKg,
                                               0
@@ -832,10 +858,10 @@ const InboundPage = () => {
                                           )
                                         : Number.POSITIVE_INFINITY
                                     const rackVolumeUnits =
-                                      Number(rack.maxVolume) > 0 && selectedUnitVolumeM3 > 0
+                                      Number(rackCapacity.maxVolume) > 0 && selectedUnitVolumeM3 > 0
                                         ? Math.floor(
                                             Math.max(
-                                              Number(rack.maxVolume) -
+                                              Number(rackCapacity.maxVolume) -
                                                 rackCurrentVolumeM3 -
                                                 otherRackIncomingUnits * selectedUnitVolumeM3,
                                               0

@@ -215,17 +215,6 @@ const App = () => {
             element={<LayoutWarehouse currentRole="TENANT" />}
           /> */}
 
-          <Route
-            path="/tenant/bin-stock"
-            element={
-              <LayoutWarehouse
-                key="tenant-bin-stock"
-                currentRole="TENANT"
-                initialView="stock"
-                stockOnly
-              />
-            }
-          />
           <Route path="/tenant/wallet" element={<WalletTenant />} />
           <Route path="/tenant/contracts" element={<TenantContractsPage />} />
           <Route

@@ -128,10 +128,13 @@ const DraftModal = ({
 
         if (active) {
           setDefaultLayout(dimensions)
+          // A partial rental is split on the warehouse floor, so it always
+          // uses the full warehouse height. Keep the value in the payload
+          // while removing the height input from the form.
+          setLeasedHeight(String(dimensions.height))
           if (!isEdit) {
             setLeasedWidth(String(dimensions.width))
             setLeasedLength(String(dimensions.length))
-            setLeasedHeight(String(dimensions.height))
           }
         }
       })
@@ -392,7 +395,7 @@ const DraftModal = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-500">
                 Leased Width (m)
@@ -427,23 +430,15 @@ const DraftModal = ({
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none"
               />
             </div>
-            <div>
-              <label className="mb-2 block text-xs font-bold text-slate-500">
-                Leased Height (m)
-              </label>
-              <input
-                type="number"
-                min="1"
-                max={defaultLayout?.height}
-                step="1"
-                required
-                value={leasedHeight}
-                onChange={(e) => setLeasedHeight(e.target.value)}
-                disabled={Boolean(previewData)}
-                readOnly={isFixedPricing && Boolean(defaultLayout)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none"
-              />
-            </div>
+            {defaultLayout && (
+              <div className="flex items-center rounded-xl border border-blue-100 bg-blue-50 px-4 py-2">
+                <div>
+                  <span className="block text-xs font-bold text-blue-700">Leased Height</span>
+                  <strong className="text-sm text-blue-950">{defaultLayout.height} m</strong>
+                  <span className="ml-2 text-xs text-blue-700">Full warehouse height</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

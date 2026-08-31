@@ -67,7 +67,6 @@ const SIDEBAR_MENUS = {
     { text: 'My Contracts', icon: HiOutlineDocumentText, path: '/tenant/contracts' },
     { text: 'Subscription', icon: HiOutlineCurrencyDollar, path: '/tenant/subscription' },
     { text: 'Warehouse Layout', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
-    { text: 'Goods in Bin', icon: HiOutlineCircleStack, path: '/tenant/bin-stock' },
     { text: 'Wallet', icon: HiOutlineCurrencyDollar, path: '/tenant/wallet' },
     { text: 'Staff', icon: HiOutlineUserGroup, path: '/tenant/staff' },
   ],
