@@ -75,6 +75,7 @@ const normalizeLayout = (payload = {}) => ({
               coordinateX: numberOf(bin.coordinateX),
               coordinateY: numberOf(bin.coordinateY),
               positionZ: numberOf(bin.positionZ),
+              // Keep the same editor convention used by the 3D preview:
               width: Math.max(numberOf(bin.width, 8), 4),
               length: Math.max(numberOf(bin.length, 8), 4),
               height: Math.max(numberOf(bin.height, 8), 4),

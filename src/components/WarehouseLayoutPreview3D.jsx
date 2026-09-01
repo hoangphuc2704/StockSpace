@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   Billboard,
@@ -21,10 +21,11 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 
 const WORLD_SIZE = 18
+const DEFAULT_RACK_SHELF_COUNT = 2
 
 const colorByType = {
   rack: '#d97706',
-  bin: '#d28b46',
+  bin: '#c99b61',
 }
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
@@ -80,7 +81,14 @@ const toCoordinateFromCenter = (center, size, total, parentWorldSize) => {
   return clamp(raw, 0, max)
 }
 
-const getRackLevels = (rack) => clamp(Math.round(numberOf(rack?.height, 12) / 6), 2, 6)
+const getRackLevels = (rack) => {
+  const configuredShelfCount = Math.round(numberOf(rack?.shelfCount, 0))
+  if (configuredShelfCount > 0) return configuredShelfCount
+
+  // Do not infer shelf count from rack height. This fallback is only for old
+  // layouts that were created before BE stored shelfCount.
+  return DEFAULT_RACK_SHELF_COUNT
+}
 
 const getLevelFromCoordinate = (rack, bin) => {
   const levels = getRackLevels(rack)
@@ -151,9 +159,9 @@ const makeCanvasTexture = (draw, repeatX, repeatY, colorSpace) => {
 const createTexturePack = () => {
   const binColor = makeCanvasTexture(
     (context, width, height) => {
-      context.fillStyle = '#a97a4d'
+      context.fillStyle = '#c29a67'
       context.fillRect(0, 0, width, height)
-      context.strokeStyle = 'rgba(247, 222, 184, 0.15)'
+      context.strokeStyle = 'rgba(255, 235, 190, 0.2)'
       context.lineWidth = 2
       for (let x = 18; x < width; x += 44) {
         context.beginPath()
@@ -161,7 +169,7 @@ const createTexturePack = () => {
         context.lineTo(x + 6, height)
         context.stroke()
       }
-      context.strokeStyle = 'rgba(75, 45, 25, 0.18)'
+      context.strokeStyle = 'rgba(100, 67, 35, 0.18)'
       context.lineWidth = 1
       for (let y = 22; y < height; y += 38) {
         context.beginPath()
@@ -169,7 +177,7 @@ const createTexturePack = () => {
         context.lineTo(width, y + 4)
         context.stroke()
       }
-      context.fillStyle = 'rgba(255, 236, 204, 0.18)'
+      context.fillStyle = 'rgba(255, 239, 204, 0.2)'
       for (let index = 0; index < 130; index += 1) {
         const x = (index * 47) % width
         const y = (index * 83) % height
@@ -305,6 +313,76 @@ function WarehouseFloor({ width, depth, textures }) {
         <meshStandardMaterial color="#64727b" roughness={0.88} metalness={0.02} />
       </mesh>
     </>
+  )
+}
+
+function WarehouseCameraController({ focusedRack, layoutWidth, layoutLength, worldWidth, worldDepth }) {
+  const { camera } = useThree()
+  const controlsRef = useRef(null)
+
+  useEffect(() => {
+    let targetX = 0
+    let targetY = 1.2
+    let targetZ = 0
+    let cameraX
+    let cameraY
+    let cameraZ
+
+    if (focusedRack) {
+      const rotation = normalizeRotation(focusedRack.rotation)
+      const quarterTurn = isQuarterTurn(rotation)
+      const localWidth = getWorldSize(focusedRack.width, layoutWidth, worldWidth)
+      const localDepth = getWorldSize(focusedRack.length, layoutLength, worldDepth)
+      const rackWidth = quarterTurn ? localDepth : localWidth
+      const rackDepth = quarterTurn ? localWidth : localDepth
+      const rackHeight = 1.9 + getRackLevels(focusedRack) * 0.7
+      const rackCenterX = getWorldCenter(
+        focusedRack.coordinateX,
+        rackWidth,
+        layoutWidth,
+        worldWidth
+      )
+      const rackCenterZ = getWorldCenter(
+        focusedRack.coordinateY,
+        rackDepth,
+        layoutLength,
+        worldDepth
+      )
+      const frontDirectionX = Math.sin((rotation * Math.PI) / 180)
+      const frontDirectionZ = Math.cos((rotation * Math.PI) / 180)
+      const distance = Math.max(rackWidth * 1.35, rackHeight * 0.9, 4.8)
+
+      targetX = rackCenterX
+      targetY = rackHeight * 0.52
+      targetZ = rackCenterZ
+      cameraX = rackCenterX + frontDirectionX * distance
+      cameraY = Math.max(rackHeight * 0.62, 3.2) + distance * 0.12
+      cameraZ = rackCenterZ + frontDirectionZ * distance
+    } else {
+      const largestSide = Math.max(worldWidth, worldDepth, 1)
+      cameraX = largestSide * 0.78
+      cameraY = Math.max(largestSide * 0.62, 5)
+      cameraZ = largestSide * 0.78
+    }
+
+    camera.position.set(cameraX, cameraY, cameraZ)
+    camera.lookAt(targetX, targetY, targetZ)
+    if (controlsRef.current) {
+      controlsRef.current.target.set(targetX, targetY, targetZ)
+      controlsRef.current.update()
+    }
+  }, [camera, focusedRack, layoutLength, layoutWidth, worldDepth, worldWidth])
+
+  return (
+    <OrbitControls
+      ref={controlsRef}
+      makeDefault
+      enableDamping
+      target={[0, 1.2, 0]}
+      maxPolarAngle={Math.PI / 2.08}
+      minDistance={focusedRack ? 2 : 7}
+      maxDistance={30}
+    />
   )
 }
 
@@ -739,6 +817,7 @@ function RackMesh({
   selectedItems,
   editable,
   onSelect,
+  onDoubleClick,
   onMoveEntity,
   textures,
   capacityByBinId,
@@ -787,6 +866,10 @@ function RackMesh({
               clientKey: rack.clientKey,
               multi: event.ctrlKey || event.metaKey,
             })
+          }}
+          onDoubleClick={(event) => {
+            event.stopPropagation()
+            onDoubleClick({ type: 'rack', clientKey: rack.clientKey })
           }}
         >
           <boxGeometry args={[localWidth, rackHeight, localDepth]} />
@@ -849,6 +932,8 @@ export default function WarehouseLayoutPreview3D({
   onSelect = () => {},
   onMoveEntity = () => {},
   editable = true,
+  onDoubleClick = () => {},
+  focusedRackKey = null,
 }) {
   const racks = Array.isArray(layout?.racks)
     ? layout.racks
@@ -860,6 +945,9 @@ export default function WarehouseLayoutPreview3D({
         }))
       )
   const { width: worldWidth, depth: worldDepth } = getWorldDimensions(layout)
+  const focusedRack = racks.find(
+    (rack) => String(rack.clientKey) === String(focusedRackKey)
+  )
   const textures = useMemo(() => createTexturePack(), [])
 
   useEffect(() => {
@@ -932,19 +1020,19 @@ export default function WarehouseLayoutPreview3D({
           selectedItems={selectedItems}
           editable={editable}
           onSelect={onSelect}
+          onDoubleClick={onDoubleClick}
           onMoveEntity={onMoveEntity}
           textures={textures}
           capacityByBinId={capacityByBinId}
         />
       ))}
 
-      <OrbitControls
-        makeDefault
-        enableDamping
-        target={[0, 1.2, 0]}
-        maxPolarAngle={Math.PI / 2.08}
-        minDistance={7}
-        maxDistance={30}
+      <WarehouseCameraController
+        focusedRack={focusedRack}
+        layoutWidth={numberOf(layout?.width, 1)}
+        layoutLength={numberOf(layout?.length, 1)}
+        worldWidth={worldWidth}
+        worldDepth={worldDepth}
       />
       <WarehousePostProcessing />
     </Canvas>

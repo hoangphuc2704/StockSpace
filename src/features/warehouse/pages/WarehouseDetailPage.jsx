@@ -65,6 +65,7 @@ const normalizePublicLayout = (payload = {}) => ({
         width: Math.max(ensureNumber(rack.width, 18), 4),
         length: Math.max(ensureNumber(rack.length, 18), 4),
         height: Math.max(ensureNumber(rack.height, 18), 4),
+        shelfCount: Math.max(ensureNumber(rack.shelfCount, 1), 1),
         bins: Array.isArray(rack.bins)
           ? rack.bins.map((bin) => ({
               clientKey: createClientKey('bin'),
@@ -75,6 +76,7 @@ const normalizePublicLayout = (payload = {}) => ({
               coordinateX: ensureNumber(bin.coordinateX, 0),
               coordinateY: ensureNumber(bin.coordinateY, 0),
               positionZ: ensureNumber(bin.positionZ, 0),
+              // Keep the same editor convention used by the 3D preview:
               width: Math.max(ensureNumber(bin.width, 8), 4),
               length: Math.max(ensureNumber(bin.length, 8), 4),
               height: Math.max(ensureNumber(bin.height, 8), 4),
