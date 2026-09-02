@@ -23,6 +23,7 @@ const CategoryPage = () => {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -87,32 +88,12 @@ const CategoryPage = () => {
     }
   }
 
-  const columns = [
-    {
-      header: 'Category Name',
-      render: (row) => <span className="font-medium text-slate-900">{row.name}</span>,
-    },
-    {
-      header: 'Actions',
-      render: (row) => (
-        <TableActionMenu
-          label={`Actions for ${row.name}`}
-          items={
-            row.tenantId
-              ? [
-                  {
-                    label: 'Delete',
-                    icon: Trash2,
-                    danger: true,
-                    onClick: () => handleDeleteCategory(row.id),
-                  },
-                ]
-              : []
-          }
-        />
-      ),
-    },
-  ]
+  const filteredCategories = categories.filter(c => {
+    if (searchQuery) {
+      return c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -150,14 +131,97 @@ const CategoryPage = () => {
               </Button>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              {isLoading ? (
-                <div className="flex justify-center p-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            {/* Top Search Area */}
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="space-y-4">
+                <InputField
+                  placeholder="Search categories..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full border-blue-400 focus:border-blue-500 focus:ring-blue-500"
+                />
+                <div className="flex justify-center gap-3 pt-2">
+                  <Button className="bg-slate-500 hover:bg-slate-600 w-32">Search</Button>
+                  <Button variant="outline" className="w-32 bg-slate-50 text-slate-600 border-slate-200" onClick={() => setSearchQuery('')}>
+                    <div className="flex items-center gap-2 justify-center">
+                      <Trash2 className="h-4 w-4" /> Clear
+                    </div>
+                  </Button>
                 </div>
-              ) : (
-                <DataTable columns={columns} data={categories} />
-              )}
+              </div>
+            </div>
+
+            {/* Table Area */}
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              {/* Summary Tabs */}
+              <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 pt-3">
+                <button className="relative pb-3 text-sm font-semibold text-slate-700 transition-colors">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Categories</span>
+                    <span className="bg-blue-100 text-blue-700 text-xs px-3 py-0.5 rounded-full">{filteredCategories.length}</span>
+                  </div>
+                  <div className="absolute bottom-0 left-0 h-0.5 w-full bg-slate-400" />
+                </button>
+              </div>
+
+              {/* Table Controls */}
+              <div className="flex items-center gap-4 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600 border-b border-slate-200">
+                <button className="flex items-center justify-center p-1 border border-slate-300 rounded bg-white hover:bg-slate-50">
+                  ⚙️ ▾
+                </button>
+                <span>Selected (0) | Showing (1 - {filteredCategories.length}) | Found ({filteredCategories.length}) | Total ({categories.length})</span>
+                <div className="flex-1" />
+                <button className="border border-slate-300 bg-white px-3 py-1 rounded hover:bg-slate-50">
+                  All Columns
+                </button>
+              </div>
+
+              {/* Data Table */}
+              <div className="overflow-x-auto">
+                {isLoading ? (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
+                        <th className="px-4 py-3 border-r border-slate-200 w-full">Category Name</th>
+                        <th className="px-4 py-3 text-center w-24">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredCategories.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
+                            Không tìm thấy Category nào.
+                          </td>
+                        </tr>
+                      ) : filteredCategories.map(c => {
+                        const canManage = Boolean(c.tenantId)
+                        return (
+                          <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
+                            <td className="px-4 py-3 border-r border-slate-100 text-slate-700 font-medium">
+                              {c.name}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {canManage ? (
+                                <button onClick={() => handleDeleteCategory(c.id)} className="text-slate-400 hover:text-red-600 transition-colors" title="Delete">
+                                  <Trash2 className="h-4 w-4 mx-auto" />
+                                </button>
+                              ) : (
+                                <span className="text-slate-400 text-xs italic">—</span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
 
             <Modal

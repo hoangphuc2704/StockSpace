@@ -48,6 +48,7 @@ const InboundPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [activeTab, setActiveTab] = useState('ALL')
 
   // Form states
   const [formSkuId, setFormSkuId] = useState('')
@@ -253,6 +254,39 @@ const InboundPage = () => {
     } finally {
       setIsExporting(false)
     }
+  }
+
+  const handleExportSingleReceipt = (receipt) => {
+    if (!receipt || !receipt.items) {
+      toast.error('Không có dữ liệu chi tiết để xuất.')
+      return
+    }
+    const csvRows = []
+    // Headers
+    csvRows.push(['Mã Phiếu', 'Trạng thái', 'Ngày tạo', 'Tên mặt hàng', 'Mã SKU', 'Số lượng'].join(','))
+    
+    receipt.items.forEach(item => {
+      csvRows.push([
+        receipt.id.substring(0, 8).toUpperCase(),
+        receipt.status,
+        new Date(receipt.createdAt).toLocaleDateString('vi-VN'),
+        `"${item.skuName || ''}"`,
+        item.skuCode || '',
+        item.quantity || 0
+      ].join(','))
+    })
+
+    const csvContent = csvRows.join('\n')
+    // Add BOM for UTF-8 Excel compatibility
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `phieu-nhap-${receipt.id.substring(0,8)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    toast.success('Đã xuất file chi tiết phiếu nhập.')
   }
 
   const handleCreateReceipt = async (e) => {
@@ -503,61 +537,17 @@ const InboundPage = () => {
     }
   }
 
-  const columns = [
-    ...(currentRole === 'TENANT' || currentRole === 'STAFF'
-      ? []
-      : [{ header: 'Receipt ID', render: (row) => row.id.substring(0, 8) }]),
-    {
-      header: 'Warehouse',
-      render: () => {
-        const wh = warehouses.find((w) => w.id === selectedWarehouseId)
-        return wh ? wh.name : 'Unknown'
-      },
-    },
-    {
-      header: 'Status',
-      render: (row) => (
-        <Badge
-          variant={
-            row.status === 'APPROVED' ? 'success' : row.status === 'PENDING' ? 'warning' : 'danger'
-          }
-        >
-          {row.status}
-        </Badge>
-      ),
-    },
-    { header: 'Created Date', render: (row) => new Date(row.createdAt).toLocaleString() },
-    {
-      header: 'Actions',
-      render: (row) => (
-        <TableActionMenu
-          items={[
-            { label: 'Details', icon: Eye, onClick: () => handleViewDetail(row) },
-            row.status === 'PENDING' &&
-              currentRole === 'TENANT' && {
-                label: 'Approve',
-                onClick: () => handleApprove(row.id),
-              },
-            row.status === 'PENDING' &&
-              currentRole === 'TENANT' && {
-                label: 'Reject',
-                danger: true,
-                onClick: () => {
-                  setRejectingReceiptId(row.id)
-                  setIsRejectModalOpen(true)
-                },
-              },
-            row.status === 'PENDING' &&
-              currentRole !== 'TENANT' && { label: 'Wait for Tenant to approve', disabled: true },
-            row.status !== 'PENDING' && {
-              label: row.status === 'REJECTED' ? 'Rejected' : 'Approved',
-              disabled: true,
-            },
-          ]}
-        />
-      ),
-    },
-  ]
+  const filteredReceipts = useMemo(() => {
+    return receipts.filter((r) => {
+      if (activeTab === 'ALL') return true
+      if (activeTab === 'PENDING' && r.status === 'PENDING') return true
+      if (activeTab === 'APPROVED' && r.status === 'APPROVED') return true
+      if (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') return true
+      if (activeTab === 'COMPLETED' && r.status === 'COMPLETED') return true
+      return false
+    })
+  }, [receipts, activeTab])
+
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -620,37 +610,157 @@ const InboundPage = () => {
 
               <div>
                 <div className="space-y-6">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="mb-6 flex items-center justify-between">
-                      <h3 className="font-bold text-slate-900">Recent Inbound Shipments</h3>
+                  <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                    {/* Tabs */}
+                    <div className="flex items-center gap-6 border-b border-slate-200 bg-slate-50 px-4 pt-2">
+                      {[
+                        { id: 'ALL', label: 'Tất cả' },
+                        { id: 'PENDING', label: 'Chờ duyệt' },
+                        { id: 'APPROVED', label: 'Đã xác nhận' },
+                        { id: 'IN_PROGRESS', label: 'Đang xử lý' },
+                        { id: 'COMPLETED', label: 'Đã hoàn tất' }
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`relative pb-3 text-sm font-medium transition-colors ${
+                            activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          {tab.label}
+                          {activeTab === tab.id && (
+                            <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary rounded-t-md" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Toolbar */}
+                    <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-white">
                       <div className="flex items-center gap-3">
-                        <div className="relative w-64">
+                        <div className="relative w-72">
                           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <InputField placeholder="Search shipments..." className="h-9 pl-10" />
+                          <InputField placeholder="Tìm kiếm phiếu nhập..." className="h-9 pl-9" />
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={handleExport}
                           disabled={!selectedWarehouseId || isExporting}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 h-9"
                         >
                           {isExporting ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <Download className="h-4 w-4" />
                           )}
-                          Export CSV
+                          Xuất Excel
                         </Button>
                       </div>
                     </div>
-                    {isLoading ? (
-                      <div className="flex justify-center p-8">
-                        <Loader2 className="animate-spin text-slate-400" />
-                      </div>
-                    ) : (
-                      <DataTable columns={columns} data={receipts} />
-                    )}
+
+                    {/* Table */}
+                    <div className="overflow-x-auto bg-white">
+                      {isLoading ? (
+                        <div className="flex justify-center p-8">
+                          <Loader2 className="animate-spin text-slate-400 h-6 w-6" />
+                        </div>
+                      ) : (
+                        <table className="w-full text-left text-sm whitespace-nowrap">
+                          <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                            <tr>
+                              <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
+                              <th className="px-4 py-3 border-x border-slate-200">Số dự kiến nhập kho</th>
+                              <th className="px-4 py-3 border-r border-slate-200">Tên nơi gửi</th>
+                              <th className="px-4 py-3 border-r border-slate-200">Tên người phụ trách</th>
+                              <th className="px-4 py-3 border-r border-slate-200">Tên mặt hàng [Thông số]</th>
+                              <th className="px-4 py-3 border-r border-slate-200">Ngày giao hàng</th>
+                              <th className="px-4 py-3 border-r border-slate-200 text-right">Tổng số lượng dự kiến</th>
+                              <th className="px-4 py-3 border-r border-slate-200 text-center">Hiện trạng</th>
+                              <th className="px-4 py-3 text-center">In</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {filteredReceipts.length === 0 ? (
+                              <tr>
+                                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                                  Không có dữ liệu phiếu nhập.
+                                </td>
+                              </tr>
+                            ) : filteredReceipts.map(r => {
+                              const totalQty = (r.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+                              const itemName = r.items?.length > 0 
+                                ? `${r.items[0].skuName}${r.items.length > 1 ? ` và ${r.items.length - 1} mục khác` : ''}`
+                                : '—'
+                              return (
+                                <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-primary font-medium">{r.id.substring(0,8).toUpperCase()}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-500">—</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-700">{r.createdByFullName || '—'}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 whitespace-normal min-w-[200px]">{itemName}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100">{new Date(r.createdAt).toLocaleDateString('vi-VN')}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-right font-semibold text-slate-700">{totalQty}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-center">
+                                    <div className="flex flex-col gap-1 items-center">
+                                      <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                                        r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                        r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                                        r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
+                                        r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                        'bg-slate-100 text-slate-600'
+                                      }`}>
+                                        {r.status}
+                                      </span>
+                                      <div className="flex items-center justify-center gap-2 mt-1">
+                                        <button 
+                                          onClick={() => { setDetailReceipt(r); setIsDetailModalOpen(true) }}
+                                          className="text-primary hover:underline text-xs font-medium"
+                                        >
+                                          Xem
+                                        </button>
+                                        {r.status === 'PENDING' && currentRole === 'TENANT' && (
+                                          <>
+                                            <span className="text-slate-300">|</span>
+                                            <button 
+                                              onClick={() => handleApprove(r.id)}
+                                              className="text-emerald-600 hover:underline text-xs font-medium"
+                                            >
+                                              Duyệt
+                                            </button>
+                                            <span className="text-slate-300">|</span>
+                                            <button 
+                                              onClick={() => {
+                                                setRejectingReceiptId(r.id)
+                                                setIsRejectModalOpen(true)
+                                              }}
+                                              className="text-red-600 hover:underline text-xs font-medium"
+                                            >
+                                              Từ chối
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <button 
+                                      onClick={() => handleExportSingleReceipt(r)}
+                                      className="text-slate-400 hover:text-slate-600 transition-colors p-1" 
+                                      title="In/Xuất phiếu"
+                                    >
+                                      <Download className="h-4 w-4 mx-auto" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

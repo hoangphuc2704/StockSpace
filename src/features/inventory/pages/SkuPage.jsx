@@ -45,6 +45,10 @@ const SkuPage = () => {
   const [isLoading, setIsLoading] = useState(true)
 
   // Form states
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchCategory, setSearchCategory] = useState('')
+  const [searchUom, setSearchUom] = useState('')
+  
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editingProductId, setEditingProductId] = useState(null)
@@ -301,40 +305,21 @@ const SkuPage = () => {
     }
   }
 
-  const columns = [
-    {
-      header: 'Mã SKU',
-      render: (row) => <span className="font-mono font-bold text-slate-900">{row.skuCode}</span>,
-    },
-    {
-      header: 'Category',
-      render: (row) => row.categoryName,
-    },
-    {
-      header: 'Actions',
-      render: (row) => {
-        const canManageSku = Boolean(row.tenantId)
-        return (
-          <TableActionMenu
-            label={`Actions for ${row.name}`}
-            items={[
-              { label: 'View details', icon: Eye, onClick: () => handleViewDetail(row.id) },
-              canManageSku && { label: 'Edit', icon: Edit, onClick: () => handleOpenEdit(row) },
-              canManageSku && {
-                label: 'Delete',
-                icon: Trash2,
-                danger: true,
-                onClick: () => handleDelete(row.id),
-              },
-            ]}
-          />
-        )
-      },
-    },
-  ]
+  const filteredProducts = products.filter(p => {
+    if (searchCategory && p.categoryId !== searchCategory) return false;
+    if (searchUom && p.uomId !== searchUom) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      return (
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.skuCode && p.skuCode.toLowerCase().includes(q))
+      );
+    }
+    return true;
+  });
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-900">
       <Header />
       <div className="md:hidden">
         {isMobileOpen && (
@@ -368,14 +353,138 @@ const SkuPage = () => {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              {isLoading ? (
-                <div className="flex justify-center p-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            {/* Top Search Area */}
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="space-y-4">
+                <InputField
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full border-blue-400 focus:border-blue-500 focus:ring-blue-500"
+                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <select
+                    className="w-full rounded-md border border-slate-200 p-2 text-sm text-slate-600 focus:border-blue-500 focus:ring-blue-500"
+                    value={searchCategory}
+                    onChange={(e) => setSearchCategory(e.target.value)}
+                  >
+                    <option value="">Search by Category...</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="w-full rounded-md border border-slate-200 p-2 text-sm text-slate-600 focus:border-blue-500 focus:ring-blue-500"
+                    value={searchUom}
+                    onChange={(e) => setSearchUom(e.target.value)}
+                  >
+                    <option value="">Search by UOM...</option>
+                    {uoms.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
                 </div>
-              ) : (
-                <DataTable columns={columns} data={products} />
-              )}
+                <div className="flex justify-center gap-3 pt-2">
+                  <Button className="bg-slate-500 hover:bg-slate-600 w-32">Search</Button>
+                  <Button variant="outline" className="w-32 bg-slate-50 text-slate-600 border-slate-200" onClick={() => { setSearchQuery(''); setSearchCategory(''); setSearchUom(''); }}>
+                    <div className="flex items-center gap-2 justify-center">
+                      <X className="h-4 w-4" /> Clear
+                    </div>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Table Area */}
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              {/* Summary Tabs */}
+              <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 pt-3">
+                <button className="relative pb-3 text-sm font-semibold text-slate-700 transition-colors">
+                  <div className="flex flex-col items-center gap-1">
+                    <span>Products</span>
+                    <span className="bg-blue-100 text-blue-700 text-xs px-3 py-0.5 rounded-full">{filteredProducts.length}</span>
+                  </div>
+                  <div className="absolute bottom-0 left-0 h-0.5 w-full bg-slate-400" />
+                </button>
+              </div>
+
+              {/* Table Controls */}
+              <div className="flex items-center gap-4 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600 border-b border-slate-200">
+                <button className="flex items-center justify-center p-1 border border-slate-300 rounded bg-white hover:bg-slate-50">
+                  ⚙️ ▾
+                </button>
+                <span>Selected (0) | Showing (1 - {filteredProducts.length}) | Found ({filteredProducts.length}) | Total ({products.length})</span>
+                <div className="flex-1" />
+                <button className="border border-slate-300 bg-white px-3 py-1 rounded hover:bg-slate-50">
+                  All Columns
+                </button>
+              </div>
+
+              {/* Data Table */}
+              <div className="overflow-x-auto">
+                {isLoading ? (
+                  <div className="flex justify-center p-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
+                        <th className="px-4 py-3 border-r border-slate-200">SKU</th>
+                        <th className="px-4 py-3 border-r border-slate-200">Code</th>
+                        <th className="px-4 py-3 border-r border-slate-200">Classification</th>
+                        <th className="px-4 py-3 border-r border-slate-200">Unit Wt (kg)</th>
+                        <th className="px-4 py-3 border-r border-slate-200">Unit Vol (m³)</th>
+                        <th className="px-4 py-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredProducts.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                            Không tìm thấy SKU nào.
+                          </td>
+                        </tr>
+                      ) : filteredProducts.map(p => {
+                        const canManageSku = Boolean(p.tenantId)
+                        return (
+                          <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
+                            <td className="px-4 py-3 border-r border-slate-100 text-slate-700 font-medium">
+                              <div className="flex items-center gap-2">
+                                {p.name}
+                                {canManageSku && <Edit className="h-3 w-3 text-slate-400 cursor-pointer hover:text-primary" onClick={() => handleOpenEdit(p)} />}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 border-r border-slate-100 text-slate-600">{p.skuCode}</td>
+                            <td className="px-4 py-3 border-r border-slate-100 text-slate-600">{p.categoryName}</td>
+                            <td className="px-4 py-3 border-r border-slate-100 text-slate-600">{p.unitWeightKg || '—'}</td>
+                            <td className="px-4 py-3 border-r border-slate-100 text-slate-600">{p.unitVolumeM3 || '—'}</td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button onClick={() => handleViewDetail(p.id)} className="text-slate-400 hover:text-blue-600" title="View details">
+                                  <Eye className="h-4 w-4" />
+                                </button>
+                                {canManageSku && (
+                                  <>
+                                    <button onClick={() => handleOpenEdit(p)} className="text-slate-400 hover:text-emerald-600" title="Edit">
+                                      <Edit className="h-4 w-4" />
+                                    </button>
+                                    <button onClick={() => handleDelete(p.id)} className="text-slate-400 hover:text-red-600" title="Delete">
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
 
             <Modal

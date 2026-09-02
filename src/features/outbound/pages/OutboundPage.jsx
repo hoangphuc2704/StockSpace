@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
-import { ArrowUpRight, Search, Minus, Loader2, Download, Eye } from 'lucide-react'
+import { ArrowUpRight, Search, Minus, Loader2, Download, Eye, Map as MapIcon, MapPin } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
@@ -44,84 +44,14 @@ const OutboundPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [activeTab, setActiveTab] = useState('ALL')
 
   // Form states
   const [formSkuId, setFormSkuId] = useState('')
   const [formTotalQuantity, setFormTotalQuantity] = useState(1)
-  const [allocations, setAllocations] = useState({}) // { binId: quantity }
-  const [skuLocations, setSkuLocations] = useState([])
   const [formNote, setFormNote] = useState('')
-  const availableWarehouseQuantity = useMemo(
-    () => skuLocations.reduce((total, location) => total + (Number(location.quantity) || 0), 0),
-    [skuLocations]
-  )
-
-  const distributeQuantityAcrossBins = useCallback((requestedQuantity, locations = []) => {
-    let remaining = Math.max(Math.floor(Number(requestedQuantity) || 0), 0)
-    return locations.reduce((result, location) => {
-      if (remaining <= 0) return result
-      const quantity = Math.min(remaining, Number(location.quantity) || 0)
-      if (quantity > 0) {
-        result[location.binId] = quantity
-        remaining -= quantity
-      }
-      return result
-    }, {})
-  }, [])
-
-  useEffect(() => {
-    let active = true
-    const fetchLocations = async () => {
-      if (!formSkuId || !selectedWarehouseId) {
-        if (active) setSkuLocations([])
-        return
-      }
-      try {
-        // Load every stock batch in the selected warehouse. The SKU summary endpoint
-        // is tenant-wide, so using it here could miss bins or mix locations from other warehouses.
-        const allStock = await stockApi.getAllStock(selectedWarehouseId)
-        const locationsByBin = new Map()
-
-        allStock
-          .filter(
-            (batch) =>
-              String(batch.skuId) === String(formSkuId) &&
-              String(batch.warehouseId) === String(selectedWarehouseId) &&
-              Number(batch.quantity) > 0 &&
-              batch.rackId &&
-              batch.binId
-          )
-          .forEach((batch) => {
-            const key = `${batch.rackId}:${batch.binId}`
-            const existing = locationsByBin.get(key)
-            if (existing) {
-              existing.quantity += Number(batch.quantity) || 0
-            } else {
-              locationsByBin.set(key, {
-                ...batch,
-                quantity: Number(batch.quantity) || 0,
-                rackId: String(batch.rackId),
-                binId: String(batch.binId),
-              })
-            }
-          })
-
-        const nextLocations = Array.from(locationsByBin.values())
-        if (!active) return
-        setSkuLocations(nextLocations)
-
-        // Reset allocations when the available warehouse locations change.
-        setAllocations({})
-      } catch (error) {
-        console.error('Failed to fetch SKU stock locations', error)
-        if (active) setSkuLocations([])
-      }
-    }
-    fetchLocations()
-    return () => {
-      active = false
-    }
-  }, [formSkuId, selectedWarehouseId])
+  const [previewData, setPreviewData] = useState(null)
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false)
 
   const fetchInitialData = useCallback(async () => {
     try {
@@ -208,60 +138,78 @@ const OutboundPage = () => {
     }
   }
 
-  const handleCreateReceipt = async (e) => {
-    e.preventDefault()
+  const handleExportSingleReceipt = (receipt) => {
+    if (!receipt || !receipt.items) {
+      toast.error('Không có dữ liệu chi tiết để xuất.')
+      return
+    }
+    const csvRows = []
+    // Headers
+    csvRows.push(['Mã Phiếu', 'Trạng thái', 'Ngày tạo', 'Tên mặt hàng', 'Mã SKU', 'Số lượng'].join(','))
+    
+    receipt.items.forEach(item => {
+      csvRows.push([
+        receipt.id.substring(0, 8).toUpperCase(),
+        receipt.status,
+        new Date(receipt.createdAt).toLocaleDateString('vi-VN'),
+        `"${item.skuName || ''}"`,
+        item.skuCode || '',
+        item.quantity || 0
+      ].join(','))
+    })
+
+    const csvContent = csvRows.join('\n')
+    // Add BOM for UTF-8 Excel compatibility
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `phieu-xuat-${receipt.id.substring(0,8)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    toast.success('Đã xuất file chi tiết phiếu xuất.')
+  }
+
+  const handlePreview = async () => {
     const skuError = required(formSkuId, 'Product')
     if (skuError) {
       toast.error('Select a product.')
       return
     }
-
     const requestedQuantity = Number(formTotalQuantity)
     const quantityError = positiveInteger(requestedQuantity)
     if (quantityError) {
       toast.error(quantityError)
       return
     }
-    if (requestedQuantity > availableWarehouseQuantity) {
-      toast.error(`Only ${availableWarehouseQuantity} units are available.`)
-      return
-    }
 
-    const activeAllocations = Object.entries(allocations).filter(([, qty]) => Number(qty) > 0)
-
-    if (activeAllocations.length === 0) {
-      toast.error('Allocate quantity to a bin.')
-      return
-    }
-
-    let totalAllocated = 0
-    const payloadItems = []
-
-    for (const [binId, qtyStr] of activeAllocations) {
-      const qty = Number(qtyStr)
-
-      const loc = skuLocations.find((l) => l.binId === binId)
-      if (!loc) {
-        toast.error(`Bin ${binId.substring(0, 6)} has no stock for this SKU.`)
-        return
+    setIsPreviewLoading(true)
+    setPreviewData(null)
+    try {
+      const payload = {
+        warehouseId: selectedWarehouseId,
+        items: [
+          {
+            skuId: formSkuId,
+            quantity: requestedQuantity,
+          },
+        ],
       }
-      if (qty > loc.quantity) {
-        toast.error(`Bin ${loc.binName} has only ${loc.quantity} units.`)
-        return
-      }
-
-      totalAllocated += qty
-      payloadItems.push({
-        skuId: formSkuId,
-        quantity: qty,
-        rackId: loc.rackId,
-        binId: loc.binId,
-        note: formNote,
-      })
+      const response = await receiptApi.getPickListSuggestions(payload)
+      setPreviewData(response.data?.data || response.data)
+      toast.success('Preview generated successfully.')
+    } catch (error) {
+      showApiErrorToast(error, 'Could not generate preview.')
+    } finally {
+      setIsPreviewLoading(false)
     }
+  }
 
-    if (totalAllocated !== requestedQuantity) {
-      toast.error(`Allocated ${totalAllocated}; expected ${requestedQuantity}.`)
+  const handleCreateReceipt = async (e) => {
+    e.preventDefault()
+    if (!previewData?.complete) {
+      toast.error('Cannot create outbound receipt with shortage.')
       return
     }
 
@@ -270,7 +218,13 @@ const OutboundPage = () => {
       const payload = {
         warehouseId: selectedWarehouseId,
         type: 'OUTBOUND',
-        items: payloadItems,
+        items: [
+          {
+            skuId: formSkuId,
+            quantity: Number(formTotalQuantity),
+            note: formNote,
+          },
+        ],
       }
       await receiptApi.createReceipt(payload)
       toast.success('Outbound receipt created.')
@@ -279,9 +233,8 @@ const OutboundPage = () => {
 
       setFormSkuId('')
       setFormTotalQuantity(1)
-      setAllocations({})
       setFormNote('')
-      setSkuLocations([])
+      setPreviewData(null)
     } catch (error) {
       console.error('Error creating receipt:', error)
       showApiErrorToast(error, 'Could not create receipt.')
@@ -318,8 +271,27 @@ const OutboundPage = () => {
       toast.success('Outbound receipt approved.')
       fetchReceipts()
     } catch (error) {
-      console.error('Error approving receipt:', error)
-      showApiErrorToast(error, 'Could not approve receipt.')
+      if (
+        error.response?.data?.errorCode === 'OUTBOUND_PICK_LIST_STALE' ||
+        error.response?.data?.code === 'OUTBOUND_PICK_LIST_STALE'
+      ) {
+        toast.error('Pick list has become stale. Replanning to find new stock...')
+        try {
+          await receiptApi.replanPickList(id)
+          toast.success('Pick list replanned. Please review the new picking order.')
+          fetchReceipts()
+          // Automatically open detail view so user can review the new pick list
+          const res = await receiptApi.getReceiptDetail(id)
+          setDetailReceipt(res?.data?.data ?? res?.data)
+          setIsDetailModalOpen(true)
+        } catch (replanError) {
+          showApiErrorToast(replanError, 'Replan failed. Please try again.')
+          fetchReceipts()
+        }
+      } else {
+        console.error('Error approving receipt:', error)
+        showApiErrorToast(error, 'Could not approve receipt.')
+      }
     }
   }
 
@@ -338,61 +310,16 @@ const OutboundPage = () => {
     }
   }
 
-  const columns = [
-    ...(currentRole === 'TENANT' || currentRole === 'STAFF'
-      ? []
-      : [{ header: 'Receipt ID', render: (row) => row.id.substring(0, 8) }]),
-    {
-      header: 'Warehouse',
-      render: () => {
-        const wh = warehouses.find((w) => w.id === selectedWarehouseId)
-        return wh ? wh.name : 'Unknown'
-      },
-    },
-    {
-      header: 'Status',
-      render: (row) => (
-        <Badge
-          variant={
-            row.status === 'APPROVED' ? 'success' : row.status === 'PENDING' ? 'warning' : 'danger'
-          }
-        >
-          {row.status}
-        </Badge>
-      ),
-    },
-    { header: 'Created Date', render: (row) => new Date(row.createdAt).toLocaleString() },
-    {
-      header: 'Actions',
-      render: (row) => (
-        <TableActionMenu
-          items={[
-            { label: 'Details', icon: Eye, onClick: () => handleViewDetail(row) },
-            row.status === 'PENDING' &&
-              currentRole === 'TENANT' && {
-                label: 'Approve',
-                onClick: () => handleApprove(row.id),
-              },
-            row.status === 'PENDING' &&
-              currentRole === 'TENANT' && {
-                label: 'Reject',
-                danger: true,
-                onClick: () => {
-                  setRejectingReceiptId(row.id)
-                  setIsRejectModalOpen(true)
-                },
-              },
-            row.status === 'PENDING' &&
-              currentRole !== 'TENANT' && { label: 'Wait for Tenant to approve', disabled: true },
-            row.status !== 'PENDING' && {
-              label: row.status === 'REJECTED' ? 'Rejected' : 'Approved',
-              disabled: true,
-            },
-          ]}
-        />
-      ),
-    },
-  ]
+  const filteredReceipts = useMemo(() => {
+    return receipts.filter((r) => {
+      if (activeTab === 'ALL') return true
+      if (activeTab === 'PENDING' && r.status === 'PENDING') return true
+      if (activeTab === 'APPROVED' && r.status === 'APPROVED') return true
+      if (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') return true
+      if (activeTab === 'COMPLETED' && r.status === 'COMPLETED') return true
+      return false
+    })
+  }, [receipts, activeTab])
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -451,37 +378,157 @@ const OutboundPage = () => {
 
               <div>
                 <div className="space-y-6">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="mb-6 flex items-center justify-between">
-                      <h3 className="font-bold text-slate-900">Recent Outbound Shipments</h3>
+                  <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                    {/* Tabs */}
+                    <div className="flex items-center gap-6 border-b border-slate-200 bg-slate-50 px-4 pt-2">
+                      {[
+                        { id: 'ALL', label: 'Tất cả' },
+                        { id: 'PENDING', label: 'Chờ duyệt' },
+                        { id: 'APPROVED', label: 'Đã xác nhận' },
+                        { id: 'IN_PROGRESS', label: 'Đang xử lý' },
+                        { id: 'COMPLETED', label: 'Đã hoàn tất' }
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`relative pb-3 text-sm font-medium transition-colors ${
+                            activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-700'
+                          }`}
+                        >
+                          {tab.label}
+                          {activeTab === tab.id && (
+                            <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary rounded-t-md" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Toolbar */}
+                    <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-white">
                       <div className="flex items-center gap-3">
-                        <div className="relative w-64">
+                        <div className="relative w-72">
                           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <InputField placeholder="Search orders..." className="h-9 pl-10" />
+                          <InputField placeholder="Tìm kiếm phiếu xuất..." className="h-9 pl-9" />
                         </div>
+                      </div>
+                      <div className="flex items-center gap-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={handleExport}
                           disabled={!selectedWarehouseId || isExporting}
-                          className="flex items-center gap-2"
+                          className="flex items-center gap-2 h-9"
                         >
                           {isExporting ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <Download className="h-4 w-4" />
                           )}
-                          Export CSV
+                          Xuất Excel
                         </Button>
                       </div>
                     </div>
-                    {isLoading ? (
-                      <div className="flex justify-center p-8">
-                        <Loader2 className="animate-spin text-slate-400" />
-                      </div>
-                    ) : (
-                      <DataTable columns={columns} data={receipts} />
-                    )}
+
+                    {/* Table */}
+                    <div className="overflow-x-auto bg-white">
+                      {isLoading ? (
+                        <div className="flex justify-center p-8">
+                          <Loader2 className="animate-spin text-slate-400 h-6 w-6" />
+                        </div>
+                      ) : (
+                        <table className="w-full text-left text-sm whitespace-nowrap">
+                          <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                            <tr>
+                              <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
+                              <th className="px-4 py-3 border-x border-slate-200">Số dự kiến xuất kho</th>
+                              <th className="px-4 py-3 border-r border-slate-200">Tên nơi nhận</th>
+                              <th className="px-4 py-3 border-r border-slate-200">Tên người phụ trách</th>
+                              <th className="px-4 py-3 border-r border-slate-200">Tên mặt hàng [Thông số]</th>
+                              <th className="px-4 py-3 border-r border-slate-200">Ngày giao hàng</th>
+                              <th className="px-4 py-3 border-r border-slate-200 text-right">Tổng số lượng dự kiến</th>
+                              <th className="px-4 py-3 border-r border-slate-200 text-center">Hiện trạng</th>
+                              <th className="px-4 py-3 text-center">In</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {filteredReceipts.length === 0 ? (
+                              <tr>
+                                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                                  Không có dữ liệu phiếu xuất.
+                                </td>
+                              </tr>
+                            ) : filteredReceipts.map(r => {
+                              const totalQty = (r.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
+                              const itemName = r.items?.length > 0 
+                                ? `${r.items[0].skuName}${r.items.length > 1 ? ` và ${r.items.length - 1} mục khác` : ''}`
+                                : '—'
+                              return (
+                                <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-primary font-medium">{r.id.substring(0,8).toUpperCase()}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-500">—</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-700">{r.createdByFullName || '—'}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 whitespace-normal min-w-[200px]">{itemName}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100">{new Date(r.createdAt).toLocaleDateString('vi-VN')}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-right font-semibold text-slate-700">{totalQty}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-center">
+                                    <div className="flex flex-col gap-1 items-center">
+                                      <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                                        r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                        r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                                        r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
+                                        r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                        'bg-slate-100 text-slate-600'
+                                      }`}>
+                                        {r.status}
+                                      </span>
+                                      <div className="flex items-center justify-center gap-2 mt-1">
+                                        <button 
+                                          onClick={() => { setDetailReceipt(r); setIsDetailModalOpen(true) }}
+                                          className="text-primary hover:underline text-xs font-medium"
+                                        >
+                                          Xem
+                                        </button>
+                                        {r.status === 'PENDING' && currentRole === 'TENANT' && (
+                                          <>
+                                            <span className="text-slate-300">|</span>
+                                            <button 
+                                              onClick={() => handleApprove(r.id)}
+                                              className="text-emerald-600 hover:underline text-xs font-medium"
+                                            >
+                                              Duyệt
+                                            </button>
+                                            <span className="text-slate-300">|</span>
+                                            <button 
+                                              onClick={() => {
+                                                setRejectingReceiptId(r.id)
+                                                setIsRejectModalOpen(true)
+                                              }}
+                                              className="text-red-600 hover:underline text-xs font-medium"
+                                            >
+                                              Từ chối
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <button 
+                                      onClick={() => handleExportSingleReceipt(r)}
+                                      className="text-slate-400 hover:text-slate-600 transition-colors p-1" 
+                                      title="In/Xuất phiếu"
+                                    >
+                                      <Download className="h-4 w-4 mx-auto" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -502,7 +549,10 @@ const OutboundPage = () => {
                         required
                         className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
                         value={formSkuId}
-                        onChange={(e) => setFormSkuId(e.target.value)}
+                        onChange={(e) => {
+                          setFormSkuId(e.target.value)
+                          setPreviewData(null)
+                        }}
                       >
                         <option value="">-- Select product --</option>
                         {skus.map((sku) => (
@@ -523,77 +573,92 @@ const OutboundPage = () => {
                         onChange={(e) => {
                           const value = e.target.value
                           setFormTotalQuantity(value)
-                          setAllocations(distributeQuantityAcrossBins(value, skuLocations))
+                          setPreviewData(null)
                         }}
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-slate-700">Pick from Bins</label>
-                      <div className="flex flex-wrap justify-end gap-2 text-xs font-semibold">
-                        <span className="rounded bg-emerald-50 px-2 py-1 text-emerald-700">
-                          Available in warehouse: {availableWarehouseQuantity}
-                        </span>
-                        <span className="rounded bg-slate-100 px-2 py-1 text-slate-600">
-                          Total picked:{' '}
-                          {Object.values(allocations).reduce(
-                            (acc, val) => acc + (Number(val) || 0),
-                            0
-                          )}{' '}
-                          / {formTotalQuantity}
-                        </span>
-                      </div>
+                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                        <MapIcon className="h-4 w-4 text-emerald-600" /> Lộ trình lấy hàng đề xuất (FIFO)
+                      </label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePreview}
+                        isLoading={isPreviewLoading}
+                        disabled={!formSkuId || !formTotalQuantity}
+                      >
+                        Xem trước lộ trình
+                      </Button>
                     </div>
 
-                    {!formSkuId ? (
+                    {!previewData ? (
                       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                        Please select an SKU first to see available locations.
-                      </div>
-                    ) : skuLocations.length === 0 ? (
-                      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-center text-sm text-red-600">
-                        This SKU is currently not in stock at this warehouse.
+                        Nhấn "Xem trước lộ trình" để hệ thống tính toán tuyến đường lấy hàng tối ưu.
                       </div>
                     ) : (
-                      <div className="max-h-[400px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          {skuLocations.map((loc) => (
-                            <div
-                              key={loc.binId}
-                              className="relative flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <div className="text-xs font-medium text-slate-500">
-                                    {loc.rackName}
+                      <div className="space-y-4">
+                        {!previewData.complete && (
+                          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            <strong>Phát hiện thiếu hàng!</strong> Hệ thống đang thiếu{' '}
+                            {previewData.items?.[0]?.shortageQuantity} sản phẩm so với yêu cầu. Bạn không thể tạo phiếu xuất này.
+                          </div>
+                        )}
+                        <div className="max-h-[350px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-5">
+                          <div className="relative border-l-2 border-emerald-200 ml-3 space-y-6">
+                            {previewData.stops?.map((stop, index) => (
+                              <div
+                                key={index}
+                                className="relative pl-6"
+                              >
+                                <div className="absolute -left-[17px] top-0 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 border-4 border-white text-sm font-bold text-emerald-600 shadow-sm">
+                                  {stop.sequence}
+                                </div>
+                                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                                  <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
+                                    <div className="flex items-center gap-2">
+                                      <MapPin className="h-4 w-4 text-rose-500" />
+                                      <span className="text-sm font-bold text-slate-800">
+                                        Kệ {stop.rackCode} — Ô {stop.binCode}
+                                      </span>
+                                    </div>
+                                    <span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                                      Tầng {stop.shelfLevel}
+                                    </span>
                                   </div>
-                                  <div className="text-sm font-bold text-slate-800">
-                                    {loc.binName}
+                                  
+                                  <div className="overflow-x-auto rounded-lg border border-slate-100">
+                                    <table className="w-full text-left text-sm">
+                                      <thead className="bg-slate-50 text-xs text-slate-500">
+                                        <tr>
+                                          <th className="px-3 py-2 font-medium">Sản phẩm (SKU)</th>
+                                          <th className="px-3 py-2 font-medium">Ngày nhập</th>
+                                          <th className="px-3 py-2 text-right font-medium">Cần lấy</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100">
+                                        {stop.lines?.map((line, lIndex) => (
+                                          <tr key={lIndex}>
+                                            <td className="px-3 py-2 font-mono font-medium text-slate-800">{line.skuCode}</td>
+                                            <td className="px-3 py-2 text-slate-500">
+                                              {line.arrivalDate ? new Date(line.arrivalDate).toLocaleDateString('vi-VN') : '—'}
+                                            </td>
+                                            <td className="px-3 py-2 text-right font-bold text-emerald-700">
+                                              {line.quantity}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
                                   </div>
                                 </div>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  className="focus:ring-primary w-20 rounded-md border border-slate-200 bg-slate-50 p-1 text-center text-sm focus:ring-2 focus:outline-none"
-                                  value={allocations[loc.binId] || ''}
-                                  onChange={(e) => {
-                                    setAllocations((prev) => ({
-                                      ...prev,
-                                      [loc.binId]: e.target.value,
-                                    }))
-                                  }}
-                                />
                               </div>
-                              <div className="text-xs text-slate-500">
-                                Current Stock:{' '}
-                                <span className="font-semibold text-emerald-600">
-                                  {loc.quantity}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -615,7 +680,7 @@ const OutboundPage = () => {
                     <Button
                       type="submit"
                       isLoading={isSubmitting}
-                      disabled={!formSkuId || skuLocations.length === 0}
+                      disabled={!formSkuId || !previewData?.complete}
                     >
                       Confirm Outbound
                     </Button>
