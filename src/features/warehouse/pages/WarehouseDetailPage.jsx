@@ -54,37 +54,37 @@ const normalizePublicLayout = (payload = {}) => ({
   positions: Array.isArray(payload.positions) ? payload.positions.map(String) : [],
   racks: Array.isArray(payload.racks)
     ? payload.racks.map((rack) => ({
-        clientKey: createClientKey('rack'),
-        id: rack.id != null ? String(rack.id) : null,
-        name: rack.name ?? 'Rack',
-        code: rack.code != null ? String(rack.code) : '',
-        coordinateX: ensureNumber(rack.coordinateX, 0),
-        coordinateY: ensureNumber(rack.coordinateY, 0),
-        positionZ: ensureNumber(rack.positionZ, 0),
-        rotation: ensureNumber(rack.rotation, 0),
-        width: Math.max(ensureNumber(rack.width, 18), 4),
-        length: Math.max(ensureNumber(rack.length, 18), 4),
-        height: Math.max(ensureNumber(rack.height, 18), 4),
-        shelfCount: Math.max(ensureNumber(rack.shelfCount, 1), 1),
-        bins: Array.isArray(rack.bins)
-          ? rack.bins.map((bin) => ({
-              clientKey: createClientKey('bin'),
-              id: bin.id != null ? String(bin.id) : null,
-              name: bin.name ?? 'Bin',
-              code: bin.code != null ? String(bin.code) : '',
-              shelfLevel: Math.max(ensureNumber(bin.shelfLevel, 1), 1),
-              coordinateX: ensureNumber(bin.coordinateX, 0),
-              coordinateY: ensureNumber(bin.coordinateY, 0),
-              positionZ: ensureNumber(bin.positionZ, 0),
-              // Keep the same editor convention used by the 3D preview:
-              width: Math.max(ensureNumber(bin.width, 8), 4),
-              length: Math.max(ensureNumber(bin.length, 8), 4),
-              height: Math.max(ensureNumber(bin.height, 8), 4),
-              maxWeight: ensureNumber(bin.maxWeight, 0),
-              maxVolume: ensureNumber(bin.maxVolume, 0),
-            }))
-          : [],
-      }))
+      clientKey: createClientKey('rack'),
+      id: rack.id != null ? String(rack.id) : null,
+      name: rack.name ?? 'Rack',
+      code: rack.code != null ? String(rack.code) : '',
+      coordinateX: ensureNumber(rack.coordinateX, 0),
+      coordinateY: ensureNumber(rack.coordinateY, 0),
+      positionZ: ensureNumber(rack.positionZ, 0),
+      rotation: ensureNumber(rack.rotation, 0),
+      width: Math.max(ensureNumber(rack.width, 18), 4),
+      length: Math.max(ensureNumber(rack.length, 18), 4),
+      height: Math.max(ensureNumber(rack.height, 18), 4),
+      shelfCount: Math.max(ensureNumber(rack.shelfCount, 1), 1),
+      bins: Array.isArray(rack.bins)
+        ? rack.bins.map((bin) => ({
+          clientKey: createClientKey('bin'),
+          id: bin.id != null ? String(bin.id) : null,
+          name: bin.name ?? 'Bin',
+          code: bin.code != null ? String(bin.code) : '',
+          shelfLevel: Math.max(ensureNumber(bin.shelfLevel, 1), 1),
+          coordinateX: ensureNumber(bin.coordinateX, 0),
+          coordinateY: ensureNumber(bin.coordinateY, 0),
+          positionZ: ensureNumber(bin.positionZ, 0),
+          // Keep the same editor convention used by the 3D preview:
+          width: Math.max(ensureNumber(bin.width, 8), 4),
+          length: Math.max(ensureNumber(bin.length, 8), 4),
+          height: Math.max(ensureNumber(bin.height, 8), 4),
+          maxWeight: ensureNumber(bin.maxWeight, 0),
+          maxVolume: ensureNumber(bin.maxVolume, 0),
+        }))
+        : [],
+    }))
     : [],
 })
 
@@ -252,6 +252,7 @@ const WarehouseDetailPage = () => {
           <div className="flex flex-col gap-12 lg:flex-row">
             <WarehouseInfo
               warehouse={warehouse}
+              layout={layout}
               extendedData={extendedData}
               isAuthenticated={isAuthenticated}
             />

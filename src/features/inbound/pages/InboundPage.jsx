@@ -59,6 +59,7 @@ const InboundPage = () => {
   const [isCapacityLoading, setIsCapacityLoading] = useState(false)
   const [capacityRefreshKey, setCapacityRefreshKey] = useState(0)
   const [formNote, setFormNote] = useState('')
+  const [formSenderName, setFormSenderName] = useState('')
 
   const selectedSku = useMemo(
     () => skus.find((sku) => String(sku.id) === String(formSkuId)),
@@ -421,6 +422,7 @@ const InboundPage = () => {
       const payload = {
         warehouseId: selectedWarehouseId,
         type: 'INBOUND',
+        senderName: formSenderName,
         items: payloadItems,
       }
       await receiptApi.createReceipt(payload)
@@ -432,6 +434,7 @@ const InboundPage = () => {
       setFormTotalQuantity(1)
       setAllocations({})
       setFormNote('')
+      setFormSenderName('')
     } catch (error) {
       console.error('Error creating receipt:', error)
       showApiErrorToast(error, 'Could not create receipt.')
@@ -698,7 +701,7 @@ const InboundPage = () => {
                                 <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                                   <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-primary font-medium">{r.id.substring(0,8).toUpperCase()}</td>
-                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-500">—</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-500">{r.senderName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-700">{r.createdByFullName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 whitespace-normal min-w-[200px]">{itemName}</td>
                                   <td className="px-4 py-3 border-r border-slate-100">{new Date(r.createdAt).toLocaleDateString('vi-VN')}</td>
@@ -801,6 +804,15 @@ const InboundPage = () => {
                         required
                         value={formTotalQuantity}
                         onChange={(e) => setFormTotalQuantity(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 col-span-2">
+                      <label className="text-sm font-medium text-slate-700">Tên nơi gửi (Sender Name)</label>
+                      <InputField
+                        placeholder="Ví dụ: Nhà cung cấp A"
+                        value={formSenderName}
+                        onChange={(e) => setFormSenderName(e.target.value)}
                       />
                     </div>
                   </div>

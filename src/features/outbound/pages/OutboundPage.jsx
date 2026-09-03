@@ -50,6 +50,7 @@ const OutboundPage = () => {
   const [formSkuId, setFormSkuId] = useState('')
   const [formTotalQuantity, setFormTotalQuantity] = useState(1)
   const [formNote, setFormNote] = useState('')
+  const [formReceiverName, setFormReceiverName] = useState('')
   const [previewData, setPreviewData] = useState(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
 
@@ -218,6 +219,7 @@ const OutboundPage = () => {
       const payload = {
         warehouseId: selectedWarehouseId,
         type: 'OUTBOUND',
+        receiverName: formReceiverName,
         items: [
           {
             skuId: formSkuId,
@@ -234,6 +236,7 @@ const OutboundPage = () => {
       setFormSkuId('')
       setFormTotalQuantity(1)
       setFormNote('')
+      setFormReceiverName('')
       setPreviewData(null)
     } catch (error) {
       console.error('Error creating receipt:', error)
@@ -466,7 +469,7 @@ const OutboundPage = () => {
                                 <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                                   <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-primary font-medium">{r.id.substring(0,8).toUpperCase()}</td>
-                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-500">—</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-500">{r.receiverName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-700">{r.createdByFullName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 whitespace-normal min-w-[200px]">{itemName}</td>
                                   <td className="px-4 py-3 border-r border-slate-100">{new Date(r.createdAt).toLocaleDateString('vi-VN')}</td>
@@ -575,6 +578,15 @@ const OutboundPage = () => {
                           setFormTotalQuantity(value)
                           setPreviewData(null)
                         }}
+                      />
+                    </div>
+
+                    <div className="space-y-1.5 col-span-2">
+                      <label className="text-sm font-medium text-slate-700">Tên nơi nhận (Receiver Name)</label>
+                      <InputField
+                        placeholder="Ví dụ: Khách hàng B"
+                        value={formReceiverName}
+                        onChange={(e) => setFormReceiverName(e.target.value)}
                       />
                     </div>
                   </div>

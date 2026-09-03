@@ -1,9 +1,16 @@
-import { MapPin, CheckCircle2, Phone } from 'lucide-react'
+import { MapPin, CheckCircle2, Phone, Maximize, Ruler, Square, MoveVertical } from 'lucide-react'
 import Badge from '@/components/atoms/Badge'
 import Avatar from '@/components/atoms/Avatar'
 import TranslatableText from '@/components/TranslatableText'
 
-const WarehouseInfo = ({ warehouse, extendedData }) => {
+const WarehouseInfo = ({ warehouse, layout, extendedData }) => {
+  const stats = [
+    { label: 'Diện Tích / Sức chứa', value: `${warehouse.area || 0} m² / ${warehouse.capacity || warehouse.area || 0} units`, icon: Maximize },
+    { label: 'Chiều Rộng', value: `${layout?.width || 0} m`, icon: Ruler },
+    { label: 'Chiều Dài', value: `${layout?.length || 0} m`, icon: Square },
+    { label: 'Chiều Cao', value: `${layout?.height || 0} m`, icon: MoveVertical },
+  ]
+
   return (
     <div className="flex-1 space-y-12">
       <section>
@@ -22,7 +29,7 @@ const WarehouseInfo = ({ warehouse, extendedData }) => {
         </div>
 
         <div className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-4">
-          {[].map((item, idx) => (
+          {stats.map((item, idx) => (
             <div key={idx} className="flex flex-col gap-2">
               <div className="text-primary flex h-10 w-10 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
                 <item.icon size={20} />
