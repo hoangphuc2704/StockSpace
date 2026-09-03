@@ -1,120 +1,72 @@
-import { useCallback, useState, useEffect } from 'react'
-import { Search, Filter, Download, Upload, Eye, ArrowUpDown, Package, FileText } from 'lucide-react'
-import { motion } from 'framer-motion'
-import DataTable from '@/components/organisms/DataTable'
-import Badge from '@/components/atoms/Badge'
-import Button from '@/components/atoms/Button'
-import TableActionMenu from '@/components/TableActionMenu'
-import InputField from '@/components/atoms/InputField'
-import Drawer from '@/components/organisms/Drawer'
-import Modal from '@/components/organisms/Modal'
+import React, { useCallback, useState, useEffect, useMemo } from 'react'
+import { Search, ChevronDown, ChevronRight, Warehouse, Map as MapIcon, Loader2, LayoutGrid, ListTree, PackageSearch, History } from 'lucide-react'
+import { useSelector, useDispatch } from 'react-redux'
 import Header from '@/components/HeaderDashboard'
 import Sidebar from '@/components/SideBar'
-import { useSelector, useDispatch } from 'react-redux'
-import { closeMobileSidebar } from '@/store/uiSlide'
-import productApi from '../../../services/wms/productApi'
 import stockApi from '../../../services/wms/stockApi'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import layoutApi from '../../../services/layoutApi'
-import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
+import Modal from '@/components/organisms/Modal'
+import DataTable from '@/components/organisms/DataTable'
 
 const InventoryPage = () => {
-  const [products, setProducts] = useState([])
-  const [selectedProduct, setSelectedProduct] = useState(null)
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isDetailsLoading, setIsDetailsLoading] = useState(false)
-  const [warehouses, setWarehouses] = useState([])
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
-  const [accessError, setAccessError] = useState('')
-  const [capacity, setCapacity] = useState(null)
-
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
-  const [historyBatchId, setHistoryBatchId] = useState(null)
-  const [batchHistory, setBatchHistory] = useState([])
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
-
-  const handleViewHistory = async (batchId) => {
-    setIsHistoryModalOpen(true)
-    setHistoryBatchId(batchId)
-    setIsHistoryLoading(true)
-    try {
-      const res = await stockApi.getStockTransactions(batchId)
-      setBatchHistory(res.data?.data?.content || [])
-    } catch (err) {
-      showApiErrorToast(err, 'Could not load batch history.')
-    } finally {
-      setIsHistoryLoading(false)
-    }
-  }
-
   const dispatch = useDispatch()
-  const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  const { isSidebarExpanded } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
+
+  const [isLoading, setIsLoading] = useState(true)
+  const [warehouses, setWarehouses] = useState([])
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
+  const [layout, setLayout] = useState(null)
+  const [allStock, setAllStock] = useState([])
+  
+  // { type: 'all' | 'rack' | 'bin', id: null }
+  const [selectedLocation, setSelectedLocation] = useState({ type: 'all', id: null })
+  
+  // Expanded SKU rows
+  const [expandedSkus, setExpandedSkus] = useState(new Set())
+  
+  // Search filters
+  const [locationSearch, setLocationSearch] = useState('')
+  const [productSearch, setProductSearch] = useState('')
+
+  // History Modal
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [batchHistory, setBatchHistory] = useState([])
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
 
   const loadWarehouses = useCallback(async () => {
     try {
       const res = await warehouseApi.getMyWarehouses()
-      const payload = res.data?.data || []
-      const list = Array.isArray(payload) ? payload : payload?.content || []
+      const list = res.data?.data?.content || res.data?.data || []
       setWarehouses(list)
       setSelectedWarehouseId((current) =>
-        list.some((warehouse) => String(warehouse.id) === String(current))
-          ? current
-          : list[0]?.id || ''
+        list.some((w) => String(w.id) === String(current)) ? current : list[0]?.id || ''
       )
       if (!list.length) setIsLoading(false)
       return list
     } catch (error) {
-      console.error('Error loading warehouses:', error)
-      showApiErrorToast(error, 'Could not load warehouses.')
+      showApiErrorToast(error, 'Không thể tải danh sách kho.')
       setIsLoading(false)
       return null
     }
   }, [])
 
-  const fetchInventoryOverview = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!selectedWarehouseId) return
+    setIsLoading(true)
     try {
-      setIsLoading(true)
-      setAccessError('')
-      
-      const [stockRes, capRes] = await Promise.all([
-        stockApi.getStockOverview(selectedWarehouseId, { page: 0, size: 50 }),
-        layoutApi.getCapacity(selectedWarehouseId)
+      const [layoutRes, stockRes] = await Promise.all([
+        layoutApi.getTenantWarehouseLayout(selectedWarehouseId),
+        stockApi.getAllStock(selectedWarehouseId)
       ])
       
-      setCapacity(capRes.data?.data)
-
-      const content = stockRes.data?.data?.content || []
-      
-      const enrichedSkus = content.map((item) => {
-        const qty = item.totalQuantity || 0
-        let status = 'OUT_OF_STOCK'
-        if (qty > 0) status = qty > 10 ? 'IN_STOCK' : 'LOW_STOCK'
-
-        return {
-          ...item,
-          qty,
-          status,
-          name: item.skuName, // Map backend skuName to UI name
-        }
-      })
-      
-      setProducts(enrichedSkus)
+      setLayout(layoutRes.data?.data || null)
+      setAllStock(Array.isArray(stockRes) ? stockRes : stockRes.data?.data?.content || [])
     } catch (error) {
-      console.error('Error fetching inventory or capacity:', error)
-      if (error.response?.status === 403) {
-        setProducts([])
-        setCapacity(null)
-        setAccessError(
-          'This rental contract has expired or access to the selected warehouse was revoked.'
-        )
-      } else {
-        showApiErrorToast(error, 'Could not load inventory.')
-      }
+      showApiErrorToast(error, 'Lỗi tải dữ liệu tồn kho.')
     } finally {
       setIsLoading(false)
     }
@@ -125,442 +77,365 @@ const InventoryPage = () => {
   }, [loadWarehouses])
 
   useEffect(() => {
-    fetchInventoryOverview()
-  }, [fetchInventoryOverview])
+    fetchData()
+  }, [fetchData])
 
-  // The expiry scheduler changes the active warehouse/stock scope on the BE.
-  // Re-fetch both resources when the realtime RENTAL event arrives.
-  useEffect(() => {
-    const handleRentalNotification = async (event) => {
-      if (String(event.detail?.type || '').toUpperCase() !== 'RENTAL') return
-
-      const previousWarehouseId = selectedWarehouseId
-      const list = await loadWarehouses()
-      fetchInventoryOverview()
-      if (
-        previousWarehouseId &&
-        Array.isArray(list) &&
-        !list.some((warehouse) => String(warehouse.id) === String(previousWarehouseId))
-      ) {
-        setAccessError('This rental contract has expired or access to the selected warehouse was revoked.')
+  // Lọc và Nhóm dữ liệu
+  const groupedStock = useMemo(() => {
+    const filtered = allStock.filter(batch => {
+      // 1. Filter by location
+      if (selectedLocation.type === 'rack' && batch.rackId !== selectedLocation.id) return false
+      if (selectedLocation.type === 'bin' && batch.binId !== selectedLocation.id) return false
+      
+      // 2. Filter by product search
+      if (productSearch) {
+        const search = productSearch.toLowerCase()
+        if (
+          !batch.skuCode?.toLowerCase().includes(search) &&
+          !batch.skuName?.toLowerCase().includes(search) &&
+          !batch.id?.toLowerCase().includes(search)
+        ) {
+          return false
+        }
       }
+      return true
+    })
+
+    const groups = filtered.reduce((acc, batch) => {
+      if (!acc[batch.skuId]) {
+        acc[batch.skuId] = {
+          skuId: batch.skuId,
+          skuCode: batch.skuCode,
+          skuName: batch.skuName,
+          uomName: batch.uomName,
+          totalQuantity: 0,
+          rackNames: new Set(),
+          binNames: new Set(),
+          batches: []
+        }
+      }
+      acc[batch.skuId].totalQuantity += batch.quantity
+      if (batch.rackName) acc[batch.skuId].rackNames.add(batch.rackName)
+      if (batch.binName) acc[batch.skuId].binNames.add(batch.binName)
+      acc[batch.skuId].batches.push(batch)
+      return acc
+    }, {})
+
+    return Object.values(groups).sort((a, b) => a.skuCode.localeCompare(b.skuCode))
+  }, [allStock, selectedLocation, productSearch])
+
+  const toggleExpand = (skuId) => {
+    const newExpanded = new Set(expandedSkus)
+    if (newExpanded.has(skuId)) {
+      newExpanded.delete(skuId)
+    } else {
+      newExpanded.add(skuId)
     }
+    setExpandedSkus(newExpanded)
+  }
 
-    window.addEventListener('new_notification', handleRentalNotification)
-    return () => window.removeEventListener('new_notification', handleRentalNotification)
-  }, [fetchInventoryOverview, loadWarehouses, selectedWarehouseId])
-
-  const handleViewDetails = async (product) => {
-    setSelectedProduct(product)
-    setIsDrawerOpen(true)
-    setIsDetailsLoading(true)
-
+  const handleViewHistory = async (batchId) => {
+    setIsHistoryModalOpen(true)
+    setIsHistoryLoading(true)
     try {
-      const stockRes = await stockApi.getStockBySku(product.skuId)
-      const stockData = stockRes.data?.data
-      
-      let batches = []
-      if (Array.isArray(stockData)) {
-        batches = stockData
-      } else {
-        batches = stockData?.locations || stockData?.batches || stockData?.stockBatches || stockData?.content || []
-      }
-      
-      // Lọc các batches theo warehouse đang chọn
-      batches = batches.filter(b => b.warehouseId === selectedWarehouseId)
-      
-      setSelectedProduct(prev => ({ ...prev, batches }))
+      const res = await stockApi.getStockTransactions(batchId)
+      setBatchHistory(res.data?.data?.content || [])
     } catch (err) {
-      console.error('Error loading stock batches', err)
-      if (err.response?.status === 403) {
-        setAccessError(
-          'This rental contract has expired or access to the selected warehouse was revoked.'
-        )
-      } else {
-        showApiErrorToast(error, 'Could not load stock batches.')
-      }
+      showApiErrorToast(err, 'Lỗi khi tải lịch sử giao dịch.')
     } finally {
-      setIsDetailsLoading(false)
+      setIsHistoryLoading(false)
     }
   }
 
-  const columns = [
-    {
-      header: 'Product',
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-slate-100">
-            <Package className="h-5 w-5 text-slate-400" />
-          </div>
-          <div>
-            <p className="font-bold text-slate-900">{row.name}</p>
-            <p className="text-xs text-slate-500">{row.skuCode}</p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      header: 'Category',
-      render: (row) => row.categoryName,
-    },
-    {
-      header: 'Quantity',
-      render: (row) => <span className="font-medium text-slate-900">{row.qty} Units</span>,
-    },
-    {
-      header: 'Status',
-      render: (row) => (
-        <Badge
-          variant={
-            row.status === 'IN_STOCK'
-              ? 'success'
-              : row.status === 'LOW_STOCK'
-                ? 'warning'
-                : 'danger'
-          }
-        >
-          {row.status.replace('_', ' ')}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Actions',
-      render: (row) => (
-        <TableActionMenu
-          items={[
-            {
-              label: 'View details',
-              icon: Eye,
-              onClick: () => handleViewDetails(row),
-            },
-          ]}
-        />
-      ),
-    },
-  ]
+  // Lọc Racks/Bins cho Tree View
+  const treeRacks = useMemo(() => {
+    if (!layout?.racks) return []
+    if (!locationSearch) return layout.racks
+    
+    const search = locationSearch.toLowerCase()
+    return layout.racks.map(rack => {
+      const rackMatches = rack.name?.toLowerCase().includes(search) || rack.code?.toLowerCase().includes(search)
+      const matchingBins = rack.bins?.filter(bin => 
+        bin.name?.toLowerCase().includes(search) || bin.code?.toLowerCase().includes(search)
+      ) || []
+      
+      if (rackMatches || matchingBins.length > 0) {
+        return { ...rack, bins: matchingBins }
+      }
+      return null
+    }).filter(Boolean)
+  }, [layout, locationSearch])
 
-  const historyColumns = [
-    {
-      header: 'Date',
-      render: (row) => new Date(row.createdAt).toLocaleString(),
-    },
-    {
-      header: 'Type',
-      render: (row) => {
-        const isPositive = Number(row.quantityChanged) > 0
-        return (
-          <Badge variant={isPositive ? 'success' : 'danger'}>{isPositive ? 'IN' : 'OUT'}</Badge>
-        )
-      },
-    },
-    {
-      header: 'Quantity',
-      render: (row) => {
-        const isPositive = Number(row.quantityChanged) > 0
-        return (
-          <span
-            className={isPositive ? 'font-medium text-emerald-600' : 'font-medium text-red-600'}
-          >
-            {isPositive ? '+' : ''}
-            {row.quantityChanged}
-          </span>
-        )
-      },
-    },
-    ...(currentRole === 'TENANT' || currentRole === 'STAFF'
-      ? []
-      : [
-          {
-            header: 'Receipt ID',
-            render: (row) => (
-              <span className="font-mono text-sm text-slate-500">
-                {row.receiptId ? String(row.receiptId).substring(0, 8) : 'N/A'}
-              </span>
-            ),
-          },
-        ]),
-  ]
-
+  // Render
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      <Header />
-
-      <div className="md:hidden">
-        {isMobileOpen && (
-          <button
-            className="fixed inset-0 z-40 bg-slate-900/30"
-            onClick={() => dispatch(closeMobileSidebar())}
-          />
-        )}
-      </div>
-
-      <div className="flex pt-14">
-        <Sidebar currentRole={currentRole} />
-
-        <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
-        >
-          <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex h-screen bg-slate-50 font-sans">
+      <Sidebar currentRole={currentRole} />
+      <div className={`flex flex-1 flex-col overflow-hidden transition-all duration-300 ${isSidebarExpanded ? 'ml-64' : 'ml-20'}`}>
+        <Header />
+        
+        <main className="flex-1 overflow-hidden p-4 md:p-6 pt-20 md:pt-24 flex flex-col gap-4">
+          {/* Top Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                <PackageSearch className="h-5 w-5" />
+              </div>
               <div>
-                <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
-                  <div className="rounded-lg bg-blue-500/10 p-2 text-blue-600">
-                    <Package className="h-6 w-6" />
-                  </div>
-                  Inventory Overview
-                </h1>
-                <p className="text-sm text-slate-500">
-                  Monitor stock levels and warehouse inventory in real-time.
-                </p>
+                <h1 className="text-xl font-bold text-slate-900">Quản lý Hàng Tồn Kho</h1>
+                <p className="text-sm text-slate-500">Xem chi tiết tồn kho theo sơ đồ vật lý</p>
               </div>
             </div>
-
-            {accessError && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-                {accessError}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <motion.div
-                whileHover={{ y: -2 }}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+            
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <select
+                className="w-full sm:w-64 h-10 rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                value={selectedWarehouseId}
+                onChange={(e) => {
+                  setSelectedWarehouseId(e.target.value)
+                  setSelectedLocation({ type: 'all', id: null })
+                }}
               >
-                <div className="flex items-center gap-4">
-                  <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
-                    <Package className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">Total Products</p>
-                    <p className="text-2xl font-bold text-slate-900">{products.length}</p>
-                  </div>
-                </div>
-              </motion.div>
-              <motion.div
-                whileHover={{ y: -2 }}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600">
-                    <ArrowUpDown className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">In Stock</p>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {products.filter((p) => p.status === 'IN_STOCK').length}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-              <motion.div
-                whileHover={{ y: -2 }}
-                className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="rounded-xl bg-amber-50 p-3 text-amber-600">
-                    <FileText className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">Low Stock</p>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {products.filter((p) => p.status === 'LOW_STOCK').length}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
+                {warehouses.map((w) => (
+                  <option key={w.id} value={w.id}>{w.name}</option>
+                ))}
+              </select>
             </div>
+          </div>
 
-            {/* Capacity Metrics */}
-            {capacity && !accessError && (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-bold text-slate-900">Weight Utilization</h3>
-                    <span className="text-sm font-bold text-slate-600">
-                      {Math.round(capacity.weightUtilizationPercent || 0)}%
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full bg-blue-500 transition-all duration-500"
-                      style={{ width: `${Math.min(capacity.weightUtilizationPercent || 0, 100)}%` }}
-                    />
-                  </div>
-                  <p className="mt-2 text-xs text-slate-500">
-                    {capacity.currentWeightKg?.toLocaleString()} / {capacity.maxWeightKg?.toLocaleString()} kg
-                  </p>
-                </div>
-                
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-bold text-slate-900">Volume Utilization</h3>
-                    <span className="text-sm font-bold text-slate-600">
-                      {Math.round(capacity.volumeUtilizationPercent || 0)}%
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full bg-emerald-500 transition-all duration-500"
-                      style={{ width: `${Math.min(capacity.volumeUtilizationPercent || 0, 100)}%` }}
-                    />
-                  </div>
-                  <p className="mt-2 text-xs text-slate-500">
-                    {capacity.currentVolumeM3?.toLocaleString()} / {capacity.maxVolumeM3?.toLocaleString()} m³
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="relative max-w-md flex-1">
-                  <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search products by name or SKU..."
-                    className="focus:border-primary focus:ring-primary w-full rounded-lg border border-slate-200 py-2 pr-4 pl-10 text-sm focus:ring-1 focus:outline-none"
+          {/* Split Pane Content */}
+          <div className="flex flex-1 overflow-hidden rounded-xl bg-white shadow-sm border border-slate-200">
+            
+            {/* LEFT PANE: Tree View */}
+            <div className="w-72 flex-shrink-0 border-r border-slate-200 bg-slate-50/30 flex flex-col hidden md:flex">
+              <div className="p-4 border-b border-slate-200 bg-white">
+                <div className="relative">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Tìm Dãy/Ô..." 
+                    value={locationSearch}
+                    onChange={(e) => setLocationSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
                   />
                 </div>
-                
-                <div className="flex items-center gap-2">
-                  <label htmlFor="warehouse-select" className="text-sm font-medium text-slate-700">
-                    Warehouse:
-                  </label>
-                  <select
-                    id="warehouse-select"
-                    value={selectedWarehouseId}
-                    onChange={(e) => setSelectedWarehouseId(e.target.value)}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    {warehouses.map((wh) => (
-                      <option key={wh.id} value={wh.id}>
-                        {wh.name}
-                      </option>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-3 space-y-1">
+                {isLoading && !layout ? (
+                  <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
+                ) : (
+                  <>
+                    {/* Root Node */}
+                    <button 
+                      onClick={() => setSelectedLocation({ type: 'all', id: null })}
+                      className={`w-full flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-medium transition-colors ${selectedLocation.type === 'all' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-700 hover:bg-slate-100'}`}
+                    >
+                      <Warehouse className="h-4 w-4 text-emerald-600" />
+                      [Tất cả] Kho Hàng
+                    </button>
+                    
+                    {/* Racks */}
+                    {treeRacks.map(rack => (
+                      <div key={rack.id} className="pl-4 mt-1">
+                        <button
+                          onClick={() => setSelectedLocation({ type: 'rack', id: rack.id })}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-colors ${selectedLocation.type === 'rack' && selectedLocation.id === rack.id ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-600 hover:bg-slate-100'}`}
+                        >
+                          <LayoutGrid className="h-4 w-4 text-slate-400" />
+                          {rack.name || rack.code}
+                        </button>
+                        
+                        {/* Bins */}
+                        {rack.bins?.map(bin => (
+                          <div key={bin.id} className="pl-6 mt-0.5 relative">
+                            {/* Tree line */}
+                            <div className="absolute left-3 top-0 w-px h-full bg-slate-200" />
+                            <div className="absolute left-3 top-1/2 w-3 h-px bg-slate-200" />
+                            
+                            <button
+                              onClick={() => setSelectedLocation({ type: 'bin', id: bin.id })}
+                              className={`w-full flex items-center gap-2 px-2 py-1 rounded-md text-sm transition-colors ${selectedLocation.type === 'bin' && selectedLocation.id === bin.id ? 'bg-emerald-50 text-emerald-700 font-medium' : 'text-slate-500 hover:bg-slate-100'}`}
+                            >
+                              <MapIcon className="h-3.5 w-3.5 text-slate-400" />
+                              {bin.name || bin.code}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     ))}
-                  </select>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* RIGHT PANE: Data Table */}
+            <div className="flex-1 flex flex-col overflow-hidden bg-white">
+              {/* Table Toolbar */}
+              <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <ListTree className="h-4 w-4" />
+                  <span>
+                    Đang xem: <strong className="text-slate-900">
+                      {selectedLocation.type === 'all' ? 'Tất cả vị trí' : 
+                       selectedLocation.type === 'rack' ? `Dãy ${treeRacks.find(r => r.id === selectedLocation.id)?.name || ''}` : 
+                       `Ô ${treeRacks.flatMap(r => r.bins).find(b => b?.id === selectedLocation.id)?.name || ''}`}
+                    </strong>
+                  </span>
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-100 text-xs font-medium text-slate-500">
+                    {groupedStock.length} Nhóm Sản Phẩm
+                  </span>
+                </div>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Tìm theo Mã/Tên sản phẩm..." 
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                  />
                 </div>
               </div>
+              
+              {/* Table Content */}
+              <div className="flex-1 overflow-auto">
+                {isLoading ? (
+                  <div className="flex h-full items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+                  </div>
+                ) : groupedStock.length === 0 ? (
+                  <div className="flex h-full flex-col items-center justify-center text-slate-500">
+                    <PackageSearch className="h-12 w-12 text-slate-300 mb-3" />
+                    <p>Không có hàng hóa nào tại vị trí này.</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-slate-50 text-slate-600 font-medium sticky top-0 z-10 shadow-sm">
+                      <tr>
+                        <th className="px-4 py-3 w-10"></th>
+                        <th className="px-4 py-3">Mã SKU</th>
+                        <th className="px-4 py-3">Tên sản phẩm</th>
+                        <th className="px-4 py-3">Đơn vị</th>
+                        <th className="px-4 py-3 text-right">Tổng số lượng</th>
+                        <th className="px-4 py-3 text-right">Khả dụng</th>
+                        <th className="px-4 py-3">Tên khu vực (Dãy)</th>
+                        <th className="px-4 py-3">Tên vị trí (Ô)</th>
+                        <th className="px-4 py-3"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {groupedStock.map(group => {
+                        const isExpanded = expandedSkus.has(group.skuId)
+                        const rackDisplay = group.rackNames.size > 1 ? `Nhiều dãy (${group.rackNames.size})` : [...group.rackNames][0] || '—'
+                        const binDisplay = group.binNames.size > 1 ? `Nhiều ô (${group.binNames.size})` : [...group.binNames][0] || '—'
 
-              <DataTable columns={columns} data={products} isLoading={isLoading} />
-
-              <Drawer
-                isOpen={isDrawerOpen}
-                onClose={() => setIsDrawerOpen(false)}
-                title="Product Details"
-                size="md"
-              >
-                {selectedProduct && (
-                  <div className="space-y-8">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
-                        <Package className="h-8 w-8 text-slate-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-900">{selectedProduct.name}</h3>
-                        <p className="font-mono text-sm text-slate-500">
-                          {selectedProduct.skuCode}
-                        </p>
-                        <div className="mt-2">
-                          <Badge
-                            variant={
-                              selectedProduct.status === 'IN_STOCK'
-                                ? 'success'
-                                : selectedProduct.status === 'LOW_STOCK'
-                                  ? 'warning'
-                                  : 'danger'
-                            }
-                          >
-                            {selectedProduct.status.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Category</p>
-                        <p className="font-semibold text-slate-900">
-                          {selectedProduct.categoryName}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-500">Current Stock</p>
-                        <p className="font-semibold text-slate-900">{selectedProduct.qty} Units</p>
-                      </div>
-                    </div>
-
-                    {selectedProduct.batches && selectedProduct.batches.length > 0 && (
-                      <div>
-                        <h4 className="mb-4 font-semibold text-slate-900">Stock Batches</h4>
-                        <div className="space-y-3">
-                          {selectedProduct.batches.map((batch) => (
-                            <div
-                              key={batch.batchId}
-                              className="flex items-center justify-between rounded-lg border border-slate-200 p-3"
+                        return (
+                          <React.Fragment key={group.skuId}>
+                            {/* Parent Row */}
+                            <tr 
+                              className={`hover:bg-emerald-50/50 cursor-pointer transition-colors ${isExpanded ? 'bg-slate-50/50' : ''}`}
+                              onClick={() => toggleExpand(group.skuId)}
                             >
-                              <div>
-                                <p className="text-sm font-medium text-slate-900">
-                                  {currentRole === 'STAFF'
-                                    ? `Batch: ${batch.batchId ? String(batch.batchId).substring(0, 8) : 'N/A'}...`
-                                    : 'Stock batch'}
-                                </p>
-                                <p className="text-xs text-slate-500">
-                                  Location:{' '}
-                                  {batch.warehouseName
-                                    ? `${batch.warehouseName} / ${batch.rackName} / ${batch.binName}`
-                                    : 'N/A'}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <span className="font-bold text-slate-900">
-                                  {batch.quantity} units
+                              <td className="px-4 py-3 text-slate-400">
+                                {isExpanded ? <ChevronDown className="h-5 w-5 text-emerald-600" /> : <ChevronRight className="h-5 w-5" />}
+                              </td>
+                              <td className="px-4 py-3 font-medium text-slate-900">{group.skuCode}</td>
+                              <td className="px-4 py-3 font-medium text-slate-700 whitespace-normal min-w-[200px]">{group.skuName}</td>
+                              <td className="px-4 py-3 text-slate-500">{group.uomName}</td>
+                              <td className="px-4 py-3 text-right font-bold text-emerald-600">{group.totalQuantity}</td>
+                              <td className="px-4 py-3 text-right font-medium text-slate-700">{group.totalQuantity}</td>
+                              <td className="px-4 py-3 text-slate-600">{rackDisplay}</td>
+                              <td className="px-4 py-3 text-slate-600">{binDisplay}</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-xs font-medium text-slate-600">
+                                  {group.batches.length}
                                 </span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleViewHistory(batch.batchId)}
-                                >
-                                  History
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Drawer>
+                              </td>
+                            </tr>
 
-              <Modal
-                isOpen={isHistoryModalOpen}
-                onClose={() => setIsHistoryModalOpen(false)}
-                title="Batch Transaction History"
-                size="lg"
-              >
-                <div className="space-y-4">
-                  {isHistoryLoading ? (
-                    <div className="flex justify-center py-8 text-slate-400">
-                      Loading history...
-                    </div>
-                  ) : batchHistory.length === 0 ? (
-                    <div className="flex justify-center py-8 text-slate-500">
-                      No transaction history found for this batch.
-                    </div>
-                  ) : (
-                    <DataTable columns={historyColumns} data={batchHistory} />
-                  )}
-                  <div className="flex justify-end pt-4">
-                    <Button onClick={() => setIsHistoryModalOpen(false)}>Close</Button>
-                  </div>
-                </div>
-              </Modal>
+                            {/* Child Rows (Batches) */}
+                            {isExpanded && group.batches.map(batch => (
+                              <tr key={batch.id} className="bg-slate-50/80 border-b border-white text-slate-600">
+                                <td className="px-4 py-2.5"></td>
+                                <td className="px-4 py-2.5 relative">
+                                  {/* Tree Connector Line */}
+                                  <div className="absolute -left-6 top-0 w-px h-full bg-slate-200" />
+                                  <div className="absolute -left-6 top-1/2 w-4 h-px bg-slate-200" />
+                                  
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-mono text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                      {batch.id.substring(0, 8).toUpperCase()}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td colSpan={2} className="px-4 py-2.5 text-slate-500 text-sm whitespace-normal">
+                                  Ngày nhập: <span className="font-medium text-slate-700">{batch.arrivalDate ? new Date(batch.arrivalDate).toLocaleDateString('vi-VN') : '—'}</span>
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-medium text-slate-700">{batch.quantity}</td>
+                                <td className="px-4 py-2.5 text-right font-medium text-slate-700">{batch.quantity}</td>
+                                <td className="px-4 py-2.5 text-sm">{batch.rackName || '—'}</td>
+                                <td className="px-4 py-2.5 text-sm">{batch.binName || '—'}</td>
+                                <td className="px-4 py-2.5 text-right">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleViewHistory(batch.id)
+                                    }}
+                                    className="flex items-center justify-center p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors ml-auto"
+                                    title="Lịch sử giao dịch"
+                                  >
+                                    <History className="h-4 w-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </React.Fragment>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
-          </main>
-        </div>
+            
+          </div>
+        </main>
       </div>
+
+      {/* History Modal */}
+      <Modal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        title="Lịch sử Lô hàng"
+        className="max-w-4xl"
+      >
+        {isHistoryLoading ? (
+          <div className="flex h-32 items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+          </div>
+        ) : (
+          <DataTable
+            columns={[
+              { header: 'Ngày', render: (row) => new Date(row.createdAt).toLocaleString('vi-VN') },
+              { header: 'Loại', render: (row) => (
+                  <span className={`px-2 py-1 rounded-md text-xs font-medium ${row.quantityChanged > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {row.quantityChanged > 0 ? 'IN' : 'OUT'}
+                  </span>
+                )
+              },
+              { header: 'Thay đổi', render: (row) => (
+                  <span className={`font-bold ${row.quantityChanged > 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {row.quantityChanged > 0 ? '+' : ''}{row.quantityChanged}
+                  </span>
+                )
+              },
+              { header: 'Mã phiếu', render: (row) => row.receiptId ? row.receiptId.substring(0,8).toUpperCase() : '—' }
+            ]}
+            data={batchHistory}
+          />
+        )}
+      </Modal>
+
     </div>
   )
 }

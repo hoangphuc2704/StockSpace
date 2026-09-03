@@ -34,6 +34,16 @@ const receiptApi = {
       params: { warehouseId, type },
       responseType: 'blob'
     })
+  },
+
+  // Xem trước danh sách pick list (OUTBOUND)
+  getPickListSuggestions: (data) => {
+    return api.post('/tenant/inventory/picking/suggestions', data)
+  },
+
+  // Tính toán lại pick list nếu bị lỗi stale
+  replanPickList: (id) => {
+    return api.post(`/tenant/inventory/receipts/${id}/picking/replan`)
   }
 }
 
