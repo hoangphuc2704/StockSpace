@@ -29,6 +29,7 @@ import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import NotificationDropdown from '@/components/NotificationDropdown'
 import { required } from '@/config/validation'
 
 // ─── Enum / Constants từ BE ─────────────────────────────────────────────────
@@ -392,6 +393,9 @@ const AdminWithdrawalsPage = () => {
               StockSpace Admin
             </span>
           </div>
+        </div>
+        <div className="ml-auto flex items-center">
+          <NotificationDropdown />
         </div>
       </header>
 

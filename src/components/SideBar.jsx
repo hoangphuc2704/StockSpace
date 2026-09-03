@@ -159,16 +159,13 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
       {/* Nút Đăng xuất */}
       <div className="border-t border-slate-100 py-3">
         <button
-          // ✅ [HEAD] Gọi logoutThunk để logout đúng cách rồi navigate về '/'
-          onClick={async () => {
-            await dispatch(logoutThunk())
-            navigate('/')
+          // Logout locally and navigate immediately; the thunk also clears the
+          // refresh-token cookie through the API in the background.
+          onClick={() => {
+            dispatch(logoutThunk())
+            dispatch(closeMobileSidebar())
+            navigate('/', { replace: true })
           }}
-          // ❌ [origin/owner] - Chỉ đóng sidebar và navigate '/login', không logout
-          // onClick={() => {
-          //   dispatch(closeMobileSidebar())
-          //   navigate('/login')
-          // }}
 
           className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${isSidebarExpanded
             ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'

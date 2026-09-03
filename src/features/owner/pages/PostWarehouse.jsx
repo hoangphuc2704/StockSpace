@@ -19,6 +19,7 @@ import {
 import Button from '../../../components/atoms/Button'
 import TranslatableText from '../../../components/TranslatableText'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import NotificationDropdown from '@/components/NotificationDropdown'
 import ownerApi from '../../../services/warehouse/warehouseApi'
 import addressApi from '../../../services/addressApi'
 
@@ -205,8 +206,20 @@ const CreateWarehouse = () => {
   return (
     <div className="min-h-screen bg-[#fffaf7] font-sans text-slate-900">
       {/* HEADER */}
-      <header className="fixed top-0 right-0 left-0 z-50 flex h-16 items-center justify-center border-b border-[#f8dfcf] bg-white px-6 shadow-[0_1px_0_#f97316]">
-        <img src={logoDaidien} alt="StockSpace Logo" className="h-10 w-16 object-contain" />
+      <header className="fixed top-0 right-0 left-0 z-50 flex h-16 items-center justify-between border-b border-[#f8dfcf] bg-white px-6 shadow-[0_1px_0_#f97316]">
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            aria-label="Back to landing page"
+            className="block rounded-lg p-1 transition hover:bg-orange-50"
+          >
+            <img src={logoDaidien} alt="StockSpace Logo" className="h-10 w-16 object-contain" />
+          </button>
+        </div>
+        <div className="ml-auto flex items-center">
+          <NotificationDropdown />
+        </div>
       </header>
 
       {/* MAIN CONTENT */}

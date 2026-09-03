@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   XCircle,
   ExternalLink,
-  Menu,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -28,9 +27,9 @@ import TableActionMenu from '@/components/TableActionMenu'
 
 // Import Sidebar và Logo từ hệ thống của bạn
 import Sidebar from '../../../components/SideBar'
-import logoDaidien from '../../../assets/logoDaidien.png'
+import Header from '../../../components/HeaderDashboard'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
-import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
+import { closeMobileSidebar } from '../../../store/uiSlide'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
@@ -244,27 +243,7 @@ const WarehouseManagement = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* GLOBAL HEADER */}
-      <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => dispatch(toggleSidebar())}
-            className="rounded-full p-2 text-slate-700 transition-colors hover:bg-slate-100 active:bg-slate-200"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <div className="flex cursor-pointer items-center gap-2">
-            <div className="shrink-0 rounded-lg bg-white p-1.5">
-              <a href="/" aria-label="Back to landing page">
-                <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
-              </a>
-            </div>
-            <span className="font-display text-xl font-bold tracking-tight text-slate-950">
-              StockSpace Owner
-            </span>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* MOBILE OVERLAY */}
       <div className="md:hidden">
@@ -284,7 +263,7 @@ const WarehouseManagement = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-312.5 space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-4000 space-y-6 p-6 md:p-8">
             {/* TIÊU ĐỀ TRANG */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>

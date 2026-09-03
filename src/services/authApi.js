@@ -9,8 +9,10 @@ export const authApi = {
     const response = await api.post('/auth/register', userData)
     return response.data
   },
-  logout: async () => {
-    const response = await api.post('/auth/logout')
+  logout: async (accessToken) => {
+    const response = await api.post('/auth/logout', null, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    })
     return response.data
   },
   logoutAll: async () => {

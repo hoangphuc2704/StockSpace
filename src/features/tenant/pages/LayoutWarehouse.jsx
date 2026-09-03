@@ -2221,6 +2221,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       if (image.file) formPayload.append('files', image.file)
     })
 
+    console.log('[StockSpace] create warehouse payload:', warehouseInfo)
     const response = await warehouseApi.createWarehouse(formPayload)
     if (!response?.data?.success) {
       throw new Error(response?.data?.message || 'Could not create warehouse.')

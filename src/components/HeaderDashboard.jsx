@@ -16,8 +16,6 @@ const Header = () => {
       user.role.replace('ROLE_', '').slice(1).toLowerCase()
     : 'Owner'
 
-  const isTenant = user?.role === 'ROLE_TENANT'
-
   return (
     <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
       <div className="flex items-center gap-4">
@@ -30,16 +28,14 @@ const Header = () => {
         </button>
 
         <div
-          className={`flex items-center gap-2 ${isTenant ? 'cursor-pointer' : ''}`}
-          onClick={() => {
-            if (isTenant) navigate('/')
-          }}
-          role={isTenant ? "link" : "presentation"}
-          tabIndex={isTenant ? 0 : undefined}
+          className="flex cursor-pointer items-center gap-2"
+          onClick={() => navigate('/')}
+          role="link"
+          tabIndex={0}
           onKeyDown={(event) => {
-            if (isTenant && (event.key === 'Enter' || event.key === ' ')) navigate('/')
+            if (event.key === 'Enter' || event.key === ' ') navigate('/')
           }}
-          aria-label={isTenant ? "Back to landing page" : undefined}
+          aria-label="Back to landing page"
         >
           <div className="shrink-0 rounded-lg bg-white p-1.5">
             <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
@@ -50,7 +46,7 @@ const Header = () => {
         </div>
       </div>
 
-      <div className="mr-24 flex items-center gap-2 sm:mr-28">
+      <div className="flex items-center gap-2">
         <NotificationDropdown />
       </div>
     </header>

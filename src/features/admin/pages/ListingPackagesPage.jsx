@@ -15,6 +15,7 @@ import { toast } from 'react-hot-toast'
 import Sidebar from '@/components/SideBar'
 import Button from '@/components/atoms/Button'
 import logoDaidien from '@/assets/logoDaidien.png'
+import NotificationDropdown from '@/components/NotificationDropdown'
 import listingApi from '@/services/listingApi'
 import { toggleSidebar, closeMobileSidebar } from '@/store/uiSlide'
 import { showApiErrorToast } from '@/config/apiError'
@@ -225,6 +226,9 @@ const ListingPackagesPage = () => {
           <span className="font-display text-xl font-bold tracking-tight text-slate-950">
             StockSpace Admin
           </span>
+        </div>
+        <div className="ml-auto flex items-center">
+          <NotificationDropdown />
         </div>
       </header>
       <div className="md:hidden">

@@ -29,6 +29,7 @@ import {
 import Button from '../../../components/atoms/Button'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import NotificationDropdown from '@/components/NotificationDropdown'
 
 const REVENUE_DATA = [
   { name: 'Jan', revenue: 4500, growth: 2400 },
@@ -82,6 +83,9 @@ const AnalyticsPage = () => {
               StockSpace Admin
             </span>
           </div>
+        </div>
+        <div className="ml-auto flex items-center">
+          <NotificationDropdown />
         </div>
       </header>
 

@@ -42,6 +42,7 @@ import Button from '../../../components/atoms/Button'
 import Avatar from '../../../components/atoms/Avatar'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import NotificationDropdown from '@/components/NotificationDropdown'
 import { validateUserForm, validateUserPasswordReset } from '@/config/validation'
 
 // ==================== HELPER ====================
@@ -492,6 +493,9 @@ const UserManagementPage = () => {
               StockSpace Admin
             </span>
           </div>
+        </div>
+        <div className="ml-auto flex items-center">
+          <NotificationDropdown />
         </div>
       </header>
 

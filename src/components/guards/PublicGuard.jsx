@@ -5,11 +5,9 @@ const PublicGuard = () => {
   const { user, isAuthenticated } = useSelector((state) => state.auth)
   const location = useLocation()
 
-  // Landing page is available to most roles, but OWNER is redirected to dashboard
+  // The landing page is also available to authenticated owners. This lets the
+  // dashboard logo and logout action return every role to the home page.
   if (location.pathname === '/') {
-    if (isAuthenticated && user?.role === 'ROLE_OWNER') {
-      return <Navigate to="/owner/dashboard" replace />
-    }
     return <Outlet />
   }
 

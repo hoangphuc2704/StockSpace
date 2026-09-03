@@ -21,6 +21,7 @@ import DataTable from '../../../components/organisms/DataTable'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import NotificationDropdown from '@/components/NotificationDropdown'
 
 // ─── Enum maps từ BE ─────────────────────────────────────────────────────────
 const TRANSACTION_TYPE_LABELS = {
@@ -227,6 +228,9 @@ const TransactionsPage = () => {
               StockSpace Admin
             </span>
           </div>
+        </div>
+        <div className="ml-auto flex items-center">
+          <NotificationDropdown />
         </div>
       </header>
 

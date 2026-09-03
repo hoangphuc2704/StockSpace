@@ -49,9 +49,14 @@ export const registerUser = createAsyncThunk(
   }
 )
 
-export const logoutThunk = createAsyncThunk('auth/logoutThunk', async () => {
+export const logoutThunk = createAsyncThunk('auth/logoutThunk', async (_, { dispatch }) => {
+  // Clear the client session before waiting for the API so navigation never
+  // leaves the user authenticated while the request is in flight.
+  const accessToken = localStorage.getItem('token')
+  dispatch(logout())
+
   try {
-    await authApi.logout()
+    await authApi.logout(accessToken)
   } catch (err) {
     console.error('Logout API error:', err)
     // Vẫn clear state dù API fail

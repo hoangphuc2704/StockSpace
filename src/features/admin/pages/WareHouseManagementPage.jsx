@@ -42,6 +42,7 @@ import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import Modal from '../../../components/organisms/Modal'
 import logoDaidien from '../../../assets/logoDaidien.png'
+import NotificationDropdown from '@/components/NotificationDropdown'
 import { toast } from 'react-hot-toast'
 import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
 
@@ -400,6 +401,9 @@ const WareHouseManagementPage = () => {
               StockSpace Admin
             </span>
           </div>
+        </div>
+        <div className="ml-auto flex items-center">
+          <NotificationDropdown />
         </div>
       </header>
 
