@@ -33,6 +33,8 @@ import productApi from '@/services/wms/productApi'
 import staffApi from '@/services/staff/staffApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import receiptApi from '@/services/wms/receiptApi'
+import notificationApi from '@/services/notificationApi'
+import stockApi from '@/services/wms/stockApi'
 import moment from 'moment'
 
 // ==================== MOCK DATA FOR CHARTS ====================
@@ -66,6 +68,7 @@ const TenantDashboard = () => {
     lowStock: 0, // Mocked for now due to API missing aggregated low stock endpoint
   })
   const [recentActivity, setRecentActivity] = useState([])
+  const [notifications, setNotifications] = useState([])
 
   useEffect(() => {
     fetchDashboardData()
@@ -91,6 +94,8 @@ const TenantDashboard = () => {
       // 3. Fetch first Warehouse to get recent receipts for Inbound Today & Activity Table
       let inboundTodayCount = 0
       let activityList = []
+      let lowStockCount = 0
+
       try {
         const whRes = await warehouseApi.getMyWarehouses()
         const warehouses = whRes.data?.data?.content || whRes.data?.data || []
@@ -114,16 +119,30 @@ const TenantDashboard = () => {
             time: moment(r.createdAt).fromNow(),
             status: r.status,
           }))
+
+          // Fetch low stock items from stock overview
+          const overviewRes = await stockApi.getStockOverview(firstWhId, { page: 0, size: 100 })
+          const overviews = overviewRes.data?.data?.content || []
+          lowStockCount = overviews.filter((o) => (Number(o.quantity) || 0) < 50).length
         }
       } catch (err) {
         console.error('Error fetching receipts/warehouses', err)
+      }
+
+      // 4. Fetch notifications
+      try {
+        const notifRes = await notificationApi.getMyNotifications({ page: 0, size: 5 })
+        const notifs = notifRes.data?.content || notifRes.data || []
+        setNotifications(notifs)
+      } catch (err) {
+        console.error('Error fetching notifications', err)
       }
 
       setStatsData({
         totalInventory,
         activeStaff,
         inboundToday: inboundTodayCount,
-        lowStock: 0, // Cannot compute efficiently without specific BE endpoint
+        lowStock: lowStockCount,
       })
       setRecentActivity(activityList)
     } catch (error) {
@@ -153,7 +172,7 @@ const TenantDashboard = () => {
       value: statsData.inboundToday.toString(),
       icon: ArrowDownLeft,
     },
-    { title: 'Low Stock Items', value: '-', icon: AlertTriangle },
+    { title: 'Low Stock Items', value: statsData.lowStock.toString(), icon: AlertTriangle },
   ]
 
   const columns = [
@@ -292,49 +311,32 @@ const TenantDashboard = () => {
                   <Bell className="h-5 w-5 text-slate-400" />
                 </div>
                 <div className="flex-1 space-y-4">
-                  {[
-                    {
-                      title: 'Low Stock Alert',
-                      msg: 'Solar Panels below 50 units',
-                      time: '10m ago',
-                      type: 'danger',
-                    },
-                    {
-                      title: 'New Inbound',
-                      msg: 'Shipment #1290 arrived',
-                      time: '1h ago',
-                      type: 'success',
-                    },
-                    {
-                      title: 'Staff Update',
-                      msg: 'John Doe checked in',
-                      time: '2h ago',
-                      type: 'info',
-                    },
-                  ].map((n, i) => (
+                  {notifications.length === 0 ? (
+                    <div className="py-8 text-center text-slate-500 text-sm">No notifications found.</div>
+                  ) : notifications.map((n, i) => (
                     <div
-                      key={i}
+                      key={n.id || i}
                       className="flex cursor-pointer gap-3 rounded-xl border border-transparent p-3 transition-colors hover:border-slate-100 hover:bg-slate-50"
                     >
                       <div
                         className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                          n.type === 'danger'
-                            ? 'bg-danger'
-                            : n.type === 'success'
-                              ? 'bg-success'
-                              : 'bg-primary'
+                          n.isRead === false
+                            ? 'bg-primary'
+                            : 'bg-slate-300'
                         }`}
                       />
                       <div>
-                        <p className="text-sm font-bold text-slate-900">{n.title}</p>
-                        <p className="text-xs text-slate-500">{n.msg}</p>
-                        <p className="mt-1 text-[10px] font-medium text-slate-400">{n.time}</p>
+                        <p className="text-sm font-bold text-slate-900">{n.title || n.message}</p>
+                        {n.title && n.message && n.message !== n.title && (
+                          <p className="text-xs text-slate-500">{n.message}</p>
+                        )}
+                        <p className="mt-1 text-[10px] font-medium text-slate-400">{moment(n.createdAt).fromNow()}</p>
                       </div>
                     </div>
                   ))}
                 </div>
-                <Button variant="ghost" size="sm" className="mt-4 w-full">
-                  View All Activity
+                <Button variant="ghost" size="sm" className="mt-4 w-full" onClick={() => navigate('/tenant/notifications')}>
+                  View All Notifications
                 </Button>
               </div>
             </div>
