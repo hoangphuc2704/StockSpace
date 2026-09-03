@@ -132,11 +132,11 @@ const isCurrentActiveContract = (contract) => {
   const endDate = contract.endDate ? new Date(`${contract.endDate}T23:59:59`) : null
   return Boolean(
     startDate &&
-      endDate &&
-      !Number.isNaN(startDate.getTime()) &&
-      !Number.isNaN(endDate.getTime()) &&
-      startDate <= today &&
-      endDate >= today
+    endDate &&
+    !Number.isNaN(startDate.getTime()) &&
+    !Number.isNaN(endDate.getTime()) &&
+    startDate <= today &&
+    endDate >= today
   )
 }
 const normalizeCreatedDimensions = (dimensions) => {
@@ -269,8 +269,7 @@ const getBinHeightForRack = (rack) => {
   return Number(clamp(levelHeight * 0.9, MIN_BIN_SIZE, rackHeight).toFixed(6))
 }
 
-const roundedCapacity = (value) =>
-  Math.floor(Math.max(numberOf(value), 0) * 1_000_000) / 1_000_000
+const roundedCapacity = (value) => Math.floor(Math.max(numberOf(value), 0) * 1_000_000) / 1_000_000
 
 const distributeRackCapacities = (rack) => {
   const levels = getRackLevelCount(rack)
@@ -301,12 +300,8 @@ const distributeRackCapacities = (rack) => {
           0,
           Math.max(numberOf(rack.height, MIN_ENTITY_SIZE) - binHeight, 0)
         ),
-        ...(levelWeight === null
-          ? {}
-          : { maxWeight: roundedCapacity(levelWeight / binCount) }),
-        ...(levelVolume === null
-          ? {}
-          : { maxVolume: roundedCapacity(levelVolume / binCount) }),
+        ...(levelWeight === null ? {} : { maxWeight: roundedCapacity(levelWeight / binCount) }),
+        ...(levelVolume === null ? {} : { maxVolume: roundedCapacity(levelVolume / binCount) }),
       }
     }),
   }
@@ -330,10 +325,7 @@ const normalizeRack = (rack = {}) => {
       width: Math.max(numberOf(source.width, 18), MIN_ENTITY_SIZE),
       length: Math.max(numberOf(source.length, 18), MIN_ENTITY_SIZE),
       height: Math.max(numberOf(source.height, 18), MIN_ENTITY_SIZE),
-      shelfCount: Math.max(
-        integerOf(source.shelfCount, DEFAULT_RACK_SHELF_COUNT),
-        1
-      ),
+      shelfCount: Math.max(integerOf(source.shelfCount, DEFAULT_RACK_SHELF_COUNT), 1),
       bins: Array.isArray(source.bins) ? source.bins.map(normalizeBin) : [],
     },
     // Preserve shelfLevel and coordinates returned by BE. New racks are arranged
@@ -479,8 +471,16 @@ const rotateBinsWithRack = (rack, nextRotation) => {
       ...bin,
       width: nextBinWidth,
       length: nextBinDepth,
-      coordinateX: clamp(nextCenterX - nextBinWidth / 2, 0, Math.max(nextRackWidth - nextBinWidth, 0)),
-      coordinateY: clamp(nextCenterY - nextBinDepth / 2, 0, Math.max(nextRackLength - nextBinDepth, 0)),
+      coordinateX: clamp(
+        nextCenterX - nextBinWidth / 2,
+        0,
+        Math.max(nextRackWidth - nextBinWidth, 0)
+      ),
+      coordinateY: clamp(
+        nextCenterY - nextBinDepth / 2,
+        0,
+        Math.max(nextRackLength - nextBinDepth, 0)
+      ),
     }
   })
 }
@@ -494,9 +494,7 @@ const fitBinsToRack = (rack, { arrange = false, arrangePositions = false } = {})
   const bins = Array.isArray(rack.bins) ? rack.bins : []
   const binsWithLevels = bins.map((bin, index) => ({
     ...bin,
-    shelfLevel: arrange
-      ? (index % levels) + 1
-      : clamp(integerOf(bin.shelfLevel, 1), 1, levels),
+    shelfLevel: arrange ? (index % levels) + 1 : clamp(integerOf(bin.shelfLevel, 1), 1, levels),
   }))
   const binsByLevel = binsWithLevels.reduce((groups, bin) => {
     const shelfLevel = bin.shelfLevel
@@ -559,11 +557,7 @@ const getRackSectionBin = (rack, bin) => {
     : numberOf(bin?.coordinateX)
 
   return {
-    coordinateX: clamp(
-      sectionCoordinateX,
-      0,
-      Math.max(rackWidth - sectionWidth, 0)
-    ),
+    coordinateX: clamp(sectionCoordinateX, 0, Math.max(rackWidth - sectionWidth, 0)),
     width: sectionWidth,
     usesRackLengthAsSectionWidth,
   }
@@ -609,8 +603,7 @@ const updateBin = (layout, binKey, updater) => ({
 const getSelected = (layout, selection = {}) => {
   const racks = Array.isArray(layout?.racks) ? layout.racks : []
   if (selection.type === 'layout') return layout
-  if (selection.type === 'rack')
-    return racks.find((rack) => rack.clientKey === selection.key)
+  if (selection.type === 'rack') return racks.find((rack) => rack.clientKey === selection.key)
   return racks
     .flatMap((rack) => (Array.isArray(rack?.bins) ? rack.bins : []))
     .find((bin) => bin?.clientKey === selection.key)
@@ -756,12 +749,8 @@ function RackElevationView({
       )
       const relativeY = clamp((event.clientY - rect.top) / rect.height, 0, 0.999999)
       const shelfLevel = clamp(drag.levels - Math.floor(relativeY * drag.levels), 1, drag.levels)
-      const coordinateX = drag.usesRackLengthAsSectionWidth
-        ? drag.coordinateX
-        : sectionCoordinateX
-      const coordinateY = drag.usesRackLengthAsSectionWidth
-        ? sectionCoordinateX
-        : drag.coordinateY
+      const coordinateX = drag.usesRackLengthAsSectionWidth ? drag.coordinateX : sectionCoordinateX
+      const coordinateY = drag.usesRackLengthAsSectionWidth ? sectionCoordinateX : drag.coordinateY
 
       onMoveBin(
         'bin',
@@ -817,7 +806,9 @@ function RackElevationView({
     <section className="mt-4 rounded-2xl border border-orange-100 bg-orange-50/40 p-3 shadow-[0_4px_20px_-2px_rgba(15,23,42,0.05)] transition-all duration-300 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold tracking-wider text-orange-600 uppercase">Mặt cắt Rack</p>
+          <p className="text-[11px] font-bold tracking-wider text-orange-600 uppercase">
+            Mặt cắt Rack
+          </p>
           <h3 className="mt-1 font-bold text-slate-900">{rack.name || rack.code || 'Rack'}</h3>
           <p className="mt-1 text-xs text-slate-500">
             Kéo Bin theo chiều ngang để đổi vị trí, kéo lên/xuống để đổi tầng. Tối đa{' '}
@@ -831,7 +822,7 @@ function RackElevationView({
               <select
                 value={clamp(integerOf(newBinShelfLevel, 1), 1, levels)}
                 onChange={(event) => onShelfLevelChange(integerOf(event.target.value, 1))}
-                className="mt-1 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 outline-none transition-all duration-200 focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+                className="mt-1 rounded-xl border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-slate-700 transition-all duration-200 outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
               >
                 {Array.from({ length: levels }, (_, index) => (
                   <option key={index + 1} value={index + 1}>
@@ -861,7 +852,7 @@ function RackElevationView({
       >
         <div
           data-rack-elevation-surface
-          className="absolute inset-y-3 left-8 right-3 rounded-xl border-x-4 border-slate-500 bg-white/85 shadow-sm sm:left-12"
+          className="absolute inset-y-3 right-3 left-8 rounded-xl border-x-4 border-slate-500 bg-white/85 shadow-sm sm:left-12"
         >
           {Array.from({ length: levels + 1 }, (_, index) => {
             const top = `${(index / levels) * 100}%`
@@ -892,24 +883,24 @@ function RackElevationView({
                 {binsOnLevel.map((bin) => {
                   const sectionBin = getRackSectionBin(rack, bin)
                   return (
-                  <button
-                    key={bin.clientKey}
-                    type="button"
-                    onPointerDown={(event) => startBinDrag(event, bin, event.currentTarget)}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onSelectBin(bin.clientKey)
-                    }}
-                    className={`absolute z-10 overflow-hidden rounded-lg border-2 px-1 text-left text-[10px] font-bold shadow-sm transition-all duration-200 ${selectedBinKey === bin.clientKey ? 'border-orange-500 bg-orange-400 text-white ring-4 ring-orange-100' : 'border-[#b8874d] bg-[#d8b17a] text-[#5b3b20] hover:bg-[#e5c894]'}`}
-                    style={{
-                      left: `${(sectionBin.coordinateX / rackWidth) * 100}%`,
-                      top: `${top}%`,
-                      width: `${clamp((sectionBin.width / rackWidth) * 100, 4, 98)}%`,
-                      height: `${Math.max(rowHeight * 0.7, 7)}%`,
-                    }}
-                  >
-                    <span className="block truncate">{bin.name || bin.code || 'Bin'}</span>
-                  </button>
+                    <button
+                      key={bin.clientKey}
+                      type="button"
+                      onPointerDown={(event) => startBinDrag(event, bin, event.currentTarget)}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        onSelectBin(bin.clientKey)
+                      }}
+                      className={`absolute z-10 overflow-hidden rounded-lg border-2 px-1 text-left text-[10px] font-bold shadow-sm transition-all duration-200 ${selectedBinKey === bin.clientKey ? 'border-orange-500 bg-orange-400 text-white ring-4 ring-orange-100' : 'border-[#b8874d] bg-[#d8b17a] text-[#5b3b20] hover:bg-[#e5c894]'}`}
+                      style={{
+                        left: `${(sectionBin.coordinateX / rackWidth) * 100}%`,
+                        top: `${top}%`,
+                        width: `${clamp((sectionBin.width / rackWidth) * 100, 4, 98)}%`,
+                        height: `${Math.max(rowHeight * 0.7, 7)}%`,
+                      }}
+                    >
+                      <span className="block truncate">{bin.name || bin.code || 'Bin'}</span>
+                    </button>
                   )
                 })}
               </div>
@@ -990,7 +981,9 @@ function RackStatisticsTable({
       </div>
 
       {racks.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-slate-500">Chưa có rack nào trong layout.</p>
+        <p className="px-5 py-8 text-center text-sm text-slate-500">
+          Chưa có rack nào trong layout.
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[980px] text-left text-sm">
@@ -1020,25 +1013,34 @@ function RackStatisticsTable({
                 return (
                   <tr
                     key={rack.clientKey || rack.id || `${rack.code}-${index}`}
-                    className="text-slate-700 odd:bg-white even:bg-slate-50/70 transition-colors duration-200 hover:bg-orange-50/70"
+                    className="text-slate-700 transition-colors duration-200 odd:bg-white even:bg-slate-50/70 hover:bg-orange-50/70"
                   >
                     <td className="px-4 py-3 font-semibold text-slate-400">{index + 1}</td>
                     <td className="px-4 py-3">
-                      <p className="font-bold text-slate-900">{rack.name || rack.code || `Rack ${index + 1}`}</p>
+                      <p className="font-bold text-slate-900">
+                        {rack.name || rack.code || `Rack ${index + 1}`}
+                      </p>
                       {rack.code && <p className="mt-0.5 text-xs text-slate-400">{rack.code}</p>}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{preset?.name || 'Rack tùy chỉnh'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {preset?.name || 'Rack tùy chỉnh'}
+                    </td>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">
                       {formatTableNumber(footprint.width)} × {formatTableNumber(footprint.length)} ×{' '}
                       {formatTableNumber(rack.height)} m
                     </td>
-                    <td className="px-4 py-3 text-center font-semibold">{getRackLevelCount(rack)}</td>
-                    <td className="px-4 py-3 text-center font-semibold">{rack.bins?.length || 0}</td>
+                    <td className="px-4 py-3 text-center font-semibold">
+                      {getRackLevelCount(rack)}
+                    </td>
+                    <td className="px-4 py-3 text-center font-semibold">
+                      {rack.bins?.length || 0}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {canEdit ? (
                         <div className="min-w-36">
                           <p className="text-xs text-slate-500">
-                            Hiện tại: {currentWeight == null ? '—' : `${formatTableNumber(currentWeight)} kg`}
+                            Hiện tại:{' '}
+                            {currentWeight == null ? '—' : `${formatTableNumber(currentWeight)} kg`}
                           </p>
                           <input
                             type="number"
@@ -1047,7 +1049,9 @@ function RackStatisticsTable({
                             value={getDraftValue(rack, 'maxWeight')}
                             placeholder="0 = không giới hạn"
                             aria-label={`Khối lượng tối đa của ${rack.name || rack.code || 'Rack'}`}
-                            onChange={(event) => setDraftValue(rack, 'maxWeight', event.target.value)}
+                            onChange={(event) =>
+                              setDraftValue(rack, 'maxWeight', event.target.value)
+                            }
                             onBlur={() => commitDraftValue(rack, 'maxWeight')}
                             className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
                           />
@@ -1058,7 +1062,9 @@ function RackStatisticsTable({
                           <span className="font-semibold">
                             {currentWeight == null ? '—' : `${formatTableNumber(currentWeight)} kg`}
                           </span>{' '}
-                          <span className="text-slate-400">/ {formatTableLimit(maxWeight, 'kg')}</span>
+                          <span className="text-slate-400">
+                            / {formatTableLimit(maxWeight, 'kg')}
+                          </span>
                         </>
                       )}
                     </td>
@@ -1066,7 +1072,8 @@ function RackStatisticsTable({
                       {canEdit ? (
                         <div className="min-w-36">
                           <p className="text-xs text-slate-500">
-                            Hiện tại: {currentVolume == null ? '—' : `${formatTableNumber(currentVolume)} m³`}
+                            Hiện tại:{' '}
+                            {currentVolume == null ? '—' : `${formatTableNumber(currentVolume)} m³`}
                           </p>
                           <input
                             type="number"
@@ -1075,7 +1082,9 @@ function RackStatisticsTable({
                             value={getDraftValue(rack, 'maxVolume')}
                             placeholder="0 = không giới hạn"
                             aria-label={`Thể tích tối đa của ${rack.name || rack.code || 'Rack'}`}
-                            onChange={(event) => setDraftValue(rack, 'maxVolume', event.target.value)}
+                            onChange={(event) =>
+                              setDraftValue(rack, 'maxVolume', event.target.value)
+                            }
                             onBlur={() => commitDraftValue(rack, 'maxVolume')}
                             className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
                           />
@@ -1086,7 +1095,9 @@ function RackStatisticsTable({
                           <span className="font-semibold">
                             {currentVolume == null ? '—' : `${formatTableNumber(currentVolume)} m³`}
                           </span>{' '}
-                          <span className="text-slate-400">/ {formatTableLimit(maxVolume, 'm³')}</span>
+                          <span className="text-slate-400">
+                            / {formatTableLimit(maxVolume, 'm³')}
+                          </span>
                         </>
                       )}
                     </td>
@@ -1138,11 +1149,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [tenantCapabilities, setTenantCapabilities] = useState({})
   const [preferredWarehouseId, setPreferredWarehouseId] = useState('')
   const [layout, setLayout] = useState(() => normalizeLayout(pendingDraftDimensions || {}))
-  const [selectedRackPresetId, setSelectedRackPresetId] = useState(RACK_PRESETS[1]?.id || 'standard')
-  const [newRackShelfCount, setNewRackShelfCount] = useState(DEFAULT_RACK_SHELF_COUNT)
-  const [rackPresetCapacities, setRackPresetCapacities] = useState(
-    createEmptyRackPresetCapacities
+  const [selectedRackPresetId, setSelectedRackPresetId] = useState(
+    RACK_PRESETS[1]?.id || 'standard'
   )
+  const [newRackShelfCount, setNewRackShelfCount] = useState(DEFAULT_RACK_SHELF_COUNT)
+  const [rackPresetCapacities, setRackPresetCapacities] = useState(createEmptyRackPresetCapacities)
   const [isRackConfigOpen, setIsRackConfigOpen] = useState(false)
   const [addMultipleRacks, setAddMultipleRacks] = useState(false)
   const [newRackQuantity, setNewRackQuantity] = useState(1)
@@ -1185,38 +1196,34 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     selectedItemsRef.current = selectedItems
   }, [selectedItems])
 
-  const updateSelection = useCallback(
-    (nextSelection, additive = false, forceSingle = false) => {
-      const normalized = {
-        type: nextSelection?.type || 'layout',
-        key: nextSelection?.key ?? nextSelection?.clientKey ?? null,
-      }
-      const currentItems = selectedItemsRef.current
-      const shouldSelectMany =
-        normalized.type !== 'layout' && normalized.key !== null && !forceSingle && additive
+  const updateSelection = useCallback((nextSelection, additive = false, forceSingle = false) => {
+    const normalized = {
+      type: nextSelection?.type || 'layout',
+      key: nextSelection?.key ?? nextSelection?.clientKey ?? null,
+    }
+    const currentItems = selectedItemsRef.current
+    const shouldSelectMany =
+      normalized.type !== 'layout' && normalized.key !== null && !forceSingle && additive
 
-      if (!shouldSelectMany) {
-        const nextItems =
-          normalized.type === 'layout' || normalized.key === null ? [] : [normalized]
-        selectedItemsRef.current = nextItems
-        setSelection(normalized)
-        setSelectedItems(nextItems)
-        return
-      }
-
-      const existingIndex = currentItems.findIndex(
-        (item) => item.type === normalized.type && String(item.key) === String(normalized.key)
-      )
-      const nextItems =
-        existingIndex >= 0
-          ? currentItems.filter((_, index) => index !== existingIndex)
-          : [...currentItems, normalized]
+    if (!shouldSelectMany) {
+      const nextItems = normalized.type === 'layout' || normalized.key === null ? [] : [normalized]
       selectedItemsRef.current = nextItems
+      setSelection(normalized)
       setSelectedItems(nextItems)
-      setSelection(nextItems[nextItems.length - 1] || { type: 'layout', key: null })
-    },
-    []
-  )
+      return
+    }
+
+    const existingIndex = currentItems.findIndex(
+      (item) => item.type === normalized.type && String(item.key) === String(normalized.key)
+    )
+    const nextItems =
+      existingIndex >= 0
+        ? currentItems.filter((_, index) => index !== existingIndex)
+        : [...currentItems, normalized]
+    selectedItemsRef.current = nextItems
+    setSelectedItems(nextItems)
+    setSelection(nextItems[nextItems.length - 1] || { type: 'layout', key: null })
+  }, [])
 
   const warehouses = useMemo(() => {
     if (isOwner) {
@@ -1266,7 +1273,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       return preferredWarehouseId
     }
     return warehouses[0].id
-  }, [draftWarehouseId, pendingOwnerDraft, pendingOwnerLayout, preferredWarehouseId, searchParams, warehouses])
+  }, [
+    draftWarehouseId,
+    pendingOwnerDraft,
+    pendingOwnerLayout,
+    preferredWarehouseId,
+    searchParams,
+    warehouses,
+  ])
 
   const isUnsavedOwnerDraft = Boolean(
     isOwner && !isContractLayout && pendingOwnerDraft && !draftWarehouseId
@@ -1274,16 +1288,16 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
   const tenantCanManageLayout = Boolean(
     !isOwner &&
-      currentRole === 'TENANT' &&
-      !isContractLayout &&
-      selectedWarehouseId &&
-      tenantCapabilities[selectedWarehouseId]?.canManageWms
+    currentRole === 'TENANT' &&
+    !isContractLayout &&
+    selectedWarehouseId &&
+    tenantCapabilities[selectedWarehouseId]?.canManageWms
   )
   const ownerWarehouseLayoutLocked = Boolean(
     isOwner &&
-      !isContractLayout &&
-      selectedWarehouseId &&
-      ownerLockedWarehouseIds.has(String(selectedWarehouseId))
+    !isContractLayout &&
+    selectedWarehouseId &&
+    ownerLockedWarehouseIds.has(String(selectedWarehouseId))
   )
   const canEditLayout =
     (isOwner && (!isContractLayout || contractCanEdit) && !ownerWarehouseLayoutLocked) ||
@@ -1368,8 +1382,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     if (selection.type === 'bin') {
       return layout.racks.find(
         (rack) =>
-          Array.isArray(rack?.bins) &&
-          rack.bins.some((bin) => bin?.clientKey === selection.key)
+          Array.isArray(rack?.bins) && rack.bins.some((bin) => bin?.clientKey === selection.key)
       )
     }
     return null
@@ -1431,7 +1444,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             const contractsPayload = apiData(contractsResponse)
             const contractList = Array.isArray(contractsPayload)
               ? contractsPayload
-              : contractsPayload?.content ?? []
+              : (contractsPayload?.content ?? [])
             const lockedIds = contractList
               .filter(isCurrentActiveContract)
               .map((contract) => String(contract.warehouseId))
@@ -1451,7 +1464,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             const contractsPayload = apiData(contractsResponse)
             const contractList = Array.isArray(contractsPayload)
               ? contractsPayload
-              : contractsPayload?.content ?? []
+              : (contractsPayload?.content ?? [])
             const capabilities = contractList.reduce((result, contract) => {
               const warehouseId = contract?.warehouseId
               if (!warehouseId) return result
@@ -1561,7 +1574,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           }
       const nextLayout = normalizeLayout(payloadWithDimensions)
       setLayout(nextLayout)
-      setTenantDefault(!isOwner && !isContractLayout && Boolean(payload.isDefault ?? payload.default))
+      setTenantDefault(
+        !isOwner && !isContractLayout && Boolean(payload.isDefault ?? payload.default)
+      )
       updateSelection({ type: 'layout', key: null }, false, true)
     } catch (requestError) {
       const notFound = requestError.response?.status === 404
@@ -1583,9 +1598,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             'This rented warehouse does not have an owner layout yet. Ask the owner to configure and save the layout.'
           )
         } else if (!isOwner && status === 403) {
-          setError(
-            'This rental contract has expired or your access to this warehouse was revoked.'
-          )
+          setError('This rental contract has expired or your access to this warehouse was revoked.')
         } else {
           setError(getEnglishApiMessage(requestError, 'Unable to load warehouse layout.'))
         }
@@ -1593,7 +1606,20 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     } finally {
       setLoadingLayout(false)
     }
-  }, [contractId, createdDimensions, currentRole, draftWarehouseId, isContractLayout, isMandatorySetup, isOwner, isUnsavedOwnerDraft, pendingOwnerDraft, selectedWarehouseId, updateSelection, warehouses])
+  }, [
+    contractId,
+    createdDimensions,
+    currentRole,
+    draftWarehouseId,
+    isContractLayout,
+    isMandatorySetup,
+    isOwner,
+    isUnsavedOwnerDraft,
+    pendingOwnerDraft,
+    selectedWarehouseId,
+    updateSelection,
+    warehouses,
+  ])
 
   useEffect(() => {
     // Loading the selected warehouse is the external synchronization performed by this effect.
@@ -1784,16 +1810,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           )
         : null
     const entityDimensions =
-      type === 'rack'
-        ? getRackFootprint(entity)
-        : { width: entity.width, length: entity.length }
-    const parentRackDimensions = parentRack
-      ? getRackFootprint(parentRack)
-      : { width: 1, length: 1 }
+      type === 'rack' ? getRackFootprint(entity) : { width: entity.width, length: entity.length }
+    const parentRackDimensions = parentRack ? getRackFootprint(parentRack) : { width: 1, length: 1 }
     const parent =
-      type === 'rack'
-        ? { width: layout.width, length: layout.length }
-        : parentRackDimensions
+      type === 'rack' ? { width: layout.width, length: layout.length } : parentRackDimensions
     dragRef.current = {
       type,
       mode,
@@ -1842,9 +1862,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       presetCapacity.maxVolume === '' || presetCapacity.maxVolume == null
         ? numberOf(existingPresetRack?.maxVolume, 0)
         : Math.max(numberOf(presetCapacity.maxVolume), 0)
-    const requestedCount = addMultipleRacks
-      ? Math.max(integerOf(newRackQuantity, 2), 2)
-      : 1
+    const requestedCount = addMultipleRacks ? Math.max(integerOf(newRackQuantity, 2), 2) : 1
     const workingLayout = { ...layout, racks: [...layout.racks] }
     const existingCodes = new Set(
       workingLayout.racks.map((rack) => String(rack.code || '').toUpperCase())
@@ -1936,7 +1954,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     )
     const binLimit = getRackBinLimit(selectedRack)
     if (binsOnShelf.length >= binLimit) {
-      setError(`${selectedRack.name || selectedRack.code || 'Rack'} đã đủ ${binLimit} Bin ở tầng ${shelfLevel}.`)
+      setError(
+        `${selectedRack.name || selectedRack.code || 'Rack'} đã đủ ${binLimit} Bin ở tầng ${shelfLevel}.`
+      )
       return
     }
     const binNumber = (selectedRack.bins?.length || 0) + 1
@@ -1957,7 +1977,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     updateSelection({ type: 'bin', key: nextBin.clientKey }, false, true)
     setBlockedMode(false)
     setError('')
-    setMessage(`Đã thêm ${nextBin.name} ở tầng ${shelfLevel}. Có thể kéo Bin theo chiều dọc trong chế độ 3D để đổi tầng.`)
+    setMessage(
+      `Đã thêm ${nextBin.name} ở tầng ${shelfLevel}. Có thể kéo Bin theo chiều dọc trong chế độ 3D để đổi tầng.`
+    )
   }, [canEditLayout, newBinShelfLevel, selectedRack, updateSelection])
 
   const rotateSelectedRack = useCallback(
@@ -1999,7 +2021,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       )
 
       if (overlapsLockedCell || overlapsRack) {
-        setError('The Rack cannot rotate here because it would overlap a locked area or another Rack.')
+        setError(
+          'The Rack cannot rotate here because it would overlap a locked area or another Rack.'
+        )
         return
       }
 
@@ -2026,17 +2050,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
       if (type === 'bin' && nextShelfLevel != null) {
         const sourceRack = layout.racks.find(
-          (item) =>
-            Array.isArray(item?.bins) && item.bins.some((bin) => bin?.clientKey === key)
+          (item) => Array.isArray(item?.bins) && item.bins.some((bin) => bin?.clientKey === key)
         )
         const sourceBin = sourceRack?.bins?.find((bin) => bin?.clientKey === key)
         if (sourceRack && sourceBin) {
           const levels = getRackLevelCount(sourceRack)
-          const targetShelfLevel = clamp(
-            integerOf(nextShelfLevel, sourceBin.shelfLevel),
-            1,
-            levels
-          )
+          const targetShelfLevel = clamp(integerOf(nextShelfLevel, sourceBin.shelfLevel), 1, levels)
           const binLimit = getRackBinLimit(sourceRack)
           const binsOnTargetShelf = sourceRack.bins.filter(
             (bin) =>
@@ -2065,8 +2084,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         }
 
         const rack = current.racks.find(
-          (item) =>
-            Array.isArray(item?.bins) && item.bins.some((bin) => bin?.clientKey === key)
+          (item) => Array.isArray(item?.bins) && item.bins.some((bin) => bin?.clientKey === key)
         )
         if (!rack) return current
 
@@ -2081,15 +2099,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         const updatedRack = {
           ...rack,
           bins: bins.map((bin) =>
-            bin.clientKey === key
-              ? { ...bin, coordinateX, coordinateY, shelfLevel }
-              : bin
+            bin.clientKey === key ? { ...bin, coordinateX, coordinateY, shelfLevel } : bin
           ),
         }
 
-        return updateRack(current, rack.clientKey, () =>
-          distributeRackCapacities(updatedRack)
-        )
+        return updateRack(current, rack.clientKey, () => distributeRackCapacities(updatedRack))
       })
     },
     [canEditLayout, layout]
@@ -2121,9 +2135,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const binKeys = new Set(
       targets.filter((item) => item.type === 'bin').map((item) => String(item.key))
     )
-    const rackToKeep = layout.racks.find((rack) =>
-      Array.isArray(rack?.bins) &&
-      rack.bins.some((bin) => binKeys.has(String(bin?.clientKey)))
+    const rackToKeep = layout.racks.find(
+      (rack) =>
+        Array.isArray(rack?.bins) && rack.bins.some((bin) => binKeys.has(String(bin?.clientKey)))
     )
     setLayout((current) => {
       return {
@@ -2147,16 +2161,21 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     }
     setIsMultiSelectMode(false)
     setError('')
-  }, [canEditLayout, layout.racks, selectedItems, selection.key, selection.type, updateSelection, view])
+  }, [
+    canEditLayout,
+    layout.racks,
+    selectedItems,
+    selection.key,
+    selection.type,
+    updateSelection,
+    view,
+  ])
 
   useEffect(() => {
     const handleKeyboardShortcut = (event) => {
       if (isReadOnly) return
       const tagName = event.target?.tagName
-      if (
-        event.target?.isContentEditable ||
-        ['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)
-      ) {
+      if (event.target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(tagName)) {
         return
       }
 
@@ -2263,8 +2282,20 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       setError('')
       const payload = toPayload(layout)
       const targetWarehouseId =
-        selectedWarehouseId ||
-        (hasPendingOwnerDraft ? await createWarehouseFromDraft() : '')
+        selectedWarehouseId || (hasPendingOwnerDraft ? await createWarehouseFromDraft() : '')
+      const endpoint = isContractLayout
+        ? `/owner/contracts/${contractId}/layout`
+        : isOwner
+          ? `/owner/warehouses/${targetWarehouseId}/layout`
+          : `/tenant/warehouses/${targetWarehouseId}/layout`
+      console.groupCollapsed('[StockSpace] layout save payload')
+      console.log('API base URL:', import.meta.env.VITE_API_URL)
+      console.log('Endpoint:', endpoint)
+      console.log('Role:', currentRole)
+      console.log('Warehouse ID:', targetWarehouseId)
+      console.log('Payload:', payload)
+      console.groupEnd()
+
       const response = isContractLayout
         ? await contractApi.saveOwnerLayout(contractId, payload)
         : isOwner
@@ -2273,7 +2304,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       const saved = apiData(response)
       if (saved) setLayout(normalizeLayout(saved))
       updateSelection({ type: 'layout', key: null }, false, true)
-      setMessage(isContractLayout ? 'Contract layout saved successfully.' : 'Warehouse layout saved successfully.')
+      setMessage(
+        isContractLayout
+          ? 'Contract layout saved successfully.'
+          : 'Warehouse layout saved successfully.'
+      )
       if (isMandatorySetup) {
         try {
           sessionStorage.removeItem(pendingOwnerLayoutKey)
@@ -2387,11 +2422,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         const maxWeight =
                           capacity.maxWeight !== '' && capacity.maxWeight != null
                             ? capacity.maxWeight
-                            : existingRack?.maxWeight ?? ''
+                            : (existingRack?.maxWeight ?? '')
                         const maxVolume =
                           capacity.maxVolume !== '' && capacity.maxVolume != null
                             ? capacity.maxVolume
-                            : existingRack?.maxVolume ?? ''
+                            : (existingRack?.maxVolume ?? '')
                         const geometricVolume = preset.width * preset.length * preset.height
 
                         return (
@@ -2522,7 +2557,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         <span>
                           Đang chọn:{' '}
                           <strong className="text-orange-700">
-                            {RACK_PRESETS.find((preset) => preset.id === selectedRackPresetId)?.name}
+                            {
+                              RACK_PRESETS.find((preset) => preset.id === selectedRackPresetId)
+                                ?.name
+                            }
                           </strong>
                         </span>
                         <span>
@@ -2563,7 +2601,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   ) : (
                     <Warehouse className="h-7 w-7 text-orange-500" />
                   )}
-                  {stockOnly ? (isContractLayout ? 'Contract Layout' : 'Goods in Bin') : isContractLayout ? 'Contract Layout' : 'Warehouse Layout'}
+                  {stockOnly
+                    ? isContractLayout
+                      ? 'Contract Layout'
+                      : 'Goods in Bin'
+                    : isContractLayout
+                      ? 'Contract Layout'
+                      : 'Warehouse Layout'}
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
                   {stockOnly
@@ -2574,11 +2618,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         : 'Review the layout proposed for this rental contract. Editing is disabled.'
                       : ownerWarehouseLayoutLocked
                         ? 'This warehouse layout is locked while a tenant rental contract is active.'
-                      : isOwner
-                      ? 'Create Rack, Bin and warehouse shapes. Data is stored in the correct BE structure, without Zone.'
-                      : isReadOnly
-                        ? 'View the warehouse layout. Editing is disabled until WMS access is available.'
-                        : "Customize Rack and Bin on Tenant's own layout."}
+                        : isOwner
+                          ? 'Create Rack, Bin and warehouse shapes. Data is stored in the correct BE structure, without Zone.'
+                          : isReadOnly
+                            ? 'View the warehouse layout. Editing is disabled until WMS access is available.'
+                            : "Customize Rack and Bin on Tenant's own layout."}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -2611,7 +2655,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       (tenantDefault && !canEditLayout) ||
                       view === 'stock'
                     }
-                  className={`${primaryButtonClass} inline-flex items-center px-4 py-2.5`}
+                    className={`${primaryButtonClass} inline-flex items-center px-4 py-2.5`}
                   >
                     {saving ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2624,8 +2668,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               </div>
             </div>
 
-            {!isContractLayout && (
-              isUnsavedOwnerDraft ? (
+            {!isContractLayout &&
+              (isUnsavedOwnerDraft ? (
                 <section className="rounded-2xl border border-orange-200 bg-orange-50/70 p-4 shadow-sm">
                   <p className="text-xs font-bold tracking-wider text-orange-700 uppercase">
                     New warehouse draft
@@ -2657,11 +2701,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     ))}
                   </select>
                 </section>
-              )
-            )}
+              ))}
 
             {isContractLayout && (
-                <section className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4 shadow-sm">
+              <section className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-bold tracking-wider text-orange-600 uppercase">
@@ -2672,7 +2715,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     </p>
                   </div>
                   <div className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-orange-700 shadow-sm">
-                    {formatMeters(layout.width)} × {formatMeters(layout.length)} × {formatMeters(layout.height)}
+                    {formatMeters(layout.width)} × {formatMeters(layout.length)} ×{' '}
+                    {formatMeters(layout.height)}
                   </div>
                 </div>
               </section>
@@ -2696,8 +2740,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             )}
             {tenantDefault && !canEditLayout && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                This is the Owner's default layout. Layout Tenant has not been cloned yet so it
-                can be viewed only. An active WMS subscription is required to customize it.
+                This is the Owner's default layout. Layout Tenant has not been cloned yet so it can
+                be viewed only. An active WMS subscription is required to customize it.
                 <button
                   type="button"
                   onClick={() => navigate('/tenant/subscription')}
@@ -2735,7 +2779,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             )}
 
             <div className="grid min-w-0 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-              <aside className={`${softCardClass} min-w-0 p-3 transition-shadow duration-200 hover:shadow-md`}>
+              <aside
+                className={`${softCardClass} min-w-0 p-3 transition-shadow duration-200 hover:shadow-md`}
+              >
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-bold">Structure</h2>
                   <span className="text-xs text-slate-500">
@@ -2779,68 +2825,68 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   {(Array.isArray(layout?.racks) ? layout.racks : []).map((rack) => {
                     const rackBins = Array.isArray(rack?.bins) ? rack.bins : []
                     return (
-                    <div key={rack.clientKey} className="rounded-xl border border-slate-200 p-2">
-                      <button
-                        type="button"
-                         onClick={(event) => {
-                           setFocusedRackKey(null)
-                           updateSelection(
-                             { type: 'rack', key: rack.clientKey },
-                            isMultiSelectMode || event.ctrlKey || event.metaKey
-                          )
-                          setBlockedMode(false)
-                          if (!isMultiSelectMode && !event.ctrlKey && !event.metaKey) {
-                            setView('rack-section')
-                          }
-                        }}
-                        className={`w-full rounded-xl px-2 py-2 text-left text-sm font-semibold transition-colors duration-200 ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'bg-orange-50 text-orange-700' : 'hover:bg-slate-50'}`}
-                      >
-                        <span className="flex items-center justify-between gap-2">
-                          <span className="truncate">{rack.name || rack.code}</span>
-                          <span className="shrink-0 text-xs font-normal text-slate-400">
-                            {rackBins.length} Bin
+                      <div key={rack.clientKey} className="rounded-xl border border-slate-200 p-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            setFocusedRackKey(null)
+                            updateSelection(
+                              { type: 'rack', key: rack.clientKey },
+                              isMultiSelectMode || event.ctrlKey || event.metaKey
+                            )
+                            setBlockedMode(false)
+                            if (!isMultiSelectMode && !event.ctrlKey && !event.metaKey) {
+                              setView('rack-section')
+                            }
+                          }}
+                          className={`w-full rounded-xl px-2 py-2 text-left text-sm font-semibold transition-colors duration-200 ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'bg-orange-50 text-orange-700' : 'hover:bg-slate-50'}`}
+                        >
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="truncate">{rack.name || rack.code}</span>
+                            <span className="shrink-0 text-xs font-normal text-slate-400">
+                              {rackBins.length} Bin
+                            </span>
                           </span>
-                        </span>
-                {!isOwner && (
-                          <span className="mt-1 block text-[11px] font-normal text-slate-500">
-                            Load: {numberOf(rack.maxWeight).toLocaleString('en-US')} kg · Volume:{' '}
-                            {numberOf(rack.maxVolume).toLocaleString('en-US')} m³
-                          </span>
-                        )}
-                      </button>
-                      <div className="ml-3 space-y-1 border-l border-slate-200 pl-2">
-                        {rackBins.map((bin) => (
-                          <button
-                            key={bin.clientKey}
-                            type="button"
-                             onClick={(event) => {
-                               setFocusedRackKey(null)
-                               updateSelection(
-                                 { type: 'bin', key: bin.clientKey },
-                                isMultiSelectMode || event.ctrlKey || event.metaKey
-                              )
-                              setBlockedMode(false)
-                            }}
-                                className={`block w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors duration-200 ${selectedItemSet.has(`bin:${bin.clientKey}`) ? 'bg-[#f7ead7] font-semibold text-[#8a5a2b]' : 'text-slate-600 hover:bg-slate-50'}`}
-                          >
-                            <span className="flex items-center justify-between gap-2">
-                              <span className="truncate">{bin.name || bin.code}</span>
+                          {!isOwner && (
+                            <span className="mt-1 block text-[11px] font-normal text-slate-500">
+                              Load: {numberOf(rack.maxWeight).toLocaleString('en-US')} kg · Volume:{' '}
+                              {numberOf(rack.maxVolume).toLocaleString('en-US')} m³
+                            </span>
+                          )}
+                        </button>
+                        <div className="ml-3 space-y-1 border-l border-slate-200 pl-2">
+                          {rackBins.map((bin) => (
+                            <button
+                              key={bin.clientKey}
+                              type="button"
+                              onClick={(event) => {
+                                setFocusedRackKey(null)
+                                updateSelection(
+                                  { type: 'bin', key: bin.clientKey },
+                                  isMultiSelectMode || event.ctrlKey || event.metaKey
+                                )
+                                setBlockedMode(false)
+                              }}
+                              className={`block w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors duration-200 ${selectedItemSet.has(`bin:${bin.clientKey}`) ? 'bg-[#f7ead7] font-semibold text-[#8a5a2b]' : 'text-slate-600 hover:bg-slate-50'}`}
+                            >
+                              <span className="flex items-center justify-between gap-2">
+                                <span className="truncate">{bin.name || bin.code}</span>
+                                {!isOwner && (
+                                  <span className="shrink-0 text-[10px] text-slate-400">
+                                    {numberOf(bin.maxWeight).toLocaleString('en-US')} kg
+                                  </span>
+                                )}
+                              </span>
                               {!isOwner && (
-                                <span className="shrink-0 text-[10px] text-slate-400">
-                                  {numberOf(bin.maxWeight).toLocaleString('en-US')} kg
+                                <span className="mt-0.5 block text-[10px] text-slate-400">
+                                  Shelf {bin.shelfLevel} ·{' '}
+                                  {numberOf(bin.maxVolume).toLocaleString('en-US')} m³
                                 </span>
                               )}
-                            </span>
-                            {!isOwner && (
-                              <span className="mt-0.5 block text-[10px] text-slate-400">
-                                Shelf {bin.shelfLevel} ·{' '}
-                                {numberOf(bin.maxVolume).toLocaleString('en-US')} m³
-                              </span>
-                            )}
-                          </button>
-                        ))}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
                     )
                   })}
                 </div>
@@ -2909,7 +2955,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           <button
                             type="button"
                             onClick={() => setBlockedTool('lock')}
-                          className={`rounded-full px-2.5 py-1.5 text-xs transition-all duration-200 ${blockedTool === 'lock' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                            className={`rounded-full px-2.5 py-1.5 text-xs transition-all duration-200 ${blockedTool === 'lock' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                           >
                             Lock cells
                           </button>
@@ -3127,15 +3173,15 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         </div>
                       </div>
                       <div className="h-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                          <WarehouseLayoutPreview3D
-                            layout={layout}
-                            capacityByBinId={capacityByBinId}
-                            selection={{ ...selection, clientKey: selection.key }}
-                            selectedItems={selectedItems}
-                            editable={!isReadOnly && !isMultiSelectMode && selectedItems.length <= 1}
-                            focusedRackKey={focusedRackKey}
-                            onDoubleClick={focusRackIn3D}
-                            onMoveEntity={moveEntityFromPreview}
+                        <WarehouseLayoutPreview3D
+                          layout={layout}
+                          capacityByBinId={capacityByBinId}
+                          selection={{ ...selection, clientKey: selection.key }}
+                          selectedItems={selectedItems}
+                          editable={!isReadOnly && !isMultiSelectMode && selectedItems.length <= 1}
+                          focusedRackKey={focusedRackKey}
+                          onDoubleClick={focusRackIn3D}
+                          onMoveEntity={moveEntityFromPreview}
                           onSelect={(nextSelection) => {
                             updateSelection(
                               {
@@ -3210,7 +3256,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                 className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
                               >
                                 <span>
-                                  <strong className="text-orange-700">{batch.skuCode || '—'}</strong>
+                                  <strong className="text-orange-700">
+                                    {batch.skuCode || '—'}
+                                  </strong>
                                   <span className="ml-2 text-slate-700">
                                     {batch.skuName || 'No name yet'}
                                   </span>
@@ -3229,140 +3277,144 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   <div className="grid gap-4 xl:grid-cols-2">
                     <div className="overflow-auto rounded-2xl bg-slate-50 p-3 sm:p-5">
                       <div
-                       className="relative mx-auto w-full max-w-205 min-w-130 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-inner"
-                      style={{
-                        aspectRatio: `${Math.max(numberOf(layout.width, 1), 1)} / ${Math.max(numberOf(layout.length, 1), 1)}`,
-                        backgroundImage:
-                          'radial-gradient(circle, rgba(148, 163, 184, 0.3) 1px, transparent 1px)',
-                        backgroundSize: '16px 16px',
-                      }}
-                       onPointerDown={() => {
-                         setFocusedRackKey(null)
-                         updateSelection({ type: 'layout', key: null }, false, true)
-                       }}
-                    >
-                      <div className="absolute inset-0 grid grid-cols-10 grid-rows-10">
-                        {Array.from({ length: FOOTPRINT_GRID_SIZE ** 2 }, (_, index) => {
-                          const row = Math.floor(index / FOOTPRINT_GRID_SIZE)
-                          const column = index % FOOTPRINT_GRID_SIZE
-                          const key = cellKey(row, column)
-                          const active = footprintSet.has(key)
-                          const blocked = blockedSet.has(key)
-                          return (
-                            <button
-                              key={key}
-                              type="button"
-                              aria-label={`${blocked ? 'Unlock' : 'Lock'} cell ${row + 1}-${column + 1}`}
-                              onPointerDown={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                setFocusedRackKey(null)
-                                blockedPaintRef.current = true
-                                toggleBlockedCell(row, column)
-                              }}
-                              onPointerEnter={() => {
-                                if (blockedPaintRef.current) toggleBlockedCell(row, column)
-                              }}
-                              className={`border border-transparent ${blocked ? 'bg-slate-900 hover:bg-slate-800' : active ? 'bg-orange-50/50' : 'bg-transparent'} ${blockedMode ? 'cursor-crosshair' : 'pointer-events-none'}`}
-                            />
-                          )
-                        })}
-                      </div>
+                        className="relative mx-auto w-full max-w-205 min-w-130 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-inner"
+                        style={{
+                          aspectRatio: `${Math.max(numberOf(layout.width, 1), 1)} / ${Math.max(numberOf(layout.length, 1), 1)}`,
+                          backgroundImage:
+                            'radial-gradient(circle, rgba(148, 163, 184, 0.3) 1px, transparent 1px)',
+                          backgroundSize: '16px 16px',
+                        }}
+                        onPointerDown={() => {
+                          setFocusedRackKey(null)
+                          updateSelection({ type: 'layout', key: null }, false, true)
+                        }}
+                      >
+                        <div className="absolute inset-0 grid grid-cols-10 grid-rows-10">
+                          {Array.from({ length: FOOTPRINT_GRID_SIZE ** 2 }, (_, index) => {
+                            const row = Math.floor(index / FOOTPRINT_GRID_SIZE)
+                            const column = index % FOOTPRINT_GRID_SIZE
+                            const key = cellKey(row, column)
+                            const active = footprintSet.has(key)
+                            const blocked = blockedSet.has(key)
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                aria-label={`${blocked ? 'Unlock' : 'Lock'} cell ${row + 1}-${column + 1}`}
+                                onPointerDown={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  setFocusedRackKey(null)
+                                  blockedPaintRef.current = true
+                                  toggleBlockedCell(row, column)
+                                }}
+                                onPointerEnter={() => {
+                                  if (blockedPaintRef.current) toggleBlockedCell(row, column)
+                                }}
+                                className={`border border-transparent ${blocked ? 'bg-slate-900 hover:bg-slate-800' : active ? 'bg-orange-50/50' : 'bg-transparent'} ${blockedMode ? 'cursor-crosshair' : 'pointer-events-none'}`}
+                              />
+                            )
+                          })}
+                        </div>
 
-                      {!blockedMode &&
-                        layout.racks.map((rack) => {
-                          const rackBins = Array.isArray(rack?.bins) ? rack.bins : []
-                          return (
-                          <div
-                            key={rack.clientKey}
-                            onPointerDown={(event) =>
-                              startInteraction(
-                                event,
-                                'rack',
-                                rack,
-                                'move',
-                                event.currentTarget.parentElement
-                              )
-                            }
-                            onDoubleClick={(event) => {
-                              event.preventDefault()
-                              event.stopPropagation()
-                              setFocusedRackKey(null)
-                              if (
-                                !blockedMode &&
-                                !isMultiSelectMode &&
-                                !event.ctrlKey &&
-                                !event.metaKey
-                              ) {
-                                updateSelection({ type: 'rack', key: rack.clientKey }, false, true)
-                                setView('rack-section')
-                              }
-                            }}
-                            className={`group absolute touch-none overflow-hidden rounded-lg border-2 text-white shadow-md transition-all duration-200 ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'z-20 border-orange-500 bg-orange-500/90 ring-4 ring-orange-100' : 'z-10 border-slate-500 bg-slate-500/85 hover:border-orange-300'}`}
-                            style={{
-                              left: `${(rack.coordinateX / layout.width) * 100}%`,
-                              top: `${(rack.coordinateY / layout.length) * 100}%`,
-                              width: `${(getRackFootprint(rack).width / layout.width) * 100}%`,
-                              height: `${(getRackFootprint(rack).length / layout.length) * 100}%`,
-                            }}
-                          >
-                            <div className="pointer-events-none truncate bg-slate-700/90 px-1.5 py-1 text-[10px] font-bold sm:text-xs">
-                              {rack.name || rack.code}
-                            </div>
-                            {canEditLayout && (
-                                <button
-                                  type="button"
-                                  title="Xoay Rack 90°"
-                                  aria-label={`Xoay ${rack.name || rack.code || 'Rack'} 90°`}
-                                  onPointerDown={(event) => {
-                                    event.preventDefault()
-                                    event.stopPropagation()
-                                  }}
-                                  onClick={(event) => {
-                                    event.preventDefault()
-                                    event.stopPropagation()
-                                    rotateSelectedRack(rack)
-                                  }}
-                                  className={`absolute top-1 right-1 z-30 inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/80 bg-white/95 text-orange-700 shadow-sm transition hover:bg-orange-50 active:scale-95 ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-                                >
-                                  <RotateCw className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            {rackBins.map((bin) => (
+                        {!blockedMode &&
+                          layout.racks.map((rack) => {
+                            const rackBins = Array.isArray(rack?.bins) ? rack.bins : []
+                            return (
                               <div
-                                key={bin.clientKey}
+                                key={rack.clientKey}
                                 onPointerDown={(event) =>
                                   startInteraction(
                                     event,
-                                    'bin',
-                                    bin,
+                                    'rack',
+                                    rack,
                                     'move',
                                     event.currentTarget.parentElement
                                   )
                                 }
-                                onClick={(event) => event.stopPropagation()}
-                                className={`absolute touch-none overflow-hidden rounded-md border text-slate-800 shadow-sm transition-all duration-200 ${selectedItemSet.has(`bin:${bin.clientKey}`) ? 'z-20 border-orange-500 bg-orange-400 text-white ring-4 ring-orange-100' : 'z-10 border-[#b8874d] bg-[#d8b17a] hover:bg-[#e5c894]'}`}
+                                onDoubleClick={(event) => {
+                                  event.preventDefault()
+                                  event.stopPropagation()
+                                  setFocusedRackKey(null)
+                                  if (
+                                    !blockedMode &&
+                                    !isMultiSelectMode &&
+                                    !event.ctrlKey &&
+                                    !event.metaKey
+                                  ) {
+                                    updateSelection(
+                                      { type: 'rack', key: rack.clientKey },
+                                      false,
+                                      true
+                                    )
+                                    setView('rack-section')
+                                  }
+                                }}
+                                className={`group absolute touch-none overflow-hidden rounded-lg border-2 text-white shadow-md transition-all duration-200 ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'z-20 border-orange-500 bg-orange-500/90 ring-4 ring-orange-100' : 'z-10 border-slate-500 bg-slate-500/85 hover:border-orange-300'}`}
                                 style={{
-                                  left: `${(bin.coordinateX / getRackFootprint(rack).width) * 100}%`,
-                                  top: `${(bin.coordinateY / getRackFootprint(rack).length) * 100}%`,
-                                  width: `${(bin.width / getRackFootprint(rack).width) * 100}%`,
-                                  height: `${(bin.length / getRackFootprint(rack).length) * 100}%`,
+                                  left: `${(rack.coordinateX / layout.width) * 100}%`,
+                                  top: `${(rack.coordinateY / layout.length) * 100}%`,
+                                  width: `${(getRackFootprint(rack).width / layout.width) * 100}%`,
+                                  height: `${(getRackFootprint(rack).length / layout.length) * 100}%`,
                                 }}
                               >
-                                <span className="pointer-events-none block truncate px-1 text-[9px] font-semibold">
-                                  {bin.name || bin.code}
-                                </span>
+                                <div className="pointer-events-none truncate bg-slate-700/90 px-1.5 py-1 text-[10px] font-bold sm:text-xs">
+                                  {rack.name || rack.code}
+                                </div>
                                 {canEditLayout && (
-                                    <span className="pointer-events-none absolute right-1 bottom-0.5 text-[9px] font-bold text-[#6e461f]/70">
-                                    FIT
-                                  </span>
+                                  <button
+                                    type="button"
+                                    title="Xoay Rack 90°"
+                                    aria-label={`Xoay ${rack.name || rack.code || 'Rack'} 90°`}
+                                    onPointerDown={(event) => {
+                                      event.preventDefault()
+                                      event.stopPropagation()
+                                    }}
+                                    onClick={(event) => {
+                                      event.preventDefault()
+                                      event.stopPropagation()
+                                      rotateSelectedRack(rack)
+                                    }}
+                                    className={`absolute top-1 right-1 z-30 inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/80 bg-white/95 text-orange-700 shadow-sm transition hover:bg-orange-50 active:scale-95 ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                                  >
+                                    <RotateCw className="h-3.5 w-3.5" />
+                                  </button>
                                 )}
+                                {rackBins.map((bin) => (
+                                  <div
+                                    key={bin.clientKey}
+                                    onPointerDown={(event) =>
+                                      startInteraction(
+                                        event,
+                                        'bin',
+                                        bin,
+                                        'move',
+                                        event.currentTarget.parentElement
+                                      )
+                                    }
+                                    onClick={(event) => event.stopPropagation()}
+                                    className={`absolute touch-none overflow-hidden rounded-md border text-slate-800 shadow-sm transition-all duration-200 ${selectedItemSet.has(`bin:${bin.clientKey}`) ? 'z-20 border-orange-500 bg-orange-400 text-white ring-4 ring-orange-100' : 'z-10 border-[#b8874d] bg-[#d8b17a] hover:bg-[#e5c894]'}`}
+                                    style={{
+                                      left: `${(bin.coordinateX / getRackFootprint(rack).width) * 100}%`,
+                                      top: `${(bin.coordinateY / getRackFootprint(rack).length) * 100}%`,
+                                      width: `${(bin.width / getRackFootprint(rack).width) * 100}%`,
+                                      height: `${(bin.length / getRackFootprint(rack).length) * 100}%`,
+                                    }}
+                                  >
+                                    <span className="pointer-events-none block truncate px-1 text-[9px] font-semibold">
+                                      {bin.name || bin.code}
+                                    </span>
+                                    {canEditLayout && (
+                                      <span className="pointer-events-none absolute right-1 bottom-0.5 text-[9px] font-bold text-[#6e461f]/70">
+                                        FIT
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                          )
-                        })}
-                    </div>
+                            )
+                          })}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-slate-200/80 bg-slate-50 p-3 shadow-inner sm:p-4">
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -3415,7 +3467,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   </div>
                 )}
               </section>
-
             </div>
           </main>
         </div>

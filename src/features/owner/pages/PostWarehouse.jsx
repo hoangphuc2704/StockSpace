@@ -48,7 +48,7 @@ const CreateWarehouse = () => {
       }
   )
 
-  // Ảnh bìa (bắt buộc)
+  // Ảnh bìa (tuỳ chọn)
   const [coverFile, setCoverFile] = useState(() => draft?.coverFile || null)
   const [coverPreview, setCoverPreview] = useState(() => draft?.coverPreview || null)
 
@@ -180,8 +180,7 @@ const CreateWarehouse = () => {
     Number(formData.warehouseWidth) > 0 &&
     Number(formData.warehouseLength) > 0 &&
     Number(formData.warehouseHeight) > 0 &&
-    (formData.rentalPricingType === 'NEGOTIATED' || Number(formData.rentalPrice) > 0) &&
-    coverFile !== null
+    (formData.rentalPricingType === 'NEGOTIATED' || Number(formData.rentalPrice) > 0)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -561,10 +560,10 @@ const CreateWarehouse = () => {
                       3. Actual images
                     </h3>
 
-                    {/* Ảnh bìa (Bắt buộc) */}
+                    {/* Ảnh bìa (Tùy chọn) */}
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-slate-700">
-                        Cover photo of warehouse representative *
+                        Cover photo of warehouse representative (Optional)
                       </label>
                       <p className="text-[11px] leading-4 text-slate-500">
                         This is the primary image shown on warehouse cards and search results.
