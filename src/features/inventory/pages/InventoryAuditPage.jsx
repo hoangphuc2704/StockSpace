@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { FormShell } from '@/form/FormControls'
 import { Plus, Search, Eye } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
@@ -8,7 +8,7 @@ import Modal from '@/components/organisms/Modal'
 import TableActionMenu from '@/components/TableActionMenu'
 import Header from '@/components/HeaderDashboard'
 import Sidebar from '@/components/SideBar'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import auditApi from '@/services/wms/auditApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
@@ -16,6 +16,7 @@ import moment from 'moment'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import { showApiErrorToast } from '@/config/apiError'
+import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const STATUS_CONFIG = {
   PENDING: { label: 'Pending', type: 'warning' },
@@ -27,6 +28,7 @@ const STATUS_CONFIG = {
 
 const InventoryAuditPage = ({ currentRole }) => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
 
@@ -43,12 +45,13 @@ const InventoryAuditPage = ({ currentRole }) => {
   const [formNote, setFormNote] = useState('')
   const [creating, setCreating] = useState(false)
 
-  const currentWarehouseId = useSelector((state) => state.auth.warehouseId)
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
+  useActiveWarehouseContext(selectedWarehouseId)
 
   const fetchAudits = async () => {
     try {
       setLoading(true)
-      const res = await auditApi.getAudits(currentWarehouseId || '', { page, size: pageSize })
+      const res = await auditApi.getAudits(selectedWarehouseId || '', { page, size: pageSize })
       if (res.data?.success) {
         setAudits(res.data.data.content || [])
         setTotalPages(res.data.data.totalPages || 1)
@@ -60,20 +63,32 @@ const InventoryAuditPage = ({ currentRole }) => {
     }
   }
 
-  const fetchWarehouses = async () => {
+  const fetchWarehouses = useCallback(async () => {
     try {
       const res = await warehouseApi.getMyWarehouses()
-      if (res.data?.success) {
-        setWarehouses(res.data.data || [])
-      }
+      const list = res.data?.data?.content || res.data?.data || []
+      setWarehouses(list)
+      setSelectedWarehouseId((current) => {
+        const requestedWarehouseId = searchParams.get('warehouseId')
+        if (list.some((warehouse) => String(warehouse.id) === String(requestedWarehouseId))) {
+          return requestedWarehouseId
+        }
+        return list.some((warehouse) => String(warehouse.id) === String(current))
+          ? current
+          : list[0]?.id || ''
+      })
     } catch (error) {
       showApiErrorToast(error, 'Could not load warehouses.')
     }
-  }
+  }, [searchParams])
+
+  useEffect(() => {
+    fetchWarehouses()
+  }, [fetchWarehouses])
 
   useEffect(() => {
     fetchAudits()
-  }, [page, pageSize, currentWarehouseId])
+  }, [page, pageSize, selectedWarehouseId])
 
   const handleCreateAudit = async (e) => {
     e.preventDefault()
@@ -184,10 +199,24 @@ const InventoryAuditPage = ({ currentRole }) => {
                   <h1 className="text-2xl font-bold tracking-tight text-slate-900">Inventory Audits</h1>
                   <p className="text-sm text-slate-500">Review and complete warehouse stock counts.</p>
                 </div>
-                <Button onClick={handleOpenCreateModal} className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  New audit
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    className="rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    value={selectedWarehouseId}
+                    onChange={(event) => setSelectedWarehouseId(event.target.value)}
+                  >
+                    <option value="">All warehouses</option>
+                    {warehouses.map((warehouse) => (
+                      <option key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name}
+                      </option>
+                    ))}
+                  </select>
+                  <Button onClick={handleOpenCreateModal} className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    New audit
+                  </Button>
+                </div>
               </div>
 
               <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FormShell } from '@/form/FormControls'
 import { useSelector } from 'react-redux'
+import { useLocation } from 'react-router-dom'
 import {
   Bot,
   ChevronLeft,
@@ -96,6 +97,17 @@ const AUTH_ROLE_TO_CHAT_ROLE = {
 // widget must stay hidden for those roles until their product flows are enabled.
 const CHAT_WIDGET_ENABLED_ROLES = new Set(['guest', 'tenant'])
 
+const isWarehouseScopedPath = (pathname) =>
+  [
+    '/tenant/inventory',
+    '/tenant/inbound',
+    '/tenant/outbound',
+    '/tenant/inventory-audits',
+    '/tenant/transfers',
+    '/tenant/layoutwarehouses',
+  ].some((path) => pathname === path || pathname.startsWith(`${path}/`)) ||
+  /^\/tenant\/contracts\/[^/]+\/layout\/?$/.test(pathname)
+
 const greeting = (chatRole) => ({
   id: `greeting-${chatRole}`,
   role: 'assistant',
@@ -125,6 +137,7 @@ const normalizeChatContent = (value = '') =>
 
 const AIChatPanel = ({ chatRole }) => {
   const confirmDialog = useConfirmDialog()
+  const location = useLocation()
   const isAuthenticatedChat = chatRole !== 'guest'
   const roleConfig = CHAT_ROLE_CONFIG[chatRole]
   const [isOpen, setIsOpen] = useState(false)
@@ -139,10 +152,18 @@ const AIChatPanel = ({ chatRole }) => {
   const [error, setError] = useState('')
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const pageWarehouseId = useSelector((state) => state.warehouseContext?.selectedId)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
   const abortRef = useRef(null)
   const messageSequenceRef = useRef(0)
+
+  const activeWarehouseId = useMemo(() => {
+    if (!isWarehouseScopedPath(location.pathname)) return null
+
+    const queryWarehouseId = new URLSearchParams(location.search).get('warehouseId')
+    return queryWarehouseId || pageWarehouseId || null
+  }, [location.pathname, location.search, pageWarehouseId])
 
   const suggestions = roleConfig.suggestions
 
@@ -274,6 +295,7 @@ const AIChatPanel = ({ chatRole }) => {
         sessionId,
         sessionToken: isAuthenticatedChat ? null : guestChatStorage.getToken(),
         message,
+        activeWarehouseId,
         signal: controller.signal,
         onEvent: (eventName, data) => {
           if (eventName === 'session') {

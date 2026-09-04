@@ -23,6 +23,7 @@ import contractApi from '@/services/contractApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import stockApi from '@/services/wms/stockApi'
 import { getEnglishApiMessage } from '@/utils/englishMessages'
+import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const DEFAULT_LAYOUT_SIZE = 100
 // Racks can be smaller than the old 4m hard limit. Keep a small positive
@@ -1281,6 +1282,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     searchParams,
     warehouses,
   ])
+
+  useActiveWarehouseContext(selectedWarehouseId)
 
   const isUnsavedOwnerDraft = Boolean(
     isOwner && !isContractLayout && pendingOwnerDraft && !draftWarehouseId
@@ -2690,7 +2693,17 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   </label>
                   <select
                     value={selectedWarehouseId}
-                    onChange={(event) => setPreferredWarehouseId(event.target.value)}
+                    onChange={(event) => {
+                      const nextWarehouseId = event.target.value
+                      setPreferredWarehouseId(nextWarehouseId)
+
+                      const nextParams = new URLSearchParams(searchParams)
+                      nextParams.set('warehouseId', nextWarehouseId)
+                      navigate(
+                        { pathname: location.pathname, search: `?${nextParams.toString()}` },
+                        { replace: true }
+                      )
+                    }}
                     disabled={isMandatorySetup || loadingOptions || !warehouses.length}
                     className={`${inputClass} w-full py-2 sm:w-[300px]`}
                   >

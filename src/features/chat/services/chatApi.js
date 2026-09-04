@@ -73,7 +73,15 @@ export const guestChatStorage = {
 }
 
 export const chatApi = {
-  streamMessage: async ({ isAuthenticatedChat, sessionId, sessionToken, message, signal, onEvent }) => {
+  streamMessage: async ({
+    isAuthenticatedChat,
+    sessionId,
+    sessionToken,
+    message,
+    activeWarehouseId,
+    signal,
+    onEvent,
+  }) => {
     const endpoint = isAuthenticatedChat ? '/chat/stream' : '/chat/guest/stream'
     const sendRequest = (accessToken) =>
       fetch(`${apiBaseUrl}${endpoint}`, {
@@ -89,7 +97,11 @@ export const chatApi = {
             ? { 'X-Chat-Session-Token': sessionToken }
             : {}),
         },
-        body: JSON.stringify({ sessionId: sessionId || null, message }),
+        body: JSON.stringify({
+          sessionId: sessionId || null,
+          message,
+          activeWarehouseId: activeWarehouseId || null,
+        }),
         signal,
       })
 

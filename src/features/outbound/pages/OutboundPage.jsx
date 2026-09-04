@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { FormShell } from '@/form/FormControls'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
@@ -19,9 +20,11 @@ import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
 import { showApiErrorToast } from '@/config/apiError'
 import { positiveInteger, required } from '@/config/validation'
+import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const OutboundPage = () => {
   const dispatch = useDispatch()
+  const [searchParams] = useSearchParams()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
@@ -41,6 +44,7 @@ const OutboundPage = () => {
 
   // Selection states
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
+  useActiveWarehouseContext(selectedWarehouseId)
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -68,9 +72,11 @@ const OutboundPage = () => {
         name: w.name || w.warehouseName,
       }))
       setWarehouses(whList)
-      if (whList.length > 0) {
-        setSelectedWarehouseId(whList[0].id)
-      }
+      const requestedWarehouseId = searchParams.get('warehouseId')
+      const requestedWarehouse = whList.find(
+        (warehouse) => String(warehouse.id) === String(requestedWarehouseId)
+      )
+      if (whList.length > 0) setSelectedWarehouseId(requestedWarehouse?.id || whList[0].id)
 
       setSkus(Array.isArray(skuRes) ? skuRes : [])
     } catch (error) {
@@ -81,7 +87,7 @@ const OutboundPage = () => {
         showApiErrorToast(error, 'Could not load outbound data.')
       }
     }
-  }, [])
+  }, [searchParams])
 
   const fetchReceipts = useCallback(async () => {
     setIsLoading(true)

@@ -1,5 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+import { useSearchParams } from 'react-router-dom'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
@@ -8,21 +9,27 @@ import Badge from '@/components/atoms/Badge'
 import TableActionMenu from '@/components/TableActionMenu'
 import { CheckCircle, X, Send, Download, Truck, PackageCheck, Eye } from 'lucide-react'
 import transferApi from '@/services/wms/transferApi'
+import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import CreateTransferModal from '../components/CreateTransferModal'
 import ReceiveTransferModal from '../components/ReceiveTransferModal'
 import TransferDetailModal from '../components/TransferDetailModal'
+import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const TransferPage = ({ currentRole }) => {
   const confirmDialog = useConfirmDialog()
   const dispatch = useDispatch()
+  const [searchParams] = useSearchParams()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
-  const currentWarehouseId = useSelector((state) => state.auth.warehouseId)
 
   const [transfers, setTransfers] = useState([])
+  const [warehouses, setWarehouses] = useState([])
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
   const [loading, setLoading] = useState(true)
+
+  useActiveWarehouseContext(selectedWarehouseId)
 
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [receiveModalOpen, setReceiveModalOpen] = useState(false)
@@ -31,17 +38,34 @@ const TransferPage = ({ currentRole }) => {
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [selectedTransferIdForDetail, setSelectedTransferIdForDetail] = useState(null)
 
+  const fetchWarehouses = useCallback(async () => {
+    try {
+      const response = await warehouseApi.getMyWarehouses()
+      const list = response.data?.data?.content || response.data?.data || []
+      setWarehouses(list)
+      setSelectedWarehouseId((current) => {
+        const requestedWarehouseId = searchParams.get('warehouseId')
+        if (list.some((warehouse) => String(warehouse.id) === String(requestedWarehouseId))) {
+          return requestedWarehouseId
+        }
+        return list.some((warehouse) => String(warehouse.id) === String(current))
+          ? current
+          : list[0]?.id || ''
+      })
+    } catch (error) {
+      showApiErrorToast(error, 'Could not load warehouses.')
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    fetchWarehouses()
+  }, [fetchWarehouses])
+
   const fetchTransfers = useCallback(async () => {
     try {
       setLoading(true)
-      // If a warehouse is selected, optionally filter by sourceWarehouseId or destinationWarehouseId
       const params = { page: 0, size: 20 }
-      if (currentWarehouseId) {
-        // By default, showing transfers where current warehouse is either source or destination
-        // (BE might only support one at a time, we will just fetch all for now or pass source)
-        // params.sourceWarehouseId = currentWarehouseId
-      }
-      
+
       const res = await transferApi.getTransfers(params)
       if (res?.data?.success) {
         setTransfers(res.data.data.content || [])
@@ -51,7 +75,7 @@ const TransferPage = ({ currentRole }) => {
     } finally {
       setLoading(false)
     }
-  }, [currentWarehouseId])
+  }, [])
 
   useEffect(() => {
     fetchTransfers()
@@ -192,14 +216,28 @@ const TransferPage = ({ currentRole }) => {
                 <h1 className="text-2xl font-bold text-slate-900">Stock Transfers</h1>
                 <p className="text-sm text-slate-500">Manage stock moving between your warehouses.</p>
               </div>
-              {currentRole === 'TENANT' && (
-                <button 
-                  onClick={() => setCreateModalOpen(true)}
-                  className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700"
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="rounded-lg border border-slate-300 bg-white p-2.5 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  value={selectedWarehouseId}
+                  onChange={(event) => setSelectedWarehouseId(event.target.value)}
                 >
-                  Create Transfer
-                </button>
-              )}
+                  <option value="">All warehouses</option>
+                  {warehouses.map((warehouse) => (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name}
+                    </option>
+                  ))}
+                </select>
+                {currentRole === 'TENANT' && (
+                  <button
+                    onClick={() => setCreateModalOpen(true)}
+                    className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700"
+                  >
+                    Create Transfer
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -212,7 +250,7 @@ const TransferPage = ({ currentRole }) => {
       <CreateTransferModal 
         isOpen={createModalOpen} 
         onClose={() => setCreateModalOpen(false)} 
-        sourceWarehouseId={currentWarehouseId}
+        sourceWarehouseId={selectedWarehouseId}
         onSuccess={fetchTransfers}
       />
 

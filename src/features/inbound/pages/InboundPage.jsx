@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { FormShell } from '@/form/FormControls'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
@@ -19,12 +20,14 @@ import putawayApi from '@/services/wms/putawayApi'
 import { toast } from 'react-hot-toast'
 import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailModal'
 import { showApiErrorToast } from '@/config/apiError'
+import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 import { positiveInteger, required } from '@/config/validation'
 
 const CAPACITY_EPSILON = 1e-9
 
 const InboundPage = () => {
   const dispatch = useDispatch()
+  const [searchParams] = useSearchParams()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
@@ -45,6 +48,7 @@ const InboundPage = () => {
 
   // Selection states
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
+  useActiveWarehouseContext(selectedWarehouseId)
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -168,9 +172,11 @@ const InboundPage = () => {
         name: w.name || w.warehouseName,
       }))
       setWarehouses(whList)
-      if (whList.length > 0) {
-        setSelectedWarehouseId(whList[0].id)
-      }
+      const requestedWarehouseId = searchParams.get('warehouseId')
+      const requestedWarehouse = whList.find(
+        (warehouse) => String(warehouse.id) === String(requestedWarehouseId)
+      )
+      if (whList.length > 0) setSelectedWarehouseId(requestedWarehouse?.id || whList[0].id)
 
       setSkus(Array.isArray(skuRes) ? skuRes : [])
     } catch (error) {
@@ -181,7 +187,7 @@ const InboundPage = () => {
         showApiErrorToast(error, 'Could not load inbound data.')
       }
     }
-  }, [])
+  }, [searchParams])
 
   const fetchLayout = useCallback(async () => {
     try {

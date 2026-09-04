@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Search, ChevronDown, ChevronRight, Warehouse, Map as MapIcon, Loader2, LayoutGrid, ListTree, PackageSearch, History } from 'lucide-react'
 import { useSelector, useDispatch } from 'react-redux'
 import Header from '@/components/HeaderDashboard'
@@ -9,9 +10,11 @@ import layoutApi from '../../../services/layoutApi'
 import { showApiErrorToast } from '@/config/apiError'
 import Modal from '@/components/organisms/Modal'
 import DataTable from '@/components/organisms/DataTable'
+import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const InventoryPage = () => {
   const dispatch = useDispatch()
+  const [searchParams] = useSearchParams()
   const { isSidebarExpanded } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
@@ -21,6 +24,8 @@ const InventoryPage = () => {
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
   const [layout, setLayout] = useState(null)
   const [allStock, setAllStock] = useState([])
+
+  useActiveWarehouseContext(selectedWarehouseId)
   
   // { type: 'all' | 'rack' | 'bin', id: null }
   const [selectedLocation, setSelectedLocation] = useState({ type: 'all', id: null })
@@ -42,9 +47,13 @@ const InventoryPage = () => {
       const res = await warehouseApi.getMyWarehouses()
       const list = res.data?.data?.content || res.data?.data || []
       setWarehouses(list)
-      setSelectedWarehouseId((current) =>
-        list.some((w) => String(w.id) === String(current)) ? current : list[0]?.id || ''
-      )
+      setSelectedWarehouseId((current) => {
+        const requestedWarehouseId = searchParams.get('warehouseId')
+        if (list.some((w) => String(w.id) === String(requestedWarehouseId))) {
+          return requestedWarehouseId
+        }
+        return list.some((w) => String(w.id) === String(current)) ? current : list[0]?.id || ''
+      })
       if (!list.length) setIsLoading(false)
       return list
     } catch (error) {
@@ -52,7 +61,7 @@ const InventoryPage = () => {
       setIsLoading(false)
       return null
     }
-  }, [])
+  }, [searchParams])
 
   const fetchData = useCallback(async () => {
     if (!selectedWarehouseId) return

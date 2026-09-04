@@ -14,6 +14,7 @@ import moment from 'moment'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import { showApiErrorToast } from '@/config/apiError'
+import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const STATUS_CONFIG = {
   PENDING: { label: 'Pending', type: 'warning' },
@@ -40,6 +41,8 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
 
   const [submitting, setSubmitting] = useState(false)
   const [approving, setApproving] = useState(false)
+
+  useActiveWarehouseContext(audit?.warehouseId)
 
   const fetchAuditDetail = async () => {
     try {
