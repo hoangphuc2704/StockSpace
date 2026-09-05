@@ -1,22 +1,22 @@
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import {
+  CheckCircle,
+  ClipboardList,
+  Edit3,
+  Eye,
+  FileText,
+  Loader2,
+  PackageOpen,
+  X,
+} from 'lucide-react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
-import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
-import DataTable from '@/components/organisms/DataTable'
-import Badge from '@/components/atoms/Badge'
 import ContractViewerModal from '@/components/ContractViewerModal'
 import TableActionMenu from '@/components/TableActionMenu'
-import {
-  FileText,
-  CheckCircle,
-  X,
-  Eye,
-  Edit3,
-  Box
-} from 'lucide-react'
 import contractApi from '@/services/contractApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
@@ -24,7 +24,53 @@ import { required } from '@/config/validation'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import { formatVND } from '@/utils/currency'
 
-// ─── Reason Modal for Reject or Request Changes ─────────────────────────────────
+const CONTRACT_STATUS_META = {
+  DRAFT: { label: 'Bản nháp', className: 'border-slate-200 bg-slate-100 text-slate-700' },
+  PENDING_TENANT_CONFIRM: {
+    label: 'Chờ xác nhận',
+    className: 'border-amber-200 bg-amber-50 text-amber-800',
+  },
+  CHANGES_REQUESTED: {
+    label: 'Yêu cầu chỉnh sửa',
+    className: 'border-amber-200 bg-amber-50 text-amber-800',
+  },
+  ACTIVE: {
+    label: 'Đang hoạt động',
+    className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  },
+  REJECTED: { label: 'Đã từ chối', className: 'border-rose-200 bg-rose-50 text-rose-800' },
+  EXPIRED: { label: 'Đã hết hạn', className: 'border-slate-200 bg-slate-100 text-slate-700' },
+}
+
+const getStatusMeta = (status) =>
+  CONTRACT_STATUS_META[status] || {
+    label: status || 'Không xác định',
+    className: 'border-slate-200 bg-slate-100 text-slate-700',
+  }
+
+const formatContractDate = (dateString) => {
+  if (!dateString) return '-'
+  const date = new Date(`${dateString}T00:00:00`)
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('vi-VN')
+}
+
+const formatContractReference = (id) =>
+  `HĐ-${
+    String(id || '')
+      .slice(0, 8)
+      .toUpperCase() || '-'
+  }`
+
+const isExpiringSoon = (contract) => {
+  if (contract.status !== 'ACTIVE' || !contract.endDate) return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const endDate = new Date(`${contract.endDate}T00:00:00`)
+  if (Number.isNaN(endDate.getTime())) return false
+  const daysUntilEnd = Math.ceil((endDate - today) / 86_400_000)
+  return daysUntilEnd >= 0 && daysUntilEnd <= 30
+}
+
 const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) => {
   useEscapeKey(isOpen, onClose)
   const [reason, setReason] = useState('')
@@ -41,8 +87,8 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
 
   if (!isOpen) return null
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     const reasonError = required(reason, 'Reason')
     if (reasonError) {
       setError(reasonError)
@@ -67,50 +113,85 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-            {action === 'reject' ? <X className="h-5 w-5 text-rose-600" /> : <Edit3 className="h-5 w-5 text-amber-600" />} 
-            {title}
-          </h3>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        
-        {action === 'reject' && (
-           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
-             <strong>Note:</strong> Rejecting will mark the contract as REJECTED and you will not proceed with this deal.
-           </div>
-        )}
+  const isRejecting = action === 'reject'
 
-        <FormShell onSubmit={handleSubmit} className="space-y-4">
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="contract-reason-title"
+        className="w-full max-w-md overflow-hidden rounded-lg border border-slate-300 bg-white shadow-2xl"
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div>
-            <label className="mb-2 block text-xs font-bold text-slate-500">Reason <span className="text-rose-500">*</span></label>
+            <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+              Rà soát hợp đồng
+            </p>
+            <h3 id="contract-reason-title" className="mt-1 text-lg font-bold text-slate-950">
+              {title}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close contract review"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </header>
+
+        <FormShell onSubmit={handleSubmit} className="space-y-5 px-5 py-5">
+          {isRejecting && (
+            <div className="border-l-2 border-rose-500 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-900">
+              Từ chối hợp đồng sẽ kết thúc quy trình phê duyệt hiện tại cho thỏa thuận này.
+            </div>
+          )}
+          <div>
+            <label
+              htmlFor="contract-reason"
+              className="mb-1.5 block text-sm font-semibold text-slate-800"
+            >
+              Lý do <span className="text-rose-600">*</span>
+            </label>
             <textarea
+              id="contract-reason"
               value={reason}
-              onChange={(e) => setReason(e.target.value)}
+              onChange={(event) => setReason(event.target.value)}
               rows={4}
-              placeholder={`Describe why you are ${action === 'reject' ? 'rejecting' : 'requesting changes to'} this contract...`}
-              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm focus:border-blue-400 focus:bg-white focus:outline-none"
+              placeholder={`Nhập lý do ${isRejecting ? 'từ chối' : 'yêu cầu chỉnh sửa'} hợp đồng...`}
+              className="w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 transition-colors outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
           </div>
-          {error && <p className="text-rose-600 text-sm">{error}</p>}
-          <div className="flex justify-end gap-2 pt-2">
-            <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50 border">Cancel</button>
-            <button type="submit" disabled={submitting} className={`rounded-xl px-4 py-2 text-sm font-bold text-white ${action === 'reject' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-500 hover:bg-amber-600'}`}>
-              {submitting ? 'Submitting...' : 'Submit'}
+          {error && <p className="text-sm text-rose-700">{error}</p>}
+          <footer className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+            >
+              Hủy
             </button>
-          </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className={`inline-flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold text-white transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                isRejecting
+                  ? 'bg-rose-700 hover:bg-rose-800 focus-visible:ring-rose-600'
+                  : 'bg-blue-700 hover:bg-blue-800 focus-visible:ring-blue-600'
+              }`}
+            >
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {submitting ? 'Đang gửi' : 'Gửi yêu cầu'}
+            </button>
+          </footer>
         </FormShell>
-      </div>
+      </section>
     </div>
   )
 }
 
-// ─── Main Page ───────────────────────────────────────────────────────────────
 const TenantContractsPage = () => {
   const confirmDialog = useConfirmDialog()
   const dispatch = useDispatch()
@@ -118,13 +199,9 @@ const TenantContractsPage = () => {
 
   const [contracts, setContracts] = useState([])
   const [loading, setLoading] = useState(true)
-
-  // Modals state
   const [reasonModalOpen, setReasonModalOpen] = useState(false)
-  const [reasonAction, setReasonAction] = useState(null) // 'request-changes' | 'reject'
+  const [reasonAction, setReasonAction] = useState(null)
   const [selectedContractId, setSelectedContractId] = useState(null)
-
-  // Contract Viewer Modal state
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerImages, setViewerImages] = useState([])
 
@@ -146,6 +223,15 @@ const TenantContractsPage = () => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchContracts()
   }, [fetchContracts])
+
+  const contractSummary = useMemo(
+    () => ({
+      total: contracts.length,
+      active: contracts.filter((contract) => contract.status === 'ACTIVE').length,
+      expiringSoon: contracts.filter(isExpiringSoon).length,
+    }),
+    [contracts]
+  )
 
   const handleConfirmContract = async (id) => {
     const confirmed = await confirmDialog({
@@ -176,126 +262,266 @@ const TenantContractsPage = () => {
     }
   }
 
-  const columns = [
-    {
-      header: 'Owner',
-      render: (row) => (
-        <div>
-          <p className="font-bold text-slate-900">{row.ownerName}</p>
-        </div>
-      ),
-    },
-    { header: 'Warehouse', accessor: 'warehouseName' },
-    {
-      header: 'Rent',
-      render: (row) => (
-        <span className="text-primary font-semibold">{formatVND(row.finalMonthlyRent || 0)}</span>
-      ),
-    },
-    {
-      header: 'Term',
-      render: (row) => (
-        <div className="text-xs">
-          <div>Start: {row.startDate}</div>
-          <div>End: {row.endDate}</div>
-        </div>
-      ),
-    },
-    {
-      header: 'Status',
-      render: (row) => {
-        const variants = {
-          DRAFT: 'secondary',
-          PENDING_TENANT_CONFIRM: 'warning',
-          CHANGES_REQUESTED: 'warning',
-          ACTIVE: 'success',
-          REJECTED: 'danger',
-          EXPIRED: 'slate'
-        }
-        return <Badge variant={variants[row.status] || 'slate'}>{row.status}</Badge>
+  const getActions = (contract) =>
+    [
+      contract.paperContractFiles?.length > 0 && {
+        label: 'Xem hợp đồng giấy',
+        icon: FileText,
+        onClick: () => handleViewContract(contract.paperContractFiles),
       },
-    },
-    {
-      header: 'Actions',
-      render: (row) => (
-        <TableActionMenu
-          items={[
-            row.paperContractFiles?.length > 0 && {
-              label: 'View Paper Contract',
-              icon: FileText,
-              onClick: () => handleViewContract(row.paperContractFiles),
-            },
-            row.canViewLayout && {
-              label: 'View Layout',
-              icon: Eye,
-              onClick: () => window.open(`/tenant/contracts/${row.id}/layout`, '_blank')
-            },
-            row.canConfirm && {
-              label: 'Confirm contract',
-              icon: CheckCircle,
-              onClick: () => handleConfirmContract(row.id),
-            },
-            row.canRequestChanges && {
-              label: 'Request Changes',
-              icon: Edit3,
-              onClick: () => {
-                 setSelectedContractId(row.id)
-                 setReasonAction('request-changes')
-                 setReasonModalOpen(true)
-              },
-            },
-            row.canReject && {
-              label: 'Reject',
-              icon: X,
-              onClick: () => {
-                 setSelectedContractId(row.id)
-                 setReasonAction('reject')
-                 setReasonModalOpen(true)
-              },
-              danger: true,
-            },
-            row.canManageWms && {
-              label: 'Open WMS',
-              icon: Box,
-              onClick: () => window.open(`/tenant/inventory?warehouseId=${row.warehouseId}`, '_blank')
-            }
-          ].filter(Boolean)}
-        />
-      ),
-    },
-  ]
+      contract.canViewLayout && {
+        label: 'Xem sơ đồ kho',
+        icon: Eye,
+        onClick: () => window.open(`/tenant/contracts/${contract.id}/layout`, '_blank'),
+      },
+      contract.canConfirm && {
+        label: 'Xác nhận hợp đồng',
+        icon: CheckCircle,
+        onClick: () => handleConfirmContract(contract.id),
+      },
+      contract.canRequestChanges && {
+        label: 'Yêu cầu chỉnh sửa',
+        icon: Edit3,
+        onClick: () => {
+          setSelectedContractId(contract.id)
+          setReasonAction('request-changes')
+          setReasonModalOpen(true)
+        },
+      },
+      contract.canReject && {
+        label: 'Từ chối hợp đồng',
+        icon: X,
+        onClick: () => {
+          setSelectedContractId(contract.id)
+          setReasonAction('reject')
+          setReasonModalOpen(true)
+        },
+        danger: true,
+      },
+      contract.canManageWms && {
+        label: 'Mở WMS',
+        icon: PackageOpen,
+        onClick: () =>
+          window.open(`/tenant/inventory?warehouseId=${contract.warehouseId}`, '_blank'),
+      },
+    ].filter(Boolean)
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       <Header />
       <div className="md:hidden">
         {isMobileOpen && (
-          <button className="fixed inset-0 z-40 bg-slate-900/30" onClick={() => dispatch(closeMobileSidebar())} />
+          <button
+            type="button"
+            aria-label="Close navigation"
+            className="fixed inset-0 z-40 bg-slate-900/40"
+            onClick={() => dispatch(closeMobileSidebar())}
+          />
         )}
       </div>
 
       <div className="flex pt-14">
         <Sidebar currentRole="TENANT" />
-
-        <div className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}>
-          <main className="mx-auto w-full max-w-4000 space-y-6 p-6 md:p-8">
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div
+          className={`flex min-w-0 flex-1 flex-col transition-all duration-150 ease-in-out ${
+            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+          }`}
+        >
+          <main className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
+            <header className="flex flex-col gap-5 border-b border-slate-300 pb-5 xl:flex-row xl:items-end xl:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">My Contracts</h1>
-                <p className="text-sm text-slate-500">Manage your warehouse rental agreements.</p>
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">
+                  <ClipboardList className="h-3.5 w-3.5" aria-hidden="true" />
+                  Tenant operations
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
+                  Hợp đồng của tôi
+                </h1>
+                <p className="mt-1.5 text-sm leading-6 text-slate-600">
+                  Quản lý và theo dõi các hợp đồng thuê kho của bạn.
+                </p>
               </div>
-            </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <DataTable columns={columns} data={contracts} isLoading={loading} />
-            </div>
+              <dl className="grid grid-cols-3 divide-x divide-slate-200 border border-slate-200 bg-white text-left">
+                <div className="min-w-[104px] px-3 py-2.5 sm:px-4">
+                  <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
+                    Tổng hợp đồng
+                  </dt>
+                  <dd className="mt-1 text-lg font-semibold text-slate-950 tabular-nums">
+                    {loading ? '-' : contractSummary.total}
+                  </dd>
+                </div>
+                <div className="min-w-[104px] px-3 py-2.5 sm:px-4">
+                  <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
+                    Đang hoạt động
+                  </dt>
+                  <dd className="mt-1 text-lg font-semibold text-emerald-700 tabular-nums">
+                    {loading ? '-' : contractSummary.active}
+                  </dd>
+                </div>
+                <div className="min-w-[104px] px-3 py-2.5 sm:px-4">
+                  <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
+                    Sắp hết hạn
+                  </dt>
+                  <dd className="mt-1 text-lg font-semibold text-amber-700 tabular-nums">
+                    {loading ? '-' : contractSummary.expiringSoon}
+                  </dd>
+                </div>
+              </dl>
+            </header>
+
+            <section
+              aria-labelledby="contract-records-heading"
+              aria-busy={loading}
+              className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs"
+            >
+              <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div>
+                  <h2
+                    id="contract-records-heading"
+                    className="text-sm font-semibold text-slate-950"
+                  >
+                    Danh sách hợp đồng
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Hồ sơ thuê kho và các thao tác hiện có theo từng hợp đồng
+                  </p>
+                </div>
+                <span className="text-xs font-medium text-slate-500">
+                  {loading ? 'Đang tải hồ sơ' : `${contracts.length} hợp đồng hiển thị`}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto">
+                {loading ? (
+                  <div className="min-w-[1060px] divide-y divide-slate-200" aria-hidden="true">
+                    {Array.from({ length: 5 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-[170px_180px_minmax(200px,1fr)_150px_190px_130px_64px] items-center gap-5 px-5 py-4"
+                      >
+                        {Array.from({ length: 7 }).map((__, cellIndex) => (
+                          <span
+                            key={cellIndex}
+                            className="h-4 animate-pulse rounded bg-slate-200"
+                            style={{ width: `${cellIndex === 2 ? 85 : 65}%` }}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                ) : contracts.length > 0 ? (
+                  <table className="w-full min-w-[1060px] text-left text-sm">
+                    <caption className="sr-only">Danh sách hợp đồng thuê kho</caption>
+                    <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
+                      <tr>
+                        <th scope="col" className="px-5 py-3">
+                          Hợp đồng
+                        </th>
+                        <th scope="col" className="px-5 py-3">
+                          Chủ kho
+                        </th>
+                        <th scope="col" className="px-5 py-3">
+                          Kho bãi
+                        </th>
+                        <th scope="col" className="px-5 py-3 text-right">
+                          Giá thuê
+                        </th>
+                        <th scope="col" className="px-5 py-3">
+                          Thời hạn
+                        </th>
+                        <th scope="col" className="px-5 py-3">
+                          Trạng thái
+                        </th>
+                        <th scope="col" className="px-5 py-3 text-right">
+                          Thao tác
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {contracts.map((contract) => {
+                        const statusMeta = getStatusMeta(contract.status)
+                        const actions = getActions(contract)
+                        return (
+                          <tr key={contract.id} className="transition-colors hover:bg-slate-50">
+                            <td className="px-5 py-3.5 align-middle">
+                              <p className="font-mono text-xs font-semibold text-slate-900">
+                                {formatContractReference(contract.id)}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">Hợp đồng thuê kho</p>
+                            </td>
+                            <td className="px-5 py-3.5 align-middle">
+                              <p className="font-semibold text-slate-900">
+                                {contract.ownerName || '-'}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">Chủ kho</p>
+                            </td>
+                            <td className="px-5 py-3.5 align-middle">
+                              <p className="max-w-72 truncate font-semibold text-slate-900">
+                                {contract.warehouseName || '-'}
+                              </p>
+                              <p className="mt-1 max-w-72 truncate text-xs text-slate-500">
+                                {contract.warehouseAddress || 'Không có địa chỉ kho'}
+                              </p>
+                            </td>
+                            <td className="px-5 py-3.5 text-right align-middle">
+                              <p className="font-semibold text-slate-950 tabular-nums">
+                                {formatVND(contract.finalMonthlyRent || 0)}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">/ tháng</p>
+                            </td>
+                            <td className="px-5 py-3.5 align-middle">
+                              <p className="font-medium text-slate-800 tabular-nums">
+                                {formatContractDate(contract.startDate)}{' '}
+                                <span className="px-1 text-slate-400">→</span>{' '}
+                                {formatContractDate(contract.endDate)}
+                              </p>
+                              {isExpiringSoon(contract) && (
+                                <p className="mt-1 text-xs font-medium text-amber-700">
+                                  Sắp hết hạn
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-5 py-3.5 align-middle">
+                              <span
+                                className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-semibold ${statusMeta.className}`}
+                              >
+                                <span
+                                  className="h-1.5 w-1.5 rounded-full bg-current opacity-80"
+                                  aria-hidden="true"
+                                />
+                                {statusMeta.label}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 text-right align-middle">
+                              <TableActionMenu
+                                label={`Thao tác cho ${formatContractReference(contract.id)}`}
+                                items={actions}
+                              />
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="flex min-h-72 flex-col items-center justify-center px-6 py-12 text-center">
+                    <FileText className="h-7 w-7 text-slate-400" aria-hidden="true" />
+                    <h3 className="mt-3 text-sm font-semibold text-slate-800">Chưa có hợp đồng</h3>
+                    <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                      Bạn chưa có hợp đồng thuê kho nào để theo dõi.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
           </main>
         </div>
       </div>
 
       <ReasonModal
         isOpen={reasonModalOpen}
-        title={reasonAction === 'reject' ? 'Reject Contract' : 'Request Changes'}
+        title={reasonAction === 'reject' ? 'Từ chối hợp đồng' : 'Yêu cầu chỉnh sửa'}
         action={reasonAction}
         contractId={selectedContractId}
         onClose={() => setReasonModalOpen(false)}

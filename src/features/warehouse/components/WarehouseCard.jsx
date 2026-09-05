@@ -1,109 +1,94 @@
 import { motion } from 'framer-motion'
-import { MapPin, Maximize2, Clock, ArrowRight } from 'lucide-react'
+import { ArrowRight, MapPin, Maximize2, Warehouse } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/utils/cn'
 import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
 
 const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
   const isGrid = viewMode === 'grid'
+  const priceLabel = warehouse.rentalPricingType === 'NEGOTIATED' ? 'Giá thuê' : 'Giá / m²'
 
   return (
-    <motion.div
+    <motion.article
       layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ y: -8 }}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
       className={cn(
-        'group relative overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:shadow-2xl hover:shadow-slate-200/60',
-        isGrid ? 'flex flex-col rounded-2xl' : 'flex h-64 flex-row rounded-2xl'
+        'group relative overflow-hidden rounded-lg border border-slate-200 bg-white transition-colors hover:border-slate-300 hover:shadow-sm',
+        isGrid ? 'flex flex-col' : 'flex flex-col md:min-h-58 md:flex-row'
       )}
     >
       <Link
         to={`/warehouse/${warehouse.id}`}
-        aria-label={`View details for ${warehouse.name}`}
-        className="focus-visible:ring-primary absolute inset-0 z-30 cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
+        aria-label={`Xem chi tiết ${warehouse.name}`}
+        className="absolute inset-0 z-10 rounded-lg focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none focus-visible:ring-inset"
       />
 
-      {/* Thumbnail */}
       <div
         className={cn(
-          'relative overflow-hidden bg-slate-100',
-          isGrid ? 'aspect-[4/3]' : 'w-80 shrink-0'
+          'relative shrink-0 overflow-hidden border-b border-slate-200 bg-slate-100 md:border-b-0',
+          isGrid ? 'aspect-[16/9]' : 'aspect-[16/9] md:aspect-auto md:w-72 md:border-r'
         )}
       >
-        <img
-          src={
-            warehouse.thumbnail ||
-            `https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800&sig=${warehouse.id}`
-          }
-          alt={warehouse.name}
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-        />
-        <div className="absolute top-4 left-4 z-20 flex gap-2">
-          {warehouse.isVerified ? (
-            <div className="rounded-full bg-emerald-500/90 px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase shadow-sm backdrop-blur-md">
-              Verified
-            </div>
-          ) : (
-            <div className="rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold tracking-wider text-[#0f084b] uppercase shadow-sm backdrop-blur-md">
-              Approved
-            </div>
-          )}
-        </div>
-        <div className="animate-in fade-in slide-in-from-bottom-2 absolute bottom-4 left-4 z-20 hidden transition-all group-hover:block">
-          <div className="flex items-center gap-1.5 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-900 shadow-lg backdrop-blur-md">
-            <Clock size={14} className="text-primary" /> Contact Owner
+        {warehouse.thumbnail ? (
+          <img
+            src={warehouse.thumbnail}
+            alt={warehouse.name}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-slate-400">
+            <Warehouse className="h-8 w-8" aria-hidden="true" />
           </div>
-        </div>
+        )}
+        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
+          {warehouse.isVerified ? 'Đã xác minh' : 'Đã phê duyệt'}
+        </span>
       </div>
 
-      {/* Content */}
-      <div className="flex flex-1 flex-col p-6">
-        <div className="mb-2 flex items-start justify-between">
-          <h3 className="group-hover:text-primary line-clamp-1 text-lg font-bold text-slate-900 transition-colors">
+      <div className="flex min-w-0 flex-1 flex-col p-4">
+        <div>
+          <h3 className="truncate text-base font-semibold text-slate-950 transition-colors group-hover:text-blue-800">
             {warehouse.name}
           </h3>
+          <p className="mt-1 flex min-w-0 items-center gap-1.5 text-sm text-slate-600">
+            <MapPin className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
+            <span className="truncate">{warehouse.location}</span>
+          </p>
         </div>
 
-        <div className="mb-4 flex items-center gap-1.5 text-sm text-slate-500">
-          <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
-          <span className="line-clamp-1">{warehouse.location}</span>
-        </div>
-
-        <div className="mb-6 flex items-center gap-6">
-          <div className="flex items-center gap-2 text-slate-600">
-            <div className="text-primary group-hover:bg-primary/10 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-50 transition-colors">
-              <Maximize2 size={16} />
-            </div>
-            <span className="text-sm font-semibold">{warehouse.area.toLocaleString()} m²</span>
-          </div>
-          <div className="h-4 w-px bg-slate-100" />
-          <div className="text-sm font-medium text-slate-500">
-            {warehouse.type || 'General'} Storage
-          </div>
-        </div>
-
-        <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-5">
-          <div className="relative z-20">
-            <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">
-              {warehouse.rentalPricingType === 'NEGOTIATED' ? 'Rental price' : 'Price / m²'}
-            </p>
-            <p className="text-primary flex items-baseline gap-1 text-2xl font-black">
-              {formatWarehousePricePerSquareMeter(warehouse)}
-              <span className="text-sm font-medium text-slate-400">
-                {warehouse.rentalPricingType === 'NEGOTIATED' ? '' : '/m²'}
-              </span>
+        <div className="mt-4 grid grid-cols-2 border-y border-slate-200 py-3 text-sm">
+          <div className="border-r border-slate-200 pr-3">
+            <p className="text-[11px] font-medium text-slate-500">Diện tích</p>
+            <p className="mt-1 flex items-center gap-1.5 font-semibold text-slate-900 tabular-nums">
+              <Maximize2 className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+              {warehouse.area.toLocaleString('vi-VN')} m²
             </p>
           </div>
-          <div className="relative z-20">
-            <span className="bg-primary shadow-primary/20 group-hover:bg-primary/90 inline-flex h-10 w-10 items-center justify-center rounded-xl text-sm font-medium text-white shadow-lg transition-colors">
-              <ArrowRight size={14} />
-            </span>
+          <div className="min-w-0 pl-3">
+            <p className="text-[11px] font-medium text-slate-500">Loại kho</p>
+            <p className="mt-1 truncate font-semibold text-slate-900">{warehouse.type}</p>
           </div>
+        </div>
+
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium text-slate-500">{priceLabel}</p>
+            <p className="mt-1 truncate text-lg font-semibold text-slate-950 tabular-nums">
+              {formatWarehousePricePerSquareMeter(warehouse, 'Thương lượng')}
+              {warehouse.rentalPricingType !== 'NEGOTIATED' && (
+                <span className="ml-1 text-xs font-medium text-slate-500">/ m²</span>
+              )}
+            </p>
+          </div>
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition-colors group-hover:border-blue-700 group-hover:bg-blue-700 group-hover:text-white">
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </span>
         </div>
       </div>
-    </motion.div>
+    </motion.article>
   )
 }
 

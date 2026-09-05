@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
-import { ArrowLeft, Save, CheckCircle, XCircle } from 'lucide-react'
+import { ArrowLeft, Save, CheckCircle, PlayCircle, RotateCcw, PlusCircle, Ban } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
@@ -17,10 +17,14 @@ import { showApiErrorToast } from '@/config/apiError'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const STATUS_CONFIG = {
-  PENDING: { label: 'Pending', type: 'warning' },
+  DRAFT: { label: 'Draft', type: 'default' },
+  PENDING: { label: 'Planned', type: 'warning' },
+  IN_PROGRESS: { label: 'In Progress', type: 'info' },
+  SUBMITTED: { label: 'Awaiting approval', type: 'warning' },
+  RECOUNT_REQUIRED: { label: 'Recount Required', type: 'error' },
   APPROVED: { label: 'Approved', type: 'success' },
   REJECTED: { label: 'Rejected', type: 'error' },
-  SUBMITTED: { label: 'Awaiting approval', type: 'info' },
+  CANCELLED: { label: 'Cancelled', type: 'error' },
   COMPLETED: { label: 'Completed', type: 'success' },
 }
 
@@ -34,13 +38,25 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
   const [loading, setLoading] = useState(false)
   const [items, setItems] = useState([])
 
-  // Modal từ chối
-  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false)
-  const [rejectReason, setRejectReason] = useState('')
-  const [rejecting, setRejecting] = useState(false)
-
+  // States for Modals and Loading
+  const [starting, setStarting] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [approving, setApproving] = useState(false)
+
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelling, setCancelling] = useState(false)
+
+  const [isRecountModalOpen, setIsRecountModalOpen] = useState(false)
+  const [recountReason, setRecountReason] = useState('')
+  const [recounting, setRecounting] = useState(false)
+
+  const [isUnexpectedModalOpen, setIsUnexpectedModalOpen] = useState(false)
+  const [unexpectedSkuCode, setUnexpectedSkuCode] = useState('')
+  const [unexpectedQuantity, setUnexpectedQuantity] = useState(1)
+  const [unexpectedNote, setUnexpectedNote] = useState('')
+  const [addingUnexpected, setAddingUnexpected] = useState(false)
 
   useActiveWarehouseContext(audit?.warehouseId)
 
@@ -50,14 +66,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       const res = await auditApi.getAuditDetail(id)
       if (res.data?.success) {
         setAudit(res.data.data)
-        // copy items into state to allow editing actualQuantity
         const fetchedItems = res.data.data.items || []
         setItems(
           fetchedItems.map((item) => ({
             ...item,
-            // Mặc định actualQuantity bằng expectedQuantity nếu chưa nhập
-            actualQuantity:
-              item.actualQuantity !== null ? item.actualQuantity : item.expectedQuantity,
+            actualQuantity: item.actualQuantity !== null ? item.actualQuantity : item.expectedQuantity,
           }))
         )
       }
@@ -81,38 +94,68 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     }
   }
 
-  const handleQuantityChange = (batchId, value) => {
+  const handleQuantityChange = (itemId, value) => {
     const num = parseInt(value, 10)
     setItems((prev) =>
       prev.map((item) =>
-        item.batchId === batchId ? { ...item, actualQuantity: isNaN(num) ? 0 : num } : item
+        item.id === itemId ? { ...item, actualQuantity: isNaN(num) ? 0 : num } : item
       )
     )
   }
 
-  const handleNoteChange = (batchId, value) => {
+  const handleNoteChange = (itemId, value) => {
     setItems((prev) =>
-      prev.map((item) => (item.batchId === batchId ? { ...item, note: value } : item))
+      prev.map((item) => (item.id === itemId ? { ...item, note: value } : item))
     )
+  }
+
+  const handleStartAudit = async () => {
+    try {
+      setStarting(true)
+      const res = await auditApi.startAudit(id)
+      if (res.data?.success) {
+        toast.success('Audit started.')
+        fetchAuditDetail()
+      }
+    } catch (error) {
+      showApiErrorToast(error, 'Could not start audit.')
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  const handleSaveCounts = async () => {
+    try {
+      setSaving(true)
+      const payload = {
+        items: items.map((item) => ({
+          itemId: item.id,
+          actualQuantity: item.actualQuantity,
+          note: item.note || '',
+        })),
+      }
+      const res = await auditApi.saveCounts(id, payload)
+      if (res.data?.success) {
+        toast.success('Counts saved.')
+        // fetchAuditDetail()
+      }
+    } catch (error) {
+      showApiErrorToast(error, 'Could not save counts.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSubmitAudit = async () => {
     try {
       setSubmitting(true)
-      const payload = {
-        items: items.map((item) => ({
-          batchId: item.batchId,
-          actualQuantity: item.actualQuantity,
-          note: item.note || '',
-        })),
-      }
-      const res = await auditApi.submitAudit(id, payload)
+      const res = await auditApi.submitAudit(id)
       if (res.data?.success) {
-      toast.success('Count submitted.')
+        toast.success('Audit submitted.')
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Could not submit count.')
+      showApiErrorToast(error, 'Could not submit audit.')
     } finally {
       setSubmitting(false)
     }
@@ -123,7 +166,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setApproving(true)
       const res = await auditApi.approveAudit(id)
       if (res.data?.success) {
-      toast.success('Audit approved.')
+        toast.success('Audit approved.')
         fetchAuditDetail()
       }
     } catch (error) {
@@ -133,20 +176,61 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     }
   }
 
-  const handleReject = async (e) => {
+  const handleCancel = async (e) => {
     e.preventDefault()
     try {
-      setRejecting(true)
-      const res = await auditApi.rejectAudit(id, { reason: rejectReason })
+      setCancelling(true)
+      const res = await auditApi.cancelAudit(id, { reason: cancelReason })
       if (res.data?.success) {
-      toast.success('Audit rejected.')
-        setIsRejectModalOpen(false)
+        toast.success('Audit cancelled.')
+        setIsCancelModalOpen(false)
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Could not reject audit.')
+      showApiErrorToast(error, 'Could not cancel audit.')
     } finally {
-      setRejecting(false)
+      setCancelling(false)
+    }
+  }
+
+  const handleRecount = async (e) => {
+    e.preventDefault()
+    try {
+      setRecounting(true)
+      const res = await auditApi.recountAudit(id, { reason: recountReason })
+      if (res.data?.success) {
+        toast.success('Recount requested.')
+        setIsRecountModalOpen(false)
+        fetchAuditDetail()
+      }
+    } catch (error) {
+      showApiErrorToast(error, 'Could not request recount.')
+    } finally {
+      setRecounting(false)
+    }
+  }
+
+  const handleAddUnexpectedItem = async (e) => {
+    e.preventDefault()
+    try {
+      setAddingUnexpected(true)
+      const res = await auditApi.addUnexpectedItem(id, {
+        skuCode: unexpectedSkuCode,
+        actualQuantity: unexpectedQuantity,
+        note: unexpectedNote
+      })
+      if (res.data?.success) {
+        toast.success('Unexpected item added.')
+        setIsUnexpectedModalOpen(false)
+        setUnexpectedSkuCode('')
+        setUnexpectedQuantity(1)
+        setUnexpectedNote('')
+        fetchAuditDetail()
+      }
+    } catch (error) {
+      showApiErrorToast(error, 'Could not add unexpected item.')
+    } finally {
+      setAddingUnexpected(false)
     }
   }
 
@@ -166,8 +250,10 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
 
   if (!audit) return null
 
-  const isPending = audit.status === 'PENDING'
+  const isDraft = audit.status === 'DRAFT' || audit.status === 'PENDING'
+  const isInProgress = audit.status === 'IN_PROGRESS' || audit.status === 'RECOUNT_REQUIRED'
   const isSubmitted = audit.status === 'SUBMITTED'
+
   const statusConfig = STATUS_CONFIG[audit.status] || { label: audit.status, type: 'default' }
 
   const columns = [
@@ -186,21 +272,21 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     },
     {
       accessor: 'expectedQuantity',
-      header: 'System quantity',
+      header: 'System qty',
       render: (row) => `${row.expectedQuantity} ${row.uomSymbol || ''}`,
     },
     {
       accessor: 'actualQuantity',
-      header: 'Counted quantity',
+      header: 'Counted qty',
       render: (row) => {
-        if (isPending) {
+        if (isInProgress) {
           return (
             <input
               type="number"
               min="0"
               className="focus:border-brand-500 focus:ring-brand-500 w-24 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:ring-1"
               value={row.actualQuantity}
-              onChange={(e) => handleQuantityChange(row.batchId, e.target.value)}
+              onChange={(e) => handleQuantityChange(row.id, e.target.value)}
             />
           )
         }
@@ -211,7 +297,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       accessor: 'discrepancy',
       header: 'Difference',
       render: (row) => {
-        const diff = isPending ? row.actualQuantity - row.expectedQuantity : row.discrepancy
+        const diff = isInProgress ? row.actualQuantity - row.expectedQuantity : row.discrepancy
 
         let colorClass = 'text-slate-600'
         let sign = ''
@@ -234,14 +320,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       accessor: 'note',
       header: 'Note',
       render: (row) => {
-        if (isPending) {
+        if (isInProgress) {
           return (
             <input
               type="text"
               className="focus:border-brand-500 focus:ring-brand-500 w-full min-w-30 rounded-lg border border-slate-300 px-2 py-1 outline-none focus:ring-1"
               value={row.note || ''}
               placeholder="Note..."
-              onChange={(e) => handleNoteChange(row.batchId, e.target.value)}
+              onChange={(e) => handleNoteChange(row.id, e.target.value)}
             />
           )
         }
@@ -314,7 +400,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   </div>
                 </div>
 
-                {(audit.approvedByName || audit.status === 'REJECTED') && (
+                {(audit.approvedByName || audit.status === 'REJECTED' || audit.status === 'CANCELLED') && (
                   <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                     <h3 className="mb-4 text-lg font-semibold text-slate-900">
                       Approval details
@@ -348,26 +434,74 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
 
               {/* Actions based on status */}
               <div className="flex justify-end gap-3 pt-2">
-                {isPending && (
-                  <Button
-                    onClick={handleSubmitAudit}
-                    isLoading={submitting}
-                    className="flex items-center gap-2"
-                  >
-                    <Save className="h-4 w-4" />
-                    Save count
-                  </Button>
+                {isDraft && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2 text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => setIsCancelModalOpen(true)}
+                    >
+                      <Ban className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleStartAudit}
+                      isLoading={starting}
+                      className="flex items-center gap-2 bg-brand-600 text-white hover:bg-brand-700"
+                    >
+                      <PlayCircle className="h-4 w-4" />
+                      Start audit
+                    </Button>
+                  </>
+                )}
+
+                {isInProgress && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2 text-slate-600"
+                      onClick={() => setIsUnexpectedModalOpen(true)}
+                    >
+                      <PlusCircle className="h-4 w-4" />
+                      Add unexpected item
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="flex items-center gap-2 text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => setIsCancelModalOpen(true)}
+                    >
+                      <Ban className="h-4 w-4" />
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSaveCounts}
+                      isLoading={saving}
+                      variant="outline"
+                      className="flex items-center gap-2 text-brand-600 border-brand-200 hover:bg-brand-50"
+                    >
+                      <Save className="h-4 w-4" />
+                      Save progress
+                    </Button>
+                    <Button
+                      onClick={handleSubmitAudit}
+                      isLoading={submitting}
+                      className="flex items-center gap-2"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Submit count
+                    </Button>
+                  </>
                 )}
 
                 {isSubmitted && currentRole === 'TENANT' && (
                   <>
                     <Button
                       variant="outline"
-                      className="flex items-center gap-2 text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                      onClick={() => setIsRejectModalOpen(true)}
+                      className="flex items-center gap-2 text-amber-600 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                      onClick={() => setIsRecountModalOpen(true)}
                     >
-                      <XCircle className="h-4 w-4" />
-                      Reject
+                      <RotateCcw className="h-4 w-4" />
+                      Request Recount
                     </Button>
                     <Button
                       onClick={handleApprove}
@@ -392,36 +526,129 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       </div>
 
       <Modal
-        isOpen={isRejectModalOpen}
-        onClose={() => setIsRejectModalOpen(false)}
-        title="Reject audit"
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        title="Cancel audit"
         size="md"
       >
-        <FormShell onSubmit={handleReject} className="space-y-4">
+        <FormShell onSubmit={handleCancel} className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
-              Rejection reason <span className="text-red-500">*</span>
+              Reason (Optional)
             </label>
             <textarea
               className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
               rows={3}
-              placeholder="Enter a rejection reason..."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              required
+              placeholder="Enter a reason..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
             />
           </div>
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setIsRejectModalOpen(false)}>
-              Cancel
+            <Button type="button" variant="outline" onClick={() => setIsCancelModalOpen(false)}>
+              Close
             </Button>
             <Button
               type="submit"
               variant="outline"
               className="bg-red-600 text-white hover:bg-red-700"
-              isLoading={rejecting}
+              isLoading={cancelling}
             >
-              Reject
+              Cancel Audit
+            </Button>
+          </div>
+        </FormShell>
+      </Modal>
+
+      <Modal
+        isOpen={isRecountModalOpen}
+        onClose={() => setIsRecountModalOpen(false)}
+        title="Request Recount"
+        size="md"
+      >
+        <FormShell onSubmit={handleRecount} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Reason <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
+              rows={3}
+              placeholder="Why is a recount needed?"
+              value={recountReason}
+              onChange={(e) => setRecountReason(e.target.value)}
+              required
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => setIsRecountModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="bg-amber-600 text-white hover:bg-amber-700"
+              isLoading={recounting}
+            >
+              Request Recount
+            </Button>
+          </div>
+        </FormShell>
+      </Modal>
+
+      <Modal
+        isOpen={isUnexpectedModalOpen}
+        onClose={() => setIsUnexpectedModalOpen(false)}
+        title="Add Unexpected Item"
+        size="md"
+      >
+        <FormShell onSubmit={handleAddUnexpectedItem} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              SKU Code <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
+              placeholder="E.g., SKU-123"
+              value={unexpectedSkuCode}
+              onChange={(e) => setUnexpectedSkuCode(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Found Quantity <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="number"
+              min="1"
+              className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
+              value={unexpectedQuantity}
+              onChange={(e) => setUnexpectedQuantity(parseInt(e.target.value, 10))}
+              required
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Note
+            </label>
+            <textarea
+              className="focus:border-brand-500 focus:ring-brand-500 w-full rounded-lg border border-slate-300 p-2.5 outline-none focus:ring-1"
+              rows={2}
+              placeholder="Where was it found?"
+              value={unexpectedNote}
+              onChange={(e) => setUnexpectedNote(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => setIsUnexpectedModalOpen(false)}>
+              Close
+            </Button>
+            <Button
+              type="submit"
+              isLoading={addingUnexpected}
+            >
+              Add Item
             </Button>
           </div>
         </FormShell>

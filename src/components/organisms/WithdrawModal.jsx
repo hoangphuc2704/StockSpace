@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { FormShell } from '@/form/FormControls'
-import { Wallet, X, Loader2 } from 'lucide-react'
+import { MinusCircle, X, Loader2, Building2 } from 'lucide-react'
 import walletApi from '../../services/wallet/walletApi'
 import useEscapeKey from '../../hooks/useEscapeKey'
 import { positiveNumber } from '@/config/validation'
@@ -35,14 +35,14 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
     setError('')
 
     const amountNum = Number(formData.amount)
-    const amountError = positiveNumber(amountNum, 'Withdrawal amount must be greater than 0.')
+    const amountError = positiveNumber(amountNum, 'Số tiền rút phải lớn hơn 0.')
     if (amountError) {
       setError(amountError)
       return
     }
     if (amountNum > currentBalance) {
       setError(
-        `The withdrawal amount cannot exceed the available balance (${formatVND(currentBalance)}).`
+        `Số tiền rút không được vượt quá số dư khả dụng (${formatVND(currentBalance)}).`
       )
       return
     }
@@ -61,68 +61,87 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
         onClose()
       } else {
         const backendError = { response: { data: res?.data } }
-        setError(showApiErrorToast(backendError, 'Withdrawal request failed.'))
+        setError(showApiErrorToast(backendError, 'Tạo yêu cầu rút tiền thất bại.'))
       }
     } catch (err) {
       console.error('Error when withdrawing money:', err)
-      setError(showApiErrorToast(err, 'An error occurred, please try again later.'))
+      setError(showApiErrorToast(err, 'Đã xảy ra lỗi, vui lòng thử lại sau.'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-            <Wallet className="h-5 w-5 text-blue-600" /> Create a withdrawal request
-          </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+      <div className="w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-50 text-rose-600 border border-rose-100">
+              <MinusCircle className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Tạo Yêu Cầu Rút Tiền
+              </h3>
+              <p className="text-[11px] text-slate-500">Chuyển số dư ví về tài khoản ngân hàng thụ hưởng</p>
+            </div>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-rose-50 p-3 text-sm text-rose-600">{error}</div>
+          <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+            {error}
+          </div>
         )}
 
         <FormShell onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-bold text-slate-500 uppercase">
-              Amount to withdraw (VND)
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-700">
+                Số tiền cần rút (VND)
+              </label>
+              <span className="text-[11px] text-slate-500">
+                Khả dụng:{' '}
+                <span className="font-mono font-bold text-blue-600">{formatVND(currentBalance)}</span>
+              </span>
+            </div>
             <div className="relative">
               <input
                 type="number"
                 name="amount"
                 required
+                autoFocus
+                min={10000}
+                step={10000}
                 value={formData.amount}
                 onChange={handleChange}
-                placeholder="For example: 500000"
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
+                placeholder="Ví dụ: 5000000"
+                className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm font-mono font-bold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
               />
-              <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
+              <span className="absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-bold text-slate-400">
                 ₫
               </span>
             </div>
-            {formData.amount && !isNaN(Number(formData.amount)) && (
-              <p className="mt-1 text-xs font-medium text-emerald-600">
-                Real receipt: {formatVND(Number(formData.amount))}
-              </p>
+            {formData.amount && !isNaN(Number(formData.amount)) && Number(formData.amount) > 0 && (
+              <div className="mt-2 flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700">
+                <span>Số tiền rút dự kiến:</span>
+                <span className="font-mono font-bold text-rose-600">
+                  − {formatVND(Number(formData.amount))}
+                </span>
+              </div>
             )}
-            <p className="mt-1 text-xs text-slate-400">
-              Available balance:{' '}
-              <span className="font-semibold text-blue-600">{formatVND(currentBalance)}</span>
-            </p>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold text-slate-500 uppercase">
-              Bank Name
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+              Tên ngân hàng thụ hưởng
             </label>
             <input
               type="text"
@@ -130,14 +149,14 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
               required
               value={formData.bankName}
               onChange={handleChange}
-              placeholder="VD: Vietcombank, TPBank..."
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
+              placeholder="Ví dụ: Vietcombank, MBBank, Techcombank..."
+              className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-xs font-medium text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold text-slate-500 uppercase">
-              Account Number
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+              Số tài khoản ngân hàng
             </label>
             <input
               type="text"
@@ -145,14 +164,14 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
               required
               value={formData.bankAccountNumber}
               onChange={handleChange}
-              placeholder="Enter the bank account number"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
+              placeholder="Nhập số tài khoản ngân hàng"
+              className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-xs font-mono font-medium text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-bold text-slate-500 uppercase">
-              Account Holder Name
+            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+              Tên chủ tài khoản
             </label>
             <input
               type="text"
@@ -160,31 +179,38 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
               required
               value={formData.bankAccountHolder}
               onChange={handleChange}
-              placeholder="CAPITALS WITHOUT diacritics"
-              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 uppercase focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
+              placeholder="VIẾT HOA KHÔNG DẤU (VD: NGUYEN VAN A)"
+              className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-xs font-medium uppercase text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 border border-slate-100 flex items-start gap-2">
+            <Building2 className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />
+            <p>
+              Yêu cầu rút tiền sẽ được bộ phận kế toán WMS xử lý và đối soát trong vòng 24 giờ làm việc. Tiền sẽ được chuyển thẳng về tài khoản ngân hàng khai báo.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
             >
-              Cancel
+              Hủy bỏ
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.amount}
-              className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-blue-700 disabled:bg-slate-300"
+              disabled={loading || !formData.amount || Number(formData.amount) <= 0}
+              className="inline-flex items-center justify-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-rose-700 transition-colors disabled:bg-slate-300"
             >
               {loading ? (
                 <>
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  Processing...
+                  Đang xử lý yêu cầu...
                 </>
               ) : (
-                <>Create a withdrawal request</>
+                <>Xác nhận tạo yêu cầu rút</>
               )}
             </button>
           </div>

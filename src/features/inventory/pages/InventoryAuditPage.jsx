@@ -19,10 +19,14 @@ import { showApiErrorToast } from '@/config/apiError'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const STATUS_CONFIG = {
-  PENDING: { label: 'Pending', type: 'warning' },
+  DRAFT: { label: 'Draft', type: 'default' },
+  PENDING: { label: 'Planned', type: 'warning' },
+  IN_PROGRESS: { label: 'In Progress', type: 'info' },
+  SUBMITTED: { label: 'Awaiting approval', type: 'warning' },
+  RECOUNT_REQUIRED: { label: 'Recount Required', type: 'error' },
   APPROVED: { label: 'Approved', type: 'success' },
   REJECTED: { label: 'Rejected', type: 'error' },
-  SUBMITTED: { label: 'Awaiting approval', type: 'info' },
+  CANCELLED: { label: 'Cancelled', type: 'error' },
   COMPLETED: { label: 'Completed', type: 'success' },
 }
 

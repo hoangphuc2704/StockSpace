@@ -1,9 +1,24 @@
-import React, { useEffect, useState } from 'react'
-import { X, Loader2, ArrowRight, Package, User } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowRight, Clock3, FileText, Loader2, Warehouse, X } from 'lucide-react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import transferApi from '@/services/wms/transferApi'
 import { showApiErrorToast } from '@/config/apiError'
-import Badge from '@/components/atoms/Badge'
+
+const TRANSFER_STATUS_META = {
+  PENDING: { label: 'Pending', className: 'border-amber-200 bg-amber-50 text-amber-800' },
+  IN_TRANSIT: { label: 'In transit', className: 'border-blue-200 bg-blue-50 text-blue-700' },
+  COMPLETED: { label: 'Completed', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  REJECTED: { label: 'Rejected', className: 'border-rose-200 bg-rose-50 text-rose-700' },
+  CANCELLED: { label: 'Cancelled', className: 'border-slate-200 bg-slate-100 text-slate-700' },
+}
+
+const getStatusMeta = (status) =>
+  TRANSFER_STATUS_META[status] || {
+    label: status || 'Unknown',
+    className: 'border-slate-200 bg-slate-100 text-slate-700',
+  }
+
+const formatDate = (dateString) => (dateString ? new Date(dateString).toLocaleString() : '-')
 
 const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
   useEscapeKey(isOpen, onClose)
@@ -13,6 +28,7 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
 
   useEffect(() => {
     if (!isOpen || !transferId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTransfer(null)
       return
     }
@@ -35,185 +51,280 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
 
   if (!isOpen) return null
 
-  const getStatusBadge = (status) => {
-    const variants = {
-      PENDING: 'warning',
-      IN_TRANSIT: 'secondary',
-      COMPLETED: 'success',
-      REJECTED: 'danger',
-      CANCELLED: 'slate'
-    }
-    return <Badge variant={variants[status] || 'slate'}>{status}</Badge>
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '-'
-    return new Date(dateString).toLocaleString()
-  }
+  const statusMeta = getStatusMeta(transfer?.status)
+  const timelineEntries = [
+    { label: 'Created', value: transfer?.createdAt },
+    { label: 'Dispatched', value: transfer?.approvedAt },
+    { label: 'Received', value: transfer?.receivedAt },
+    { label: 'Rejected', value: transfer?.rejectedAt, danger: true },
+    { label: 'Cancelled', value: transfer?.cancelledAt },
+  ].filter((entry) => entry.value)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="animate-in fade-in zoom-in-95 flex w-full max-w-4xl flex-col rounded-2xl border border-slate-200 bg-white shadow-xl max-h-[90vh]">
-        <div className="flex items-center justify-between border-b border-slate-100 p-6">
-          <div>
-            <h3 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-              <Package className="h-6 w-6 text-blue-600" />
-              Transfer Details
-            </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 sm:p-6">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="transfer-detail-title"
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-slate-300 bg-white shadow-2xl"
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">
+              Transfer record
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2.5">
+              <h2
+                id="transfer-detail-title"
+                className="text-xl font-bold tracking-tight text-slate-950"
+              >
+                Transfer details
+              </h2>
+              {transfer && (
+                <span
+                  className={`inline-flex items-center rounded border px-2 py-1 text-[11px] font-semibold ${statusMeta.className}`}
+                >
+                  {statusMeta.label}
+                </span>
+              )}
+            </div>
             {transfer && (
-              <p className="mt-1 text-sm text-slate-500 font-mono">
-                ID: {transfer.id}
+              <p className="mt-1 font-mono text-xs text-slate-500">
+                TRF-{String(transfer.id).slice(0, 8).toUpperCase()}
               </p>
             )}
           </div>
-          <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 transition-colors">
-            <X className="h-5 w-5" />
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close transfer details"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
-        </div>
+        </header>
 
         {loading ? (
-          <div className="flex items-center justify-center p-12">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          <div
+            className="flex min-h-72 items-center justify-center gap-3 text-sm text-slate-500"
+            role="status"
+          >
+            <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            Loading transfer record
           </div>
         ) : !transfer ? (
-          <div className="flex items-center justify-center p-12 text-slate-500">
-            Transfer not found.
+          <div className="flex min-h-72 items-center justify-center px-6 text-center text-sm text-slate-500">
+            Transfer record not found.
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-6 space-y-8">
-            
-            {/* Header / Route Info */}
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 p-6 border border-slate-200">
-              <div className="flex-1 text-center">
-                <p className="text-sm font-semibold text-slate-500 mb-1">Source</p>
-                <p className="font-bold text-lg text-slate-900">{transfer.sourceWarehouse?.name || '-'}</p>
+          <div className="flex-1 space-y-6 overflow-y-auto p-5 sm:p-6">
+            <section
+              aria-labelledby="transfer-route-heading"
+              className="border-b border-slate-200 pb-5"
+            >
+              <div className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+                <Warehouse className="h-3.5 w-3.5" aria-hidden="true" />
+                <h3 id="transfer-route-heading">Warehouse route</h3>
               </div>
-              
-              <div className="flex-1 flex flex-col items-center justify-center px-4">
-                <div className="mb-2">{getStatusBadge(transfer.status)}</div>
-                <ArrowRight className="h-6 w-6 text-slate-400" />
-              </div>
-              
-              <div className="flex-1 text-center">
-                <p className="text-sm font-semibold text-slate-500 mb-1">Destination</p>
-                <p className="font-bold text-lg text-slate-900">{transfer.destinationWarehouse?.name || '-'}</p>
-              </div>
-            </div>
-
-            {/* Note & Timeline Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-semibold text-slate-500 mb-1">Transfer Note</p>
-                  <p className="text-sm text-slate-900 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    {transfer.note || <span className="italic text-slate-400">No note provided</span>}
+              <div className="grid items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:gap-5">
+                <div className="min-w-0 border-l-2 border-slate-300 pl-3">
+                  <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+                    Source warehouse
+                  </p>
+                  <p className="mt-1 truncate text-lg font-semibold text-slate-950">
+                    {transfer.sourceWarehouse?.name || 'Unknown warehouse'}
                   </p>
                 </div>
+                <ArrowRight className="h-4 w-4 text-slate-400 sm:hidden" aria-hidden="true" />
+                <div
+                  className="hidden items-center gap-2 text-slate-400 sm:flex"
+                  aria-hidden="true"
+                >
+                  <span className="h-px w-8 bg-slate-300" />
+                  <ArrowRight className="h-5 w-5" />
+                  <span className="h-px w-8 bg-slate-300" />
+                </div>
+                <div className="min-w-0 border-l-2 border-blue-600 pl-3 sm:border-r-2 sm:border-l-0 sm:pr-3 sm:text-right">
+                  <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+                    Destination warehouse
+                  </p>
+                  <p className="mt-1 truncate text-lg font-semibold text-slate-950">
+                    {transfer.destinationWarehouse?.name || 'Unknown warehouse'}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+              <section aria-labelledby="transfer-notes-heading">
+                <div className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+                  <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                  <h3 id="transfer-notes-heading">Operational notes</h3>
+                </div>
+                <div className="border-y border-slate-200 py-3 text-sm leading-6 text-slate-700">
+                  {transfer.note || (
+                    <span className="text-slate-500">No note was provided for this transfer.</span>
+                  )}
+                </div>
                 {transfer.decisionReason && (
-                  <div>
-                    <p className="text-sm font-semibold text-rose-500 mb-1">Decision Reason</p>
-                    <p className="text-sm text-slate-900 bg-rose-50 p-3 rounded-lg border border-rose-100">
+                  <div className="mt-4 border-l-2 border-rose-500 bg-rose-50 px-3 py-2.5">
+                    <p className="text-xs font-semibold tracking-[0.1em] text-rose-700 uppercase">
+                      Decision reason
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-rose-900">
                       {transfer.decisionReason}
                     </p>
                   </div>
                 )}
-              </div>
+              </section>
 
-              <div className="space-y-3 rounded-xl border border-slate-200 p-4 bg-white text-sm">
-                <h4 className="font-bold text-slate-900 mb-3 border-b border-slate-100 pb-2">Timeline</h4>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Created:</span>
-                  <span className="font-medium text-slate-900">{formatDate(transfer.createdAt)}</span>
+              <section
+                aria-labelledby="transfer-timeline-heading"
+                className="border border-slate-200"
+              >
+                <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-3">
+                  <Clock3 className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                  <h3
+                    id="transfer-timeline-heading"
+                    className="text-sm font-semibold text-slate-900"
+                  >
+                    Timeline
+                  </h3>
                 </div>
-                {transfer.approvedAt && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Dispatched:</span>
-                    <span className="font-medium text-slate-900">{formatDate(transfer.approvedAt)}</span>
-                  </div>
-                )}
-                {transfer.receivedAt && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Received:</span>
-                    <span className="font-medium text-slate-900">{formatDate(transfer.receivedAt)}</span>
-                  </div>
-                )}
-                {transfer.rejectedAt && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Rejected:</span>
-                    <span className="font-medium text-rose-600">{formatDate(transfer.rejectedAt)}</span>
-                  </div>
-                )}
-                {transfer.cancelledAt && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500">Cancelled:</span>
-                    <span className="font-medium text-slate-900">{formatDate(transfer.cancelledAt)}</span>
-                  </div>
-                )}
-              </div>
+                <dl className="divide-y divide-slate-200">
+                  {timelineEntries.length > 0 ? (
+                    timelineEntries.map((entry) => (
+                      <div
+                        key={entry.label}
+                        className="flex items-baseline justify-between gap-4 px-4 py-3 text-sm"
+                      >
+                        <dt className="text-slate-500">{entry.label}</dt>
+                        <dd
+                          className={`text-right font-medium tabular-nums ${entry.danger ? 'text-rose-700' : 'text-slate-900'}`}
+                        >
+                          {formatDate(entry.value)}
+                        </dd>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-5 text-sm text-slate-500">
+                      No event timestamps are available.
+                    </div>
+                  )}
+                </dl>
+              </section>
             </div>
 
-            {/* Items */}
-            <div>
-              <h4 className="text-lg font-bold text-slate-900 mb-4">Transfer Items</h4>
+            <section aria-labelledby="transfer-items-heading">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3
+                    id="transfer-items-heading"
+                    className="text-base font-semibold text-slate-950"
+                  >
+                    Transfer items
+                  </h3>
+                  <p className="mt-0.5 text-sm text-slate-500">
+                    Source and destination locations by SKU
+                  </p>
+                </div>
+                <span className="text-sm font-medium text-slate-500">
+                  {transfer.items?.length || 0} SKU
+                </span>
+              </div>
+
               <div className="space-y-4">
-                {(transfer.items || []).map((item, idx) => (
-                  <div key={item.id || idx} className="rounded-xl border border-slate-200 overflow-hidden">
-                    <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-                      <div>
-                        <p className="font-bold text-slate-900">{item.skuName}</p>
-                        <p className="text-xs text-slate-500 font-mono mt-1">{item.skuCode}</p>
+                {(transfer.items || []).map((item, index) => (
+                  <article
+                    key={item.id || index}
+                    className="overflow-hidden border border-slate-200"
+                  >
+                    <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-950">
+                          {item.skuName || 'Unnamed SKU'}
+                        </p>
+                        <p className="mt-1 font-mono text-xs text-slate-500">
+                          {item.skuCode || 'No SKU code'}
+                        </p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-slate-500 mb-1">Total Requested</p>
-                        <span className="inline-flex items-center justify-center rounded-lg bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700">
-                          {item.requestedQuantity}
-                        </span>
+                      <div className="text-left sm:text-right">
+                        <p className="text-xs font-semibold tracking-[0.08em] text-slate-500 uppercase">
+                          Requested quantity
+                        </p>
+                        <p className="mt-1 text-lg font-semibold text-slate-950 tabular-nums">
+                          {item.requestedQuantity ?? '-'}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Source Allocations */}
-                      <div>
-                        <p className="text-sm font-bold text-slate-700 mb-2">Dispatched From (Source)</p>
-                        {(!item.sourceAllocations || item.sourceAllocations.length === 0) ? (
-                          <p className="text-xs text-slate-500 italic">No source allocations.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {item.sourceAllocations.map((alloc, aidx) => (
-                              <div key={aidx} className="flex justify-between text-sm bg-white border border-slate-100 p-2 rounded-lg">
-                                <span className="text-slate-600">{alloc.sourceRackName || 'Unknown Rack'} - {alloc.sourceBinName || 'Unknown Bin'}</span>
-                                <span className="font-medium text-slate-900">Qty: {alloc.quantity}</span>
+                    <div className="grid lg:grid-cols-2 lg:divide-x lg:divide-slate-200">
+                      <section className="p-4" aria-label="Source allocations">
+                        <p className="mb-2 text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+                          Dispatched from
+                        </p>
+                        {item.sourceAllocations?.length ? (
+                          <div className="divide-y divide-slate-200 border-y border-slate-200">
+                            {item.sourceAllocations.map((allocation, allocationIndex) => (
+                              <div
+                                key={allocationIndex}
+                                className="flex items-center justify-between gap-4 py-2.5 text-sm"
+                              >
+                                <span className="min-w-0 truncate text-slate-700">
+                                  {allocation.sourceRackName || 'Unknown rack'} /{' '}
+                                  {allocation.sourceBinName || 'Unknown bin'}
+                                </span>
+                                <span className="shrink-0 font-semibold text-slate-950 tabular-nums">
+                                  {allocation.quantity}
+                                </span>
                               </div>
                             ))}
                           </div>
+                        ) : (
+                          <p className="border-y border-slate-200 py-3 text-sm text-slate-500">
+                            No source allocations recorded.
+                          </p>
                         )}
-                      </div>
+                      </section>
 
-                      {/* Destination Allocations */}
-                      <div>
-                        <p className="text-sm font-bold text-slate-700 mb-2">Received Into (Destination)</p>
-                        {(!item.destinationAllocations || item.destinationAllocations.length === 0) ? (
-                          <p className="text-xs text-slate-500 italic">Pending receipt.</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {item.destinationAllocations.map((alloc, aidx) => (
-                              <div key={aidx} className="flex justify-between text-sm bg-white border border-slate-100 p-2 rounded-lg">
-                                <span className="text-slate-600">{alloc.destinationRackName || 'Unknown Rack'} - {alloc.destinationBinName || 'Unknown Bin'}</span>
-                                <span className="font-medium text-slate-900">Qty: {alloc.quantity}</span>
+                      <section
+                        className="border-t border-slate-200 p-4 lg:border-t-0"
+                        aria-label="Destination allocations"
+                      >
+                        <p className="mb-2 text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+                          Received into
+                        </p>
+                        {item.destinationAllocations?.length ? (
+                          <div className="divide-y divide-slate-200 border-y border-slate-200">
+                            {item.destinationAllocations.map((allocation, allocationIndex) => (
+                              <div
+                                key={allocationIndex}
+                                className="flex items-center justify-between gap-4 py-2.5 text-sm"
+                              >
+                                <span className="min-w-0 truncate text-slate-700">
+                                  {allocation.destinationRackName || 'Unknown rack'} /{' '}
+                                  {allocation.destinationBinName || 'Unknown bin'}
+                                </span>
+                                <span className="shrink-0 font-semibold text-slate-950 tabular-nums">
+                                  {allocation.quantity}
+                                </span>
                               </div>
                             ))}
                           </div>
+                        ) : (
+                          <p className="border-y border-slate-200 py-3 text-sm text-slate-500">
+                            Waiting for destination receipt.
+                          </p>
                         )}
-                      </div>
+                      </section>
                     </div>
-                  </div>
+                  </article>
                 ))}
               </div>
-            </div>
-
+            </section>
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }

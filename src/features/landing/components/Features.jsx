@@ -1,115 +1,87 @@
-import { motion } from 'framer-motion'
-import { Shield, Zap, LayoutDashboard, Database, Globe, Layers } from 'lucide-react'
+import { Database, Globe, Layers, LayoutDashboard, Shield, Zap } from 'lucide-react'
 
 const features = [
   {
-    title: 'Smart Marketplace',
-    description:
-      'Find and book premium warehouse spaces with transparent pricing and flexible terms.',
+    title: 'Warehouse marketplace',
+    description: 'Discover approved warehouse capacity with consistent listing information.',
     icon: Globe,
-    color: 'text-blue-500',
   },
   {
-    title: 'Real-time WMS',
-    description:
-      'Advanced Warehouse Management System with inventory tracking and staff coordination.',
+    title: 'Operational WMS',
+    description: 'Coordinate inventory, warehouse locations, and daily operating tasks.',
     icon: LayoutDashboard,
-    color: 'text-primary',
   },
   {
-    title: 'Automated Billing',
-    description:
-      'Seamless payment processing and automated billing for long-term rentals and services.',
+    title: 'Billing visibility',
+    description: 'Keep rental and service-related financial activity in one workspace.',
     icon: Zap,
-    color: 'text-yellow-500',
   },
   {
-    title: 'Secure Operations',
-    description:
-      'Enterprise-grade security with role-based access control and detailed activity logs.',
+    title: 'Controlled access',
+    description: 'Use role-based access to keep warehouse operations accountable.',
     icon: Shield,
-    color: 'text-success',
   },
   {
-    title: 'Inventory Analytics',
-    description:
-      'Data-driven insights into your stock levels, turnover rates, and operational efficiency.',
+    title: 'Inventory records',
+    description: 'Maintain clear records for stock levels and movement history.',
     icon: Database,
-    color: 'text-purple-500',
   },
   {
-    title: 'Scalable Infrastructure',
-    description:
-      'Designed to grow with your business, from small startups to large enterprise logistics.',
+    title: 'Scalable workflows',
+    description: 'Support teams as warehouse operations grow in scope and complexity.',
     icon: Layers,
-    color: 'text-pink-500',
   },
 ]
 
-const Features = () => {
-  return (
-    <section id="features" className="bg-white py-24">
-      <div className="container mx-auto px-4">
-        <div className="mx-auto mb-16 max-w-3xl text-center">
-          <h2 className="text-primary mb-2 text-base font-semibold tracking-wider uppercase">
-            Features
-          </h2>
-          <h3 className="mb-4 text-4xl font-bold text-slate-900">
-            Everything you need to manage logistics
-          </h3>
-          <p className="text-lg text-slate-600">
-            StockSpace provides a comprehensive suite of tools for both warehouse owners and
-            tenants.
+const Features = () => (
+  <section id="features" className="border-y border-slate-200 bg-white py-10 lg:py-14">
+    <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+            Platform capabilities
           </p>
+          <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
+            Built for practical warehouse operations
+          </h2>
         </div>
-
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              className="group rounded-2xl border border-slate-100 bg-slate-50/50 p-8 transition-all hover:bg-white hover:shadow-xl hover:shadow-slate-200/50"
-            >
-              <div
-                className={`mb-6 inline-flex rounded-xl bg-white p-3 shadow-sm ring-1 ring-slate-200 ${feature.color}`}
-              >
-                <feature.icon className="h-6 w-6" />
-              </div>
-              <h4 className="mb-3 text-xl font-bold text-slate-900">{feature.title}</h4>
-              <p className="leading-relaxed text-slate-600">{feature.description}</p>
-            </motion.div>
-          ))}
-        </div>
+        <p className="max-w-xl text-sm leading-6 text-slate-600">
+          Core tools for finding, renting, and managing warehouse operations without unnecessary
+          complexity.
+        </p>
       </div>
-    </section>
-  )
-}
-
-const Stats = () => {
-  return (
-    <section className="bg-slate-900 py-20 text-white">
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
-          {[
-            { label: 'Warehouses', value: '1,200+' },
-            { label: 'Storage Space', value: '5M+ sqft' },
-            { label: 'Active Tenants', value: '8,500+' },
-            { label: 'Monthly Orders', value: '450k+' },
-          ].map((stat, index) => (
-            <div key={index} className="text-center">
-              <div className="text-primary mb-2 text-4xl font-bold md:text-5xl">{stat.value}</div>
-              <div className="text-sm font-medium tracking-widest text-slate-400 uppercase">
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
+      <div className="grid gap-px border border-slate-200 bg-slate-200 md:grid-cols-2 lg:grid-cols-3">
+        {features.map((feature) => {
+          const Icon = feature.icon
+          return (
+            <article key={feature.title} className="bg-white p-5">
+              <Icon className="h-5 w-5 text-blue-700" aria-hidden="true" />
+              <h3 className="mt-4 text-base font-semibold text-slate-950">{feature.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{feature.description}</p>
+            </article>
+          )
+        })}
       </div>
-    </section>
-  )
-}
+    </div>
+  </section>
+)
+
+const Stats = () => (
+  <section className="border-y border-slate-700 bg-slate-900 py-8 text-white">
+    <div className="mx-auto grid max-w-[1400px] gap-px px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
+      {[
+        ['Kho đã phê duyệt', 'Dữ liệu niêm yết rõ ràng để doanh nghiệp đánh giá.'],
+        ['Hợp đồng số', 'Theo dõi thỏa thuận thuê trong cùng hệ thống.'],
+        ['Quy trình kho', 'Ghi nhận các tác vụ vận hành theo vai trò.'],
+        ['Quyền truy cập', 'Phân quyền theo vai trò trong hoạt động kho.'],
+      ].map(([title, description]) => (
+        <div key={title} className="border border-slate-700 px-4 py-4">
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <p className="mt-1 text-sm leading-5 text-slate-300">{description}</p>
+        </div>
+      ))}
+    </div>
+  </section>
+)
 
 export { Features, Stats }
