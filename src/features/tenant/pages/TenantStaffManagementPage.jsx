@@ -108,6 +108,8 @@ const TenantStaffManagementPage = () => {
   }, [])
 
   useEffect(() => {
+    // Initial data synchronization for the staff management screen.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchStaffs()
     fetchMyWarehouses()
   }, [fetchMyWarehouses, fetchStaffs])
@@ -116,7 +118,8 @@ const TenantStaffManagementPage = () => {
   // assignment modal and warehouse selector in sync with that change.
   useEffect(() => {
     const handleRentalNotification = (event) => {
-      if (String(event.detail?.type || '').toUpperCase() !== 'RENTAL') return
+      const notificationType = String(event.detail?.type || '').toUpperCase()
+      if (!['RENTAL', 'CONTRACT_EXPIRED'].includes(notificationType)) return
 
       fetchMyWarehouses()
       if (selectedStaff) {

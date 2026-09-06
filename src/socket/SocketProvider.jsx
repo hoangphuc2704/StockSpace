@@ -4,7 +4,25 @@ import { Client } from '@stomp/stompjs'
 
 const SocketContext = createContext(null)
 
+// The context hook and provider intentionally live together as one socket module.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSocket = () => useContext(SocketContext)
+
+const buildWebSocketUrl = (socketEnv, apiEnv) => {
+  const sourceUrl = String(socketEnv || apiEnv || '').trim().replace(/\/+$/, '')
+  if (!sourceUrl) {
+    return `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
+  }
+
+  const withoutApiSuffix = sourceUrl
+    .replace(/\/api\/ws$/, '/ws')
+    .replace(/\/api\/?$/, '')
+  if (withoutApiSuffix.startsWith('ws://') || withoutApiSuffix.startsWith('wss://')) {
+    return withoutApiSuffix.endsWith('/ws') ? withoutApiSuffix : `${withoutApiSuffix}/ws`
+  }
+
+  return withoutApiSuffix.replace(/^http(s?):\/\//, 'ws$1://') + '/ws'
+}
 
 export const SocketProvider = ({ children }) => {
   const [stompClient, setStompClient] = useState(null)
@@ -20,27 +38,15 @@ export const SocketProvider = ({ children }) => {
     const socketEnv = import.meta.env.VITE_SOCKET_URL
     const apiEnv = import.meta.env.VITE_API_URL
 
-    // 3. Build source URL
-    const sourceUrl = socketEnv || apiEnv || 'http://localhost:8080'
+    // 3. Build a single /ws endpoint from either HTTP(S) or WS(S) config.
+    const wsUrl = buildWebSocketUrl(socketEnv, apiEnv)
 
-    // 4. Remove /api
-    const baseUrl = sourceUrl.replace(/\/api\/?$/, '')
-
-    // 5. Convert HTTP -> WS
-    let wsUrl = baseUrl.replace(/^http(s)?:\/\//, 'ws$1://') + '/ws'
-
-    // 6. Fallback
-    if (!baseUrl || baseUrl === '') {
-      wsUrl =
-        (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws'
-    }
-
-    // 7. Check protocol
+    // 4. Check protocol
     if (window.location.protocol === 'https:' && (wsUrl.startsWith('ws://') || !wsUrl.startsWith('wss://'))) {
       return
     }
 
-    // 8. Create STOMP client
+    // 5. Create STOMP client
     const client = new Client({
       brokerURL: wsUrl,
 
@@ -82,6 +88,7 @@ export const SocketProvider = ({ children }) => {
     })
 
     client.activate()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStompClient(client)
 
     // Cleanup

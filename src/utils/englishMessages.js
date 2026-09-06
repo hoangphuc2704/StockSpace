@@ -19,6 +19,14 @@ const NOTIFICATION_FALLBACKS = {
   PAYMENT: { title: 'Payment update', message: 'A payment update is available.' },
   BOOKING: { title: 'Booking update', message: 'A booking needs your attention.' },
   CONTRACT: { title: 'Contract update', message: 'A contract has been updated.' },
+  CONTRACT_EXPIRY_REMINDER: {
+    title: 'Contract expiring soon',
+    message: 'A warehouse rental contract will expire soon.',
+  },
+  CONTRACT_EXPIRED: {
+    title: 'Contract expired',
+    message: 'A warehouse rental contract has expired and access may have changed.',
+  },
   RENTAL: { title: 'Rental update', message: 'Your rental access has changed.' },
   DISPUTE: { title: 'Dispute update', message: 'A dispute has been updated.' },
   WAREHOUSE: { title: 'Warehouse update', message: 'A warehouse update is available.' },

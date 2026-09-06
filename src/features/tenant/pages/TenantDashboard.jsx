@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
@@ -52,7 +52,7 @@ import Header from '@/components/HeaderDashboard'
 import tenantApi from '@/services/tenant/tenantApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import receiptApi from '@/services/wms/receiptApi'
-import notificationApi from '@/services/notificationApi'
+import notificationApi, { normalizeNotification } from '@/services/notificationApi'
 
 const RECEIPT_STATUS_META = {
   APPROVED: {
@@ -151,6 +151,7 @@ const TenantDashboard = () => {
   // Live Operations Feed
   const [recentActivity, setRecentActivity] = useState([])
   const [notifications, setNotifications] = useState([])
+  const notificationsRef = useRef([])
 
   const fetchDashboardData = useCallback(async (isManualRefresh = false) => {
     if (isManualRefresh) {
@@ -251,6 +252,7 @@ const TenantDashboard = () => {
       try {
         const notifRes = await notificationApi.getMyNotifications({ page: 0, size: 5 })
         const notifs = notifRes.data?.content || notifRes.data || []
+        notificationsRef.current = notifs
         setNotifications(notifs)
       } catch (err) {
         console.warn('Could not load notifications:', err)
@@ -265,10 +267,61 @@ const TenantDashboard = () => {
     }
   }, [])
 
+  const syncNotifications = useCallback(async () => {
+    try {
+      const [notificationResponse, unreadResponse] = await Promise.all([
+        notificationApi.getMyNotifications({ page: 0, size: 5 }),
+        notificationApi.getUnreadCount(),
+      ])
+      const notifs = notificationResponse.data?.content || notificationResponse.data || []
+      notificationsRef.current = notifs
+      setNotifications(notifs)
+
+      if (unreadResponse.success) {
+        setMetrics((currentMetrics) => ({
+          ...currentMetrics,
+          unreadNotificationCount: Number(unreadResponse.data) || 0,
+        }))
+      }
+    } catch (error) {
+      console.debug('Notification reconciliation skipped:', error)
+    }
+  }, [])
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchDashboardData()
   }, [fetchDashboardData])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    syncNotifications()
+    const interval = setInterval(syncNotifications, 60000)
+    return () => clearInterval(interval)
+  }, [syncNotifications])
+
+  useEffect(() => {
+    const handleNewNotification = (event) => {
+      const notification = normalizeNotification(event.detail)
+      const current = notificationsRef.current
+
+      if (notification.id && current.some((item) => item.id === notification.id)) return
+
+      const next = [notification, ...current].slice(0, 5)
+      notificationsRef.current = next
+      setNotifications(next)
+
+      if (!notification.read) {
+        setMetrics((currentMetrics) => ({
+          ...currentMetrics,
+          unreadNotificationCount: currentMetrics.unreadNotificationCount + 1,
+        }))
+      }
+    }
+
+    window.addEventListener('new_notification', handleNewNotification)
+    return () => window.removeEventListener('new_notification', handleNewNotification)
+  }, [])
 
   // Subscription Details Formatter
   const sub = metrics.activeSubscription
@@ -1226,7 +1279,7 @@ const TenantDashboard = () => {
                   ) : notifications.length > 0 ? (
                     <ol className="divide-y divide-slate-200">
                       {notifications.slice(0, 5).map((notification, index) => {
-                        const isUnread = notification.isRead === false
+                        const isUnread = notification.read === false
                         return (
                           <li
                             key={notification.id || index}

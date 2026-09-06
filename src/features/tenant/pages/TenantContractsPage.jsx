@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import {
   CheckCircle,
   ClipboardList,
+  AlertTriangle,
   Edit3,
   Eye,
   FileText,
@@ -61,13 +62,20 @@ const formatContractReference = (id) =>
       .toUpperCase() || '-'
   }`
 
-const isExpiringSoon = (contract) => {
-  if (contract.status !== 'ACTIVE' || !contract.endDate) return false
+const getDaysUntilEnd = (contract) => {
+  if (contract.status !== 'ACTIVE' || !contract.endDate) return null
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const endDate = new Date(`${contract.endDate}T00:00:00`)
-  if (Number.isNaN(endDate.getTime())) return false
-  const daysUntilEnd = Math.ceil((endDate - today) / 86_400_000)
+  if (Number.isNaN(endDate.getTime())) return null
+
+  return Math.ceil((endDate - today) / 86_400_000)
+}
+
+const isExpiringSoon = (contract) => {
+  const daysUntilEnd = getDaysUntilEnd(contract)
+  if (daysUntilEnd === null) return false
   return daysUntilEnd >= 0 && daysUntilEnd <= 30
 }
 
@@ -224,12 +232,32 @@ const TenantContractsPage = () => {
     fetchContracts()
   }, [fetchContracts])
 
+  useEffect(() => {
+    const handleContractNotification = (event) => {
+      const type = String(event.detail?.type || '').toUpperCase()
+      if (type === 'CONTRACT_EXPIRY_REMINDER' || type === 'CONTRACT_EXPIRED') {
+        fetchContracts()
+      }
+    }
+
+    window.addEventListener('new_notification', handleContractNotification)
+    return () => window.removeEventListener('new_notification', handleContractNotification)
+  }, [fetchContracts])
+
   const contractSummary = useMemo(
     () => ({
       total: contracts.length,
       active: contracts.filter((contract) => contract.status === 'ACTIVE').length,
       expiringSoon: contracts.filter(isExpiringSoon).length,
     }),
+    [contracts]
+  )
+
+  const nearestExpiringContract = useMemo(
+    () =>
+      contracts
+        .filter(isExpiringSoon)
+        .sort((a, b) => getDaysUntilEnd(a) - getDaysUntilEnd(b))[0] || null,
     [contracts]
   )
 
@@ -370,6 +398,31 @@ const TenantContractsPage = () => {
               </dl>
             </header>
 
+            {nearestExpiringContract && (
+              <aside
+                role="status"
+                className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${
+                  getDaysUntilEnd(nearestExpiringContract) <= 7
+                    ? 'border-rose-200 bg-rose-50 text-rose-900'
+                    : 'border-amber-200 bg-amber-50 text-amber-900'
+                }`}
+              >
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">
+                    {getDaysUntilEnd(nearestExpiringContract) <= 7
+                      ? 'Hợp đồng sắp hết hạn'
+                      : 'Có hợp đồng cần theo dõi'}
+                  </p>
+                  <p className="mt-0.5 text-sm opacity-85">
+                    {nearestExpiringContract.warehouseName || 'Kho chưa xác định'} · còn{' '}
+                    {getDaysUntilEnd(nearestExpiringContract)} ngày, đến{' '}
+                    {formatContractDate(nearestExpiringContract.endDate)}.
+                  </p>
+                </div>
+              </aside>
+            )}
+
             <section
               aria-labelledby="contract-records-heading"
               aria-busy={loading}
@@ -476,10 +529,22 @@ const TenantContractsPage = () => {
                                 <span className="px-1 text-slate-400">→</span>{' '}
                                 {formatContractDate(contract.endDate)}
                               </p>
-                              {isExpiringSoon(contract) && (
-                                <p className="mt-1 text-xs font-medium text-amber-700">
-                                  Sắp hết hạn
-                                </p>
+                              {contract.status === 'EXPIRED' ? (
+                                <p className="mt-1 text-xs font-medium text-rose-700">Đã hết hạn</p>
+                              ) : (
+                                (() => {
+                                  const daysUntilEnd = getDaysUntilEnd(contract)
+                                  if (daysUntilEnd === null || daysUntilEnd < 0 || daysUntilEnd > 30) {
+                                    return null
+                                  }
+                                  return (
+                                    <p
+                                      className={`mt-1 text-xs font-medium ${daysUntilEnd <= 7 ? 'text-rose-700' : 'text-amber-700'}`}
+                                    >
+                                      {daysUntilEnd === 0 ? 'Hết hạn hôm nay' : `Còn ${daysUntilEnd} ngày`}
+                                    </p>
+                                  )
+                                })()
                               )}
                             </td>
                             <td className="px-5 py-3.5 align-middle">
