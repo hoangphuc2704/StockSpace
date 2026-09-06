@@ -2,7 +2,6 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   Billboard,
-  ContactShadows,
   OrbitControls,
   Outlines,
   PivotControls,
@@ -20,6 +19,7 @@ import {
 
 const WORLD_SIZE = 22
 const DEFAULT_RACK_SHELF_COUNT = 2
+const CARDBOARD_COLOR = '#a5822a'
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
@@ -210,7 +210,7 @@ function WarehouseFloor({ width, depth, floorTexture }) {
 
   return (
     <group position={[0, -0.01, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[floorW, floorD]} />
         <meshStandardMaterial
           map={floorTexture}
@@ -218,9 +218,9 @@ function WarehouseFloor({ width, depth, floorTexture }) {
           metalness={0.15}
         />
       </mesh>
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[floorW + 1, floorD + 1]} />
-        <meshStandardMaterial color="#0b1120" roughness={0.9} metalness={0.1} />
+        <meshStandardMaterial color="#cbd5e1" roughness={0.9} metalness={0.05} />
       </mesh>
     </group>
   )
@@ -443,7 +443,7 @@ function CargoPalletAndBoxes({
           <group position={[0, 0, 0]}>
             {/* 3 Thanh trượt đế dưới */}
             {[-palletD * 0.38, 0, palletD * 0.38].map((pz, idx) => (
-              <mesh key={`bp-${idx}`} position={[0, 0.015, pz]} castShadow receiveShadow>
+              <mesh key={`bp-${idx}`} position={[0, 0.015, pz]}>
                 <boxGeometry args={[palletW * 0.98, 0.025, Math.min(palletD * 0.18, 0.1)]} />
                 <meshStandardMaterial map={palletTexture} roughness={0.75} />
               </mesh>
@@ -452,7 +452,7 @@ function CargoPalletAndBoxes({
             {/* 9 Cục gù chân pallet */}
             {[-palletW * 0.38, 0, palletW * 0.38].map((px, xi) =>
               [-palletD * 0.38, 0, palletD * 0.38].map((pz, zi) => (
-                <mesh key={`b-${xi}-${zi}`} position={[px, 0.065, pz]} castShadow>
+                <mesh key={`b-${xi}-${zi}`} position={[px, 0.065, pz]}>
                   <boxGeometry
                     args={[
                       Math.min(palletW * 0.14, 0.09),
@@ -467,7 +467,7 @@ function CargoPalletAndBoxes({
 
             {/* 5 Thanh nan ván mặt trên */}
             {[-palletD * 0.4, -palletD * 0.2, 0, palletD * 0.2, palletD * 0.4].map((pz, idx) => (
-              <mesh key={`tp-${idx}`} position={[0, 0.115, pz]} castShadow receiveShadow>
+              <mesh key={`tp-${idx}`} position={[0, 0.115, pz]}>
                 <boxGeometry args={[palletW * 0.98, 0.025, palletD * 0.18]} />
                 <meshStandardMaterial map={palletTexture} roughness={0.75} />
               </mesh>
@@ -483,7 +483,7 @@ function CargoPalletAndBoxes({
               [-subBoxW / 2, subBoxD / 2],
               [subBoxW / 2, subBoxD / 2],
             ].map(([bx, bz], idx) => (
-              <mesh key={`box-${idx}`} position={[bx, subBoxH / 2, bz]} castShadow receiveShadow>
+              <mesh key={`box-${idx}`} position={[bx, subBoxH / 2, bz]}>
                 <boxGeometry args={[subBoxW * 0.94, subBoxH, subBoxD * 0.94]} />
                 <meshStandardMaterial
                   map={cardboardTexture}
@@ -498,17 +498,15 @@ function CargoPalletAndBoxes({
 
             {/* Thùng tầng 2: Nếu là Reserved (Đặt trước) thì màu vàng/cam rực rỡ như ảnh 1 */}
             {isReserved ? (
-              <mesh position={[0, subBoxH + topBoxH / 2, 0]} castShadow receiveShadow>
+              <mesh position={[0, subBoxH + topBoxH / 2, 0]}>
                 <boxGeometry args={[palletW * 0.88, topBoxH, palletD * 0.88]} />
                 <meshStandardMaterial
-                  color="#fbbf24"
-                  emissive="#f59e0b"
-                  emissiveIntensity={0.5}
-                  roughness={0.4}
+                  color={CARDBOARD_COLOR}
+                  roughness={0.8}
                 />
               </mesh>
             ) : (
-              <mesh position={[0, subBoxH + topBoxH / 2, 0]} castShadow receiveShadow>
+              <mesh position={[0, subBoxH + topBoxH / 2, 0]}>
                 <boxGeometry args={[palletW * 0.88, topBoxH, palletD * 0.88]} />
                 <meshStandardMaterial
                   map={cardboardTexture}
@@ -549,6 +547,7 @@ function BinMesh({
   onShowBinDetail,
   palletTexture,
   cardboardTexture,
+  showDemoCargo,
 }) {
   const rotation = normalizeRotation(rack.rotation)
   const quarterTurn = isQuarterTurn(rotation)
@@ -689,6 +688,18 @@ function BinMesh({
       }}
     >
       <group position={[x, y, z]} onClick={handleBinClick}>
+        {/* Khung Bin luôn hiển thị, kể cả khi chưa có hàng */}
+        <mesh>
+          <boxGeometry args={[width, binHeight, depth]} />
+          <meshBasicMaterial
+            color={isSelected ? '#0ea5e9' : '#a5822a'}
+            wireframe
+            transparent
+            opacity={isSelected ? 0.95 : 0.7}
+            depthWrite={false}
+          />
+        </mesh>
+
         {/* ĐÈN LED CHỈ THỊ TRẠNG THÁI GẮN TRÊN DẦM TRƯỚC */}
         <mesh position={[0, -binHeight / 2 - 0.04, depth / 2 + 0.025]}>
           <boxGeometry args={[Math.min(width * 0.45, 0.26), 0.045, 0.015]} />
@@ -701,7 +712,7 @@ function BinMesh({
         </mesh>
 
         {/* CÓ HÀNG: PALLET GỖ + THÙNG CARTON VÀNG SÁNG TIÊU CHUẨN */}
-        {hasItems || isReserved ? (
+        {hasItems || isReserved || showDemoCargo ? (
           <CargoPalletAndBoxes
             width={width * 0.94}
             depth={depth * 0.94}
@@ -792,7 +803,7 @@ function UprightColumn({ position, height, size, isSelected }) {
 
   return (
     <group position={position}>
-      <mesh castShadow receiveShadow>
+      <mesh>
         <boxGeometry args={[size, height, size]} />
         <meshStandardMaterial
           color={metalColor}
@@ -802,7 +813,7 @@ function UprightColumn({ position, height, size, isSelected }) {
       </mesh>
 
       {/* Ốp bảo vệ va chạm chân cột xe nâng: HÌNH TRỤ TRÒN MÀU VÀNG AN TOÀN */}
-      <mesh position={[0, -height / 2 + 0.22, 0]} castShadow>
+      <mesh position={[0, -height / 2 + 0.22, 0]}>
         <cylinderGeometry args={[size * 1.7, size * 1.7, 0.45, 14]} />
         <meshStandardMaterial color="#facc15" roughness={0.35} metalness={0.2} />
       </mesh>
@@ -816,7 +827,7 @@ function LoadBeam({ position, length, height, depth, rotation = [0, 0, 0], isSel
 
   return (
     <group position={position} rotation={rotation}>
-      <mesh castShadow receiveShadow>
+      <mesh>
         <boxGeometry args={[length, height, depth]} />
         <meshStandardMaterial
           color={beamColor}
@@ -872,7 +883,7 @@ function RackFrame({ width, depth, rackHeight, levels, isSelected }) {
         return (
           <group key={`shelf-${levelIndex}`}>
             {/* Sàn lưới thép đỡ pallet (Wire Mesh Decking) */}
-            <mesh position={[0, y, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+            <mesh position={[0, y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[beamLengthX * 0.98, beamLengthZ * 0.98]} />
               <meshStandardMaterial
                 color="#64748b"
@@ -952,6 +963,7 @@ function RackMesh({
   onShowBinDetail,
   palletTexture,
   cardboardTexture,
+  showDemoCargo,
   capacityByBinId,
 }) {
   const rotation = normalizeRotation(rack.rotation)
@@ -1069,6 +1081,7 @@ function RackMesh({
             onShowBinDetail={onShowBinDetail}
             palletTexture={palletTexture}
             cardboardTexture={cardboardTexture}
+            showDemoCargo={showDemoCargo}
           />
         ))}
       </group>
@@ -1086,6 +1099,7 @@ export default function WarehouseLayoutPreview3D({
   editable = true,
   onDoubleClick = () => {},
   focusedRackKey = null,
+  showDemoCargo = false,
 }) {
   const [cameraPreset, setCameraPreset] = useState('DEFAULT')
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -1354,7 +1368,6 @@ export default function WarehouseLayoutPreview3D({
 
       {/* 5. 3D WEBGL CANVAS (THREE.JS + R3F) */}
       <Canvas
-        shadows
         camera={{ position: [18, 14, 20], fov: 50 }}
         className="h-full w-full"
         onPointerMissed={() => {
@@ -1362,42 +1375,21 @@ export default function WarehouseLayoutPreview3D({
           setSelectedBinInfo(null)
         }}
       >
-        {/* Nền xanh đen công nghiệp cao cấp */}
-        <color attach="background" args={['#0b1120']} />
-        <fogExp2 attach="fog" args={['#0b1120', 0.015]} />
+        {/* Nền sáng, dễ quan sát mô hình */}
+        <color attach="background" args={['#eaf3f8']} />
+        <fogExp2 attach="fog" args={['#eaf3f8', 0.004]} />
 
-        {/* Hệ thống chiếu sáng kho hàng công nghiệp */}
-        <ambientLight intensity={1.0} color="#64748b" />
+        {/* Ánh sáng khuếch tán, không tạo bóng */}
+        <ambientLight intensity={2.1} color="#ffffff" />
         <directionalLight
           position={[20, 30, 15]}
-          intensity={1.5}
+          intensity={1.1}
           color="#ffffff"
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-near={0.5}
-          shadow-camera-far={80}
-          shadow-camera-left={-25}
-          shadow-camera-right={25}
-          shadow-camera-top={25}
-          shadow-camera-bottom={-25}
-          shadow-bias={-0.0003}
         />
-        <directionalLight position={[-20, 20, -15]} intensity={0.45} color="#38bdf8" />
+        <directionalLight position={[-20, 20, -15]} intensity={0.6} color="#dbeafe" />
 
         {/* Mặt sàn bê tông với vạch xe nâng vàng */}
         <WarehouseFloor width={worldWidth} depth={worldDepth} floorTexture={floorTexture} />
-
-        {/* Bóng tiếp xúc sàn */}
-        <ContactShadows
-          position={[0, -0.005, 0]}
-          scale={Math.max(worldWidth, worldDepth) + 16}
-          opacity={0.35}
-          blur={1.8}
-          far={15}
-          resolution={512}
-          color="#020617"
-        />
 
         {/* Danh sách các Kệ (Racks) */}
         {racks.map((rack) => (
@@ -1416,6 +1408,7 @@ export default function WarehouseLayoutPreview3D({
             onShowBinDetail={setSelectedBinInfo}
             palletTexture={palletTexture}
             cardboardTexture={cardboardTexture}
+            showDemoCargo={showDemoCargo}
             capacityByBinId={capacityByBinId}
           />
         ))}

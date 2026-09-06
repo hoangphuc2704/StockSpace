@@ -14,15 +14,15 @@ export function createWarehouseFloorTexture() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  // Nền bê tông công nghiệp xám sẫm (Slate dark concrete)
-  ctx.fillStyle = '#1e2530'
+  // Nền bê tông sáng để mô hình 3D dễ quan sát hơn
+  ctx.fillStyle = '#dbe3e8'
   ctx.fillRect(0, 0, 2048, 2048)
 
   // Tạo đốm hạt bê tông (concrete speckle noise)
   const imgData = ctx.getImageData(0, 0, 2048, 2048)
   const data = imgData.data
   for (let i = 0; i < data.length; i += 4) {
-    const noise = (Math.random() - 0.5) * 16
+    const noise = (Math.random() - 0.5) * 10
     data[i] = Math.min(255, Math.max(0, data[i] + noise))
     data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise))
     data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise))
@@ -31,7 +31,7 @@ export function createWarehouseFloorTexture() {
 
   // Đường ron gạch sàn bê tông (Expansion joints / Grid)
   const tileSize = 256
-  ctx.strokeStyle = '#151b24'
+  ctx.strokeStyle = '#bcc8d0'
   ctx.lineWidth = 4
   for (let x = 0; x <= 2048; x += tileSize) {
     ctx.beginPath()
@@ -70,7 +70,7 @@ export function createWarehouseFloorTexture() {
     ctx.beginPath()
     ctx.rect(x, y, w, h)
     ctx.clip()
-    ctx.fillStyle = '#0f172a'
+    ctx.fillStyle = '#475569'
     ctx.fillRect(x, y, w, h)
 
     ctx.fillStyle = '#fbbf24'
@@ -177,12 +177,12 @@ export function createCardboardTexture() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  // Màu giấy carton vàng sáng công nghiệp (chuẩn như ảnh tham chiếu)
-  ctx.fillStyle = '#f3ca7e'
+  // Màu carton theo nhận diện kho hàng
+  ctx.fillStyle = '#a5822a'
   ctx.fillRect(0, 0, 512, 512)
 
   // Bụi hạt giấy carton vàng ấm
-  ctx.fillStyle = '#dfb05f'
+  ctx.fillStyle = '#b5943d'
   for (let i = 0; i < 600; i++) {
     const x = Math.random() * 512
     const y = Math.random() * 512
@@ -190,7 +190,7 @@ export function createCardboardTexture() {
   }
 
   // Dải băng dính niêm phong miệng thùng vàng hổ phách
-  ctx.fillStyle = 'rgba(217, 155, 64, 0.75)'
+  ctx.fillStyle = 'rgba(120, 86, 20, 0.72)'
   ctx.fillRect(0, 238, 512, 36)
 
   // Nhãn vận chuyển màu trắng dán trên thùng

@@ -93,7 +93,11 @@ export default function WarehouseLayoutShowcase({
               </div>
 
               <div className="relative h-[400px] overflow-hidden rounded-2xl border border-slate-200 bg-sky-50 sm:h-[560px]">
-                <WarehouseLayoutPreview3D layout={previewLayout} editable={false} />
+                <WarehouseLayoutPreview3D
+                  layout={previewLayout}
+                  editable={false}
+                  showDemoCargo
+                />
                 {!previewLayout.racks.length && (
                   <div className="pointer-events-none absolute right-4 bottom-4 rounded-xl border border-white/80 bg-white/90 px-4 py-3 text-sm shadow-sm backdrop-blur-sm">
                     <p className="font-semibold text-slate-700">Warehouse space is empty</p>
