@@ -1,29 +1,24 @@
-import { useState, useEffect } from 'react'
-import { LayoutGrid, List, ChevronDown, Search } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { LayoutGrid, List, Search, SlidersHorizontal, Warehouse } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import WarehouseCard from '../components/WarehouseCard'
 import WarehouseFilters from '../components/WarehouseFilters'
-import Button from '@/components/atoms/Button'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import PublicHeader from '@/components/PublicHeader'
 
+const EMPTY_FILTERS = { minRentalPrice: '', maxRentalPrice: '', minCapacity: '' }
+
 const WarehouseSkeleton = () => (
-  <div className="animate-pulse overflow-hidden rounded-2xl border border-slate-200 bg-white">
-    <div className="aspect-4/3 bg-slate-100" />
-    <div className="space-y-4 p-6">
-      <div className="flex justify-between">
-        <div className="h-6 w-2/3 rounded-lg bg-slate-100" />
-        <div className="h-6 w-10 rounded-lg bg-slate-100" />
+  <div className="overflow-hidden rounded-lg border border-slate-200 bg-white" aria-hidden="true">
+    <div className="aspect-[16/9] animate-pulse bg-slate-200" />
+    <div className="space-y-4 p-4">
+      <div className="h-5 w-3/5 animate-pulse rounded bg-slate-200" />
+      <div className="h-4 w-4/5 animate-pulse rounded bg-slate-100" />
+      <div className="grid grid-cols-2 gap-3 border-y border-slate-200 py-3">
+        <div className="h-8 animate-pulse rounded bg-slate-100" />
+        <div className="h-8 animate-pulse rounded bg-slate-100" />
       </div>
-      <div className="h-4 w-1/2 rounded-lg bg-slate-100" />
-      <div className="grid grid-cols-2 gap-4">
-        <div className="h-10 rounded-xl bg-slate-50" />
-        <div className="h-10 rounded-xl bg-slate-50" />
-      </div>
-      <div className="flex items-center justify-between border-t border-slate-50 pt-4">
-        <div className="h-8 w-24 rounded-lg bg-slate-100" />
-        <div className="bg-primary/10 h-10 w-32 rounded-xl" />
-      </div>
+      <div className="h-6 w-2/5 animate-pulse rounded bg-slate-200" />
     </div>
   </div>
 )
@@ -39,7 +34,6 @@ const normalizeWarehouse = (warehouse) => ({
       : Number(warehouse.rentalPrice ?? warehouse.price ?? warehouse.pricePerMonth),
   rentalPricingType: warehouse.rentalPricingType || 'PER_SQUARE_METER_MONTHLY',
   status: warehouse.status || 'UNKNOWN',
-  rating: Number(warehouse.rating ?? 4.8),
   type: warehouse.warehouseType?.name || warehouse.typeName || warehouse.type || 'General',
   thumbnail: warehouse.coverImageUrl || warehouse.thumbnail || warehouse.imageUrls?.[0] || '',
   description: warehouse.description || '',
@@ -52,18 +46,13 @@ const WarehouseListingPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [warehouses, setWarehouses] = useState([])
   const [error, setError] = useState('')
-  const [apiFilters, setApiFilters] = useState({
-    minRentalPrice: '',
-    maxRentalPrice: '',
-    minCapacity: '',
-  })
+  const [apiFilters, setApiFilters] = useState(EMPTY_FILTERS)
 
   useEffect(() => {
     const fetchWarehouses = async () => {
       try {
         setIsLoading(true)
         setError('')
-
         const params = {
           page: 0,
           size: 24,
@@ -71,22 +60,18 @@ const WarehouseListingPage = () => {
           sortDir: 'desc',
           keyword: searchTerm.trim() || undefined,
         }
-
         if (apiFilters.minRentalPrice) params.minRentalPrice = apiFilters.minRentalPrice
         if (apiFilters.maxRentalPrice) params.maxRentalPrice = apiFilters.maxRentalPrice
         if (apiFilters.minCapacity) params.minCapacity = apiFilters.minCapacity
 
         const response = await warehouseApi.getPublicWarehouses(params)
-
         const payload = response?.data?.data
         const content = Array.isArray(payload?.content)
           ? payload.content
           : Array.isArray(payload)
             ? payload
             : []
-
-        const normalized = content.map(normalizeWarehouse)
-        setWarehouses(normalized)
+        setWarehouses(content.map(normalizeWarehouse))
       } catch (err) {
         setError(err.response?.data?.message || err.message || 'Unable to load warehouses.')
         setWarehouses([])
@@ -95,108 +80,132 @@ const WarehouseListingPage = () => {
       }
     }
 
-    // Debounce the API call slightly if searching by keyword
-    const timer = setTimeout(() => {
-      fetchWarehouses()
-    }, 500)
-
+    const timer = setTimeout(fetchWarehouses, 500)
     return () => clearTimeout(timer)
   }, [apiFilters, searchTerm])
 
-  const filteredWarehouses = warehouses
+  const resetAllFilters = () => {
+    setSearchTerm('')
+    setApiFilters(EMPTY_FILTERS)
+  }
 
   return (
-    <div className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
       <PublicHeader />
-      <main className="flex-1 pt-4 pb-20">
-        <div className="sticky top-20 z-40 border-b border-slate-100 bg-white/90 backdrop-blur-md">
-          <div className="container mx-auto px-4 py-4">
-            <div className="flex justify-end">
-              <div className="flex w-full items-center gap-3 lg:w-auto">
-                <div className="relative flex-1 lg:w-80">
+      <main className="flex-1 pb-12">
+        <section className="border-b border-slate-200 bg-white">
+          <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+                  Warehouse marketplace
+                </p>
+                <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
+                  Kho đã được phê duyệt
+                </h1>
+                <p className="mt-1.5 text-sm text-slate-600">
+                  Tìm không gian phù hợp cho hoạt động lưu trữ và vận hành của doanh nghiệp.
+                </p>
+              </div>
+              <div className="w-full lg:max-w-xl">
+                <label htmlFor="warehouse-search" className="sr-only">
+                  Tìm kho theo tên hoặc khu vực
+                </label>
+                <div className="relative">
                   <Search
-                    className="absolute top-1/2 left-3 -translate-y-1/2 text-slate-400"
-                    size={16}
+                    className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400"
+                    aria-hidden="true"
                   />
                   <input
-                    type="text"
-                    placeholder="Search by city or hub name..."
+                    id="warehouse-search"
+                    type="search"
+                    placeholder="Tìm theo tên kho, thành phố hoặc khu vực"
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="focus:ring-primary/20 w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium transition-all focus:ring-2 focus:outline-none"
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    className="min-h-11 w-full rounded-md border border-slate-300 bg-white py-2 pr-4 pl-10 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                   />
-                </div>
-                <div className="hidden items-center rounded-2xl border border-slate-200 bg-white p-1 sm:flex">
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`rounded-xl p-1.5 transition-all ${
-                      viewMode === 'grid'
-                        ? 'bg-slate-900 text-white shadow-lg'
-                        : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    <LayoutGrid size={20} />
-                  </button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`rounded-xl p-1.5 transition-all ${
-                      viewMode === 'list'
-                        ? 'bg-slate-900 text-white shadow-lg'
-                        : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    <List size={20} />
-                  </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="container mx-auto mt-10 px-4">
-          <div className="flex flex-col gap-10 lg:flex-row">
-            <aside className="hidden w-72 shrink-0 lg:block">
-              <div className="sticky top-52">
-                <div className="mb-6 flex items-center justify-between">
-                  <h3 className="text-xl font-black text-slate-900">Filters</h3>
+        <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
+          <details className="mb-5 border border-slate-200 bg-white lg:hidden">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 text-sm font-semibold text-slate-800">
+              Bộ lọc tìm kiếm
+              <SlidersHorizontal className="h-4 w-4 text-slate-500" aria-hidden="true" />
+            </summary>
+            <div className="border-t border-slate-200 p-4">
+              <WarehouseFilters onFilterChange={setApiFilters} />
+            </div>
+          </details>
+
+          <div className="flex flex-col gap-6 lg:flex-row">
+            <aside className="hidden w-64 shrink-0 lg:block">
+              <div className="sticky top-24 border border-slate-200 bg-white">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                  <h2 className="text-sm font-semibold text-slate-950">Bộ lọc tìm kiếm</h2>
                   <button
-                    onClick={() => {
-                      setSearchTerm('')
-                      setApiFilters({ minRentalPrice: '', maxRentalPrice: '', minCapacity: '' })
-                    }}
-                    className="text-primary text-xs font-bold hover:underline"
+                    type="button"
+                    onClick={resetAllFilters}
+                    className="text-xs font-semibold text-blue-700 hover:text-blue-900 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
                   >
-                    Clear all
+                    Xóa tất cả
                   </button>
                 </div>
-                <WarehouseFilters onFilterChange={setApiFilters} />
+                <div className="p-4">
+                  <WarehouseFilters onFilterChange={setApiFilters} />
+                </div>
               </div>
             </aside>
 
-            <div className="flex-1">
-              <div className="mb-8 flex items-center justify-between">
+            <section aria-labelledby="warehouse-results-heading" className="min-w-0 flex-1">
+              <div className="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                  <h2 className="text-2xl font-black tracking-tight text-slate-900">
-                    Approved Warehouses
+                  <h2
+                    id="warehouse-results-heading"
+                    className="text-lg font-semibold text-slate-950"
+                  >
+                    Kết quả tìm kiếm
                   </h2>
-                  {/* <p className="mt-1 text-sm font-medium text-slate-500">
-                    Found{' '}
-                    <span className="font-bold text-slate-900">{filteredWarehouses.length}</span>{' '}
-                    warehouses approved by admin
-                  </p> */}
+                  <p className="mt-1 text-sm text-slate-600">
+                    {isLoading ? 'Đang tải kho đã phê duyệt' : `${warehouses.length} kho phù hợp`}
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold tracking-widest text-slate-400 uppercase">
-                    Sort by:
-                  </span>
-                  <button className="hover:text-primary flex items-center gap-1 text-sm font-bold text-slate-900 transition-colors">
-                    Newest <ChevronDown size={14} />
-                  </button>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-medium text-slate-500">Sắp xếp: Mới nhất</span>
+                  <div
+                    className="inline-flex rounded-md border border-slate-300 bg-white p-0.5"
+                    aria-label="Chế độ hiển thị"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('grid')}
+                      aria-label="Hiển thị dạng lưới"
+                      aria-pressed={viewMode === 'grid'}
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none ${viewMode === 'grid' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}
+                    >
+                      <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('list')}
+                      aria-label="Hiển thị dạng danh sách"
+                      aria-pressed={viewMode === 'list'}
+                      className={`inline-flex h-8 w-8 items-center justify-center rounded transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none ${viewMode === 'list' ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}`}
+                    >
+                      <List className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {error && !isLoading ? (
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">
+                <div
+                  role="alert"
+                  className="mb-5 border-l-2 border-rose-600 bg-rose-50 px-4 py-3 text-sm text-rose-800"
+                >
                   {error}
                 </div>
               ) : null}
@@ -204,44 +213,40 @@ const WarehouseListingPage = () => {
               <div
                 className={
                   viewMode === 'grid'
-                    ? 'grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3'
-                    : 'flex flex-col gap-6'
+                    ? 'grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3'
+                    : 'flex flex-col gap-4'
                 }
               >
                 {isLoading ? (
-                  Array.from({ length: 6 }).map((_, i) => <WarehouseSkeleton key={i} />)
+                  Array.from({ length: 6 }).map((_, index) => <WarehouseSkeleton key={index} />)
                 ) : (
                   <AnimatePresence mode="popLayout">
-                    {filteredWarehouses.map((warehouse) => (
+                    {warehouses.map((warehouse) => (
                       <WarehouseCard key={warehouse.id} warehouse={warehouse} viewMode={viewMode} />
                     ))}
                   </AnimatePresence>
                 )}
               </div>
 
-              {!isLoading && !error && filteredWarehouses.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-50 text-slate-400">
-                    <Search size={32} />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900">No approved warehouses found</h3>
-                  <p className="mx-auto mt-2 max-w-sm text-slate-500">
-                    Try adjusting your filters or come back after more warehouse listings are
-                    approved.
+              {!isLoading && !error && warehouses.length === 0 && (
+                <div className="flex min-h-72 flex-col items-center justify-center border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+                  <Warehouse className="h-7 w-7 text-slate-400" aria-hidden="true" />
+                  <h3 className="mt-3 text-base font-semibold text-slate-800">
+                    Không tìm thấy kho phù hợp
+                  </h3>
+                  <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                    Thử điều chỉnh bộ lọc hoặc tìm kiếm với điều kiện khác.
                   </p>
-                  <Button
-                    variant="outline"
-                    className="mt-6"
-                    onClick={() => {
-                      setSearchTerm('')
-                      setApiFilters({ minRentalPrice: '', maxRentalPrice: '', minCapacity: '' })
-                    }}
+                  <button
+                    type="button"
+                    onClick={resetAllFilters}
+                    className="mt-4 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
                   >
-                    Reset All Filters
-                  </Button>
+                    Đặt lại bộ lọc
+                  </button>
                 </div>
               )}
-            </div>
+            </section>
           </div>
         </div>
       </main>

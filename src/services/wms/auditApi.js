@@ -8,7 +8,7 @@ const auditApi = {
         ...(warehouseId ? { warehouseId } : {}),
         page,
         size,
-      }
+      },
     })
   },
 
@@ -22,20 +22,40 @@ const auditApi = {
     return api.get(`/tenant/inventory/audits/${id}`)
   },
 
-  // Nộp kết quả kiểm đếm thực tế
-  submitAudit: (id, data) => {
-    return api.post(`/tenant/inventory/audits/${id}/submit`, data)
+  // Bắt đầu đếm kho (chụp snapshot)
+  startAudit: (id) => {
+    return api.post(`/tenant/inventory/audits/${id}/start`)
+  },
+
+  // Lưu tiến độ đếm tạm thời
+  saveCounts: (id, data) => {
+    return api.put(`/tenant/inventory/audits/${id}/counts`, data)
+  },
+
+  // Nộp kết quả kiểm đếm thực tế (V2 không cần data)
+  submitAudit: (id) => {
+    return api.post(`/tenant/inventory/audits/${id}/submit`)
   },
 
   // Duyệt phiếu kiểm kê (tự động sinh phiếu điều chỉnh tồn)
   approveAudit: (id) => {
-    return api.patch(`/tenant/inventory/audits/${id}/approve`)
+    return api.post(`/tenant/inventory/audits/${id}/approve`)
   },
 
-  // Từ chối phiếu kiểm kê
-  rejectAudit: (id, data) => {
-    return api.patch(`/tenant/inventory/audits/${id}/reject`, data)
-  }
+  // Hủy phiếu kiểm kê (thay cho reject cũ)
+  cancelAudit: (id, data) => {
+    return api.post(`/tenant/inventory/audits/${id}/cancel`, data)
+  },
+
+  // Yêu cầu đếm lại
+  recountAudit: (id, data) => {
+    return api.post(`/tenant/inventory/audits/${id}/recount`, data)
+  },
+
+  // Thêm hàng bất thường không có trong hệ thống
+  addUnexpectedItem: (id, data) => {
+    return api.post(`/tenant/inventory/audits/${id}/unexpected-items`, data)
+  },
 }
 
 export default auditApi

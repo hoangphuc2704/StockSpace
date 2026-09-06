@@ -10,6 +10,9 @@ const tenantApi = {
   cancelBooking: (bookingId) => {
     return api.delete(`/tenant/bookings/${bookingId}`)
   },
+  getDashboard: () => {
+    return api.get('/tenant/dashboard')
+  },
 }
 
 export default tenantApi

@@ -1,58 +1,114 @@
 import { useEffect, useState } from 'react'
-import { Clock, Warehouse, Boxes, Truck, MapPin, ArrowUpRight, ArrowRight } from 'lucide-react'
-
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Boxes,
+  ClipboardList,
+  FileText,
+  MapPin,
+  PackageCheck,
+  ShieldCheck,
+  Warehouse,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 import PublicHeader from '../../../components/PublicHeader'
 import BackToTop from '../../../components/BackToTop.jsx'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import PublicFooter from '../../../components/PublicFooter'
+import warehouseInterior from '@/assets/image.png'
 import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
 
-const SERVICES = [
+const JOURNEY = [
+  ['01', 'Tìm kho', 'Khám phá các kho đã được phê duyệt phù hợp với nhu cầu lưu trữ.'],
+  ['02', 'Thuê kho', 'Xem thông tin kho và thực hiện quy trình thuê trong hệ thống.'],
+  ['03', 'Quản lý hợp đồng', 'Theo dõi hợp đồng thuê và các mốc thời hạn quan trọng.'],
+  ['04', 'Vận hành', 'Quản lý hàng hóa và hoạt động kho theo vai trò được phân quyền.'],
+]
+
+const WMS_CAPABILITIES = [
+  { icon: Boxes, title: 'Tồn kho', description: 'Theo dõi SKU và vị trí lưu trữ.' },
+  { icon: Warehouse, title: 'Layout kho', description: 'Làm việc với khu vực, rack và bin.' },
+  { icon: PackageCheck, title: 'Nhập xuất', description: 'Quản lý luồng hàng hóa theo tác vụ.' },
   {
-    icon: Clock,
-    title: 'Short Term Warehouse Rental',
-    desc: "Flexible seasonal storage solution, optimizing short-term usage area customized to the business's goods flow.",
-  },
-  {
-    icon: ProjectManagementIcon,
-    title: 'Long-term Warehouse Rental',
-    desc: 'Solid warehouse infrastructure system, large area with commitment to safe, long-term stable operation and preferential cost policies.',
-  },
-  {
-    icon: Warehouse,
-    title: 'Inventory Management',
-    desc: 'Control quantity, locate and closely monitor the packaging status of goods with absolute accuracy thanks to the automation process.',
-  },
-  {
-    icon: Boxes,
-    title: 'Import and Export of Goods',
-    desc: 'High-speed loading, unloading, detailed classification and order fulfillment services, helping to accelerate operational efficiency throughout the supply chain.',
-  },
-  {
-    icon: Truck,
-    title: 'Realtime Inventory Report',
-    desc: 'The system updates data streams instantly in real time, supporting administrators in making quick re-import decisions.',
+    icon: ClipboardList,
+    title: 'Hợp đồng',
+    description: 'Theo dõi hồ sơ thuê trong cùng nền tảng.',
   },
 ]
 
-function ProjectManagementIcon() {
-  return (
-    <svg
-      className="h-8 w-8 text-[#FF5A1F]"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={1.2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-      />
-    </svg>
-  )
-}
+const normalizeWarehouse = (item) => ({
+  id: item.id,
+  name: item.name || 'Warehouse',
+  address: item.address || item.location || 'Updating address',
+  area: Number(item.area ?? item.capacity ?? 0),
+  rentalPrice:
+    item.rentalPrice == null && item.price == null && item.pricePerMonth == null
+      ? null
+      : Number(item.rentalPrice ?? item.price ?? item.pricePerMonth),
+  rentalPricingType: item.rentalPricingType || 'PER_SQUARE_METER_MONTHLY',
+  type: item.warehouseType?.name || item.typeName || item.type || 'General',
+  image: item.coverImageUrl || item.thumbnail || item.imageUrls?.[0] || '',
+  isVerified: item.isVerified ?? item.verified ?? false,
+})
+
+const ListingPreviewCard = ({ warehouse }) => (
+  <Link
+    to={`/warehouse/${warehouse.id}`}
+    className="group block overflow-hidden rounded-lg border border-slate-200 bg-white transition-colors hover:border-slate-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2 focus-visible:outline-none"
+  >
+    <div className="relative aspect-[16/9] overflow-hidden bg-slate-100">
+      {warehouse.image ? (
+        <img
+          src={warehouse.image}
+          alt={warehouse.name}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]"
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center text-slate-400">
+          <Warehouse className="h-8 w-8" aria-hidden="true" />
+        </div>
+      )}
+      <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
+        {warehouse.isVerified ? 'Đã xác minh' : 'Đã phê duyệt'}
+      </span>
+    </div>
+    <div className="p-5">
+      <h3 className="truncate text-lg font-semibold tracking-tight text-slate-950 group-hover:text-[#0f084b]">
+        {warehouse.name}
+      </h3>
+      <p className="mt-1.5 flex items-center gap-1.5 truncate text-sm text-slate-600">
+        <MapPin className="h-4 w-4 shrink-0 text-[#FF5A1F]" aria-hidden="true" />
+        <span className="truncate">{warehouse.address}</span>
+      </p>
+      <div className="mt-5 grid grid-cols-2 border-y border-slate-200 py-3 text-sm">
+        <div className="border-r border-slate-200 pr-3">
+          <p className="text-[11px] font-medium text-slate-500">Diện tích</p>
+          <p className="mt-1 font-semibold text-slate-900 tabular-nums">
+            {warehouse.area.toLocaleString('vi-VN')} m²
+          </p>
+        </div>
+        <div className="min-w-0 pl-3">
+          <p className="text-[11px] font-medium text-slate-500">Loại kho</p>
+          <p className="mt-1 truncate font-semibold text-slate-900">{warehouse.type}</p>
+        </div>
+      </div>
+      <div className="mt-5 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium text-slate-500">
+            {warehouse.rentalPricingType === 'NEGOTIATED' ? 'Giá thuê' : 'Giá / m²'}
+          </p>
+          <p className="mt-1 truncate text-xl font-semibold text-slate-950">
+            {formatWarehousePricePerSquareMeter(warehouse, 'Thương lượng')}
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0f084b] group-hover:text-[#FF5A1F]">
+          Chi tiết <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </span>
+      </div>
+    </div>
+  </Link>
+)
 
 const LandingPageKhamkhao = () => {
   const [approvedWarehouses, setApprovedWarehouses] = useState([])
@@ -68,30 +124,13 @@ const LandingPageKhamkhao = () => {
           sortBy: 'createdAt',
           sortDir: 'desc',
         })
-
         const payload = response?.data?.data
         const content = Array.isArray(payload?.content)
           ? payload.content
           : Array.isArray(payload)
             ? payload
             : []
-
-        const normalized = content.map((item) => ({
-          id: item.id,
-          name: item.name || 'Warehouse',
-          address: item.address || item.location || 'Updating address',
-          area: Number(item.area ?? item.capacity ?? 0),
-          rentalPrice:
-            item.rentalPrice == null && item.price == null && item.pricePerMonth == null
-              ? null
-              : Number(item.rentalPrice ?? item.price ?? item.pricePerMonth),
-          rentalPricingType: item.rentalPricingType || 'PER_SQUARE_METER_MONTHLY',
-          type: item.warehouseType?.name || item.typeName || item.type || 'General',
-          image: item.coverImageUrl || item.thumbnail || item.imageUrls?.[0] || '',
-          isVerified: item.isVerified ?? item.verified ?? false,
-        }))
-
-        setApprovedWarehouses(normalized)
+        setApprovedWarehouses(content.map(normalizeWarehouse))
       } catch {
         setApprovedWarehouses([])
       } finally {
@@ -103,252 +142,242 @@ const LandingPageKhamkhao = () => {
   }, [])
 
   return (
-    <div
-      id="home"
-      className="min-h-screen bg-white font-sans text-stone-900 antialiased selection:bg-[#FF5A1F] selection:text-white"
-    >
+    <div id="home" className="min-h-screen bg-[#f8f8f7] font-sans text-slate-900 antialiased">
       <PublicHeader />
 
-      {/* --- SERVICES SECTION --- */}
-      <section id="services" className="bg-white py-20 lg:py-28">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto mb-20 max-w-3xl space-y-4 text-center">
-            <h2 className="text-5xl font-extrabold tracking-tight text-stone-900 uppercase sm:text-6xl">
-              Core services
-            </h2>
-            <p className="mx-auto max-w-xl text-sm leading-relaxed font-medium text-stone-500">
-              Smart space. Lean management. Comprehensive storage system solves the problem to solve
-              the problem of post-hire logistics operations for your business.
-            </p>
-            <div className="flex items-center justify-center gap-4 pt-4">
-              <a
-                href="#quote"
-                className="rounded-md bg-[#FF5A1F] px-6 py-3 text-xs font-bold tracking-wider text-white uppercase hover:bg-[#e04e19]"
-              >
-                Get a quote now
-              </a>
-              <a
-                href="#learn"
-                className="rounded-md border border-stone-300 bg-white px-6 py-3 text-xs font-bold tracking-wider text-stone-800 uppercase hover:bg-stone-50"
-              >
-                Learn more
-              </a>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 items-start gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {SERVICES.map((srv, idx) => {
-              const IconComp = srv.icon
-              const getGridSpacing = (index) => {
-                if (index === 0) return 'lg:mt-0'
-                if (index === 1) return 'lg:mt-12'
-                if (index === 2) return 'lg:mt-24'
-                if (index === 3) return 'lg:-mt-12'
-                return 'lg:mt-0'
-              }
-
-              return (
-                <div
-                  key={idx}
-                  className={`border border-stone-200 bg-white p-8 text-left transition-all hover:shadow-xl ${getGridSpacing(idx)}`}
+      <main>
+        <section className="border-b border-slate-200 bg-white">
+          <div className="mx-auto grid max-w-[1400px] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(480px,1.1fr)] lg:items-center lg:px-8 lg:py-12">
+            <div className="max-w-xl py-2 lg:py-8">
+              <p className="text-xs font-semibold tracking-[0.12em] text-[#FF5A1F] uppercase">
+                Nền tảng kho bãi cho doanh nghiệp
+              </p>
+              <h1 className="mt-4 text-4xl leading-[1.08] font-bold tracking-tight text-[#0f084b] sm:text-5xl">
+                Tìm đúng kho.
+                <br />
+                Vận hành hiệu quả.
+              </h1>
+              <p className="mt-5 max-w-lg text-base leading-7 text-slate-600">
+                StockSpace giúp doanh nghiệp khám phá kho đã được phê duyệt, theo dõi hợp đồng và
+                tiếp tục vận hành kho trong cùng một hệ thống.
+              </p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link
+                  to="/warehouses"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-md bg-[#FF5A1F] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#e04e19] focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
-                  <div className="mb-6 inline-block rounded-sm bg-stone-50 p-3 text-[#FF5A1F]">
-                    <IconComp size={32} strokeWidth={1.2} />
-                  </div>
-                  <h3 className="mb-3 text-xl font-bold tracking-tight text-stone-950">
-                    {srv.title}
-                  </h3>
-                  <p className="mb-6 text-xs leading-relaxed text-stone-500">{srv.desc}</p>
-                  <a
-                    href="#details"
-                    className="inline-flex items-center gap-2 text-xs font-bold tracking-wider text-stone-950 uppercase hover:text-[#FF5A1F]"
-                  >
-                    <span className="flex h-4 w-4 items-center justify-center bg-stone-950 text-[10px] text-white">
-                      ➔
-                    </span>
-                    See details
-                  </a>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section id="approved-warehouses" className="bg-[#faf7f4] py-20 lg:py-24">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mb-12 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div className="max-w-2xl space-y-3">
-              <p className="text-xs font-bold tracking-[0.25em] text-[#FF5A1F] uppercase">
-                Warehouse has been approved
-              </p>
-              <h2 className="text-4xl font-extrabold tracking-tight text-stone-900 uppercase sm:text-5xl">
-                View admin-approved repositories
-              </h2>
-              <p className="text-sm leading-relaxed font-medium text-stone-500">
-                This list only displays warehouses that have passed verification and approval from
-                the system administration.
-              </p>
+                  Tìm kho ngay
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+                <a
+                  href="#how-it-works"
+                  className="inline-flex min-h-11 items-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#0f084b] focus-visible:outline-none"
+                >
+                  Khám phá StockSpace
+                </a>
+              </div>
             </div>
 
-            <Link
-              to="/warehouses"
-              className="inline-flex items-center gap-2 self-start rounded-md border border-stone-300 bg-white px-5 py-3 text-xs font-bold tracking-wider text-stone-900 uppercase transition-all hover:border-[#FF5A1F] hover:text-[#FF5A1F]"
-            >
-              View all warehouses
-              <ArrowUpRight size={14} />
-            </Link>
+            <div className="relative overflow-hidden border border-slate-200 bg-slate-100 shadow-lg shadow-slate-900/10">
+              <img
+                src={warehouseInterior}
+                alt="Không gian bên trong kho"
+                className="aspect-[16/10] h-full w-full object-cover"
+              />
+              <div className="absolute right-0 bottom-0 left-0 bg-[#0f084b]/90 px-5 py-4 text-white sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold tracking-[0.1em] text-orange-200 uppercase">
+                    StockSpace
+                  </p>
+                  <p className="mt-1 text-sm font-medium">
+                    Khám phá kho trước. Vận hành có kiểm soát sau đó.
+                  </p>
+                </div>
+                <Warehouse className="mt-3 h-5 w-5 text-[#FF5A1F] sm:mt-0" aria-hidden="true" />
+              </div>
+            </div>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {isLoadingWarehouses
-              ? Array.from({ length: 3 }).map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="overflow-hidden rounded-3xl border border-stone-200 bg-white"
-                  >
-                    <div className="h-56 animate-pulse bg-stone-100" />
-                    <div className="space-y-4 p-6">
-                      <div className="h-6 w-2/3 animate-pulse rounded bg-stone-100" />
-                      <div className="h-4 w-1/2 animate-pulse rounded bg-stone-100" />
-                      <div className="h-10 animate-pulse rounded bg-stone-100" />
+        <section className="border-b border-slate-200 bg-[#f8f8f7]">
+          <div className="mx-auto grid max-w-[1400px] divide-y divide-slate-200 px-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6 lg:px-8">
+            {[
+              ['Kho được xác minh', 'Thông tin kho được kiểm duyệt trước khi hiển thị.'],
+              [
+                'Thông tin minh bạch',
+                'Diện tích, loại kho, vị trí và giá thuê được trình bày rõ ràng.',
+              ],
+              ['Quản lý tập trung', 'Theo dõi hợp đồng và vận hành kho trên cùng một nền tảng.'],
+            ].map(([title, description]) => (
+              <div key={title} className="py-5 first:pl-0 last:pr-0 sm:px-5 sm:py-6">
+                <h2 className="text-sm font-semibold text-slate-950">{title}</h2>
+                <p className="mt-1.5 text-sm leading-6 text-slate-600">{description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="approved-warehouses" className="bg-white py-12 lg:py-16">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
+            <div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.12em] text-[#FF5A1F] uppercase">
+                  Kho đã được xác minh
+                </p>
+                <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#0f084b]">
+                  Không gian lưu trữ sẵn sàng để doanh nghiệp đánh giá
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  Khám phá những không gian lưu trữ phù hợp với nhu cầu của doanh nghiệp.
+                </p>
+              </div>
+              <Link
+                to="/warehouses"
+                className="inline-flex min-h-10 items-center gap-2 self-start rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-[#0f084b] hover:text-[#0f084b] focus-visible:ring-2 focus-visible:ring-[#0f084b] focus-visible:outline-none"
+              >
+                Xem tất cả kho
+                <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {isLoadingWarehouses
+                ? Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="overflow-hidden rounded-lg border border-slate-200 bg-white"
+                      aria-hidden="true"
+                    >
+                      <div className="aspect-[16/9] animate-pulse bg-slate-200" />
+                      <div className="space-y-3 p-5">
+                        <div className="h-5 w-3/5 animate-pulse rounded bg-slate-200" />
+                        <div className="h-4 w-4/5 animate-pulse rounded bg-slate-100" />
+                        <div className="h-12 animate-pulse rounded bg-slate-100" />
+                      </div>
                     </div>
+                  ))
+                : approvedWarehouses.map((warehouse) => (
+                    <ListingPreviewCard key={warehouse.id} warehouse={warehouse} />
+                  ))}
+            </div>
+
+            {!isLoadingWarehouses && approvedWarehouses.length === 0 && (
+              <div className="border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-600">
+                Hiện chưa có kho sẵn sàng để hiển thị.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section
+          id="how-it-works"
+          className="border-y border-slate-200 bg-[#f8f8f7] py-12 lg:py-16"
+        >
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl">
+              <p className="text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">
+                Quy trình liền mạch
+              </p>
+              <h2 className="mt-2 text-3xl font-bold tracking-tight text-[#0f084b]">
+                Từ lựa chọn kho đến hoạt động hằng ngày
+              </h2>
+            </div>
+            <ol className="mt-8 grid gap-0 border border-slate-200 bg-slate-200 md:grid-cols-4">
+              {JOURNEY.map(([number, title, description]) => (
+                <li key={number} className="relative bg-[#f8f8f7] p-5 md:min-h-52">
+                  <span className="font-mono text-sm font-semibold text-[#FF5A1F]">{number}</span>
+                  <h3 className="mt-8 text-lg font-semibold text-slate-950">{title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section id="about" className="bg-[#0f172a] py-12 text-white lg:py-16">
+          <div className="mx-auto grid max-w-[1400px] gap-8 px-4 sm:px-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(420px,1.1fr)] lg:items-center lg:px-8">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.12em] text-[#FF5A1F] uppercase">
+                Vận hành sau khi thuê
+              </p>
+              <h2 className="mt-3 text-3xl leading-tight font-bold tracking-tight sm:text-4xl">
+                Không chỉ tìm kho.
+                <br />
+                Quản lý cả quá trình vận hành.
+              </h2>
+              <p className="mt-5 max-w-xl text-sm leading-7 text-slate-300">
+                StockSpace tiếp tục hỗ trợ doanh nghiệp quản lý dữ liệu kho, hàng hóa, luồng nhập
+                xuất và hồ sơ hợp đồng sau khi không gian được thuê.
+              </p>
+              <Link
+                to="/warehouses"
+                className="mt-7 inline-flex min-h-10 items-center gap-2 rounded-md bg-[#FF5A1F] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#e04e19] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f172a] focus-visible:outline-none"
+              >
+                Khám phá kho
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <div className="border border-slate-700 bg-slate-800 p-1 shadow-2xl shadow-black/20">
+              <div className="border border-slate-700 bg-slate-900 p-5 sm:p-6">
+                <div className="flex items-center justify-between border-b border-slate-700 pb-4">
+                  <div>
+                    <p className="text-xs font-semibold tracking-[0.1em] text-slate-400 uppercase">
+                      StockSpace WMS
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      Không gian làm việc vận hành
+                    </p>
                   </div>
-                ))
-              : approvedWarehouses.map((warehouse) => (
-                  <Link
-                    key={warehouse.id}
-                    to={`/warehouse/${warehouse.id}`}
-                    className="group block overflow-hidden rounded-3xl border border-stone-200 bg-white transition-all hover:-translate-y-1 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2 focus-visible:outline-none"
-                  >
-                    <div className="relative h-56 overflow-hidden bg-stone-100">
-                      {warehouse.image ? (
-                        <img
-                          src={warehouse.image}
-                          alt={warehouse.name}
-                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-stone-400">
-                          <Warehouse size={42} />
-                        </div>
-                      )}
-                      {warehouse.isVerified ? (
-                        <div className="absolute top-4 left-4 rounded-full bg-emerald-500/90 px-3 py-1 text-[11px] font-bold tracking-wider text-white uppercase">
-                          Verified
-                        </div>
-                      ) : (
-                        <div className="absolute top-4 left-4 rounded-full bg-white/90 px-3 py-1 text-[11px] font-bold tracking-wider text-[#0f084b] uppercase">
-                          Approved
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-4 p-6">
-                      <div className="space-y-2">
-                        <h3 className="text-xl font-bold tracking-tight text-stone-900">
-                          {warehouse.name}
+                  <ShieldCheck className="h-5 w-5 text-[#FF5A1F]" aria-hidden="true" />
+                </div>
+                <div className="mt-4 grid gap-px border border-slate-700 bg-slate-700 sm:grid-cols-2">
+                  {WMS_CAPABILITIES.map((capability) => {
+                    const Icon = capability.icon
+                    return (
+                      <div key={capability.title} className="bg-slate-800 p-4">
+                        <Icon className="h-4 w-4 text-orange-300" aria-hidden="true" />
+                        <h3 className="mt-3 text-sm font-semibold text-white">
+                          {capability.title}
                         </h3>
-                        <p className="flex items-center gap-2 text-sm text-stone-500">
-                          <MapPin size={15} className="text-[#FF5A1F]" />
-                          {warehouse.address}
+                        <p className="mt-1 text-sm leading-5 text-slate-300">
+                          {capability.description}
                         </p>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-3 rounded-2xl bg-stone-50 p-4 text-sm">
-                        <div>
-                          <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
-                            Area
-                          </p>
-                          <p className="mt-1 font-bold text-stone-900">
-                            {warehouse.area.toLocaleString('en-US')} m²
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
-                            Warehouse type
-                          </p>
-                          <p className="mt-1 font-bold text-stone-900">{warehouse.type}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-end justify-between gap-4 border-t border-stone-100 pt-4">
-                        <div>
-                          <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
-                            {warehouse.rentalPricingType === 'NEGOTIATED' ? 'Rental price' : 'Price / m²'}
-                          </p>
-                          <p className="mt-1 text-xl font-extrabold text-[#FF5A1F]">
-                            {formatWarehousePricePerSquareMeter(warehouse)}
-                          </p>
-                        </div>
-
-                        <span className="inline-flex items-center gap-2 rounded-md bg-stone-900 px-4 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all group-hover:bg-[#FF5A1F]">
-                          See details
-                          <ArrowRight size={14} />
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-          </div>
-
-          {!isLoadingWarehouses && approvedWarehouses.length === 0 ? (
-            <div className="mt-8 rounded-3xl border border-dashed border-stone-300 bg-white px-6 py-10 text-center text-sm text-stone-500">
-              There are currently no warehouses available for rent.
+                    )
+                  })}
+                </div>
+                <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+                  <FileText className="h-3.5 w-3.5" aria-hidden="true" />
+                  Các mô-đun khả dụng theo vai trò và quyền truy cập hợp đồng của bạn.
+                </div>
+              </div>
             </div>
-          ) : null}
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* --- CTA SECTION --- */}
-      <section className="relative overflow-hidden bg-[#F4F4F4] py-20 lg:py-24">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 px-6 lg:grid-cols-12 lg:px-8">
-          <div className="z-10 space-y-6 text-left lg:col-span-7">
-            <h2 className="text-4xl leading-tight font-extrabold tracking-tight text-stone-900 uppercase sm:text-5xl">
-              Ready for a breakthrough?
-              <br />
-              Optimize warehouse operations today.
-            </h2>
-            <p className="max-w-xl text-xs leading-relaxed font-medium text-stone-500">
-              High standard site handover combined with implementation of a digital asset management
-              system instant. We don't just rent space, we accompany the growth your chief.
+        <section className="bg-white py-14 text-center lg:py-[72px]">
+          <div className="mx-auto max-w-3xl px-4 sm:px-6">
+            <p className="text-xs font-semibold tracking-[0.12em] text-[#FF5A1F] uppercase">
+              Bắt đầu cùng StockSpace
             </p>
-            <div className="flex flex-wrap gap-4 pt-4">
-              <a
-                href="#cta-quote"
-                className="rounded-md bg-[#FF5A1F] px-6 py-3 text-xs font-bold tracking-wider text-white uppercase hover:bg-[#e04e19]"
-              >
-                Ask for advice
-              </a>
-              <a
-                href="#services"
-                className="rounded-md border border-stone-300 bg-transparent px-6 py-3 text-xs font-bold tracking-wider text-stone-800 uppercase hover:bg-stone-100"
-              >
-                See all services
-              </a>
-            </div>
-          </div>
-
-          <div className="relative flex h-64 w-full items-center justify-center overflow-hidden lg:col-span-5 lg:h-96">
-            <div className="absolute inset-0 bg-[#FF5A1F]/10 opacity-90 mix-blend-multiply" />
-            <svg
-              className="h-full w-full stroke-[1] text-[#FF5A1F]/40"
-              viewBox="0 0 100 100"
-              fill="none"
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-[#0f084b] sm:text-4xl">
+              Sẵn sàng tìm không gian phù hợp cho doanh nghiệp của bạn?
+            </h2>
+            <p className="mt-4 text-base leading-7 text-slate-600">
+              Khám phá các kho đã được xác minh trên StockSpace.
+            </p>
+            <Link
+              to="/warehouses"
+              className="mt-7 inline-flex min-h-11 items-center gap-2 rounded-md bg-[#FF5A1F] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#e04e19] focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2 focus-visible:outline-none"
             >
-              <path
-                d="M0,10 L100,90 M0,90 L100,10 M10,0 L10,100 M90,0 L90,100 M0,50 L100,50"
-                stroke="currentColor"
-              />
-              <path d="M30,0 L30,100 M70,0 L70,100" stroke="currentColor" strokeDasharray="2,2" />
-            </svg>
+              Xem kho ngay
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
           </div>
-        </div>
-      </section>
+        </section>
+      </main>
 
-      {/* --- FOOTER --- */}
       <PublicFooter />
-
       <BackToTop />
     </div>
   )

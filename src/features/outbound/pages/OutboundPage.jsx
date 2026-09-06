@@ -51,10 +51,18 @@ const OutboundPage = () => {
   const [activeTab, setActiveTab] = useState('ALL')
 
   // Form states
+  const [outboundMethod, setOutboundMethod] = useState('AUTO') // 'AUTO' | 'MANUAL'
   const [formSkuId, setFormSkuId] = useState('')
   const [formTotalQuantity, setFormTotalQuantity] = useState(1)
   const [formNote, setFormNote] = useState('')
   const [formReceiverName, setFormReceiverName] = useState('')
+  
+  // Manual Outbound states
+  const [availableLocations, setAvailableLocations] = useState([])
+  const [selectedLocationStr, setSelectedLocationStr] = useState('')
+  const [isLocationsLoading, setIsLocationsLoading] = useState(false)
+
+  // Auto Outbound states
   const [previewData, setPreviewData] = useState(null)
   const [isPreviewLoading, setIsPreviewLoading] = useState(false)
 
@@ -65,7 +73,6 @@ const OutboundPage = () => {
         productApi.getAllSKUs(),
       ])
 
-      // API trả về danh sách kho, có thể ở data.data hoặc data.data.content
       const whData = whRes.data?.data?.content || whRes.data?.data || []
       const whList = whData.map((w) => ({
         id: w.id || w.warehouseId,
@@ -111,18 +118,68 @@ const OutboundPage = () => {
   }, [selectedWarehouseId])
 
   useEffect(() => {
-    // Initial server data is intentionally loaded when this screen mounts.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchInitialData()
   }, [fetchInitialData])
 
   useEffect(() => {
     if (selectedWarehouseId) {
-      // Refresh server-backed data whenever the active warehouse changes.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchReceipts()
     }
   }, [fetchReceipts, selectedWarehouseId])
+
+  // Fetch locations for Manual method when SKU changes
+  useEffect(() => {
+    if (outboundMethod === 'MANUAL' && formSkuId && selectedWarehouseId) {
+      const fetchLocations = async () => {
+        setIsLocationsLoading(true)
+        setAvailableLocations([])
+        setSelectedLocationStr('')
+        try {
+          const res = await stockApi.getStockBySku(formSkuId)
+          const data = res.data?.data || {}
+          if (data.locations) {
+            // Filter locations for the selected warehouse
+            const locsInWarehouse = data.locations.filter(loc => loc.warehouseId === selectedWarehouseId)
+            
+            // Group by rackId + binId to get total quantity per bin (BE doesn't send rackId/binId directly in StockSummaryResponse, but we need it. 
+            // Wait, looking at StockLocationDto, it only has rackName and binName. But StockBatchResponse has rackId and binId.
+            // Let's use getStock API to fetch batches if getStockBySku lacks IDs.)
+            
+            // To be safe, let's fetch all stock batches for this warehouse and filter by SKU.
+            const batchesRes = await stockApi.getStock(selectedWarehouseId, { page: 0, size: 500 })
+            const batches = batchesRes.data?.data?.content || []
+            const skuBatches = batches.filter(b => b.skuId === formSkuId && b.quantity > 0)
+            
+            // Group by binId
+            const grouped = skuBatches.reduce((acc, curr) => {
+              const key = `${curr.rackId}_${curr.binId}`
+              if (!acc[key]) {
+                acc[key] = {
+                  rackId: curr.rackId,
+                  rackName: curr.rackName,
+                  binId: curr.binId,
+                  binName: curr.binName,
+                  quantity: 0
+                }
+              }
+              acc[key].quantity += curr.quantity
+              return acc
+            }, {})
+            
+            setAvailableLocations(Object.values(grouped))
+          }
+        } catch (error) {
+          showApiErrorToast(error, 'Could not load locations for SKU.')
+        } finally {
+          setIsLocationsLoading(false)
+        }
+      }
+      fetchLocations()
+    } else {
+      setAvailableLocations([])
+      setSelectedLocationStr('')
+    }
+  }, [outboundMethod, formSkuId, selectedWarehouseId])
 
   const handleExport = async () => {
     if (!selectedWarehouseId) return
@@ -151,7 +208,6 @@ const OutboundPage = () => {
       return
     }
     const csvRows = []
-    // Headers
     csvRows.push(['Mã Phiếu', 'Trạng thái', 'Ngày tạo', 'Tên mặt hàng', 'Mã SKU', 'Số lượng'].join(','))
     
     receipt.items.forEach(item => {
@@ -166,7 +222,6 @@ const OutboundPage = () => {
     })
 
     const csvContent = csvRows.join('\n')
-    // Add BOM for UTF-8 Excel compatibility
     const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -215,9 +270,27 @@ const OutboundPage = () => {
 
   const handleCreateReceipt = async (e) => {
     e.preventDefault()
-    if (!previewData?.complete) {
+    
+    if (outboundMethod === 'AUTO' && !previewData?.complete) {
       toast.error('Cannot create outbound receipt with shortage.')
       return
+    }
+    
+    let rackId = null
+    let binId = null
+    
+    if (outboundMethod === 'MANUAL') {
+      if (!selectedLocationStr) {
+        toast.error('Please select a location.')
+        return
+      }
+      const loc = JSON.parse(selectedLocationStr)
+      if (Number(formTotalQuantity) > loc.quantity) {
+        toast.error(`Quantity exceeds available stock in this location (Max: ${loc.quantity}).`)
+        return
+      }
+      rackId = loc.rackId
+      binId = loc.binId
     }
 
     setIsSubmitting(true)
@@ -231,6 +304,7 @@ const OutboundPage = () => {
             skuId: formSkuId,
             quantity: Number(formTotalQuantity),
             note: formNote,
+            ...(rackId && binId && { rackId, binId })
           },
         ],
       }
@@ -244,6 +318,7 @@ const OutboundPage = () => {
       setFormNote('')
       setFormReceiverName('')
       setPreviewData(null)
+      setSelectedLocationStr('')
     } catch (error) {
       console.error('Error creating receipt:', error)
       showApiErrorToast(error, 'Could not create receipt.')
@@ -289,7 +364,6 @@ const OutboundPage = () => {
           await receiptApi.replanPickList(id)
           toast.success('Pick list replanned. Please review the new picking order.')
           fetchReceipts()
-          // Automatically open detail view so user can review the new pick list
           const res = await receiptApi.getReceiptDetail(id)
           setDetailReceipt(res?.data?.data ?? res?.data)
           setIsDetailModalOpen(true)
@@ -388,7 +462,6 @@ const OutboundPage = () => {
               <div>
                 <div className="space-y-6">
                   <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                    {/* Tabs */}
                     <div className="flex items-center gap-6 border-b border-slate-200 bg-slate-50 px-4 pt-2">
                       {[
                         { id: 'ALL', label: 'Tất cả' },
@@ -412,7 +485,6 @@ const OutboundPage = () => {
                       ))}
                     </div>
 
-                    {/* Toolbar */}
                     <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-white">
                       <div className="flex items-center gap-3">
                         <div className="relative w-72">
@@ -438,7 +510,6 @@ const OutboundPage = () => {
                       </div>
                     </div>
 
-                    {/* Table */}
                     <div className="overflow-x-auto bg-white">
                       {isLoading ? (
                         <div className="flex justify-center p-8">
@@ -448,55 +519,65 @@ const OutboundPage = () => {
                         <table className="w-full text-left text-sm whitespace-nowrap">
                           <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                             <tr>
-                              <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
-                              <th className="px-4 py-3 border-x border-slate-200">Số dự kiến xuất kho</th>
-                              <th className="px-4 py-3 border-r border-slate-200">Tên nơi nhận</th>
-                              <th className="px-4 py-3 border-r border-slate-200">Tên người phụ trách</th>
-                              <th className="px-4 py-3 border-r border-slate-200">Tên mặt hàng [Thông số]</th>
-                              <th className="px-4 py-3 border-r border-slate-200">Ngày giao hàng</th>
-                              <th className="px-4 py-3 border-r border-slate-200 text-right">Tổng số lượng dự kiến</th>
-                              <th className="px-4 py-3 border-r border-slate-200 text-center">Hiện trạng</th>
-                              <th className="px-4 py-3 text-center">In</th>
+                              <th className="px-4 py-3">Mã Phiếu</th>
+                              <th className="px-4 py-3">Trạng thái</th>
+                              <th className="px-4 py-3">Phương thức</th>
+                              <th className="px-4 py-3">Ngày tạo</th>
+                              <th className="px-4 py-3 text-right">Mặt hàng</th>
+                              <th className="px-4 py-3 text-right">Tổng SL</th>
+                              <th className="px-4 py-3 text-center">Hành động</th>
+                              <th className="px-4 py-3 text-center">Xuất</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
-                            {filteredReceipts.length === 0 ? (
+                            {filteredReceipts.length === 0 && (
                               <tr>
-                                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
-                                  Không có dữ liệu phiếu xuất.
+                                <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
+                                  Không tìm thấy phiếu xuất kho.
                                 </td>
                               </tr>
-                            ) : filteredReceipts.map(r => {
-                              const totalQty = (r.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
-                              const itemName = r.items?.length > 0 
-                                ? `${r.items[0].skuName}${r.items.length > 1 ? ` và ${r.items.length - 1} mục khác` : ''}`
-                                : '—'
+                            )}
+                            {filteredReceipts.map((r) => {
+                              const totalItems = r.items?.length || 0
+                              const totalQty = r.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+                              
+                              let badgeType = 'default'
+                              if (r.status === 'PENDING') badgeType = 'warning'
+                              if (r.status === 'APPROVED') badgeType = 'success'
+                              if (r.status === 'IN_PROGRESS') badgeType = 'info'
+                              if (r.status === 'COMPLETED') badgeType = 'success'
+                              if (r.status === 'REJECTED') badgeType = 'error'
+
                               return (
-                                <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                                  <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
-                                  <td className="px-4 py-3 border-r border-slate-100 text-primary font-medium">{r.id.substring(0,8).toUpperCase()}</td>
-                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-500">{r.receiverName || '—'}</td>
-                                  <td className="px-4 py-3 border-r border-slate-100 text-slate-700">{r.createdByFullName || '—'}</td>
-                                  <td className="px-4 py-3 border-r border-slate-100 whitespace-normal min-w-[200px]">{itemName}</td>
-                                  <td className="px-4 py-3 border-r border-slate-100">{new Date(r.createdAt).toLocaleDateString('vi-VN')}</td>
-                                  <td className="px-4 py-3 border-r border-slate-100 text-right font-semibold text-slate-700">{totalQty}</td>
-                                  <td className="px-4 py-3 border-r border-slate-100 text-center">
-                                    <div className="flex flex-col gap-1 items-center">
-                                      <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                                        r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                                        r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                                        r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
-                                        r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
-                                        'bg-slate-100 text-slate-600'
-                                      }`}>
-                                        {r.status}
-                                      </span>
-                                      <div className="flex items-center justify-center gap-2 mt-1">
+                                <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                                  <td className="px-4 py-3">
+                                    <div className="font-mono text-xs font-semibold text-primary">
+                                      {r.id.substring(0, 8).toUpperCase()}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <Badge type={badgeType}>{r.status}</Badge>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <span className="text-slate-500">OUTBOUND</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-slate-600">
+                                    {new Date(r.createdAt).toLocaleDateString('vi-VN')}
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-medium text-slate-700">
+                                    {totalItems}
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-bold text-slate-900">
+                                    {totalQty}
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <div className="flex items-center gap-1.5 bg-slate-100 rounded-md px-2 py-1">
                                         <button 
-                                          onClick={() => { setDetailReceipt(r); setIsDetailModalOpen(true) }}
-                                          className="text-primary hover:underline text-xs font-medium"
+                                          onClick={() => handleViewDetail(r)}
+                                          className="text-slate-600 hover:text-primary transition-colors flex items-center gap-1 text-xs font-medium"
                                         >
-                                          Xem
+                                          <Eye className="h-3.5 w-3.5" /> Chi tiết
                                         </button>
                                         {r.status === 'PENDING' && currentRole === 'TENANT' && (
                                           <>
@@ -549,6 +630,35 @@ const OutboundPage = () => {
                 title="Create New Outbound Shipment"
               >
                 <FormShell onSubmit={handleCreateReceipt} className="space-y-4">
+                  <div className="space-y-2 border-b border-slate-200 pb-4">
+                    <label className="text-sm font-medium text-slate-700">Phương thức xuất kho</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="outboundMethod" 
+                          className="accent-brand-600"
+                          checked={outboundMethod === 'AUTO'}
+                          onChange={() => setOutboundMethod('AUTO')}
+                        />
+                        <span className="text-sm text-slate-700">Tự động lấy hàng (FIFO)</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input 
+                          type="radio" 
+                          name="outboundMethod" 
+                          className="accent-brand-600"
+                          checked={outboundMethod === 'MANUAL'}
+                          onChange={() => {
+                            setOutboundMethod('MANUAL')
+                            setPreviewData(null)
+                          }}
+                        />
+                        <span className="text-sm text-slate-700">Thủ công (Chọn vị trí cụ thể)</span>
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-slate-700">
@@ -561,6 +671,7 @@ const OutboundPage = () => {
                         onChange={(e) => {
                           setFormSkuId(e.target.value)
                           setPreviewData(null)
+                          setSelectedLocationStr('')
                         }}
                       >
                         <option value="">-- Select product --</option>
@@ -587,6 +698,31 @@ const OutboundPage = () => {
                       />
                     </div>
 
+                    {outboundMethod === 'MANUAL' && (
+                      <div className="space-y-1.5 col-span-2">
+                        <label className="text-sm font-medium text-slate-700">
+                          Location (Rack & Bin) {isLocationsLoading && <Loader2 className="inline h-3 w-3 animate-spin text-slate-400" />}
+                        </label>
+                        <select
+                          required
+                          className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
+                          value={selectedLocationStr}
+                          onChange={(e) => setSelectedLocationStr(e.target.value)}
+                          disabled={!formSkuId || isLocationsLoading}
+                        >
+                          <option value="">-- Select location --</option>
+                          {availableLocations.map((loc) => (
+                            <option key={`${loc.rackId}_${loc.binId}`} value={JSON.stringify(loc)}>
+                              Kệ {loc.rackName} — Ô {loc.binName} (Tồn: {loc.quantity})
+                            </option>
+                          ))}
+                        </select>
+                        {availableLocations.length === 0 && formSkuId && !isLocationsLoading && (
+                          <p className="text-xs text-red-500">Sản phẩm này hiện không có tồn kho trong kho được chọn.</p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="space-y-1.5 col-span-2">
                       <label className="text-sm font-medium text-slate-700">Tên nơi nhận (Receiver Name)</label>
                       <InputField
@@ -597,90 +733,92 @@ const OutboundPage = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                        <MapIcon className="h-4 w-4 text-emerald-600" /> Lộ trình lấy hàng đề xuất (FIFO)
-                      </label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handlePreview}
-                        isLoading={isPreviewLoading}
-                        disabled={!formSkuId || !formTotalQuantity}
-                      >
-                        Xem trước lộ trình
-                      </Button>
-                    </div>
-
-                    {!previewData ? (
-                      <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                        Nhấn "Xem trước lộ trình" để hệ thống tính toán tuyến đường lấy hàng tối ưu.
+                  {outboundMethod === 'AUTO' && (
+                    <div className="space-y-4 pt-2">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                          <MapIcon className="h-4 w-4 text-emerald-600" /> Lộ trình lấy hàng đề xuất (FIFO)
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handlePreview}
+                          isLoading={isPreviewLoading}
+                          disabled={!formSkuId || !formTotalQuantity}
+                        >
+                          Xem trước lộ trình
+                        </Button>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {!previewData.complete && (
-                          <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                            <strong>Phát hiện thiếu hàng!</strong> Hệ thống đang thiếu{' '}
-                            {previewData.items?.[0]?.shortageQuantity} sản phẩm so với yêu cầu. Bạn không thể tạo phiếu xuất này.
-                          </div>
-                        )}
-                        <div className="max-h-[350px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-5">
-                          <div className="relative border-l-2 border-emerald-200 ml-3 space-y-6">
-                            {previewData.stops?.map((stop, index) => (
-                              <div
-                                key={index}
-                                className="relative pl-6"
-                              >
-                                <div className="absolute -left-[17px] top-0 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 border-4 border-white text-sm font-bold text-emerald-600 shadow-sm">
-                                  {stop.sequence}
-                                </div>
-                                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-                                  <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
-                                    <div className="flex items-center gap-2">
-                                      <MapPin className="h-4 w-4 text-rose-500" />
-                                      <span className="text-sm font-bold text-slate-800">
-                                        Kệ {stop.rackCode} — Ô {stop.binCode}
+
+                      {!previewData ? (
+                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                          Nhấn "Xem trước lộ trình" để hệ thống tính toán tuyến đường lấy hàng tối ưu.
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {!previewData.complete && (
+                            <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                              <strong>Phát hiện thiếu hàng!</strong> Hệ thống đang thiếu{' '}
+                              {previewData.items?.[0]?.shortageQuantity} sản phẩm so với yêu cầu. Bạn không thể tạo phiếu xuất này.
+                            </div>
+                          )}
+                          <div className="max-h-[350px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-5">
+                            <div className="relative border-l-2 border-emerald-200 ml-3 space-y-6">
+                              {previewData.stops?.map((stop, index) => (
+                                <div
+                                  key={index}
+                                  className="relative pl-6"
+                                >
+                                  <div className="absolute -left-[17px] top-0 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 border-4 border-white text-sm font-bold text-emerald-600 shadow-sm">
+                                    {stop.sequence}
+                                  </div>
+                                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
+                                      <div className="flex items-center gap-2">
+                                        <MapPin className="h-4 w-4 text-rose-500" />
+                                        <span className="text-sm font-bold text-slate-800">
+                                          Kệ {stop.rackCode} — Ô {stop.binCode}
+                                        </span>
+                                      </div>
+                                      <span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                                        Tầng {stop.shelfLevel}
                                       </span>
                                     </div>
-                                    <span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                                      Tầng {stop.shelfLevel}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className="overflow-x-auto rounded-lg border border-slate-100">
-                                    <table className="w-full text-left text-sm">
-                                      <thead className="bg-slate-50 text-xs text-slate-500">
-                                        <tr>
-                                          <th className="px-3 py-2 font-medium">Sản phẩm (SKU)</th>
-                                          <th className="px-3 py-2 font-medium">Ngày nhập</th>
-                                          <th className="px-3 py-2 text-right font-medium">Cần lấy</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-slate-100">
-                                        {stop.lines?.map((line, lIndex) => (
-                                          <tr key={lIndex}>
-                                            <td className="px-3 py-2 font-mono font-medium text-slate-800">{line.skuCode}</td>
-                                            <td className="px-3 py-2 text-slate-500">
-                                              {line.arrivalDate ? new Date(line.arrivalDate).toLocaleDateString('vi-VN') : '—'}
-                                            </td>
-                                            <td className="px-3 py-2 text-right font-bold text-emerald-700">
-                                              {line.quantity}
-                                            </td>
+                                    
+                                    <div className="overflow-x-auto rounded-lg border border-slate-100">
+                                      <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-50 text-xs text-slate-500">
+                                          <tr>
+                                            <th className="px-3 py-2 font-medium">Sản phẩm (SKU)</th>
+                                            <th className="px-3 py-2 font-medium">Ngày nhập</th>
+                                            <th className="px-3 py-2 text-right font-medium">Cần lấy</th>
                                           </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                          {stop.lines?.map((line, lIndex) => (
+                                            <tr key={lIndex}>
+                                              <td className="px-3 py-2 font-mono font-medium text-slate-800">{line.skuCode}</td>
+                                              <td className="px-3 py-2 text-slate-500">
+                                                {line.arrivalDate ? new Date(line.arrivalDate).toLocaleDateString('vi-VN') : '—'}
+                                              </td>
+                                              <td className="px-3 py-2 text-right font-bold text-emerald-700">
+                                                {line.quantity}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-700">Note (Optional)</label>
@@ -698,7 +836,7 @@ const OutboundPage = () => {
                     <Button
                       type="submit"
                       isLoading={isSubmitting}
-                      disabled={!formSkuId || !previewData?.complete}
+                      disabled={!formSkuId || (outboundMethod === 'AUTO' && !previewData?.complete)}
                     >
                       Confirm Outbound
                     </Button>
