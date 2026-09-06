@@ -1504,11 +1504,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
   // Contract expiry/cancellation can remove the selected rented warehouse and
   // revoke its layout/stock access. Reload the warehouse options immediately
-  // when the realtime RENTAL notification is received.
+  // when the realtime rental/contract-expiry notification is received.
   useEffect(() => {
     const handleRentalNotification = (event) => {
       const notificationType = String(event.detail?.type || '').toUpperCase()
-      if (!isOwner && notificationType === 'RENTAL') {
+      if (!isOwner && ['RENTAL', 'CONTRACT_EXPIRED'].includes(notificationType)) {
         setRentalRefreshKey((current) => current + 1)
       }
       if (

@@ -173,7 +173,7 @@ const WarehouseManagement = () => {
   // Reload the owner list when that change is pushed through WebSocket.
   useEffect(() => {
     const handleRentalNotification = (event) => {
-      if (String(event.detail?.type || '').toUpperCase() === 'RENTAL') {
+      if (['RENTAL', 'CONTRACT_EXPIRED'].includes(String(event.detail?.type || '').toUpperCase())) {
         setRefreshTrigger((current) => current + 1)
       }
     }

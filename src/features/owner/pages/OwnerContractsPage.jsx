@@ -90,10 +90,12 @@ const DraftModal = ({
     }
   }, [isOpen, existingData])
 
+  // Sync the draft layout preview whenever the selected warehouse changes.
   useEffect(() => {
     let active = true
 
     if (!isOpen || !warehouseId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDefaultLayout(null)
       setDefaultLayoutLoading(false)
       setDefaultLayoutError(null)
@@ -621,6 +623,18 @@ const OwnerContractsPage = () => {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchContracts()
+  }, [fetchContracts])
+
+  useEffect(() => {
+    const handleContractNotification = (event) => {
+      const type = String(event.detail?.type || '').toUpperCase()
+      if (type === 'CONTRACT_EXPIRY_REMINDER' || type === 'CONTRACT_EXPIRED') {
+        fetchContracts()
+      }
+    }
+
+    window.addEventListener('new_notification', handleContractNotification)
+    return () => window.removeEventListener('new_notification', handleContractNotification)
   }, [fetchContracts])
 
   const fetchWarehouses = useCallback(async () => {

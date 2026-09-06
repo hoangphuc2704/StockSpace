@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useRef } from 'react'
 import { Bell, CheckCheck, Loader2, Info, Wallet, CalendarCheck, FileText, Warehouse, ClipboardCheck, Boxes, ArrowRightLeft, AlertTriangle, Receipt } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import notificationApi from '../services/notificationApi'
+import notificationApi, { normalizeNotification } from '../services/notificationApi'
 import { toast } from 'react-hot-toast'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { getEnglishNotification } from '@/utils/englishMessages'
@@ -43,6 +43,7 @@ const NotificationDropdown = () => {
   const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   const dropdownRef = useRef(null)
+  const notificationIdsRef = useRef(new Set())
   const navigate = useNavigate()
   const user = useSelector(state => state.auth.user)
 
@@ -70,6 +71,20 @@ const NotificationDropdown = () => {
           Icon: CalendarCheck,
           color: 'text-indigo-500',
           bg: 'bg-indigo-100',
+          route: role === 'ROLE_TENANT' ? '/tenant/contracts' : '/owner/contracts',
+        }
+      case 'CONTRACT_EXPIRY_REMINDER':
+        return {
+          Icon: CalendarCheck,
+          color: 'text-amber-700',
+          bg: 'bg-amber-100',
+          route: role === 'ROLE_TENANT' ? '/tenant/contracts' : '/owner/contracts',
+        }
+      case 'CONTRACT_EXPIRED':
+        return {
+          Icon: AlertTriangle,
+          color: 'text-rose-700',
+          bg: 'bg-rose-100',
           route: role === 'ROLE_TENANT' ? '/tenant/contracts' : '/owner/contracts',
         }
       case 'WAREHOUSE':
@@ -138,14 +153,12 @@ const NotificationDropdown = () => {
   // Lắng nghe thông báo mới từ WebSocket
   useEffect(() => {
     const handleNewNotification = (e) => {
-      const data = e.detail
-      setUnreadCount(prev => prev + 1)
-      
-      setNotifications(prev => {
-        // Tránh trùng lặp nếu có rồi
-        if (prev.some(n => n.id === data.id)) return prev
-        return [data, ...prev]
-      })
+      const data = normalizeNotification(e.detail)
+      if (data.id && notificationIdsRef.current.has(data.id)) return
+      if (data.id) notificationIdsRef.current.add(data.id)
+
+      setNotifications((prev) => [data, ...prev])
+      if (!data.read) setUnreadCount((count) => count + 1)
     }
     
     window.addEventListener('new_notification', handleNewNotification)
@@ -163,6 +176,29 @@ const NotificationDropdown = () => {
     }
   }, [])
 
+  // WebSocket delivery is immediate, but the scheduler can run while the
+  // browser is closed or while a connection is reconnecting. Reconcile the
+  // latest page quietly so a missed contract notification still appears.
+  const syncLatestNotifications = useCallback(async () => {
+    if (isOpen) return
+
+    try {
+      const res = await notificationApi.getMyNotifications({ page: 0, size: 10 })
+      if (res.success && res.data) {
+        const incoming = res.data.content || []
+        notificationIdsRef.current = new Set(
+          incoming.filter((notification) => notification.id).map((notification) => notification.id)
+        )
+        setNotifications(incoming)
+      }
+      await fetchUnreadCount()
+    } catch (error) {
+      // The header already has the WebSocket path; a failed background
+      // reconciliation should not interrupt the current page with a toast.
+      console.debug('Notification reconciliation skipped:', error)
+    }
+  }, [fetchUnreadCount, isOpen])
+
   // Load số lượng thông báo chưa đọc lần đầu tiên
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -173,6 +209,13 @@ const NotificationDropdown = () => {
     return () => clearInterval(interval)
   }, [fetchUnreadCount])
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    syncLatestNotifications()
+    const interval = setInterval(syncLatestNotifications, 60000)
+    return () => clearInterval(interval)
+  }, [syncLatestNotifications])
+
   const fetchNotifications = async (isLoadMore = false) => {
     try {
       if (!isLoadMore) setIsLoading(true)
@@ -182,10 +225,20 @@ const NotificationDropdown = () => {
       const res = await notificationApi.getMyNotifications({ page: targetPage, size: 10 })
       
       if (res.success && res.data) {
+        const incoming = res.data.content || []
         if (isLoadMore) {
-          setNotifications(prev => [...prev, ...res.data.content])
+          const additions = incoming.filter(
+            (notification) => !notification.id || !notificationIdsRef.current.has(notification.id)
+          )
+          additions.forEach((notification) => {
+            if (notification.id) notificationIdsRef.current.add(notification.id)
+          })
+          setNotifications((prev) => [...prev, ...additions])
         } else {
-          setNotifications(res.data.content)
+          notificationIdsRef.current = new Set(
+            incoming.filter((notification) => notification.id).map((notification) => notification.id)
+          )
+          setNotifications(incoming)
         }
         
         setPage(res.data.page)
@@ -214,8 +267,12 @@ const NotificationDropdown = () => {
       try {
         const res = await notificationApi.markAsRead(notif.id)
         if (res.success) {
-          setNotifications(prev => 
-            prev.map(n => n.id === notif.id ? { ...n, read: true } : n)
+          setNotifications((prev) =>
+            prev.map((notification) =>
+              notification.id === notif.id
+                ? { ...notification, read: true, isRead: true }
+                : notification
+            )
           )
           setUnreadCount(prev => Math.max(0, prev - 1))
         }
@@ -238,7 +295,9 @@ const NotificationDropdown = () => {
     try {
       const res = await notificationApi.markAllAsRead()
       if (res.success) {
-        setNotifications(prev => prev.map(notif => ({ ...notif, read: true })))
+        setNotifications((prev) =>
+          prev.map((notification) => ({ ...notification, read: true, isRead: true }))
+        )
         setUnreadCount(0)
         toast.success('All notifications marked read.')
       }

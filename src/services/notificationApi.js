@@ -1,10 +1,41 @@
 import api from './apiConfig'
 
+export const normalizeNotification = (notification = {}) => {
+  const read =
+    typeof notification.read === 'boolean'
+      ? notification.read
+      : typeof notification.isRead === 'boolean'
+        ? notification.isRead
+        : false
+
+  return {
+    ...notification,
+    type: String(notification.type || 'DEFAULT').toUpperCase(),
+    read,
+    isRead: read,
+  }
+}
+
+const normalizeNotificationPage = (response) => {
+  if (!response?.data) return response
+
+  const page = response.data
+  if (!Array.isArray(page.content)) return response
+
+  return {
+    ...response,
+    data: {
+      ...page,
+      content: page.content.map(normalizeNotification),
+    },
+  }
+}
+
 const notificationApi = {
   // Lấy danh sách thông báo của tôi (phân trang)
   getMyNotifications: async ({ page, size } = {}) => {
     const response = await api.get('/notifications', { params: { page, size } })
-    return response.data
+    return normalizeNotificationPage(response.data)
   },
 
   // Lấy số lượng thông báo chưa đọc

@@ -8,7 +8,7 @@ const auditApi = {
         ...(warehouseId ? { warehouseId } : {}),
         page,
         size,
-      }
+      },
     })
   },
 
@@ -55,7 +55,7 @@ const auditApi = {
   // Thêm hàng bất thường không có trong hệ thống
   addUnexpectedItem: (id, data) => {
     return api.post(`/tenant/inventory/audits/${id}/unexpected-items`, data)
-  }
+  },
 }
 
 export default auditApi
