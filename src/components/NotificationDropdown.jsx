@@ -92,7 +92,7 @@ const NotificationDropdown = () => {
           Icon: Warehouse, 
           color: 'text-orange-500', 
           bg: 'bg-orange-100', 
-          route: role === 'ROLE_OWNER' ? '/owner/listwarehouse' : '/admin/listings' 
+          route: role === 'ROLE_OWNER' ? '/owner/listwarehouse' : '/admin/warehouses-management'
         }
       case 'INSPECTION':
         return { 

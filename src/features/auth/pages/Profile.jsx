@@ -23,9 +23,10 @@ const Profile = () => {
     const fileInputRef = useRef(null)
     const [avatarFile, setAvatarFile] = useState(null)
     const [avatarPreview, setAvatarPreview] = useState(null)
+    const isGoogleAccount = profileData?.provider?.toUpperCase() === 'GOOGLE'
 
     const handleResetPassword = async () => {
-        if (!profileData?.email) return
+        if (!profileData?.email || isGoogleAccount) return
         
         try {
             await dispatch(forgotPasswordThunk(profileData.email)).unwrap()
@@ -178,6 +179,8 @@ const Profile = () => {
                                 size="sm" 
                                 className="w-full justify-center"
                                 onClick={handleResetPassword}
+                                disabled={isGoogleAccount}
+                                title={isGoogleAccount ? 'Google accounts manage passwords through Google.' : undefined}
                             >
                                 <Shield className="mr-2 h-4 w-4" /> Change password
                             </Button>

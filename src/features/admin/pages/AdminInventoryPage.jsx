@@ -155,7 +155,7 @@ const AdminInventoryPage = () => {
             </span>
           </div>
         </div>
-        <div className="ml-auto flex items-center">
+        <div className="mr-24 ml-auto flex items-center sm:mr-28">
           <NotificationDropdown />
         </div>
       </header>

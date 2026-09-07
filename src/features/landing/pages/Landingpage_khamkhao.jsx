@@ -36,17 +36,37 @@ const WMS_CAPABILITIES = [
   },
 ]
 
+const formatWarehouseCode = (id) => {
+  const normalizedId = String(id || '').replace(/-/g, '').toUpperCase()
+  return normalizedId ? `WH-${normalizedId.slice(-6)}` : 'WH-N/A'
+}
+
+const formatWarehouseStatus = (status) => {
+  if (status === 'AVAILABLE') return 'Sẵn sàng'
+  if (status === 'PENDING_APPROVAL') return 'Đang duyệt'
+  if (status === 'INACTIVE') return 'Tạm ngưng'
+  return 'Đang cập nhật'
+}
+
+const formatWarehousePricingType = (pricingType) => {
+  if (pricingType === 'FIXED_MONTHLY') return 'Theo tháng'
+  if (pricingType === 'NEGOTIATED') return 'Thỏa thuận'
+  return 'Theo m² / tháng'
+}
+
 const normalizeWarehouse = (item) => ({
   id: item.id,
+  code: item.code || item.warehouseCode || formatWarehouseCode(item.id),
   name: item.name || 'Warehouse',
-  address: item.address || item.location || 'Updating address',
+  address: item.address || item.location || 'Đang cập nhật địa chỉ',
   area: Number(item.area ?? item.capacity ?? 0),
   rentalPrice:
     item.rentalPrice == null && item.price == null && item.pricePerMonth == null
       ? null
       : Number(item.rentalPrice ?? item.price ?? item.pricePerMonth),
   rentalPricingType: item.rentalPricingType || 'PER_SQUARE_METER_MONTHLY',
-  type: item.warehouseType?.name || item.typeName || item.type || 'General',
+  type: item.warehouseType?.name || item.typeName || item.type || 'Kho thường',
+  status: item.status || 'AVAILABLE',
   image: item.coverImageUrl || item.thumbnail || item.imageUrls?.[0] || '',
   isVerified: item.isVerified ?? item.verified ?? false,
 })
@@ -54,8 +74,15 @@ const normalizeWarehouse = (item) => ({
 const ListingPreviewCard = ({ warehouse }) => (
   <Link
     to={`/warehouse/${warehouse.id}`}
-    className="group block overflow-hidden rounded-lg border border-slate-200 bg-white transition-colors hover:border-slate-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2 focus-visible:outline-none"
+    className="group flex h-full flex-col overflow-hidden border border-slate-300 bg-white transition-colors hover:border-slate-500 hover:shadow-md focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2 focus-visible:outline-none"
   >
+    <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 font-mono text-[10px] font-bold tracking-[0.08em] text-slate-900 uppercase">
+      <span className="truncate">ID: {warehouse.code}</span>
+      <span className="shrink-0 border border-sky-200 bg-sky-50 px-2 py-1 text-[9px] text-sky-800">
+        {warehouse.type}
+      </span>
+    </div>
+
     <div className="relative aspect-[16/9] overflow-hidden bg-slate-100">
       {warehouse.image ? (
         <img
@@ -68,42 +95,55 @@ const ListingPreviewCard = ({ warehouse }) => (
           <Warehouse className="h-8 w-8" aria-hidden="true" />
         </div>
       )}
-      <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
-        {warehouse.isVerified ? 'Đã xác minh' : 'Đã phê duyệt'}
+      <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-slate-950 px-2 py-1 font-mono text-[10px] font-bold tracking-[0.05em] text-emerald-300 uppercase">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
+        {warehouse.isVerified ? 'Đã xác minh thực địa' : 'Đã phê duyệt'}
       </span>
     </div>
-    <div className="p-5">
+
+    <div className="flex flex-1 flex-col p-4">
       <h3 className="truncate text-lg font-semibold tracking-tight text-slate-950 group-hover:text-[#0f084b]">
         {warehouse.name}
       </h3>
-      <p className="mt-1.5 flex items-center gap-1.5 truncate text-sm text-slate-600">
-        <MapPin className="h-4 w-4 shrink-0 text-[#FF5A1F]" aria-hidden="true" />
+      <p className="mt-1.5 flex items-center gap-1.5 truncate text-xs text-slate-500">
+        <MapPin className="h-3.5 w-3.5 shrink-0 text-[#FF5A1F]" aria-hidden="true" />
         <span className="truncate">{warehouse.address}</span>
       </p>
-      <div className="mt-5 grid grid-cols-2 border-y border-slate-200 py-3 text-sm">
-        <div className="border-r border-slate-200 pr-3">
-          <p className="text-[11px] font-medium text-slate-500">Diện tích</p>
-          <p className="mt-1 font-semibold text-slate-900 tabular-nums">
+
+      <div className="mt-4 grid grid-cols-2 border border-slate-300 bg-slate-50 text-xs">
+        <div className="border-r border-b border-slate-300 px-2.5 py-2">
+          <p className="font-mono text-[9px] tracking-[0.08em] text-slate-500 uppercase">Diện tích sàn</p>
+          <p className="mt-1 font-mono font-bold text-slate-950 tabular-nums">
             {warehouse.area.toLocaleString('vi-VN')} m²
           </p>
         </div>
-        <div className="min-w-0 pl-3">
-          <p className="text-[11px] font-medium text-slate-500">Loại kho</p>
-          <p className="mt-1 truncate font-semibold text-slate-900">{warehouse.type}</p>
+        <div className="border-b border-slate-300 px-2.5 py-2">
+          <p className="font-mono text-[9px] tracking-[0.08em] text-slate-500 uppercase">Hình thức giá</p>
+          <p className="mt-1 truncate font-mono font-bold text-slate-950">
+            {formatWarehousePricingType(warehouse.rentalPricingType)}
+          </p>
+        </div>
+        <div className="border-r border-slate-300 px-2.5 py-2">
+          <p className="font-mono text-[9px] tracking-[0.08em] text-slate-500 uppercase">Trạng thái</p>
+          <p className="mt-1 truncate font-mono font-bold text-slate-950">
+            {formatWarehouseStatus(warehouse.status)}
+          </p>
+        </div>
+        <div className="px-2.5 py-2">
+          <p className="font-mono text-[9px] tracking-[0.08em] text-slate-500 uppercase">Loại kho</p>
+          <p className="mt-1 truncate font-mono font-bold text-slate-950">{warehouse.type}</p>
         </div>
       </div>
-      <div className="mt-5 flex items-end justify-between gap-3">
+
+      <div className="mt-4 flex items-end justify-between gap-3 border-t border-slate-200 pt-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-medium text-slate-500">
-            {warehouse.rentalPricingType === 'NEGOTIATED' ? 'Giá thuê' : 'Giá / m²'}
-          </p>
-          <p className="mt-1 truncate text-xl font-semibold text-slate-950">
+          <p className="font-mono text-[9px] tracking-[0.08em] text-slate-500 uppercase">Đơn giá tham chiếu</p>
+          <p className="mt-1 truncate font-mono text-sm font-bold text-[#FF5A1F]">
             {formatWarehousePricePerSquareMeter(warehouse, 'Thương lượng')}
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#0f084b] group-hover:text-[#FF5A1F]">
-          Chi tiết <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        <span className="inline-flex shrink-0 items-center gap-1.5 bg-slate-950 px-3 py-2 font-mono text-[10px] font-bold tracking-[0.04em] text-white uppercase transition-colors group-hover:bg-[#FF5A1F]">
+          Xem bản vẽ <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
         </span>
       </div>
     </div>
