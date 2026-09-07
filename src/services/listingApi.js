@@ -8,8 +8,8 @@ const listingApi = {
   getOwnerPublicationHistory: (warehouseId) =>
     api.get(`/owner/warehouses/${warehouseId}/publications`),
 
-  purchasePublication: (warehouseId, listingPackageId) =>
-    api.post(`/owner/warehouses/${warehouseId}/publications`, { listingPackageId }),
+  purchasePublication: (warehouseId, payload) =>
+    api.post(`/owner/warehouses/${warehouseId}/publications`, payload),
 
   getAdminPackages: () => api.get('/admin/listing-packages'),
 

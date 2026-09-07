@@ -10,6 +10,16 @@ const formatVND = (value) =>
 
 const formatDate = (value) => (value ? new Date(value).toLocaleDateString('en-GB') : '—')
 
+const formatDateInput = (value) => {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const addDays = (date, days) => {
   const result = new Date(date)
   result.setDate(result.getDate() + Number(days || 0))
@@ -20,14 +30,19 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
   const [packages, setPackages] = useState([])
   const [history, setHistory] = useState([])
   const [selectedPackageId, setSelectedPackageId] = useState(warehouse.preferredPackageId || '')
+  const [startDate, setStartDate] = useState(() => formatDateInput(new Date()))
   const [isLoading, setIsLoading] = useState(true)
   const [isPurchasing, setIsPurchasing] = useState(false)
   const isApprovedForPayment = String(warehouse.status || '').toUpperCase() === 'AVAILABLE'
   const selectedPackage = packages.find((pkg) => String(pkg.id) === String(selectedPackageId))
   const now = new Date()
-  const currentVisibilityEnd = warehouse.visibleUntil ? new Date(warehouse.visibleUntil) : null
-  const periodStart = currentVisibilityEnd > now ? currentVisibilityEnd : now
-  const periodEnd = selectedPackage ? addDays(periodStart, selectedPackage.durationDays) : null
+  const todayInputValue = formatDateInput(now)
+  const periodStart = startDate
+    ? startDate === todayInputValue
+      ? now
+      : new Date(`${startDate}T00:00:00`)
+    : null
+  const periodEnd = selectedPackage && periodStart ? addDays(periodStart, selectedPackage.durationDays) : null
 
   useEffect(() => {
     let isActive = true
@@ -68,11 +83,14 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
   }, [historyOnly, warehouse.id, warehouse.preferredPackageId])
 
   const handlePurchase = async () => {
-    if (!isApprovedForPayment || !selectedPackageId || isPurchasing) return
+    if (!isApprovedForPayment || !selectedPackageId || !startDate || isPurchasing) return
 
     try {
       setIsPurchasing(true)
-      await listingApi.purchasePublication(warehouse.id, selectedPackageId)
+      await listingApi.purchasePublication(warehouse.id, {
+        listingPackageId: selectedPackageId,
+        startDate,
+      })
       toast.success(warehouse.canRenew ? 'Warehouse listing renewed.' : 'Warehouse listing published.')
       onSuccess()
       onClose()
@@ -179,6 +197,23 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
                   Select a package below. The package price is the listing fee and will be charged when you confirm payment.
                 </p>
               </div>
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <label htmlFor="listing-start-date" className="block text-sm font-bold text-slate-800">
+                  Publication start date
+                </label>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Choose today or a future date for this warehouse listing.
+                </p>
+                <input
+                  id="listing-start-date"
+                  type="date"
+                  value={startDate}
+                  min={todayInputValue}
+                  onChange={(event) => setStartDate(event.target.value)}
+                  className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 sm:w-64"
+                  required
+                />
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {packages.map((pkg) => {
                   const isSelected = String(pkg.id) === String(selectedPackageId)
@@ -228,7 +263,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
                     <p className="text-xl font-black text-emerald-700">{formatVND(selectedPackage.price)}</p>
                   </div>
                   <p className="mt-3 text-xs leading-5 text-emerald-800">
-                    The actual period is finalized by the server. If the listing is still active, this purchase will continue from its current end date.
+                    The actual period is finalized by the server using the selected start date.
                   </p>
                 </div>
               )}
@@ -239,7 +274,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
         <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 p-6">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           {!historyOnly && (
-            <Button type="button" onClick={handlePurchase} isLoading={isPurchasing} disabled={!isApprovedForPayment || isLoading || packages.length === 0 || !selectedPackageId}>
+            <Button type="button" onClick={handlePurchase} isLoading={isPurchasing} disabled={!isApprovedForPayment || isLoading || packages.length === 0 || !selectedPackageId || !startDate}>
               <CreditCard className="mr-2 h-4 w-4" />
               {selectedPackage
                 ? `Pay ${formatVND(selectedPackage.price)} & ${warehouse.canRenew ? 'renew' : 'publish'}`
