@@ -68,14 +68,14 @@ const normalizePublicLayout = (payload = {}) => ({
       width: Math.max(ensureNumber(rack.width, 18), 4),
       length: Math.max(ensureNumber(rack.length, 18), 4),
       height: Math.max(ensureNumber(rack.height, 18), 4),
-      shelfCount: Math.max(ensureNumber(rack.shelfCount, 1), 1),
+      shelfCount: Math.max(ensureNumber(rack.shelfCount, 0), 0),
       bins: Array.isArray(rack.bins)
         ? rack.bins.map((bin) => ({
           clientKey: createClientKey('bin'),
           id: bin.id != null ? String(bin.id) : null,
           name: bin.name ?? 'Bin',
           code: bin.code != null ? String(bin.code) : '',
-          shelfLevel: Math.max(ensureNumber(bin.shelfLevel, 1), 1),
+          shelfLevel: Math.max(ensureNumber(bin.shelfLevel, 0), 0),
           coordinateX: ensureNumber(bin.coordinateX, 0),
           coordinateY: ensureNumber(bin.coordinateY, 0),
           positionZ: ensureNumber(bin.positionZ, 0),

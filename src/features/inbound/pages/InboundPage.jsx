@@ -1020,7 +1020,7 @@ const InboundPage = () => {
                                               {bin.name}
                                             </p>
                                             <p className="mt-0.5 text-[11px] text-slate-400">
-                                              {bin.code || 'No code'} · Shelf {bin.shelfLevel || 1}
+                                              {bin.code || 'No code'} · Shelf {bin.shelfLevel ?? '—'}
                                             </p>
                                           </div>
                                           <label className="shrink-0 text-right text-[10px] font-bold tracking-wide text-slate-500 uppercase">

@@ -1,10 +1,7 @@
 // warehouse3dTextures.js - Bộ tạo Texture Công nghiệp Canvas chất lượng cao cho StockSpace 3D
 import { CanvasTexture, ClampToEdgeWrapping, RepeatWrapping, LinearFilter, SRGBColorSpace } from 'three'
 
-/**
- * Texture sàn bê tông công nghiệp có vạch kẻ xe nâng màu vàng và vạch cảnh báo an toàn
- * Chuẩn màu sắc và layout theo my-react-app
- */
+/** Texture bê tông đơn sắc cho sàn kho 3D. */
 export function createWarehouseFloorTexture() {
   if (typeof document === 'undefined') return null
 
@@ -28,75 +25,6 @@ export function createWarehouseFloorTexture() {
     data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise))
   }
   ctx.putImageData(imgData, 0, 0)
-
-  // Đường ron gạch sàn bê tông (Expansion joints / Grid)
-  const tileSize = 256
-  ctx.strokeStyle = '#bcc8d0'
-  ctx.lineWidth = 4
-  for (let x = 0; x <= 2048; x += tileSize) {
-    ctx.beginPath()
-    ctx.moveTo(x, 0)
-    ctx.lineTo(x, 2048)
-    ctx.stroke()
-  }
-  for (let y = 0; y <= 2048; y += tileSize) {
-    ctx.beginPath()
-    ctx.moveTo(0, y)
-    ctx.lineTo(2048, y)
-    ctx.stroke()
-  }
-
-  // Vạch kẻ sơn vàng an toàn (Forklift warning lanes)
-  ctx.strokeStyle = '#f59e0b'
-  ctx.lineWidth = 14
-
-  // Lối đi dọc chính
-  const mainLanes = [300, 750, 1300, 1750]
-  mainLanes.forEach((x) => {
-    ctx.beginPath()
-    ctx.moveTo(x - 50, 60)
-    ctx.lineTo(x - 50, 1988)
-    ctx.stroke()
-
-    ctx.beginPath()
-    ctx.moveTo(x + 50, 60)
-    ctx.lineTo(x + 50, 1988)
-    ctx.stroke()
-  })
-
-  // Vạch kẻ sọc chéo cảnh báo nguy hiểm (Hazard stripes - Yellow & Black)
-  const drawHazardStripes = (x, y, w, h) => {
-    ctx.save()
-    ctx.beginPath()
-    ctx.rect(x, y, w, h)
-    ctx.clip()
-    ctx.fillStyle = '#475569'
-    ctx.fillRect(x, y, w, h)
-
-    ctx.fillStyle = '#fbbf24'
-    const stripeW = 28
-    for (let sx = -h; sx < w + h; sx += stripeW * 2) {
-      ctx.beginPath()
-      ctx.moveTo(x + sx, y)
-      ctx.lineTo(x + sx + stripeW, y)
-      ctx.lineTo(x + sx + stripeW - h, y + h)
-      ctx.lineTo(x + sx - h, y + h)
-      ctx.closePath()
-      ctx.fill()
-    }
-    ctx.restore()
-  }
-
-  // Các dải cảnh báo an toàn ngã tư xe nâng
-  drawHazardStripes(100, 80, 1848, 50)
-  drawHazardStripes(100, 1918, 1848, 50)
-
-  // Ký hiệu chữ cảnh báo "FORKLIFT ONLY / XE NÂNG"
-  ctx.fillStyle = '#fbbf24'
-  ctx.font = 'bold 36px "Segoe UI", Arial, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText('⚠ FORKLIFT LANE - SPEED LIMIT 5 KM/H', 1024, 60)
-  ctx.fillText('CAUTION: PEDESTRIAN CROSSING', 1024, 2010)
 
   const texture = new CanvasTexture(canvas)
   texture.wrapS = ClampToEdgeWrapping

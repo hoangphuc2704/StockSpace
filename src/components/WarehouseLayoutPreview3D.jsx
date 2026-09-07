@@ -1,12 +1,6 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import {
-  Billboard,
-  OrbitControls,
-  Outlines,
-  PivotControls,
-  Text,
-} from '@react-three/drei'
+import { Billboard, ContactShadows, OrbitControls, Outlines, PivotControls, Text } from '@react-three/drei'
 import { ACESFilmicToneMapping } from 'three'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
@@ -18,7 +12,6 @@ import {
 } from './warehouse3dTextures'
 
 const WORLD_SIZE = 22
-const DEFAULT_RACK_SHELF_COUNT = 2
 const CARDBOARD_COLOR = '#a5822a'
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
@@ -39,7 +32,6 @@ const isQuarterTurn = (rotation) => {
   const normalized = normalizeRotation(rotation)
   return normalized === 90 || normalized === 270
 }
-
 const getWorldDimensions = (layout) => {
   const layoutWidth = Math.max(numberOf(layout?.width, 1), 1)
   const layoutLength = Math.max(numberOf(layout?.length, 1), 1)
@@ -75,23 +67,25 @@ const toCoordinateFromCenter = (center, size, total, parentWorldSize) => {
 }
 
 const getRackLevels = (rack) => {
-  const configuredShelfCount = Math.round(numberOf(rack?.shelfCount, 0))
-  if (configuredShelfCount > 0) return configuredShelfCount
-  return DEFAULT_RACK_SHELF_COUNT
+  return Math.max(Math.round(numberOf(rack?.shelfCount, 0)), 0)
 }
 
 const getLevelFromCoordinate = (rack, bin) => {
   const levels = getRackLevels(rack)
-  const maxCoordinate = Math.max(numberOf(rack?.height) - numberOf(bin?.height), 0)
-  if (levels <= 1 || maxCoordinate <= 0) return 1
-  const ratio = 1 - clamp(numberOf(bin?.coordinateY) / maxCoordinate, 0, 1)
-  return clamp(Math.round(ratio * (levels - 1)) + 1, 1, levels)
+  if (levels <= 0) return 0
+  return clamp(Math.round(numberOf(bin?.shelfLevel, 0)), 1, levels)
 }
 
 const getShelfY = (levelIndex, levels, rackHeight) => {
+  if (levels <= 0) return 0
   const usableHeight = Math.max(rackHeight - 1.2, 0.8)
   if (levels <= 1) return 0.65 + usableHeight / 2
   return 0.65 + (levelIndex / (levels - 1)) * usableHeight
+}
+
+const getWorldHeight = (height, layoutWidth, layoutLength) => {
+  const horizontalReference = Math.max(numberOf(layoutWidth), numberOf(layoutLength), 1)
+  return Math.max((numberOf(height) / horizontalReference) * WORLD_SIZE, 0.2)
 }
 
 const getDisplayCode = (entity, fallback) => entity?.code || entity?.name || fallback
@@ -154,7 +148,7 @@ function getRacksBounds(racks, layoutWidth, layoutLength, worldWidth, worldDepth
     const d = quarterTurn ? localWidth : localDepth
     const x = getWorldCenter(rack.coordinateX, w, layoutWidth, worldWidth)
     const z = getWorldCenter(rack.coordinateY, d, layoutLength, worldDepth)
-    const h = 1.8 + getRackLevels(rack) * 0.75
+    const h = getWorldHeight(rack.height, layoutWidth, layoutLength)
 
     minX = Math.min(minX, x - w / 2)
     maxX = Math.max(maxX, x + w / 2)
@@ -203,79 +197,84 @@ function WarehousePostProcessing() {
   return null
 }
 
-// --- SÀN KHO BÊ TÔNG CÔNG NGHIỆP CÓ VẠCH SƠN VÀNG XE NÂNG ---
+// --- SÀN KHO BÊ TÔNG ---
 function WarehouseFloor({ width, depth, floorTexture }) {
-  const floorW = Math.max(width + 24, 50)
-  const floorD = Math.max(depth + 18, 42)
+  // The 3D floor must represent exactly the same footprint as the 2D layout.
+  const floorW = Math.max(width, 0.1)
+  const floorD = Math.max(depth, 0.1)
 
   return (
     <group position={[0, -0.01, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[floorW, floorD]} />
-        <meshStandardMaterial
-          map={floorTexture}
-          roughness={0.45}
-          metalness={0.15}
-        />
-      </mesh>
-      <mesh position={[0, -0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[floorW + 1, floorD + 1]} />
-        <meshStandardMaterial color="#cbd5e1" roughness={0.9} metalness={0.05} />
+        <meshStandardMaterial map={floorTexture} roughness={0.45} metalness={0.15} />
       </mesh>
     </group>
   )
 }
 
-
-// --- BIỂN BẢNG TÊN KỆ Ở ĐẦU MỖI KỆ HÀNG (RACK HEAD SIGNBOARD) ---
-function RackHeadSignboard({ rackCode, localWidth, localDepth, rackHeight, isSelected }) {
-  const plateW = Math.min(localWidth * 0.9, 2.2)
-  const plateH = 0.44
-  // Đặt nổi bật ở đầu kệ phía trước
-  const posZ = localDepth / 2 + 0.08
-  const posY = rackHeight * 0.78
+function WarehouseAccessPointMarkers({ accessPoints = [], worldWidth, worldDepth }) {
+  const points = Array.isArray(accessPoints) ? accessPoints : []
+  const halfWidth = worldWidth / 2
+  const halfDepth = worldDepth / 2
+  const cellWidth = worldWidth / 10
+  const cellDepth = worldDepth / 10
 
   return (
-    <group position={[0, posY, posZ]}>
-      {/* Khung biển kim loại xám sẫm viền xanh */}
-      <mesh>
-        <boxGeometry args={[plateW, plateH, 0.03]} />
-        <meshStandardMaterial
-          color={isSelected ? '#0369a1' : '#0b1324'}
-          roughness={0.3}
-          metalness={0.8}
-        />
-      </mesh>
-      {/* Đường viền phát sáng */}
-      <mesh position={[0, 0, 0.018]}>
-        <planeGeometry args={[plateW * 0.96, plateH * 0.92]} />
-        <meshBasicMaterial color={isSelected ? '#38bdf8' : '#0284c7'} />
-      </mesh>
-      <mesh position={[0, 0, 0.02]}>
-        <planeGeometry args={[plateW * 0.93, plateH * 0.86]} />
-        <meshBasicMaterial color="#090d16" />
-      </mesh>
+    <group>
+      {points.map((point) => {
+        const row = clamp(numberOf(point.row), 0, 9)
+        const column = clamp(numberOf(point.column), 0, 9)
+        const isEntry = point.type === 'ENTRY'
+        const isTopEdge = row === 0
+        const isBottomEdge = row === 9
+        const isLeftEdge = column === 0
+        let x = -halfWidth + (column + 0.5) * cellWidth
+        let z = -halfDepth + (row + 0.5) * cellDepth
+        let arrow
 
-      {/* Tên Kệ to rõ ở đầu mỗi kệ hàng */}
-      <Text
-        position={[0, 0.04, 0.024]}
-        fontSize={clamp(plateW * 0.16, 0.12, 0.22)}
-        color="#ffffff"
-        anchorX="center"
-        anchorY="middle"
-        fontWeight="bold"
-      >
-        {rackCode}
-      </Text>
-      <Text
-        position={[0, -0.11, 0.024]}
-        fontSize={clamp(plateW * 0.075, 0.06, 0.095)}
-        color="#38bdf8"
-        anchorX="center"
-        anchorY="middle"
-      >
-        HỆ THỐNG GIÁ KỆ PALLET
-      </Text>
+        if (isTopEdge) {
+          arrow = '↓'
+        } else if (isBottomEdge) {
+          arrow = '↑'
+        } else if (isLeftEdge) {
+          arrow = '→'
+        } else {
+          arrow = '←'
+        }
+
+        const markerWidth = clamp(Math.min(cellWidth, cellDepth) * 0.72, 0.9, 1.8)
+        return (
+          <group key={`${point.type}:${row}:${column}`} position={[x, 0.04, z]}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[markerWidth, 0.62]} />
+              <meshBasicMaterial color={isEntry ? '#10b981' : '#f43f5e'} transparent opacity={0.82} />
+            </mesh>
+            <Text
+              position={[0, 0.02, 0]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={0.46}
+              color="#ffffff"
+              anchorX="center"
+              anchorY="middle"
+              depthTest={false}
+            >
+              {arrow}
+            </Text>
+            <Text
+              position={[0, 0.03, 0.27]}
+              rotation={[-Math.PI / 2, 0, 0]}
+              fontSize={0.16}
+              color="#ffffff"
+              anchorX="center"
+              anchorY="middle"
+              depthTest={false}
+            >
+              {isEntry ? 'IN' : 'OUT'}
+            </Text>
+          </group>
+        )
+      })}
     </group>
   )
 }
@@ -332,7 +331,7 @@ function WarehouseCameraController({
       const localDepth = getWorldSize(focusedRack.length, layoutLength, worldDepth)
       const rackWidth = quarterTurn ? localDepth : localWidth
       const rackDepth = quarterTurn ? localWidth : localDepth
-      const rackHeight = 1.8 + getRackLevels(focusedRack) * 0.75
+      const rackHeight = getWorldHeight(focusedRack.height, layoutWidth, layoutLength)
       const rackCenterX = getWorldCenter(
         focusedRack.coordinateX,
         rackWidth,
@@ -356,16 +355,16 @@ function WarehouseCameraController({
       cameraY = Math.max(rackHeight * 0.65, 2.6) + distance * 0.15
       cameraZ = rackCenterZ + frontDirectionZ * distance
     } else {
-      // 🌟 MẶC ĐỊNH / TOÀN CẢNH (OVERVIEW GÓC NHÌN CHUẨN MY-REACT-APP)
-      // Tương tự vị trí [18, 14, 20] nhìn vào [0, 3, 0] với fov 50
-      const span = Math.max(racksBounds.span, 8)
-      const scale = Math.max(span / 11, 1.0)
+      // Overview: keep the camera close enough to the actual rack cluster so
+      // the 3D view does not show excessive empty space on either side.
+      const span = Math.max(racksBounds.span, 6)
+      const scale = Math.max(span / 14, 0.75)
       targetX = racksBounds.centerX
-      targetY = Math.max(racksBounds.centerY, 2.5)
+      targetY = Math.max(racksBounds.centerY, 2.2)
       targetZ = racksBounds.centerZ
-      cameraX = racksBounds.centerX + 18 * scale
-      cameraY = targetY + 11.5 * scale
-      cameraZ = racksBounds.centerZ + 20 * scale
+      cameraX = racksBounds.centerX + 14 * scale
+      cameraY = targetY + 8.5 * scale
+      cameraZ = racksBounds.centerZ + 16 * scale
     }
 
     camera.position.set(cameraX, cameraY, cameraZ)
@@ -374,7 +373,16 @@ function WarehouseCameraController({
       controlsRef.current.target.set(targetX, targetY, targetZ)
       controlsRef.current.update()
     }
-  }, [camera, focusedRack, cameraPreset, racksBounds, layoutLength, layoutWidth, worldDepth, worldWidth])
+  }, [
+    camera,
+    focusedRack,
+    cameraPreset,
+    racksBounds,
+    layoutLength,
+    layoutWidth,
+    worldDepth,
+    worldWidth,
+  ])
 
   return (
     <OrbitControls
@@ -454,11 +462,7 @@ function CargoPalletAndBoxes({
               [-palletD * 0.38, 0, palletD * 0.38].map((pz, zi) => (
                 <mesh key={`b-${xi}-${zi}`} position={[px, 0.065, pz]}>
                   <boxGeometry
-                    args={[
-                      Math.min(palletW * 0.14, 0.09),
-                      0.075,
-                      Math.min(palletD * 0.14, 0.09),
-                    ]}
+                    args={[Math.min(palletW * 0.14, 0.09), 0.075, Math.min(palletD * 0.14, 0.09)]}
                   />
                   <meshStandardMaterial map={palletTexture} roughness={0.75} />
                 </mesh>
@@ -500,10 +504,7 @@ function CargoPalletAndBoxes({
             {isReserved ? (
               <mesh position={[0, subBoxH + topBoxH / 2, 0]}>
                 <boxGeometry args={[palletW * 0.88, topBoxH, palletD * 0.88]} />
-                <meshStandardMaterial
-                  color={CARDBOARD_COLOR}
-                  roughness={0.8}
-                />
+                <meshStandardMaterial color={CARDBOARD_COLOR} roughness={0.8} />
               </mesh>
             ) : (
               <mesh position={[0, subBoxH + topBoxH / 2, 0]}>
@@ -577,15 +578,16 @@ function BinMesh({
           : [storageCenterX, storageCenterZ]
   const width = quarterTurn ? binStorageDepth : binStorageWidth
   const depth = quarterTurn ? binStorageWidth : binStorageDepth
-  const level = clamp(
-    numberOf(bin.shelfLevel, getLevelFromCoordinate(rack, bin)),
-    1,
-    getRackLevels(rack)
-  )
   const levels = getRackLevels(rack)
+  const level =
+    levels > 0 ? clamp(numberOf(bin.shelfLevel, getLevelFromCoordinate(rack, bin)), 1, levels) : 0
   const shelfGap =
-    levels > 1 ? Math.max((rackHeight - 1.2) / (levels - 1), 0.8) : Math.max(rackHeight - 1.2, 0.8)
-  const mappedBinHeight = getWorldSize(bin.height || 1, rack.height || 1, rackHeight)
+    levels > 1
+      ? Math.max((rackHeight - 1.2) / (levels - 1), 0.8)
+      : levels === 1
+        ? Math.max(rackHeight - 1.2, 0.8)
+        : 0
+  const mappedBinHeight = getWorldSize(bin.height, rack.height, rackHeight)
   const binHeight = clamp(mappedBinHeight, 0.38, Math.max(shelfGap - 0.1, 0.38))
   const shelfY = getShelfY(level - 1, levels, rackHeight)
   const y = shelfY + 0.06 + binHeight / 2
@@ -594,17 +596,14 @@ function BinMesh({
   const binCode = getDisplayCode(bin, 'BIN')
 
   // Trạng thái ô hàng
-  const hasItems = (quantity !== null && quantity > 0) || (weightCapacity && weightCapacity.ratio > 0.05)
+  const hasItems =
+    (quantity !== null && quantity > 0) || (weightCapacity && weightCapacity.ratio > 0.05)
   const isOver = weightCapacity?.isOverCapacity
   const isReserved = bin.status === 'reserved' || (bin.id && Number(bin.id) % 7 === 0)
+  const hasCargo = hasItems || isReserved || showDemoCargo
+  const binBodyOpacity = hasCargo ? 0.18 : 0.72
 
-  const ledColor = isOver
-    ? '#dc2626'
-    : isReserved
-      ? '#f59e0b'
-      : hasItems
-        ? '#ef4444'
-        : '#10b981'
+  const ledColor = isOver ? '#dc2626' : isReserved ? '#f59e0b' : hasItems ? '#ef4444' : '#10b981'
 
   const capacityLabel = weightCapacity
     ? isOver
@@ -672,11 +671,8 @@ function BinMesh({
         const draggedCenterY = y + localCenterY
         const usableHeight = Math.max(rackHeight - 1.2, 0.8)
         const levelRatio = clamp((draggedCenterY - 0.65) / usableHeight, 0, 1)
-        const nextShelfLevel = clamp(
-          Math.round(levelRatio * (levels - 1)) + 1,
-          1,
-          levels
-        )
+        const nextShelfLevel =
+          levels > 0 ? clamp(Math.round(levelRatio * (levels - 1)) + 1, 1, levels) : 0
 
         onMoveEntity(
           'bin',
@@ -688,15 +684,16 @@ function BinMesh({
       }}
     >
       <group position={[x, y, z]} onClick={handleBinClick}>
-        {/* Khung Bin luôn hiển thị, kể cả khi chưa có hàng */}
+        {/* Thân Bin là một khối hộp đầy đủ, không dùng wireframe như trước. */}
         <mesh>
           <boxGeometry args={[width, binHeight, depth]} />
-          <meshBasicMaterial
+          <meshStandardMaterial
             color={isSelected ? '#0ea5e9' : '#a5822a'}
-            wireframe
             transparent
-            opacity={isSelected ? 0.95 : 0.7}
-            depthWrite={false}
+            opacity={isSelected ? 0.9 : binBodyOpacity}
+            roughness={0.62}
+            metalness={0.12}
+            depthWrite={isSelected || !hasCargo}
           />
         </mesh>
 
@@ -712,7 +709,7 @@ function BinMesh({
         </mesh>
 
         {/* CÓ HÀNG: PALLET GỖ + THÙNG CARTON VÀNG SÁNG TIÊU CHUẨN */}
-        {hasItems || isReserved || showDemoCargo ? (
+        {hasCargo ? (
           <CargoPalletAndBoxes
             width={width * 0.94}
             depth={depth * 0.94}
@@ -724,20 +721,15 @@ function BinMesh({
             isReserved={isReserved}
           />
         ) : (
-          // Ô TRỐNG: SÀN LƯỚI THÉP MỞ (WIRE MESH)
+          // Ô TRỐNG: mặt sàn đặc của Bin
           <group position={[0, -binHeight / 2 + 0.015, 0]}>
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[width * 0.92, depth * 0.92]} />
-              <meshStandardMaterial
-                color="#64748b"
-                wireframe
-                transparent
-                opacity={0.55}
-              />
+              <meshStandardMaterial color="#64748b" roughness={0.72} metalness={0.28} />
             </mesh>
             <mesh position={[0, 0.01, 0]}>
               <boxGeometry args={[width * 0.92, 0.02, depth * 0.92]} />
-              <meshStandardMaterial color="#10b981" transparent opacity={0.12} />
+              <meshStandardMaterial color="#94a3b8" roughness={0.72} metalness={0.2} />
             </mesh>
           </group>
         )}
@@ -751,47 +743,49 @@ function BinMesh({
           </mesh>
         )}
 
-        {/* Nhãn thông tin Bin dạng Billboard xoay theo camera */}
-        <Billboard position={[0, binHeight / 2 + 0.18, 0]} follow>
-          <group>
-            <Text
-              fontSize={clamp(width * 0.12, 0.06, 0.13)}
-              color={isSelected ? '#38bdf8' : '#ffffff'}
-              anchorX="center"
-              anchorY="middle"
-              outlineWidth={0.014}
-              outlineColor="#0b1120"
-            >
-              {binCode}
-            </Text>
-            {quantity !== null && (
+        {/* Chỉ hiện nhãn khi chọn Bin để toàn cảnh không bị dày đặc chữ. */}
+        {isSelected && (
+          <Billboard position={[0, binHeight / 2 + 0.18, 0]} follow>
+            <group>
               <Text
-                position={[0, -0.09, 0]}
-                fontSize={clamp(width * 0.08, 0.045, 0.085)}
-                color="#4ade80"
+                fontSize={clamp(width * 0.12, 0.06, 0.13)}
+                color="#ffffff"
                 anchorX="center"
                 anchorY="middle"
-                outlineWidth={0.01}
+                outlineWidth={0.014}
                 outlineColor="#0b1120"
               >
-                {`${quantity} kiện`}
+                {binCode}
               </Text>
-            )}
-            {capacityLabel && (
-              <Text
-                position={[0, -0.17, 0]}
-                fontSize={clamp(width * 0.07, 0.04, 0.075)}
-                color={isOver ? '#f87171' : '#f59e0b'}
-                anchorX="center"
-                anchorY="middle"
-                outlineWidth={0.01}
-                outlineColor="#0b1120"
-              >
-                {capacityLabel}
-              </Text>
-            )}
-          </group>
-        </Billboard>
+              {quantity !== null && (
+                <Text
+                  position={[0, -0.09, 0]}
+                  fontSize={clamp(width * 0.08, 0.045, 0.085)}
+                  color="#4ade80"
+                  anchorX="center"
+                  anchorY="middle"
+                  outlineWidth={0.01}
+                  outlineColor="#0b1120"
+                >
+                  {`${quantity} kiện`}
+                </Text>
+              )}
+              {capacityLabel && (
+                <Text
+                  position={[0, -0.17, 0]}
+                  fontSize={clamp(width * 0.07, 0.04, 0.075)}
+                  color={isOver ? '#f87171' : '#f59e0b'}
+                  anchorX="center"
+                  anchorY="middle"
+                  outlineWidth={0.01}
+                  outlineColor="#0b1120"
+                >
+                  {capacityLabel}
+                </Text>
+              )}
+            </group>
+          </Billboard>
+        )}
       </group>
     </PivotControls>
   )
@@ -805,11 +799,7 @@ function UprightColumn({ position, height, size, isSelected }) {
     <group position={position}>
       <mesh>
         <boxGeometry args={[size, height, size]} />
-        <meshStandardMaterial
-          color={metalColor}
-          roughness={0.35}
-          metalness={0.7}
-        />
+        <meshStandardMaterial color={metalColor} roughness={0.35} metalness={0.7} />
       </mesh>
 
       {/* Ốp bảo vệ va chạm chân cột xe nâng: HÌNH TRỤ TRÒN MÀU VÀNG AN TOÀN */}
@@ -829,11 +819,7 @@ function LoadBeam({ position, length, height, depth, rotation = [0, 0, 0], isSel
     <group position={position} rotation={rotation}>
       <mesh>
         <boxGeometry args={[length, height, depth]} />
-        <meshStandardMaterial
-          color={beamColor}
-          roughness={0.38}
-          metalness={0.55}
-        />
+        <meshStandardMaterial color={beamColor} roughness={0.38} metalness={0.55} />
       </mesh>
       {/* Khóa ngàm an toàn ở 2 đầu dầm */}
       {[-length / 2 + 0.03, length / 2 - 0.03].map((cx, idx) => (
@@ -846,6 +832,15 @@ function LoadBeam({ position, length, height, depth, rotation = [0, 0, 0], isSel
   )
 }
 
+function DiagonalBrace({ position, length, thickness = 0.035, rotation }) {
+  return (
+    <mesh position={position} rotation={rotation}>
+      <boxGeometry args={[thickness, length, thickness]} />
+      <meshStandardMaterial color="#64748b" roughness={0.5} metalness={0.72} />
+    </mesh>
+  )
+}
+
 // --- KHUNG GIÁ KỆ HOÀN CHỈNH (SELECTIVE PALLET RACK FRAME) ---
 function RackFrame({ width, depth, rackHeight, levels, isSelected }) {
   const postSize = clamp(Math.min(width, depth) * 0.065, 0.08, 0.14)
@@ -855,6 +850,9 @@ function RackFrame({ width, depth, rackHeight, levels, isSelected }) {
   const postZ = Math.max(depth / 2 - postSize / 2, 0)
   const beamLengthX = Math.max(width - postSize, 0.5)
   const beamLengthZ = Math.max(depth - postSize, 0.5)
+  const braceThickness = clamp(postSize * 0.42, 0.035, 0.07)
+  const sideBraceLength = Math.max(Math.sqrt(beamLengthZ ** 2 + rackHeight ** 2), 0.5)
+  const sideBraceAngle = Math.atan2(beamLengthZ, rackHeight)
   const shelfY = (levelIndex) => getShelfY(levelIndex, levels, rackHeight)
 
   const postPositions = [
@@ -877,6 +875,24 @@ function RackFrame({ width, depth, rackHeight, levels, isSelected }) {
         />
       ))}
 
+      {/* Giằng chữ X ở hai đầu kệ, giống kết cấu pallet rack thực tế. */}
+      {[-postX, postX].map((x, frameIndex) => (
+        <group key={`side-brace-frame-${frameIndex}`} position={[x, rackHeight / 2, 0]}>
+          <DiagonalBrace
+            position={[0, 0, 0]}
+            length={sideBraceLength}
+            thickness={braceThickness}
+            rotation={[sideBraceAngle, 0, 0]}
+          />
+          <DiagonalBrace
+            position={[0, 0, 0]}
+            length={sideBraceLength}
+            thickness={braceThickness}
+            rotation={[-sideBraceAngle, 0, 0]}
+          />
+        </group>
+      ))}
+
       {/* Các tầng dầm đỡ ngang màu cam an toàn + Sàn lưới thép wire mesh */}
       {Array.from({ length: levels }).map((_, levelIndex) => {
         const y = shelfY(levelIndex)
@@ -885,12 +901,7 @@ function RackFrame({ width, depth, rackHeight, levels, isSelected }) {
             {/* Sàn lưới thép đỡ pallet (Wire Mesh Decking) */}
             <mesh position={[0, y, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[beamLengthX * 0.98, beamLengthZ * 0.98]} />
-              <meshStandardMaterial
-                color="#64748b"
-                wireframe
-                roughness={0.3}
-                metalness={0.7}
-              />
+              <meshStandardMaterial color="#64748b" wireframe roughness={0.3} metalness={0.7} />
             </mesh>
 
             {/* Dầm ngang trước & sau đỡ sàn (Front & Rear Beams - Safety Orange) */}
@@ -975,7 +986,7 @@ function RackMesh({
   const x = getWorldCenter(rack.coordinateX, width, layout.width, worldWidth)
   const z = getWorldCenter(rack.coordinateY, depth, layout.length, worldDepth)
   const levels = getRackLevels(rack)
-  const rackHeight = 1.8 + levels * 0.75
+  const rackHeight = getWorldHeight(rack.height, layout.width, layout.length)
   const isSelected =
     isItemSelected(selectedItems, 'rack', rack.clientKey) ||
     (selectedItems.length === 0 &&
@@ -1031,33 +1042,26 @@ function RackMesh({
           isSelected={isSelected}
         />
 
-        {/* 🌟 BIỂN BẢNG TÊN KỆ Ở ĐẦU MỖI KỆ HÀNG (RACK HEAD SIGNBOARD) */}
-        <RackHeadSignboard
-          rackCode={rackCode}
-          localWidth={localWidth}
-          localDepth={localDepth}
-          rackHeight={rackHeight}
-          isSelected={isSelected}
-        />
-
-        {/* Biển Bảng Định Danh Kệ (Rack Billboard Signboard) trên nóc xoay theo góc nhìn */}
-        <Billboard position={[0, rackHeight + 0.38, 0]} follow>
-          <group>
-            <mesh position={[0, 0, -0.01]}>
-              <planeGeometry args={[Math.min(width * 0.75, 1.4), 0.28]} />
-              <meshBasicMaterial color={isSelected ? '#0284c7' : '#0f172a'} />
-            </mesh>
-            <Text
-              fontSize={clamp(Math.min(width, depth) * 0.15, 0.1, 0.2)}
-              color="#ffffff"
-              anchorX="center"
-              anchorY="middle"
-              fontWeight="bold"
-            >
-              {rackCode}
-            </Text>
-          </group>
-        </Billboard>
+        {/* Chỉ hiện mã Rack đang chọn, tránh lặp bảng tên trên toàn cảnh. */}
+        {isSelected && (
+          <Billboard position={[0, rackHeight + 0.34, 0]} follow>
+            <group>
+              <mesh position={[0, 0, -0.01]}>
+                <planeGeometry args={[Math.min(width * 0.62, 1.1), 0.22]} />
+                <meshBasicMaterial color="#0f172a" />
+              </mesh>
+              <Text
+                fontSize={clamp(Math.min(width, depth) * 0.12, 0.08, 0.16)}
+                color="#ffffff"
+                anchorX="center"
+                anchorY="middle"
+                fontWeight="bold"
+              >
+                {rackCode}
+              </Text>
+            </group>
+          </Billboard>
+        )}
 
         {/* Danh sách các Vị trí để hàng (Bins) bên trong Kệ */}
         {(rack.bins || []).map((bin) => (
@@ -1144,9 +1148,7 @@ export default function WarehouseLayoutPreview3D({
     if (selection?.type === 'bin') {
       const targetKey = selection.clientKey ?? selection.key
       for (const r of racks) {
-        const found = (r.bins || []).find(
-          (b) => String(b.clientKey ?? b.id) === String(targetKey)
-        )
+        const found = (r.bins || []).find((b) => String(b.clientKey ?? b.id) === String(targetKey))
         if (found) {
           const cap = capacityByBinId?.[String(found.id)]
           const qty = getBinQuantity(found)
@@ -1160,7 +1162,7 @@ export default function WarehouseLayoutPreview3D({
             hasItems: (qty !== null && qty > 0) || (weightCap && weightCap.ratio > 0.05),
             quantity: qty,
             weightCapacity: weightCap,
-            shelfLevel: found.shelfLevel || 1,
+            shelfLevel: found.shelfLevel ?? '—',
             binCode: getDisplayCode(found, 'BIN'),
             rackCode: getDisplayCode(r, 'RACK'),
           })
@@ -1198,12 +1200,12 @@ export default function WarehouseLayoutPreview3D({
     <div
       className={
         isFullscreen
-          ? 'fixed inset-0 z-[9999] w-screen h-screen select-none overflow-hidden bg-slate-950 font-sans'
-          : 'relative h-full w-full select-none overflow-hidden bg-slate-950 font-sans'
+          ? 'fixed inset-0 z-[9999] h-screen w-screen overflow-hidden bg-slate-950 font-sans select-none'
+          : 'relative h-full w-full overflow-hidden bg-slate-950 font-sans select-none'
       }
     >
       {/* 1. THANH ĐIỀU KHIỂN GÓC NHÌN & NÚT ZOOM TOÀN CẢNH (Quick Camera Presets) */}
-      <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-slate-900/85 px-2.5 py-1.5 backdrop-blur-md shadow-xl">
+      <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-slate-900/85 px-2.5 py-1.5 shadow-xl backdrop-blur-md">
         <span className="mr-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
           Góc nhìn:
         </span>
@@ -1215,7 +1217,7 @@ export default function WarehouseLayoutPreview3D({
           className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
             cameraPreset === 'DEFAULT'
               ? 'bg-sky-500 text-white shadow-[0_0_12px_rgba(14,165,233,0.5)]'
-              : 'bg-sky-950/60 text-sky-300 border border-sky-500/40 hover:bg-sky-900/80 hover:text-white'
+              : 'border border-sky-500/40 bg-sky-950/60 text-sky-300 hover:bg-sky-900/80 hover:text-white'
           }`}
           title="Tự động căn giữa và zoom to vừa vặn toàn bộ cụm kệ"
         >
@@ -1228,7 +1230,7 @@ export default function WarehouseLayoutPreview3D({
           onClick={() => setCameraPreset('CLOSE_UP')}
           className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${
             cameraPreset === 'CLOSE_UP'
-              ? 'bg-sky-500/30 text-sky-200 border border-sky-400/60'
+              ? 'border border-sky-400/60 bg-sky-500/30 text-sky-200'
               : 'text-slate-300 hover:bg-slate-800 hover:text-white'
           }`}
           title="Zoom sát lại gần các tầng kệ và thùng hàng"
@@ -1242,7 +1244,7 @@ export default function WarehouseLayoutPreview3D({
           onClick={() => setCameraPreset('TOP_DOWN')}
           className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${
             cameraPreset === 'TOP_DOWN'
-              ? 'bg-sky-500/30 text-sky-200 border border-sky-400/60'
+              ? 'border border-sky-400/60 bg-sky-500/30 text-sky-200'
               : 'text-slate-300 hover:bg-slate-800 hover:text-white'
           }`}
         >
@@ -1255,7 +1257,7 @@ export default function WarehouseLayoutPreview3D({
           onClick={() => setCameraPreset('FRONT')}
           className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${
             cameraPreset === 'FRONT'
-              ? 'bg-sky-500/30 text-sky-200 border border-sky-400/60'
+              ? 'border border-sky-400/60 bg-sky-500/30 text-sky-200'
               : 'text-slate-300 hover:bg-slate-800 hover:text-white'
           }`}
         >
@@ -1268,19 +1270,33 @@ export default function WarehouseLayoutPreview3D({
         <button
           type="button"
           onClick={() => setIsFullscreen((prev) => !prev)}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/40 bg-slate-900/90 px-3 py-1.5 text-xs font-bold text-sky-300 shadow-xl backdrop-blur-md transition hover:bg-sky-600 hover:text-white hover:border-sky-400"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/40 bg-slate-900/90 px-3 py-1.5 text-xs font-bold text-sky-300 shadow-xl backdrop-blur-md transition hover:border-sky-400 hover:bg-sky-600 hover:text-white"
           title={isFullscreen ? 'Thu nhỏ cửa sổ (Esc)' : 'Phóng to toàn màn hình'}
         >
           {isFullscreen ? (
             <>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
               </svg>
               <span>✕ Thu nhỏ</span>
             </>
           ) : (
             <>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
                 <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
               </svg>
               <span>⛶ Phóng to Toàn màn hình</span>
@@ -1291,7 +1307,7 @@ export default function WarehouseLayoutPreview3D({
 
       {/* 3. MODAL / HUD POPUP CHI TIẾT Ô CHỨA KHI NHẤN VÀO THÙNG HÀNG */}
       {selectedBinInfo && (
-        <div className="absolute right-4 bottom-16 z-30 w-80 max-w-[90vw] rounded-2xl border border-sky-500/40 bg-slate-900/95 p-4 text-white shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4">
+        <div className="animate-in fade-in slide-in-from-bottom-4 absolute right-4 bottom-16 z-30 w-80 max-w-[90vw] rounded-2xl border border-sky-500/40 bg-slate-900/95 p-4 text-white shadow-2xl backdrop-blur-xl">
           <div className="flex items-start justify-between border-b border-white/10 pb-3">
             <div>
               <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold text-sky-400">
@@ -1315,40 +1331,47 @@ export default function WarehouseLayoutPreview3D({
             <div className="flex justify-between">
               <span className="text-slate-400">Kích thước:</span>
               <span className="font-semibold text-slate-200">
-                {selectedBinInfo.bin.length}m (Dài) × {selectedBinInfo.bin.width}m (Rộng) × {selectedBinInfo.bin.height}m (Cao)
+                {selectedBinInfo.bin.length}m (Dài) × {selectedBinInfo.bin.width}m (Rộng) ×{' '}
+                {selectedBinInfo.bin.height}m (Cao)
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Thể tích ô:</span>
               <span className="font-semibold text-slate-200">
-                {selectedBinInfo.bin.maxVolume > 0 ? `${selectedBinInfo.bin.maxVolume} m³` : 'Tiêu chuẩn'}
+                {selectedBinInfo.bin.maxVolume > 0
+                  ? `${selectedBinInfo.bin.maxVolume} m³`
+                  : 'Tiêu chuẩn'}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-400">Tải trọng:</span>
               <span className="font-semibold text-emerald-400">
-                {selectedBinInfo.capacityMetric?.currentWeightKg ?? selectedBinInfo.bin.currentWeight ?? 0} kg /{' '}
-                {selectedBinInfo.capacityMetric?.maxWeightKg ?? selectedBinInfo.bin.maxWeight ?? 1000} kg
+                {selectedBinInfo.capacityMetric?.currentWeightKg ??
+                  selectedBinInfo.bin.currentWeight ??
+                  0}{' '}
+                kg /{' '}
+                {selectedBinInfo.capacityMetric?.maxWeightKg ??
+                  selectedBinInfo.bin.maxWeight ??
+                  1000}{' '}
+                kg
               </span>
             </div>
             {selectedBinInfo.quantity !== null && (
               <div className="flex justify-between">
                 <span className="text-slate-400">Số lượng kiện:</span>
-                <span className="font-bold text-sky-400">
-                  {selectedBinInfo.quantity} kiện hàng
-                </span>
+                <span className="font-bold text-sky-400">{selectedBinInfo.quantity} kiện hàng</span>
               </div>
             )}
-            <div className="flex justify-between items-center pt-1 border-t border-white/5">
+            <div className="flex items-center justify-between border-t border-white/5 pt-1">
               <span className="text-slate-400">Trạng thái:</span>
               <span
                 className={`rounded px-2 py-0.5 text-[10px] font-bold ${
                   selectedBinInfo.isOver
-                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                    ? 'border border-rose-500/40 bg-rose-500/20 text-rose-400'
                     : selectedBinInfo.isReserved
-                      ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                      ? 'border border-amber-500/40 bg-amber-500/20 text-amber-400'
                       : selectedBinInfo.hasItems
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                        ? 'border border-emerald-500/40 bg-emerald-500/20 text-emerald-400'
                         : 'bg-slate-800 text-slate-400'
                 }`}
               >
@@ -1365,7 +1388,6 @@ export default function WarehouseLayoutPreview3D({
         </div>
       )}
 
-
       {/* 5. 3D WEBGL CANVAS (THREE.JS + R3F) */}
       <Canvas
         camera={{ position: [18, 14, 20], fov: 50 }}
@@ -1380,16 +1402,25 @@ export default function WarehouseLayoutPreview3D({
         <fogExp2 attach="fog" args={['#eaf3f8', 0.004]} />
 
         {/* Ánh sáng khuếch tán, không tạo bóng */}
-        <ambientLight intensity={2.1} color="#ffffff" />
-        <directionalLight
-          position={[20, 30, 15]}
-          intensity={1.1}
-          color="#ffffff"
-        />
-        <directionalLight position={[-20, 20, -15]} intensity={0.6} color="#dbeafe" />
+        <ambientLight intensity={1.35} color="#ffffff" />
+        <directionalLight position={[20, 30, 15]} intensity={1.45} color="#fffaf0" />
+        <directionalLight position={[-20, 20, -15]} intensity={0.5} color="#dbeafe" />
 
-        {/* Mặt sàn bê tông với vạch xe nâng vàng */}
+        {/* Mặt sàn bê tông và các mốc cửa ra vào */}
         <WarehouseFloor width={worldWidth} depth={worldDepth} floorTexture={floorTexture} />
+        <ContactShadows
+          position={[0, 0.02, 0]}
+          scale={[Math.max(worldWidth * 0.96, 1), Math.max(worldDepth * 0.96, 1)]}
+          opacity={0.24}
+          blur={2.4}
+          far={3.5}
+          resolution={512}
+        />
+        <WarehouseAccessPointMarkers
+          accessPoints={layout?.accessPoints}
+          worldWidth={worldWidth}
+          worldDepth={worldDepth}
+        />
 
         {/* Danh sách các Kệ (Racks) */}
         {racks.map((rack) => (
