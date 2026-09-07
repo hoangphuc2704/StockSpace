@@ -46,7 +46,7 @@ const Header = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="mr-24 flex items-center gap-2 sm:mr-28">
         <NotificationDropdown />
       </div>
     </header>

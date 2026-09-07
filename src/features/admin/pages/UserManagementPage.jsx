@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import TableActionMenu from '@/components/TableActionMenu'
@@ -15,6 +15,7 @@ import {
   setPage,
   clearError,
 } from '../../../store/adminUserSlice'
+import { fetchRoles } from '../../../store/adminPermissionManagement'
 // Import các action từ uiSlice để đồng bộ đóng mở sidebar toàn hệ thống
 import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -43,7 +44,11 @@ import Avatar from '../../../components/atoms/Avatar'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
-import { validateUserForm, validateUserPasswordReset } from '@/config/validation'
+import {
+  validateUserForm,
+  validateUserPasswordReset,
+  VALIDATION_MESSAGES,
+} from '@/config/validation'
 
 // ==================== HELPER ====================
 const getRoleBadgeVariant = (roleName = '') => {
@@ -58,20 +63,23 @@ const formatRoleName = (name = '') =>
   name.replace('ROLE_', '').charAt(0) + name.replace('ROLE_', '').slice(1).toLowerCase()
 
 // ==================== MODAL TẠO / CHỈNH SỬA USER ====================
-const UserFormModal = ({ user, onClose, onSave, loading }) => {
+const UserFormModal = ({ user, onClose, onSave, loading, roles, roleLoading, roleError }) => {
   useEscapeKey(true, onClose)
   const isEdit = !!user?.id
+  const selectableRoles = roles.filter((role) => !['ROLE_ADMIN', 'ROLE_STAFF'].includes(role.name))
   const [form, setForm] = useState({
     email: user?.email || '',
     fullName: user?.fullName || '',
     phone: user?.phone || '',
     password: '',
     confirmPassword: '',
+    roleId: user?.roles?.[0]?.id || '',
   })
   const [errors, setErrors] = useState({})
 
   const validate = () => {
     const e = validateUserForm(form, isEdit)
+    if (!isEdit && !form.roleId) e.roleId = VALIDATION_MESSAGES.role
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -87,7 +95,7 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
         fullName: form.fullName,
         phone: form.phone,
         password: form.password,
-        roleIds: [],
+        roleIds: [form.roleId],
       })
     }
   }
@@ -168,6 +176,31 @@ const UserFormModal = ({ user, onClose, onSave, loading }) => {
               />
             </div>
           </div>
+
+          {!isEdit && (
+            <div>
+              <label className="mb-1.5 block text-xs font-bold tracking-wider text-slate-500 uppercase">
+                Role *
+              </label>
+              <select
+                value={form.roleId}
+                onChange={(e) => setForm((f) => ({ ...f, roleId: e.target.value }))}
+                disabled={roleLoading}
+                className={`focus:ring-primary/20 w-full rounded-lg border bg-white px-4 py-2 text-sm focus:ring-2 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 ${errors.roleId ? 'border-red-400' : 'border-slate-200'}`}
+              >
+                <option value="">
+                  {roleLoading ? 'Loading roles...' : 'Select a role'}
+                </option>
+                {selectableRoles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {formatRoleName(role.name)}
+                  </option>
+                ))}
+              </select>
+              {errors.roleId && <p className="mt-1 text-xs text-red-500">{errors.roleId}</p>}
+              {roleError && <p className="mt-1 text-xs text-red-500">{roleError}</p>}
+            </div>
+          )}
 
           {!isEdit && (
             <div>
@@ -339,6 +372,7 @@ const UserManagementPage = () => {
     totalElements,
     filters,
   } = useSelector((state) => state.adminUser)
+  const { roles, roleLoading, roleError } = useSelector((state) => state.adminPermission)
 
   // ✅ Đã chuyển sang sử dụng Redux Store chung cho Sidebar thay vì tạo useState local
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -353,6 +387,10 @@ const UserManagementPage = () => {
   useEffect(() => {
     dispatch(fetchUsers({ ...filters, page }))
   }, [dispatch, filters, page])
+
+  useEffect(() => {
+    dispatch(fetchRoles())
+  }, [dispatch])
 
   // Debounce search
   useEffect(() => {
@@ -494,7 +532,7 @@ const UserManagementPage = () => {
             </span>
           </div>
         </div>
-        <div className="ml-auto flex items-center">
+        <div className="mr-24 ml-auto flex items-center sm:mr-28">
           <NotificationDropdown />
         </div>
       </header>
@@ -661,6 +699,9 @@ const UserManagementPage = () => {
             onClose={() => setFormModal(null)}
             onSave={handleSaveForm}
             loading={actionLoading}
+            roles={roles}
+            roleLoading={roleLoading}
+            roleError={roleError}
           />
         )}
         {resetModal && (
