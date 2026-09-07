@@ -61,6 +61,11 @@ const onwerwarehouseApi = {
     return api.put(`/owner/warehouses/${warehouseId}/layout`, data)
   },
 
+  // Owner gửi warehouse đã cấu hình layout lên Admin duyệt
+  submitForApproval: (warehouseId) => {
+    return api.post(`/owner/warehouses/${warehouseId}/submit-for-approval`)
+  },
+
   //cập nhật thông tin kho
   updateWarehouseInfo: (warehouseId, data) => {
     return api.put(`/owner/warehouses/${warehouseId}`, data)

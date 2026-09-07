@@ -2307,6 +2307,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           : await layoutApi.saveTenantWarehouseLayout(targetWarehouseId, payload)
       const saved = apiData(response)
       if (saved) setLayout(normalizeLayout(saved))
+
+      // A newly created owner warehouse starts as DRAFT. Saving its layout
+      // only persists the layout; submit it explicitly so Admin can approve it.
+      const shouldSubmitForApproval = isMandatorySetup && isOwner && !isContractLayout
+      if (shouldSubmitForApproval) {
+        await warehouseApi.submitForApproval(targetWarehouseId)
+      }
+
       updateSelection({ type: 'layout', key: null }, false, true)
       setMessage(
         isContractLayout
