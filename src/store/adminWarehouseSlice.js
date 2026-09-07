@@ -18,6 +18,21 @@ const getPagedPayload = (response) => {
   return payload || {}
 }
 
+// Normalize the inspection field once at the FE boundary. Do not infer it
+// from the warehouse approval status.
+const normalizeWarehouse = (warehouse) => {
+  if (!warehouse || typeof warehouse !== 'object') return warehouse
+  return {
+    ...warehouse,
+    isVerified: warehouse.isVerified ?? warehouse.verified ?? false,
+  }
+}
+
+const normalizePagedPayload = (payload) => ({
+  ...payload,
+  content: Array.isArray(payload?.content) ? payload.content.map(normalizeWarehouse) : [],
+})
+
 /**
  * BE response: ApiResponse<PagedResponse<WarehouseResponse>>
  * PagedResponse: { content, totalElements, totalPages, number (page index), size }
@@ -37,7 +52,7 @@ export const fetchWarehouses = createAsyncThunk(
       const res = await adminApi.getWarehouses(params)
       // BE wraps: { success, message, data: PagedResponse }.
       // Fallback này giúp page cũ vẫn đọc được nếu API trả mảng trực tiếp.
-      return getPagedPayload(res)
+      return normalizePagedPayload(getPagedPayload(res))
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }
@@ -50,7 +65,7 @@ export const verifyWarehouse = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const res = await adminApi.approveWarehouse(id)
-      return res.data.data // WarehouseResponse mới nhất
+      return normalizeWarehouse(res.data.data) // WarehouseResponse mới nhất
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }
@@ -63,7 +78,7 @@ export const rejectWarehouse = createAsyncThunk(
   async ({ id, reason }, { rejectWithValue }) => {
     try {
       const res = await adminApi.rejectWarehouse(id, { reason })
-      return res.data.data // WarehouseResponse mới nhất
+      return normalizeWarehouse(res.data.data) // WarehouseResponse mới nhất
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }

@@ -70,7 +70,7 @@ const ListingPreviewCard = ({ warehouse }) => (
       )}
       <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
-        {warehouse.isVerified ? 'Đã xác minh' : 'Đã phê duyệt'}
+        {warehouse.isVerified ? 'Đã xác minh' : 'Chưa xác minh'}
       </span>
     </div>
     <div className="p-5">

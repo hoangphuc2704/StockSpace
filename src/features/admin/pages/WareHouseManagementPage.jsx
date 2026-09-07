@@ -55,10 +55,10 @@ const STATUS_CONFIG = {
   INACTIVE: { label: 'Inactive', variant: 'danger', icon: XCircle },
 }
 
-const VERIFIED_OPTIONS = [
-  { value: '', label: 'All' },
-  { value: 'true', label: 'Verified' },
-  { value: 'false', label: 'Not verified' },
+const INSPECTION_OPTIONS = [
+  { value: '', label: 'All inspection status' },
+  { value: 'true', label: 'Inspection verified' },
+  { value: 'false', label: 'Not inspection verified' },
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: 
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
-const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
+const DetailModal = ({ warehouse, onClose, onApprove, onReject }) => {
   useEscapeKey(true, onClose)
   const { actionLoading } = useSelector((s) => s.adminWarehouseManage)
   const cfg = STATUS_CONFIG[warehouse.status] || {}
@@ -112,7 +112,7 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
         )}
 
         <div className="space-y-3 text-sm">
-          {/* Status + verified */}
+          {/* Approval status + inspection verification */}
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <span className="mr-auto font-medium text-slate-600">Status</span>
             <Badge variant={cfg.variant || 'slate'} size="sm" className="rounded-full">
@@ -127,12 +127,12 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
               {warehouse.isVerified ? (
                 <>
                   <BadgeCheck size={12} className="mr-1 inline" />
-                  Verified
+                  Inspection verified
                 </>
               ) : (
                 <>
                   <Clock size={12} className="mr-1 inline" />
-                  Not verified
+                  Not inspection verified
                 </>
               )}
             </Badge>
@@ -267,7 +267,7 @@ const DetailModal = ({ warehouse, onClose, onVerify, onReject }) => {
               <button
                 onClick={() => {
                   onClose()
-                  onVerify(warehouse)
+                  onApprove(warehouse)
                 }}
                 disabled={actionLoading}
                 className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
@@ -339,7 +339,7 @@ const WareHouseManagementPage = () => {
     return () => clearTimeout(timer)
   }, [searchInput, dispatch])
 
-  const handleVerify = useCallback(
+  const handleApprove = useCallback(
     async (w) => {
       await dispatch(verifyWarehouse(w.id))
     },
@@ -470,7 +470,7 @@ const WareHouseManagementPage = () => {
                   bg: 'bg-emerald-50',
                 },
                 {
-                  label: 'Verified',
+                  label: 'Inspection verified',
                   value: verifiedCount,
                   icon: BadgeCheck,
                   color: 'text-blue-600',
@@ -521,7 +521,7 @@ const WareHouseManagementPage = () => {
                 >
                   {STATUS_OPTIONS.map((s) => (
                     <option key={s} value={s}>
-                      {s ? STATUS_CONFIG[s]?.label || s : 'All status'}
+                      {s ? STATUS_CONFIG[s]?.label || s : 'Status'}
                     </option>
                   ))}
                 </select>
@@ -532,7 +532,7 @@ const WareHouseManagementPage = () => {
                 onChange={(e) => dispatch(setIsVerifiedFilter(e.target.value))}
                 className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:outline-none"
               >
-                {VERIFIED_OPTIONS.map((o) => (
+                {INSPECTION_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -557,13 +557,13 @@ const WareHouseManagementPage = () => {
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
                         {[
-                          '',
-                          'Warehouse name',
+                          'Img',
+                          'Name',
                           'Address',
                           'Type/Price',
-                          'Warehouse owner',
+                          'Owner',
                           'Status',
-                          'Verify',
+                          'Verified',
                           'Date posted',
                           '',
                         ].map((h, index) => (
@@ -645,11 +645,11 @@ const WareHouseManagementPage = () => {
                             <td className="px-4 py-3.5">
                               {w.isVerified ? (
                                 <span className="flex items-center gap-1 text-xs font-semibold text-emerald-600">
-                                  <BadgeCheck size={14} /> Verified
+                                  <BadgeCheck size={14} /> Inspection verified
                                 </span>
                               ) : (
                                 <span className="flex items-center gap-1 text-xs font-semibold text-amber-500">
-                                  <Clock size={13} /> Not verified
+                                  <Clock size={13} /> Not inspection verified
                                 </span>
                               )}
                             </td>
@@ -674,7 +674,7 @@ const WareHouseManagementPage = () => {
                                       Refuse
                                     </button>
                                     <button
-                                      onClick={() => handleVerify(w)}
+                                      onClick={() => handleApprove(w)}
                                       disabled={actionLoading}
                                       className="rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                                     >
@@ -733,9 +733,9 @@ const WareHouseManagementPage = () => {
             key="detail"
             warehouse={selectedItem}
             onClose={() => setSelectedItem(null)}
-            onVerify={(w) => {
+            onApprove={(w) => {
               setSelectedItem(null)
-              handleVerify(w)
+              handleApprove(w)
             }}
             onReject={(w) => {
               setSelectedItem(null)

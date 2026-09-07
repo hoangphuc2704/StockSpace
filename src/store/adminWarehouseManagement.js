@@ -18,6 +18,22 @@ const getPagedPayload = (response) => {
   return payload || {}
 }
 
+// Keep one frontend field for inspection verification. Some API responses
+// expose the Java boolean getter as `verified`; never derive this from the
+// warehouse approval status.
+const normalizeWarehouse = (warehouse) => {
+  if (!warehouse || typeof warehouse !== 'object') return warehouse
+  return {
+    ...warehouse,
+    isVerified: warehouse.isVerified ?? warehouse.verified ?? false,
+  }
+}
+
+const normalizePagedPayload = (payload) => ({
+  ...payload,
+  content: Array.isArray(payload?.content) ? payload.content.map(normalizeWarehouse) : [],
+})
+
 /**
  * BE APIs:
  *
@@ -56,7 +72,7 @@ export const fetchWarehouses = createAsyncThunk(
       })
       // BE hiện tại trả ApiResponse { success, message, data: PagedResponse }.
       // Giữ fallback cho response list cũ để trang Admin không bị trắng khi BE trả mảng trực tiếp.
-      return getPagedPayload(res)
+      return normalizePagedPayload(getPagedPayload(res))
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }
@@ -68,7 +84,7 @@ export const verifyWarehouse = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const res = await adminApi.approveWarehouse(id)
-      return res.data.data  // WarehouseResponse
+      return normalizeWarehouse(res.data.data)  // WarehouseResponse
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }
@@ -80,7 +96,7 @@ export const rejectWarehouse = createAsyncThunk(
   async ({ id, reason }, { rejectWithValue }) => {
     try {
       const res = await adminApi.rejectWarehouse(id, { reason })
-      return res.data.data  // WarehouseResponse
+      return normalizeWarehouse(res.data.data)  // WarehouseResponse
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
     }

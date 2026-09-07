@@ -250,7 +250,7 @@ const WarehouseApprovalPage = () => {
       ),
     },
     {
-      header: 'Status',
+      header: 'Approval status',
       render: (row) => {
         const variantMap = {
           ACTIVE: 'success',
@@ -260,10 +260,18 @@ const WarehouseApprovalPage = () => {
         }
         return (
           <Badge variant={variantMap[row.status] || 'slate'} size="sm">
-            {row.isVerified ? '✓ Verified' : row.status || '—'}
+            {row.status || '—'}
           </Badge>
         )
       },
+    },
+    {
+      header: 'Inspection',
+      render: (row) => (
+        <Badge variant={row.isVerified ? 'success' : 'warning'} size="sm">
+          {row.isVerified ? '✓ Verified' : 'Not verified'}
+        </Badge>
+      ),
     },
     {
       header: 'Submitted',
@@ -462,9 +470,23 @@ const WarehouseApprovalPage = () => {
                     {warehouseDetail?.address || warehouseDetail?.location || '—'}
                   </p>
                 </div>
-                <Badge variant={warehouseDetail?.isVerified ? 'success' : 'warning'} size="sm">
-                  {warehouseDetail?.isVerified ? 'Verified' : warehouseDetail?.status || 'Pending'}
-                </Badge>
+                <div className="flex flex-wrap gap-2">
+                  <Badge
+                    variant={
+                      warehouseDetail?.status === 'AVAILABLE'
+                        ? 'success'
+                        : warehouseDetail?.status === 'PENDING_APPROVAL'
+                          ? 'warning'
+                          : 'slate'
+                    }
+                    size="sm"
+                  >
+                    Approval: {warehouseDetail?.status || '—'}
+                  </Badge>
+                  <Badge variant={warehouseDetail?.isVerified ? 'success' : 'warning'} size="sm">
+                    Inspection: {warehouseDetail?.isVerified ? 'Verified' : 'Not verified'}
+                  </Badge>
+                </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
