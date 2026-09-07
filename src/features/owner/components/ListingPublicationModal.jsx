@@ -127,7 +127,8 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
         </div>
 
         <div className="space-y-4 p-6">
-          {warehouse.publicationStatus && (
+          {warehouse.publicationStatus &&
+            String(warehouse.publicationStatus).toUpperCase() !== 'DRAFT' && (
             <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 p-4 text-sm">
               <span className="font-semibold text-slate-600">Current status:</span>
               <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-700">{warehouse.publicationStatus}</span>

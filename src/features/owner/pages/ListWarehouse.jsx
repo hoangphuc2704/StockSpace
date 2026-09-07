@@ -403,7 +403,8 @@ const WarehouseManagement = () => {
                                       Lý do: {wh.reason || wh.rejectionReason || wh.rejectReason}
                                     </div>
                                   )}
-                                {wh.publicationStatus && (
+                                {wh.publicationStatus &&
+                                  String(wh.publicationStatus).toUpperCase() !== 'DRAFT' && (
                                   <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
                                     Listing: {wh.publicationStatus}
                                   </span>

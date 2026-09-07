@@ -116,14 +116,6 @@ const inferRackPreset = (rack) => {
     return !closest || distance < closest.distance ? { id: preset.id, distance } : closest
   }, null)?.id
 }
-const getRackBinLimit = (rack) => {
-  const presetId = rack?.rackPresetId || inferRackPreset(rack)
-  return RACK_PRESETS.find((preset) => preset.id === presetId)?.binsPerShelf || 5
-}
-const totalBinWeightLimit = (rack) =>
-  (rack?.bins || []).reduce((total, bin) => total + Math.max(numberOf(bin.maxWeight), 0), 0)
-const totalBinVolumeLimit = (rack) =>
-  (rack?.bins || []).reduce((total, bin) => total + Math.max(numberOf(bin.maxVolume), 0), 0)
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
 const isCurrentActiveContract = (contract) => {
   if (contract?.status !== 'ACTIVE') return false
@@ -264,52 +256,30 @@ const getRackLevelCount = (rack) => {
   return DEFAULT_RACK_SHELF_COUNT
 }
 
+const getRackMaxBinCount = (rack) => {
+  const configuredBinCount = integerOf(rack?.maxBinCount, 0)
+  if (configuredBinCount > 0) return configuredBinCount
+
+  const preset = RACK_PRESETS.find(
+    (item) => item.id === (rack?.rackPresetId || inferRackPreset(rack))
+  )
+  return Math.max(1, (preset?.binsPerShelf || 1) * getRackLevelCount(rack))
+}
+
 const getBinHeightForRack = (rack) => {
   const rackHeight = Math.max(numberOf(rack?.height, MIN_ENTITY_SIZE), MIN_ENTITY_SIZE)
   const levelHeight = rackHeight / getRackLevelCount(rack)
   return Number(clamp(levelHeight * 0.9, MIN_BIN_SIZE, rackHeight).toFixed(6))
 }
 
-const roundedCapacity = (value) => Math.floor(Math.max(numberOf(value), 0) * 1_000_000) / 1_000_000
-
-const distributeRackCapacities = (rack) => {
-  const levels = getRackLevelCount(rack)
-  const bins = Array.isArray(rack.bins) ? rack.bins : []
-  const binsPerLevel = bins.reduce((counts, bin) => {
-    const level = clamp(integerOf(bin.shelfLevel, 1), 1, levels)
-    counts[level] = (counts[level] || 0) + 1
-    return counts
-  }, {})
-  const rackWeight = Math.max(numberOf(rack.maxWeight), 0)
-  const rackVolume = Math.max(numberOf(rack.maxVolume), 0)
-  const binHeight = getBinHeightForRack(rack)
-
-  return {
-    ...rack,
-    bins: bins.map((bin) => {
-      const shelfLevel = clamp(integerOf(bin.shelfLevel, 1), 1, levels)
-      const binCount = binsPerLevel[shelfLevel] || 1
-      const levelWeight = rackWeight > 0 ? rackWeight / levels : null
-      const levelVolume = rackVolume > 0 ? rackVolume / levels : null
-
-      return {
-        ...bin,
-        shelfLevel,
-        height: binHeight,
-        positionZ: clamp(
-          numberOf(bin.positionZ),
-          0,
-          Math.max(numberOf(rack.height, MIN_ENTITY_SIZE) - binHeight, 0)
-        ),
-        ...(levelWeight === null ? {} : { maxWeight: roundedCapacity(levelWeight / binCount) }),
-        ...(levelVolume === null ? {} : { maxVolume: roundedCapacity(levelVolume / binCount) }),
-      }
-    }),
-  }
-}
-
 const normalizeRack = (rack = {}) => {
   const source = rack || {}
+  const shelfCount = Math.max(integerOf(source.shelfCount, DEFAULT_RACK_SHELF_COUNT), 1)
+  const sourceBins = Array.isArray(source.bins) ? source.bins : []
+  const preset = RACK_PRESETS.find(
+    (item) => item.id === (source.rackPresetId || inferRackPreset(source))
+  )
+  const defaultMaxBinCount = Math.max(1, sourceBins.length, (preset?.binsPerShelf || 1) * shelfCount)
   return fitBinsToRack(
     {
       clientKey: keyOf('rack'),
@@ -326,8 +296,9 @@ const normalizeRack = (rack = {}) => {
       width: Math.max(numberOf(source.width, 18), MIN_ENTITY_SIZE),
       length: Math.max(numberOf(source.length, 18), MIN_ENTITY_SIZE),
       height: Math.max(numberOf(source.height, 18), MIN_ENTITY_SIZE),
-      shelfCount: Math.max(integerOf(source.shelfCount, DEFAULT_RACK_SHELF_COUNT), 1),
-      bins: Array.isArray(source.bins) ? source.bins.map(normalizeBin) : [],
+      shelfCount,
+      maxBinCount: Math.max(integerOf(source.maxBinCount, defaultMaxBinCount), 1),
+      bins: sourceBins.map(normalizeBin),
     },
     // Preserve shelfLevel and coordinates returned by BE. New racks are arranged
     // explicitly when they are created or when the owner changes the rack preset.
@@ -363,8 +334,6 @@ const serializeBin = (bin, rackIndex, binIndex, rackWidth, rackLength, rackHeigh
     shelfLevel: Math.max(integerOf(bin.shelfLevel, 1), 1),
     name: bin.name?.trim() || 'Bin',
     code: bin.code?.trim() || `BIN-${rackIndex + 1}-${binIndex + 1}`,
-    maxWeight: numberOf(bin.maxWeight),
-    maxVolume: numberOf(bin.maxVolume),
     coordinateX: clamp(numberOf(bin.coordinateX), 0, Math.max(rackWidth - width, 0)),
     coordinateY: clamp(numberOf(bin.coordinateY), 0, Math.max(rackLength - length, 0)),
     positionZ: clamp(numberOf(bin.positionZ), 0, Math.max(rackHeight - height, 0)),
@@ -406,6 +375,7 @@ const serializeRack = (rack, rackIndex, layoutWidth, layoutLength, layoutHeight)
     length,
     height,
     shelfCount: getRackLevelCount(rack),
+    maxBinCount: getRackMaxBinCount(rack),
     bins: (Array.isArray(rack.bins) ? rack.bins : []).map((bin, binIndex) =>
       serializeBin(bin, rackIndex, binIndex, footprintWidth, footprintLength, height)
     ),
@@ -415,11 +385,9 @@ const serializeRack = (rack, rackIndex, layoutWidth, layoutLength, layoutHeight)
 const getAutomaticBinGeometry = (rack, binCount) => {
   const { width: rackWidth, length: rackLength } = getRackFootprint(rack)
   const count = Math.max(integerOf(binCount, 1), 1)
-  // Reserve the complete capacity of one shelf from the first Bin. This keeps
-  // empty slots visible instead of stretching the first Bin across the rack.
-  // `count` is still included so old layouts with more Bins than the preset
-  // limit remain renderable without overlapping each other.
-  const slotCount = Math.max(getRackBinLimit(rack), count, 1)
+  // Use the actual number of bins on this shelf for visual geometry. Capacity
+  // allocation is owned by the BE and must not be derived in the FE.
+  const slotCount = Math.max(count, 1)
   const columns = slotCount
   const rows = 1
   const rotated = isQuarterTurn(rack.rotation)
@@ -544,7 +512,7 @@ const fitBinsToRack = (rack, { arrange = false, arrangePositions = false } = {})
       }
     }),
   }
-  return distributeRackCapacities(fittedRack)
+  return fittedRack
 }
 
 const getRackSectionBin = (rack, bin) => {
@@ -812,8 +780,9 @@ function RackElevationView({
           </p>
           <h3 className="mt-1 font-bold text-slate-900">{rack.name || rack.code || 'Rack'}</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Kéo Bin theo chiều ngang để đổi vị trí, kéo lên/xuống để đổi tầng. Tối đa{' '}
-            <strong className="text-slate-700">{getRackBinLimit(rack)} Bin / tầng</strong>.
+            Kéo Bin theo chiều ngang để đổi vị trí, kéo lên/xuống để đổi tầng. Đang có{' '}
+            <strong className="text-slate-700">{rack.bins?.length || 0}</strong> /{' '}
+            <strong className="text-slate-700">{getRackMaxBinCount(rack)} Bin / Rack</strong>.
           </p>
         </div>
         {canEdit && (
@@ -995,7 +964,7 @@ function RackStatisticsTable({
                 <th className="px-4 py-3">Loại</th>
                 <th className="px-4 py-3">Kích thước</th>
                 <th className="px-4 py-3">Tầng</th>
-                <th className="px-4 py-3">Số bin</th>
+                <th className="px-4 py-3">Bin tối đa / thực tế</th>
                 <th className="px-4 py-3">Khối lượng</th>
                 <th className="px-4 py-3">Thể tích</th>
               </tr>
@@ -1034,7 +1003,30 @@ function RackStatisticsTable({
                       {getRackLevelCount(rack)}
                     </td>
                     <td className="px-4 py-3 text-center font-semibold">
-                      {rack.bins?.length || 0}
+                      {canEdit ? (
+                        <div className="mx-auto min-w-28">
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={getDraftValue(rack, 'maxBinCount')}
+                            aria-label={`Số Bin tối đa của ${rack.name || rack.code || 'Rack'}`}
+                            onChange={(event) =>
+                              setDraftValue(rack, 'maxBinCount', event.target.value)
+                            }
+                            onBlur={() => commitDraftValue(rack, 'maxBinCount')}
+                            className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                          />
+                          <span className="mt-1 block text-[10px] font-normal text-slate-400">
+                            Đang có {rack.bins?.length || 0} Bin
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          {rack.maxBinCount || rack.bins?.length || 0}
+                          <span className="font-normal text-slate-400"> / {rack.bins?.length || 0}</span>
+                        </>
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {canEdit ? (
@@ -1154,6 +1146,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     RACK_PRESETS[1]?.id || 'standard'
   )
   const [newRackShelfCount, setNewRackShelfCount] = useState(DEFAULT_RACK_SHELF_COUNT)
+  const [newRackBinCount, setNewRackBinCount] = useState(
+    (RACK_PRESETS[1]?.binsPerShelf || 1) * DEFAULT_RACK_SHELF_COUNT
+  )
   const [rackPresetCapacities, setRackPresetCapacities] = useState(createEmptyRackPresetCapacities)
   const [isRackConfigOpen, setIsRackConfigOpen] = useState(false)
   const [addMultipleRacks, setAddMultipleRacks] = useState(false)
@@ -1314,11 +1309,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
   const updateRackCapacity = useCallback(
     (rackKey, field, value) => {
-      if (!canEditLayout || !['maxWeight', 'maxVolume'].includes(field)) return
-      const nextValue = Math.max(numberOf(value), 0)
+      if (!canEditLayout || !['maxWeight', 'maxVolume', 'maxBinCount'].includes(field)) return
+      const nextValue = field === 'maxBinCount'
+        ? Math.max(integerOf(value, 1), 1)
+        : Math.max(numberOf(value), 0)
       setLayout((current) =>
         updateRack(current, rackKey, (rack) =>
-          distributeRackCapacities({ ...rack, [field]: nextValue })
+          ({ ...rack, [field]: nextValue })
         )
       )
       setError('')
@@ -1865,6 +1862,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       presetCapacity.maxVolume === '' || presetCapacity.maxVolume == null
         ? numberOf(existingPresetRack?.maxVolume, 0)
         : Math.max(numberOf(presetCapacity.maxVolume), 0)
+    const shelfCount = Math.max(integerOf(newRackShelfCount, preset.shelfCount), 1)
+    const requestedBinCount = Math.max(
+      integerOf(newRackBinCount, preset.binsPerShelf * shelfCount),
+      1
+    )
     const requestedCount = addMultipleRacks ? Math.max(integerOf(newRackQuantity, 2), 2) : 1
     const workingLayout = { ...layout, racks: [...layout.racks] }
     const existingCodes = new Set(
@@ -1898,6 +1900,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         code = `RACK-${preset.code}-${rackNumber}`
       }
 
+      const bins = Array.from({ length: requestedBinCount }, (_, binIndex) =>
+        normalizeBin({
+          name: `${preset.name} ${rackNumber} - Bin ${binIndex + 1}`,
+          code: `${code}-BIN-${binIndex + 1}`,
+          shelfLevel: (binIndex % shelfCount) + 1,
+        })
+      )
       const rack = fitBinsToRack(
         normalizeRack({
           rackPresetId: preset.id,
@@ -1910,10 +1919,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           width: preset.width,
           length: preset.length,
           height: preset.height,
-          shelfCount: Math.max(integerOf(newRackShelfCount, preset.shelfCount), 1),
+          shelfCount,
+          maxBinCount: requestedBinCount,
           maxWeight,
           maxVolume,
-          bins: [],
+          bins,
         }),
         { arrange: true }
       )
@@ -1941,6 +1951,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     layout,
     minimumRackGap,
     newRackQuantity,
+    newRackBinCount,
     newRackShelfCount,
     rackPresetCapacities,
     selectedRackPresetId,
@@ -1952,13 +1963,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
     const levels = getRackLevelCount(selectedRack)
     const shelfLevel = clamp(integerOf(newBinShelfLevel, 1), 1, levels)
-    const binsOnShelf = (Array.isArray(selectedRack.bins) ? selectedRack.bins : []).filter(
-      (bin) => clamp(integerOf(bin.shelfLevel, 1), 1, levels) === shelfLevel
-    )
-    const binLimit = getRackBinLimit(selectedRack)
-    if (binsOnShelf.length >= binLimit) {
+    const currentBinCount = Array.isArray(selectedRack.bins) ? selectedRack.bins.length : 0
+    const binLimit = getRackMaxBinCount(selectedRack)
+    if (currentBinCount >= binLimit) {
       setError(
-        `${selectedRack.name || selectedRack.code || 'Rack'} đã đủ ${binLimit} Bin ở tầng ${shelfLevel}.`
+        `${selectedRack.name || selectedRack.code || 'Rack'} đã đủ ${binLimit} Bin.`
       )
       return
     }
@@ -2032,7 +2041,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
       setLayout((current) =>
         updateRack(current, targetRack.clientKey, (rack) =>
-          distributeRackCapacities({
+          ({
             ...rack,
             rotation: nextRotation,
             coordinateX: candidate.coordinateX,
@@ -2050,32 +2059,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const moveEntityFromPreview = useCallback(
     (type, key, coordinateX, coordinateY, nextShelfLevel) => {
       if (!canEditLayout) return
-
-      if (type === 'bin' && nextShelfLevel != null) {
-        const sourceRack = layout.racks.find(
-          (item) => Array.isArray(item?.bins) && item.bins.some((bin) => bin?.clientKey === key)
-        )
-        const sourceBin = sourceRack?.bins?.find((bin) => bin?.clientKey === key)
-        if (sourceRack && sourceBin) {
-          const levels = getRackLevelCount(sourceRack)
-          const targetShelfLevel = clamp(integerOf(nextShelfLevel, sourceBin.shelfLevel), 1, levels)
-          const binLimit = getRackBinLimit(sourceRack)
-          const binsOnTargetShelf = sourceRack.bins.filter(
-            (bin) =>
-              bin?.clientKey !== key &&
-              clamp(integerOf(bin.shelfLevel, 1), 1, levels) === targetShelfLevel
-          )
-          if (
-            targetShelfLevel !== clamp(integerOf(sourceBin.shelfLevel, 1), 1, levels) &&
-            binsOnTargetShelf.length >= binLimit
-          ) {
-            setError(
-              `${sourceRack.name || sourceRack.code || 'Rack'} đã đủ ${binLimit} Bin ở tầng ${targetShelfLevel}.`
-            )
-            return
-          }
-        }
-      }
 
       setLayout((current) => {
         if (type === 'rack') {
@@ -2106,10 +2089,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           ),
         }
 
-        return updateRack(current, rack.clientKey, () => distributeRackCapacities(updatedRack))
+        return updateRack(current, rack.clientKey, () => updatedRack)
       })
     },
-    [canEditLayout, layout]
+    [canEditLayout]
   )
 
   const focusRackIn3D = useCallback(
@@ -2264,23 +2247,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       setError('A rack overlaps a locked cell. Move it before saving the layout.')
       return
     }
-    const overloadedRack = layout.racks.find((rack) => {
-      const maxWeight = Math.max(numberOf(rack.maxWeight), 0)
-      const maxVolume = Math.max(numberOf(rack.maxVolume), 0)
-      return (
-        (maxWeight > 0 && totalBinWeightLimit(rack) > maxWeight) ||
-        (maxVolume > 0 && totalBinVolumeLimit(rack) > maxVolume)
-      )
-    })
-    if (canEditLayout && overloadedRack) {
-      const weightOverloaded =
-        Math.max(numberOf(overloadedRack.maxWeight), 0) > 0 &&
-        totalBinWeightLimit(overloadedRack) > Math.max(numberOf(overloadedRack.maxWeight), 0)
-      setError(
-        `The total Bin ${weightOverloaded ? 'weight' : 'volume'} limit in ${overloadedRack.name || overloadedRack.code || 'Rack'} cannot exceed the Rack limit.`
-      )
-      return
-    }
     try {
       setSaving(true)
       setError('')
@@ -2307,13 +2273,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           : await layoutApi.saveTenantWarehouseLayout(targetWarehouseId, payload)
       const saved = apiData(response)
       if (saved) setLayout(normalizeLayout(saved))
-
-      // A newly created owner warehouse starts as DRAFT. Saving its layout
-      // only persists the layout; submit it explicitly so Admin can approve it.
-      const shouldSubmitForApproval = isMandatorySetup && isOwner && !isContractLayout
-      if (shouldSubmitForApproval) {
-        await warehouseApi.submitForApproval(targetWarehouseId)
-      }
 
       updateSelection({ type: 'layout', key: null }, false, true)
       setMessage(
@@ -2439,8 +2398,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           capacity.maxVolume !== '' && capacity.maxVolume != null
                             ? capacity.maxVolume
                             : (existingRack?.maxVolume ?? '')
-                        const geometricVolume = preset.width * preset.length * preset.height
-
                         return (
                           <div
                             key={preset.id}
@@ -2461,7 +2418,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                     {preset.width}m × {preset.length}m × {preset.height}m
                                   </span>
                                   <span className="mt-1 block text-xs font-semibold text-orange-700">
-                                    Tối đa {preset.binsPerShelf} Bin / tầng
+                                    Gợi ý {preset.binsPerShelf} Bin / tầng
                                   </span>
                                 </span>
                                 <span
@@ -2496,7 +2453,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                 <input
                                   type="number"
                                   min="0"
-                                  max={geometricVolume}
                                   step="0.01"
                                   value={maxVolume}
                                   placeholder="0 = không giới hạn"
@@ -2512,9 +2468,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                   className={`${inputClass} mt-1`}
                                 />
                               </label>
-                              <p className="text-[11px] text-slate-500">
-                                Thể tích hình học: {geometricVolume.toLocaleString('vi-VN')} m³
-                              </p>
                             </div>
                           </div>
                         )
@@ -2532,6 +2485,19 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             value={newRackShelfCount}
                             onChange={(event) =>
                               setNewRackShelfCount(Math.max(integerOf(event.target.value, 1), 1))
+                            }
+                            className={`${inputClass} w-24 py-2`}
+                          />
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                          Số Bin / Rack
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={newRackBinCount}
+                            onChange={(event) =>
+                              setNewRackBinCount(Math.max(integerOf(event.target.value, 1), 1))
                             }
                             className={`${inputClass} w-24 py-2`}
                           />
@@ -2565,7 +2531,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           />
                         </label>
                       </div>
-                      <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                      <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-4">
                         <span>
                           Đang chọn:{' '}
                           <strong className="text-orange-700">
@@ -2577,6 +2543,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         </span>
                         <span>
                           Số tầng: <strong>{newRackShelfCount}</strong>
+                        </span>
+                        <span>
+                          Số Bin: <strong>{newRackBinCount}</strong>
                         </span>
                         <span>
                           Sẽ thêm: <strong>{addMultipleRacks ? newRackQuantity : 1} Rack</strong>
