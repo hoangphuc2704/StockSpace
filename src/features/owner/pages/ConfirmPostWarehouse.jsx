@@ -79,7 +79,7 @@ const ConfirmPostWarehouse = () => {
             <img src={logoDaidien} alt="StockSpace Logo" className="h-10 w-16 object-contain" />
           </button>
         </div>
-        <div className="ml-auto flex items-center">
+        <div className="mr-24 ml-auto flex items-center sm:mr-28">
           <NotificationDropdown />
         </div>
       </header>

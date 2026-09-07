@@ -3,6 +3,25 @@ import Badge from '@/components/atoms/Badge'
 import Avatar from '@/components/atoms/Avatar'
 import TranslatableText from '@/components/TranslatableText'
 
+const formatDate = (value) => {
+  if (!value) return '—'
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+
+  return date.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+const formatListingId = (id) => {
+  if (!id) return '—'
+
+  return String(id).replaceAll('-', '').slice(-8).toUpperCase()
+}
+
 const WarehouseInfo = ({ warehouse, layout, extendedData }) => {
   const stats = [
     { label: 'Diện Tích / Sức chứa', value: `${warehouse.area || 0} m² / ${warehouse.capacity || warehouse.area || 0} units`, icon: Maximize },
@@ -25,6 +44,31 @@ const WarehouseInfo = ({ warehouse, layout, extendedData }) => {
           <div className="flex items-center gap-1.5 font-medium">
             <MapPin size={18} className="text-primary" />
             <span>{warehouse.location}</span>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 border-y border-slate-200 py-4 sm:grid-cols-4">
+          <div className="border-r border-slate-200 px-3 first:pl-0 sm:px-4">
+            <p className="text-xs font-medium text-slate-500">Ngày đăng</p>
+            <p className="mt-1 text-sm font-bold text-slate-900">
+              {formatDate(warehouse.publishedAt)}
+            </p>
+          </div>
+          <div className="px-3 sm:border-r sm:border-slate-200 sm:px-4">
+            <p className="text-xs font-medium text-slate-500">Ngày hết hạn</p>
+            <p className="mt-1 text-sm font-bold text-slate-900">
+              {formatDate(warehouse.visibleUntil)}
+            </p>
+          </div>
+          <div className="border-r border-slate-200 px-3 pt-4 sm:border-0 sm:px-4 sm:pt-0">
+            <p className="text-xs font-medium text-slate-500">Loại tin</p>
+            <p className="mt-1 text-sm font-bold text-slate-900">{warehouse.listingType}</p>
+          </div>
+          <div className="px-3 pt-4 sm:px-4 sm:pt-0">
+            <p className="text-xs font-medium text-slate-500">Mã tin</p>
+            <p className="mt-1 text-sm font-bold text-slate-900">
+              {formatListingId(warehouse.id)}
+            </p>
           </div>
         </div>
 
