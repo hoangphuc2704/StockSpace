@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Loader2, Warehouse, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Loader2, Warehouse, X } from 'lucide-react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import warehouseApi from '@/services/warehouse/warehouseApi'
@@ -172,9 +172,10 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
 
     try {
       setSubmitting(true)
-      await transferApi.createTransfer(payload)
+      const response = await transferApi.createTransfer(payload)
+      const createdTransfer = response?.data?.data
       toast.success('Transfer request created.')
-      onSuccess?.()
+      await onSuccess?.(createdTransfer)
       onClose()
     } catch (error) {
       showApiErrorToast(error, 'Could not create transfer.')
@@ -184,12 +185,12 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-3 backdrop-blur-xs sm:p-6">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-transfer-title"
-        className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-slate-300 bg-white shadow-2xl"
+        className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-slate-300 bg-white shadow-xl"
       >
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
           <div>
@@ -216,6 +217,29 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
           </button>
         </header>
 
+        <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-600">
+            <span className="inline-flex items-center gap-1.5 text-blue-700">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-700 text-[10px] text-white">1</span>
+              Route
+            </span>
+            <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px]">2</span>
+              Source allocation
+            </span>
+            <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1.5">
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px]">3</span>
+              Submit for approval
+            </span>
+          </div>
+          <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-500">
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" aria-hidden="true" />
+            Creating the request does not deduct stock. Source stock changes only after dispatch approval.
+          </p>
+        </div>
+
         {loadingInitial ? (
           <div
             className="flex min-h-72 items-center justify-center gap-3 text-sm text-slate-500"
@@ -236,7 +260,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                   <div>
                     <label
                       htmlFor="transfer-source"
-                      className="mb-1.5 block text-sm font-semibold text-slate-800"
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
                     >
                       Source warehouse <span className="text-rose-600">*</span>
                     </label>
@@ -249,7 +273,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                         setSelectedSkuId('')
                         setDestinationWarehouseId('')
                       }}
-                      className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                      className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="">Select source warehouse</option>
                       {allWarehouses.map((warehouse) => (
@@ -268,7 +292,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                   <div>
                     <label
                       htmlFor="transfer-destination"
-                      className="mb-1.5 block text-sm font-semibold text-slate-800"
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
                     >
                       Destination warehouse <span className="text-rose-600">*</span>
                     </label>
@@ -278,11 +302,11 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                       value={destinationWarehouseId}
                       onChange={(event) => setDestinationWarehouseId(event.target.value)}
                       disabled={!selectedSourceWarehouseId}
-                      className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                      className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                     >
                       <option value="">Select destination warehouse</option>
                       {allWarehouses
-                        .filter((warehouse) => warehouse.id !== selectedSourceWarehouseId)
+                        .filter((warehouse) => String(warehouse.id) !== String(selectedSourceWarehouseId))
                         .map((warehouse) => (
                           <option key={warehouse.id} value={warehouse.id}>
                             {warehouse.name}
@@ -300,7 +324,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                 <div className="mb-3">
                   <h3
                     id="transfer-product-heading"
-                    className="text-sm font-semibold text-slate-900"
+                    className="text-sm font-semibold text-slate-950"
                   >
                     Product to move
                   </h3>
@@ -310,7 +334,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                 </div>
                 <label
                   htmlFor="transfer-sku"
-                  className="mb-1.5 block text-sm font-semibold text-slate-800"
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
                 >
                   Product SKU <span className="text-rose-600">*</span>
                 </label>
@@ -320,7 +344,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                   value={selectedSkuId}
                   onChange={(event) => setSelectedSkuId(event.target.value)}
                   disabled={!selectedSourceWarehouseId || loadingProducts}
-                  className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-800 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                  className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                 >
                   <option value="">
                     {loadingProducts ? 'Loading available products' : 'Select product SKU'}
@@ -335,13 +359,13 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
 
               <section
                 aria-labelledby="source-allocations-heading"
-                className="overflow-hidden border border-slate-200"
+                className="overflow-hidden rounded-lg border border-slate-200"
               >
                 <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3
                       id="source-allocations-heading"
-                      className="text-sm font-semibold text-slate-900"
+                      className="text-sm font-semibold text-slate-950"
                     >
                       Source allocations
                     </h3>
@@ -386,7 +410,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                           className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_150px] sm:items-center"
                         >
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-slate-900">
+                            <p className="truncate text-sm font-semibold text-slate-950">
                               {batch.rackName || 'Unknown rack'} · {batch.binName || 'Unknown bin'}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
@@ -397,7 +421,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                           <div>
                             <label
                               htmlFor={inputId}
-                              className="mb-1 block text-xs font-semibold text-slate-600"
+                              className="mb-1 block text-xs font-semibold text-slate-700"
                             >
                               Quantity to transfer
                             </label>
@@ -411,7 +435,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                               onChange={(event) =>
                                 handleAllocationChange(batchKey, event.target.value)
                               }
-                              className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                              className="min-h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                             />
                           </div>
                         </div>
@@ -425,22 +449,27 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                 <label
                   id="transfer-note-heading"
                   htmlFor="transfer-note"
-                  className="mb-1.5 block text-sm font-semibold text-slate-800"
+                  className="mb-1.5 block text-sm font-semibold text-slate-700"
                 >
                   Transfer note <span className="font-normal text-slate-500">(optional)</span>
                 </label>
                 <textarea
                   id="transfer-note"
                   rows={2}
+                  maxLength={1000}
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   placeholder="Add operational context for this movement"
-                  className="w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 transition-colors outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                  className="w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 transition-colors outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                 />
               </section>
             </div>
 
-            <footer className="flex flex-col-reverse gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3 sm:flex-row sm:items-center sm:justify-end sm:px-6">
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+              <p className="text-xs leading-5 text-slate-500">
+                The request will be saved as <span className="font-bold text-amber-700">Awaiting dispatch</span>.
+              </p>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <button
                 type="button"
                 onClick={onClose}
@@ -457,6 +486,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                 {submitting ? 'Creating transfer' : 'Create transfer request'}
               </button>
+              </div>
             </footer>
           </FormShell>
         )}

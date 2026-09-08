@@ -98,30 +98,30 @@ const InboundPage = () => {
         // calculates current kg/m³ independently for each Rack and Bin.
         const capacityRacks = Array.isArray(capacityPayload.racks) ? capacityPayload.racks : []
         capacityRacks.forEach((rackMetric) => {
-            if (rackMetric?.rackId) {
-              nextRackCapacities[String(rackMetric.rackId)] = {
-                currentWeightKg: Number(rackMetric.currentWeightKg) || 0,
-                currentVolumeM3: Number(rackMetric.currentVolumeM3) || 0,
-                maxWeight: Number(rackMetric.maxWeightKg) || 0,
-                maxVolume: Number(rackMetric.maxVolumeM3) || 0,
-              }
+          if (rackMetric?.rackId) {
+            nextRackCapacities[String(rackMetric.rackId)] = {
+              currentWeightKg: Number(rackMetric.currentWeightKg) || 0,
+              currentVolumeM3: Number(rackMetric.currentVolumeM3) || 0,
+              maxWeight: Number(rackMetric.maxWeightKg) || 0,
+              maxVolume: Number(rackMetric.maxVolumeM3) || 0,
             }
+          }
 
-            const capacityBins = Array.isArray(rackMetric?.bins) ? rackMetric.bins : []
-            capacityBins.forEach((binMetric) => {
-              if (!binMetric?.binId) return
-              nextCapacities[String(binMetric.binId)] = {
-                currentUnits: (binMetric.storedSkus || []).reduce(
-                  (total, sku) => total + (Number(sku.quantity) || 0),
-                  0
-                ),
-                currentWeightKg: Number(binMetric.currentWeightKg) || 0,
-                currentVolumeM3: Number(binMetric.currentVolumeM3) || 0,
-                maxWeight: Number(binMetric.maxWeightKg) || 0,
-                maxVolume: Number(binMetric.maxVolumeM3) || 0,
-              }
-            })
+          const capacityBins = Array.isArray(rackMetric?.bins) ? rackMetric.bins : []
+          capacityBins.forEach((binMetric) => {
+            if (!binMetric?.binId) return
+            nextCapacities[String(binMetric.binId)] = {
+              currentUnits: (binMetric.storedSkus || []).reduce(
+                (total, sku) => total + (Number(sku.quantity) || 0),
+                0
+              ),
+              currentWeightKg: Number(binMetric.currentWeightKg) || 0,
+              currentVolumeM3: Number(binMetric.currentVolumeM3) || 0,
+              maxWeight: Number(binMetric.maxWeightKg) || 0,
+              maxVolume: Number(binMetric.maxVolumeM3) || 0,
+            }
           })
+        })
 
         // Keep newly-created/legacy layout bins usable if the capacity
         // response does not contain them yet.
@@ -194,8 +194,8 @@ const InboundPage = () => {
       const res =
         currentRole === 'STAFF'
           ? await warehouseApi.getPublicWarehouseLayout(selectedWarehouseId, {
-              skipErrorToast: true,
-            })
+            skipErrorToast: true,
+          })
           : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
       setLayout(res.data?.data)
     } catch (error) {
@@ -271,7 +271,7 @@ const InboundPage = () => {
     const csvRows = []
     // Headers
     csvRows.push(['Mã Phiếu', 'Trạng thái', 'Ngày tạo', 'Tên mặt hàng', 'Mã SKU', 'Số lượng'].join(','))
-    
+
     receipt.items.forEach(item => {
       csvRows.push([
         receipt.id.substring(0, 8).toUpperCase(),
@@ -289,7 +289,7 @@ const InboundPage = () => {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', `phieu-nhap-${receipt.id.substring(0,8)}.csv`)
+    link.setAttribute('download', `phieu-nhap-${receipt.id.substring(0, 8)}.csv`)
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -461,7 +461,7 @@ const InboundPage = () => {
         context: 'INBOUND',
         items: [{ skuId: formSkuId, quantity: Number(formTotalQuantity) }]
       })
-      
+
       const data = res.data?.data || {}
       const suggestionItems = Array.isArray(data.items) ? data.items : []
       const unallocatedQuantity = suggestionItems.reduce(
@@ -488,7 +488,7 @@ const InboundPage = () => {
       })
 
       setAllocations(newAllocations)
-      
+
     } catch (error) {
       console.error('Error getting suggestions:', error)
       showApiErrorToast(error, 'Could not load put-away suggestions.')
@@ -572,9 +572,8 @@ const InboundPage = () => {
       <div className="flex pt-14">
         <Sidebar currentRole={currentRole} />
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
             <div className="space-y-6">
@@ -632,9 +631,8 @@ const InboundPage = () => {
                         <button
                           key={tab.id}
                           onClick={() => setActiveTab(tab.id)}
-                          className={`relative pb-3 text-sm font-medium transition-colors ${
-                            activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-700'
-                          }`}
+                          className={`relative pb-3 text-sm font-medium transition-colors ${activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-700'
+                            }`}
                         >
                           {tab.label}
                           {activeTab === tab.id && (
@@ -685,7 +683,7 @@ const InboundPage = () => {
                               <th className="px-4 py-3 border-r border-slate-200">Tên nơi gửi</th>
                               <th className="px-4 py-3 border-r border-slate-200">Tên người phụ trách</th>
                               <th className="px-4 py-3 border-r border-slate-200">Tên mặt hàng [Thông số]</th>
-                              <th className="px-4 py-3 border-r border-slate-200">Ngày giao hàng</th>
+                              <th className="px-4 py-3 border-r border-slate-200">Ngày nhập kho</th>
                               <th className="px-4 py-3 border-r border-slate-200 text-right">Tổng số lượng dự kiến</th>
                               <th className="px-4 py-3 border-r border-slate-200 text-center">Hiện trạng</th>
                               <th className="px-4 py-3 text-center">In</th>
@@ -700,13 +698,13 @@ const InboundPage = () => {
                               </tr>
                             ) : filteredReceipts.map(r => {
                               const totalQty = (r.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
-                              const itemName = r.items?.length > 0 
+                              const itemName = r.items?.length > 0
                                 ? `${r.items[0].skuName}${r.items.length > 1 ? ` và ${r.items.length - 1} mục khác` : ''}`
                                 : '—'
                               return (
                                 <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                                   <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
-                                  <td className="px-4 py-3 border-r border-slate-100 text-primary font-medium">{r.id.substring(0,8).toUpperCase()}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-primary font-medium">{r.id.substring(0, 8).toUpperCase()}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-500">{r.senderName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-700">{r.createdByFullName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 whitespace-normal min-w-[200px]">{itemName}</td>
@@ -714,17 +712,16 @@ const InboundPage = () => {
                                   <td className="px-4 py-3 border-r border-slate-100 text-right font-semibold text-slate-700">{totalQty}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-center">
                                     <div className="flex flex-col gap-1 items-center">
-                                      <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${
-                                        r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                                        r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                                        r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
-                                        r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
-                                        'bg-slate-100 text-slate-600'
-                                      }`}>
+                                      <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                          r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                                            r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
+                                              r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                                'bg-slate-100 text-slate-600'
+                                        }`}>
                                         {r.status}
                                       </span>
                                       <div className="flex items-center justify-center gap-2 mt-1">
-                                        <button 
+                                        <button
                                           onClick={() => { setDetailReceipt(r); setIsDetailModalOpen(true) }}
                                           className="text-primary hover:underline text-xs font-medium"
                                         >
@@ -733,14 +730,14 @@ const InboundPage = () => {
                                         {r.status === 'PENDING' && currentRole === 'TENANT' && (
                                           <>
                                             <span className="text-slate-300">|</span>
-                                            <button 
+                                            <button
                                               onClick={() => handleApprove(r.id)}
                                               className="text-emerald-600 hover:underline text-xs font-medium"
                                             >
                                               Duyệt
                                             </button>
                                             <span className="text-slate-300">|</span>
-                                            <button 
+                                            <button
                                               onClick={() => {
                                                 setRejectingReceiptId(r.id)
                                                 setIsRejectModalOpen(true)
@@ -755,9 +752,9 @@ const InboundPage = () => {
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 text-center">
-                                    <button 
+                                    <button
                                       onClick={() => handleExportSingleReceipt(r)}
-                                      className="text-slate-400 hover:text-slate-600 transition-colors p-1" 
+                                      className="text-slate-400 hover:text-slate-600 transition-colors p-1"
                                       title="In/Xuất phiếu"
                                     >
                                       <Download className="h-4 w-4 mx-auto" />
@@ -951,50 +948,50 @@ const InboundPage = () => {
                                     const currentAllocation = Number(allocations[bin.id]) || 0
                                     const remainingReceiptUnits = Math.max(
                                       Number(formTotalQuantity) -
-                                        (allocatedQuantity - currentAllocation),
+                                      (allocatedQuantity - currentAllocation),
                                       0
                                     )
                                     const binWeightUnits =
                                       capacity.maxWeight > 0 && selectedUnitWeightKg > 0
                                         ? Math.floor(
-                                            Math.max(
-                                              capacity.maxWeight - capacity.currentWeightKg,
-                                              0
-                                            ) / selectedUnitWeightKg
-                                          )
+                                          Math.max(
+                                            capacity.maxWeight - capacity.currentWeightKg,
+                                            0
+                                          ) / selectedUnitWeightKg
+                                        )
                                         : Number.POSITIVE_INFINITY
                                     const binVolumeUnits =
                                       capacity.maxVolume > 0 && selectedUnitVolumeM3 > 0
                                         ? Math.floor(
-                                            Math.max(
-                                              capacity.maxVolume - capacity.currentVolumeM3,
-                                              0
-                                            ) / selectedUnitVolumeM3
-                                          )
+                                          Math.max(
+                                            capacity.maxVolume - capacity.currentVolumeM3,
+                                            0
+                                          ) / selectedUnitVolumeM3
+                                        )
                                         : Number.POSITIVE_INFINITY
                                     const otherRackIncomingUnits =
                                       rackIncomingUnits - currentAllocation
                                     const rackWeightUnits =
                                       Number(rackCapacity.maxWeight) > 0 && selectedUnitWeightKg > 0
                                         ? Math.floor(
-                                            Math.max(
-                                              Number(rackCapacity.maxWeight) -
-                                                rackCurrentWeightKg -
-                                                otherRackIncomingUnits * selectedUnitWeightKg,
-                                              0
-                                            ) / selectedUnitWeightKg
-                                          )
+                                          Math.max(
+                                            Number(rackCapacity.maxWeight) -
+                                            rackCurrentWeightKg -
+                                            otherRackIncomingUnits * selectedUnitWeightKg,
+                                            0
+                                          ) / selectedUnitWeightKg
+                                        )
                                         : Number.POSITIVE_INFINITY
                                     const rackVolumeUnits =
                                       Number(rackCapacity.maxVolume) > 0 && selectedUnitVolumeM3 > 0
                                         ? Math.floor(
-                                            Math.max(
-                                              Number(rackCapacity.maxVolume) -
-                                                rackCurrentVolumeM3 -
-                                                otherRackIncomingUnits * selectedUnitVolumeM3,
-                                              0
-                                            ) / selectedUnitVolumeM3
-                                          )
+                                          Math.max(
+                                            Number(rackCapacity.maxVolume) -
+                                            rackCurrentVolumeM3 -
+                                            otherRackIncomingUnits * selectedUnitVolumeM3,
+                                            0
+                                          ) / selectedUnitVolumeM3
+                                        )
                                         : Number.POSITIVE_INFINITY
                                     const maximumForBin = Math.max(
                                       Math.min(
@@ -1043,11 +1040,11 @@ const InboundPage = () => {
                                                   rawValue === ''
                                                     ? ''
                                                     : Math.min(
-                                                        Math.floor(
-                                                          Math.max(Number(rawValue) || 0, 0)
-                                                        ),
-                                                        maximumForBin
-                                                      )
+                                                      Math.floor(
+                                                        Math.max(Number(rawValue) || 0, 0)
+                                                      ),
+                                                      maximumForBin
+                                                    )
                                                 setAllocations((previous) => ({
                                                   ...previous,
                                                   [bin.id]: nextValue,

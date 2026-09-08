@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import layoutApi from '@/services/layoutApi'
 import transferApi from '@/services/wms/transferApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
-import { X, PackageCheck, Loader2, Plus, Trash2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, X, PackageCheck, Loader2, Plus, Trash2 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 
 const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
@@ -23,6 +23,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
 
     const fetchLayout = async () => {
       setLoadingLayout(true)
+      setLayout(null)
       try {
         const res = await layoutApi.getTenantWarehouseLayout(transfer.destinationWarehouse?.id)
         const payload = res.data?.data || res.data || {}
@@ -38,8 +39,9 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
     // Initialize allocations
     const initialAllocations = {}
     transfer.items?.forEach(item => {
-      initialAllocations[item.id] = []
+      initialAllocations[item.id] = [{ destinationRackId: '', destinationBinId: '', quantity: '' }]
     })
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAllocations(initialAllocations)
 
   }, [isOpen, transfer])
@@ -49,7 +51,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
   const handleAddAllocation = (itemId) => {
     setAllocations(prev => ({
       ...prev,
-      [itemId]: [...prev[itemId], { destinationRackId: '', destinationBinId: '', quantity: '' }]
+      [itemId]: [...(prev[itemId] || []), { destinationRackId: '', destinationBinId: '', quantity: '' }]
     }))
   }
 
@@ -79,9 +81,9 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
 
     const destinationAllocations = []
 
-    for (const item of transfer.items) {
+    for (const item of transfer?.items || []) {
       const allocs = allocations[item.id] || []
-      
+      const locations = new Set()
       let totalAllocated = 0
       for (const alloc of allocs) {
         const q = Number(alloc.quantity) || 0
@@ -93,6 +95,12 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
           toast.error(`Quantity must be > 0 for product ${item.skuCode}`)
           return
         }
+        const locationKey = `${alloc.destinationRackId}:${alloc.destinationBinId}`
+        if (locations.has(locationKey)) {
+          toast.error(`Use each destination Rack/Bin only once for product ${item.skuCode}`)
+          return
+        }
+        locations.add(locationKey)
         totalAllocated += q
         destinationAllocations.push({
           itemId: item.id,
@@ -111,7 +119,6 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
     try {
       setSubmitting(true)
       await transferApi.receiveTransfer(transfer.id, { destinationAllocations })
-      toast.success('Transfer received successfully.')
       onSuccess?.()
       onClose()
     } catch (error) {
@@ -122,18 +129,19 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="animate-in fade-in zoom-in-95 flex w-full max-w-4xl flex-col rounded-2xl border border-slate-200 bg-white shadow-xl max-h-[90vh]">
-        <div className="flex items-center justify-between border-b border-slate-100 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
+      <div className="animate-in fade-in zoom-in-95 flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg border border-slate-300 bg-white shadow-xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-5 sm:p-6">
           <div>
-            <h3 className="flex items-center gap-2 text-xl font-bold text-slate-900">
-              <div className="bg-emerald-100 p-2 rounded-lg">
-                <PackageCheck className="h-5 w-5 text-emerald-600" />
+            <p className="text-xs font-bold tracking-[0.12em] text-blue-700 uppercase">Final warehouse checkpoint</p>
+            <h3 className="mt-1 flex items-center gap-2 text-xl font-bold tracking-tight text-slate-950">
+              <div className="rounded-lg bg-blue-50 p-2">
+                <PackageCheck className="h-5 w-5 text-blue-600" />
               </div>
               Receive Stock Transfer
             </h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Destination: <strong className="text-slate-900">{transfer?.destinationWarehouse?.name}</strong>
+            <p className="mt-2 text-sm text-slate-500">
+              Post received stock into <strong className="text-slate-950">{transfer?.destinationWarehouse?.name}</strong>.
             </p>
           </div>
           <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 transition-colors">
@@ -141,25 +149,46 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
           </button>
         </div>
 
+        <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-3 sm:px-6">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold">
+            <span className="inline-flex items-center gap-1.5 text-slate-500"><CheckCircle2 className="h-4 w-4 text-blue-600" aria-hidden="true" />Dispatch approved</span>
+            <span className="h-px w-8 bg-blue-300" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1.5 text-blue-700"><span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-700 text-[10px] text-white">3</span>Confirm destination bins</span>
+          </div>
+          <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-500"><AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" aria-hidden="true" />Confirming receipt completes the transfer and updates destination inventory.</p>
+        </div>
+
         {loadingLayout ? (
           <div className="flex items-center justify-center p-12">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
             <span className="ml-2 text-sm text-slate-500">Loading destination layout...</span>
           </div>
+        ) : !layout?.racks?.length ? (
+          <div className="flex min-h-72 flex-col items-center justify-center px-6 py-12 text-center">
+            <AlertCircle className="h-7 w-7 text-amber-500" aria-hidden="true" />
+            <h4 className="mt-3 text-sm font-semibold text-slate-800">Destination layout unavailable</h4>
+            <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">Set up an active layout for the destination warehouse before receiving this transfer.</p>
+            <Button type="button" variant="outline" onClick={onClose} className="mt-4">Close</Button>
+          </div>
         ) : (
-          <FormShell onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8">
+          <FormShell onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 sm:p-6">
+            <div className="mb-5 rounded-lg border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm leading-5 text-blue-900">
+              Allocate the full quantity of every SKU. You may split one SKU across multiple bins, but do not reuse the same Rack/Bin for that SKU.
+            </div>
+            <div className="space-y-5">
             {transfer?.items?.map(item => {
               const itemAllocs = allocations[item.id] || []
               const totalAllocated = itemAllocs.reduce((sum, a) => sum + (Number(a.quantity) || 0), 0)
               
               return (
-                <div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-                  <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3">
+                <div key={item.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
+                  <div className="mb-4 flex flex-col gap-3 border-b border-slate-200 pb-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h4 className="font-bold text-slate-900">[{item.skuCode}] {item.skuName}</h4>
+                      <h4 className="font-semibold text-slate-950">[{item.skuCode}] {item.skuName}</h4>
                       <p className="text-sm text-slate-500">Source Request: {item.requestedQuantity} units</p>
                     </div>
-                    <span className={`rounded-lg px-3 py-1 text-xs font-bold ${totalAllocated === item.requestedQuantity ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    <span className={`inline-flex w-fit items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold ${totalAllocated === item.requestedQuantity ? 'bg-emerald-100 text-emerald-700' : totalAllocated > item.requestedQuantity ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {totalAllocated === item.requestedQuantity && <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />}
                       Allocated: {totalAllocated} / {item.requestedQuantity}
                     </span>
                   </div>
@@ -170,12 +199,12 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
                       const bins = selectedRack?.bins || []
 
                       return (
-                        <div key={idx} className="flex items-center gap-3">
+                        <div key={idx} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_90px_auto] sm:items-center">
                           <select
                             required
                             value={alloc.destinationRackId}
                             onChange={(e) => handleAllocationChange(item.id, idx, 'destinationRackId', e.target.value)}
-                            className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                            className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                           >
                             <option value="">Select Rack...</option>
                             {layout?.racks?.map(r => (
@@ -188,7 +217,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
                             disabled={!alloc.destinationRackId}
                             value={alloc.destinationBinId}
                             onChange={(e) => handleAllocationChange(item.id, idx, 'destinationBinId', e.target.value)}
-                            className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 disabled:bg-slate-100"
+                            className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 disabled:bg-slate-100"
                           >
                             <option value="">Select Bin...</option>
                             {bins.map(b => (
@@ -204,13 +233,13 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
                             placeholder="Qty"
                             value={alloc.quantity}
                             onChange={(e) => handleAllocationChange(item.id, idx, 'quantity', e.target.value)}
-                            className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                            className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                           />
 
                           <button 
                             type="button" 
                             onClick={() => handleRemoveAllocation(item.id, idx)}
-                            className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-lg hover:bg-rose-50"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-md p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -222,19 +251,25 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
                   <button
                     type="button"
                     onClick={() => handleAddAllocation(item.id)}
-                    className="mt-4 flex items-center gap-1 text-sm font-bold text-emerald-600 hover:text-emerald-700"
+                    className="mt-4 flex items-center gap-1 text-sm font-bold text-blue-600 hover:text-blue-700"
                   >
                     <Plus size={16} /> Add Destination Bin
                   </button>
                 </div>
               )
             })}
+            </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-              <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
-              <Button type="submit" disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700">
-                {submitting ? 'Processing...' : 'Confirm Receipt'}
-              </Button>
+            <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="max-w-md text-xs leading-5 text-slate-500">
+                This action closes the transfer and posts the received quantities to the destination warehouse.
+              </p>
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>Cancel</Button>
+                <Button type="submit" isLoading={submitting} disabled={submitting} className="bg-blue-700 hover:bg-blue-800">
+                  {submitting ? 'Processing...' : 'Confirm & complete'}
+                </Button>
+              </div>
             </div>
           </FormShell>
         )}

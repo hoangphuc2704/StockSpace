@@ -465,7 +465,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                 )}
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1100px] text-left text-sm">
+                <table className="w-full min-w-[960px] text-left text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
                     <tr>
                       <th className="px-4 py-3">SKU / Sản phẩm</th>
@@ -474,7 +474,6 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                       <th className="px-4 py-3 text-right">Thực tế</th>
                       <th className="px-4 py-3 text-right">Chênh lệch</th>
                       <th className="px-4 py-3">Trạng thái</th>
-                      <th className="px-4 py-3">Lý do chênh lệch</th>
                       <th className="px-4 py-3">Ghi chú</th>
                     </tr>
                   </thead>
@@ -540,22 +539,6 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                             {isCounting ? (
                               <input
                                 type="text"
-                                aria-label={`Lý do chênh lệch ${item.skuCode || item.id}`}
-                                value={item.varianceReason}
-                                onChange={(event) =>
-                                  handleItemChange(item.id, 'varianceReason', event.target.value)
-                                }
-                                placeholder="Nếu có chênh lệch"
-                                className="h-9 min-w-40 rounded-md border border-slate-300 px-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-                              />
-                            ) : (
-                              item.varianceReason || '-'
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            {isCounting ? (
-                              <input
-                                type="text"
                                 aria-label={`Ghi chú ${item.skuCode || item.id}`}
                                 value={item.note}
                                 onChange={(event) =>
@@ -573,7 +556,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     })}
                     {!items.length && (
                       <tr>
-                        <td colSpan={8} className="px-6 py-12 text-center text-sm text-slate-500">
+                        <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">
                           Chưa có dòng kiểm đếm trong vòng hiện tại.
                         </td>
                       </tr>

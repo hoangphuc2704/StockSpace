@@ -7,7 +7,6 @@ import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import { ArrowUpRight, Search, Minus, Loader2, Download, Eye, Map as MapIcon, MapPin } from 'lucide-react'
 import DataTable from '@/components/organisms/DataTable'
-import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
@@ -21,6 +20,18 @@ import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailMod
 import { showApiErrorToast } from '@/config/apiError'
 import { positiveInteger, required } from '@/config/validation'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
+
+const formatOutboundDate = (dateString) => {
+  if (!dateString) return '—'
+
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(dateString))
+}
 
 const OutboundPage = () => {
   const dispatch = useDispatch()
@@ -208,13 +219,15 @@ const OutboundPage = () => {
       return
     }
     const csvRows = []
-    csvRows.push(['Mã Phiếu', 'Trạng thái', 'Ngày tạo', 'Tên mặt hàng', 'Mã SKU', 'Số lượng'].join(','))
+    csvRows.push(['Mã Phiếu', 'Trạng thái', 'Ngày xuất hàng', 'Người phụ trách', 'Tên nơi nhận', 'Tên mặt hàng', 'Mã SKU', 'Số lượng'].join(','))
     
     receipt.items.forEach(item => {
       csvRows.push([
         receipt.id.substring(0, 8).toUpperCase(),
         receipt.status,
         new Date(receipt.createdAt).toLocaleDateString('vi-VN'),
+        `"${receipt.createdByFullName || ''}"`,
+        `"${receipt.receiverName || ''}"`,
         `"${item.skuName || ''}"`,
         item.skuCode || '',
         item.quantity || 0
@@ -519,20 +532,22 @@ const OutboundPage = () => {
                         <table className="w-full text-left text-sm whitespace-nowrap">
                           <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                             <tr>
-                              <th className="px-4 py-3">Mã Phiếu</th>
-                              <th className="px-4 py-3">Trạng thái</th>
-                              <th className="px-4 py-3">Phương thức</th>
-                              <th className="px-4 py-3">Ngày tạo</th>
-                              <th className="px-4 py-3 text-right">Mặt hàng</th>
-                              <th className="px-4 py-3 text-right">Tổng SL</th>
-                              <th className="px-4 py-3 text-center">Hành động</th>
+                              <th className="border-x border-slate-200 px-4 py-3">Mã Phiếu</th>
+                              <th className="border-r border-slate-200 px-4 py-3">Trạng thái</th>
+                              <th className="border-r border-slate-200 px-4 py-3">Phương thức</th>
+                              <th className="border-r border-slate-200 px-4 py-3">Ngày xuất hàng</th>
+                              <th className="border-r border-slate-200 px-4 py-3">Nơi nhận</th>
+                              <th className="border-r border-slate-200 px-4 py-3">Người phụ trách</th>
+                              <th className="border-r border-slate-200 px-4 py-3">Mặt hàng</th>
+                              <th className="border-r border-slate-200 px-4 py-3 text-right">Tổng SL</th>
+                              <th className="border-r border-slate-200 px-4 py-3 text-center">Hành động</th>
                               <th className="px-4 py-3 text-center">Xuất</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {filteredReceipts.length === 0 && (
                               <tr>
-                                <td colSpan="8" className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan="10" className="px-4 py-8 text-center text-slate-500">
                                   Không tìm thấy phiếu xuất kho.
                                 </td>
                               </tr>
@@ -540,56 +555,80 @@ const OutboundPage = () => {
                             {filteredReceipts.map((r) => {
                               const totalItems = r.items?.length || 0
                               const totalQty = r.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
+                              const itemNames = r.items?.map((item) => item.skuName || item.skuCode).filter(Boolean) || []
+                              const itemSummary = itemNames.length > 1
+                                ? `${itemNames[0]} +${itemNames.length - 1}`
+                                : itemNames[0] || '—'
                               
-                              let badgeType = 'default'
-                              if (r.status === 'PENDING') badgeType = 'warning'
-                              if (r.status === 'APPROVED') badgeType = 'success'
-                              if (r.status === 'IN_PROGRESS') badgeType = 'info'
-                              if (r.status === 'COMPLETED') badgeType = 'success'
-                              if (r.status === 'REJECTED') badgeType = 'error'
-
                               return (
-                                <tr key={r.id} className="hover:bg-slate-50 transition-colors">
-                                  <td className="px-4 py-3">
-                                    <div className="font-mono text-xs font-semibold text-primary">
-                                      {r.id.substring(0, 8).toUpperCase()}
-                                    </div>
+                                <tr key={r.id} className="transition-colors hover:bg-slate-50/80">
+                                  <td className="border-r border-slate-100 px-4 py-3 font-medium text-primary">
+                                    {r.id.substring(0, 8).toUpperCase()}
                                   </td>
-                                  <td className="px-4 py-3">
-                                    <Badge type={badgeType}>{r.status}</Badge>
+                                  <td className="border-r border-slate-100 px-4 py-3 text-center">
+                                    <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                        r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                                          r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
+                                            r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                              r.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                                'bg-slate-100 text-slate-600'
+                                    }`}>
+                                      {r.status}
+                                    </span>
                                   </td>
-                                  <td className="px-4 py-3">
+                                  <td className="border-r border-slate-100 px-4 py-3">
                                     <span className="text-slate-500">OUTBOUND</span>
                                   </td>
-                                  <td className="px-4 py-3 text-slate-600">
-                                    {new Date(r.createdAt).toLocaleDateString('vi-VN')}
+                                  <td className="border-r border-slate-100 px-4 py-3 text-slate-600">
+                                    {formatOutboundDate(r.createdAt)}
                                   </td>
-                                  <td className="px-4 py-3 text-right font-medium text-slate-700">
-                                    {totalItems}
+                                  <td className="max-w-52 border-r border-slate-100 px-4 py-3">
+                                    <span
+                                      className="block max-w-52 truncate font-medium text-slate-700"
+                                      title={r.receiverName || 'Chưa cập nhật nơi nhận'}
+                                    >
+                                      {r.receiverName || '—'}
+                                    </span>
                                   </td>
-                                  <td className="px-4 py-3 text-right font-bold text-slate-900">
+                                  <td className="max-w-52 border-r border-slate-100 px-4 py-3">
+                                    <span
+                                      className="block max-w-52 truncate font-medium text-slate-700"
+                                      title={r.createdByFullName || 'Chưa cập nhật người phụ trách'}
+                                    >
+                                      {r.createdByFullName || '—'}
+                                    </span>
+                                  </td>
+                                  <td className="max-w-60 border-r border-slate-100 px-4 py-3 whitespace-normal">
+                                    <span className="block max-w-60 truncate font-medium text-slate-800" title={itemNames.join(', ')}>
+                                      {itemSummary}
+                                    </span>
+                                    <span className="mt-0.5 block text-xs text-slate-400">
+                                      {totalItems} mặt hàng
+                                    </span>
+                                  </td>
+                                  <td className="border-r border-slate-100 px-4 py-3 text-right font-semibold text-slate-700">
                                     {totalQty}
                                   </td>
-                                  <td className="px-4 py-3 text-center">
+                                  <td className="border-r border-slate-100 px-4 py-3 text-center">
                                     <div className="flex items-center justify-center gap-2">
-                                      <div className="flex items-center gap-1.5 bg-slate-100 rounded-md px-2 py-1">
-                                        <button 
+                                      <div className="flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1">
+                                        <button
                                           onClick={() => handleViewDetail(r)}
-                                          className="text-slate-600 hover:text-primary transition-colors flex items-center gap-1 text-xs font-medium"
+                                          className="flex items-center gap-1 text-xs font-medium text-slate-600 transition-colors hover:text-primary"
                                         >
                                           <Eye className="h-3.5 w-3.5" /> Chi tiết
                                         </button>
                                         {r.status === 'PENDING' && currentRole === 'TENANT' && (
                                           <>
                                             <span className="text-slate-300">|</span>
-                                            <button 
+                                            <button
                                               onClick={() => handleApprove(r.id)}
                                               className="text-emerald-600 hover:underline text-xs font-medium"
                                             >
                                               Duyệt
                                             </button>
                                             <span className="text-slate-300">|</span>
-                                            <button 
+                                            <button
                                               onClick={() => {
                                                 setRejectingReceiptId(r.id)
                                                 setIsRejectModalOpen(true)
@@ -604,7 +643,7 @@ const OutboundPage = () => {
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 text-center">
-                                    <button 
+                                    <button
                                       onClick={() => handleExportSingleReceipt(r)}
                                       className="text-slate-400 hover:text-slate-600 transition-colors p-1" 
                                       title="In/Xuất phiếu"

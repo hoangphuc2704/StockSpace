@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Clock3, FileText, Loader2, Warehouse, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Clock3, FileText, Loader2, PackageCheck, Truck, Warehouse, X } from 'lucide-react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import transferApi from '@/services/wms/transferApi'
 import { showApiErrorToast } from '@/config/apiError'
@@ -19,6 +19,12 @@ const getStatusMeta = (status) =>
   }
 
 const formatDate = (dateString) => (dateString ? new Date(dateString).toLocaleString() : '-')
+
+const WORKFLOW_STEPS = [
+  { label: 'Request created', description: 'Awaiting dispatch approval', icon: FileText },
+  { label: 'Dispatch approved', description: 'Stock is in transit', icon: Truck },
+  { label: 'Destination received', description: 'Inventory updated', icon: PackageCheck },
+]
 
 const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
   useEscapeKey(isOpen, onClose)
@@ -52,6 +58,12 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
   if (!isOpen) return null
 
   const statusMeta = getStatusMeta(transfer?.status)
+  const currentStepIndex = transfer?.status === 'COMPLETED'
+    ? 2
+    : transfer?.status === 'IN_TRANSIT'
+      ? 1
+      : 0
+  const isClosed = ['REJECTED', 'CANCELLED'].includes(transfer?.status)
   const timelineEntries = [
     { label: 'Created', value: transfer?.createdAt },
     { label: 'Dispatched', value: transfer?.approvedAt },
@@ -66,7 +78,7 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="transfer-detail-title"
-        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-slate-300 bg-white shadow-2xl"
+        className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-slate-300 bg-white shadow-xl"
       >
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
           <div className="min-w-0">
@@ -155,6 +167,47 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
               </div>
             </section>
 
+            <section aria-labelledby="transfer-lifecycle-heading" className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">Process visibility</p>
+                  <h3 id="transfer-lifecycle-heading" className="mt-1 text-base font-semibold text-slate-950">Transfer lifecycle</h3>
+                </div>
+                <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${statusMeta.className}`}>
+                  {statusMeta.label}
+                </span>
+              </div>
+
+              {isClosed ? (
+                <p className="mt-4 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm leading-6 text-slate-600">
+                  This transfer is closed and no further warehouse action is available.
+                </p>
+              ) : (
+                <ol className="mt-5 grid gap-4 md:grid-cols-3">
+                  {WORKFLOW_STEPS.map((step, index) => {
+                    const StepIcon = step.icon
+                    const completed = index < currentStepIndex || transfer.status === 'COMPLETED'
+                    const current = index === currentStepIndex
+
+                    return (
+                      <li key={step.label} className="relative flex gap-3 md:block">
+                        {index < WORKFLOW_STEPS.length - 1 && (
+                          <span className={`absolute left-4 top-8 hidden h-px w-[calc(100%-1rem)] md:block ${index < currentStepIndex ? 'bg-emerald-400' : 'bg-slate-200'}`} aria-hidden="true" />
+                        )}
+                        <span className={`relative z-10 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${completed ? 'border-emerald-600 bg-emerald-600 text-white' : current ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-300 bg-white text-slate-400'}`}>
+                          {completed ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" /> : <StepIcon className="h-4 w-4" aria-hidden="true" />}
+                        </span>
+                        <div className="md:mt-3">
+                          <p className={`text-sm font-semibold ${current ? 'text-blue-700' : completed ? 'text-slate-950' : 'text-slate-500'}`}>{step.label}</p>
+                          <p className="mt-0.5 text-xs leading-5 text-slate-500">{step.description}</p>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
+              )}
+            </section>
+
             <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
               <section aria-labelledby="transfer-notes-heading">
                 <div className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
@@ -186,7 +239,7 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
                   <Clock3 className="h-4 w-4 text-slate-500" aria-hidden="true" />
                   <h3
                     id="transfer-timeline-heading"
-                    className="text-sm font-semibold text-slate-900"
+                    className="text-sm font-semibold text-slate-950"
                   >
                     Timeline
                   </h3>
@@ -200,7 +253,7 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
                       >
                         <dt className="text-slate-500">{entry.label}</dt>
                         <dd
-                          className={`text-right font-medium tabular-nums ${entry.danger ? 'text-rose-700' : 'text-slate-900'}`}
+                          className={`text-right font-medium tabular-nums ${entry.danger ? 'text-rose-700' : 'text-slate-950'}`}
                         >
                           {formatDate(entry.value)}
                         </dd>
@@ -237,7 +290,7 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
                 {(transfer.items || []).map((item, index) => (
                   <article
                     key={item.id || index}
-                    className="overflow-hidden border border-slate-200"
+                    className="overflow-hidden rounded-lg border border-slate-200"
                   >
                     <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="min-w-0">
