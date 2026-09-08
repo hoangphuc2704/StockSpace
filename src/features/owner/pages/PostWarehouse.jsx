@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { FormShell } from '@/form/FormControls'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -23,6 +23,24 @@ import NotificationDropdown from '@/components/NotificationDropdown'
 import ownerApi from '../../../services/warehouse/warehouseApi'
 import addressApi from '../../../services/addressApi'
 
+const normalizeLocationName = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\b(phuong|ward|xa|commune)\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+
+const isResultInWard = (result, wardName) => {
+  const expectedWard = normalizeLocationName(wardName)
+  if (!expectedWard) return false
+  const searchableText = normalizeLocationName(
+    [result.displayName, ...Object.values(result.address || {})].join(' ')
+  )
+  return searchableText.includes(expectedWard)
+}
+
 const CreateWarehouse = () => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -33,7 +51,10 @@ const CreateWarehouse = () => {
   const [wardsError, setWardsError] = useState('')
   const [selectedWardCode, setSelectedWardCode] = useState(() => draft?.selectedWardCode || '')
   const [addressDetail, setAddressDetail] = useState(() => draft?.addressDetail || '')
-  const [addressCheck, setAddressCheck] = useState({ status: 'idle', result: null, message: '' })
+  const [addressSuggestions, setAddressSuggestions] = useState([])
+  const [isAddressSearching, setIsAddressSearching] = useState(false)
+  const [addressSearchFinished, setAddressSearchFinished] = useState(false)
+  const skipAddressSearchRef = useRef(false)
 
   // Form text
   const [formData, setFormData] = useState(
@@ -129,71 +150,50 @@ const CreateWarehouse = () => {
     const detail = addressDetail.trim()
     return detail && selectedWard ? `${detail}, ${selectedWard.name}, Thành phố Hồ Chí Minh` : ''
   }, [addressDetail, selectedWard])
-  const resetAddressCheck = () =>
-    setAddressCheck({ status: 'idle', result: null, message: '' })
-
-  const normalizeLocationName = (value) =>
-    String(value || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/\b(phuong|ward|xa|commune)\b/g, '')
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim()
-
-  const isResultInSelectedWard = (result) => {
-    const expectedWard = normalizeLocationName(selectedWard?.name)
-    if (!expectedWard) return false
-    const searchableText = normalizeLocationName(
-      [result.displayName, ...Object.values(result.address || {})].join(' ')
-    )
-    return searchableText.includes(expectedWard)
-  }
-
-  const handleAddressCheck = async () => {
-    if (!addressDetail.trim() || !selectedWard) return
-
-    try {
-      setAddressCheck({ status: 'loading', result: null, message: '' })
-      const results = await addressApi.searchAddress({
-        addressDetail: addressDetail.trim(),
-        wardName: selectedWard.name,
-      })
-      const matchingResult = results.find(isResultInSelectedWard)
-      const result = matchingResult || results[0]
-
-      if (!result) {
-        setAddressCheck({
-          status: 'not-found',
-          result: null,
-          message: 'Map could not find this address. Please check the street address.',
-        })
-        return
-      }
-
-      if (!matchingResult) {
-        setAddressCheck({
-          status: 'mismatch',
-          result,
-          message: `The map result does not appear to be in ${selectedWard.name}.`,
-        })
-        return
-      }
-
-      setAddressCheck({
-        status: 'matched',
-        result,
-        message: result.streetName
-          ? `Street found: ${result.streetName}`
-          : 'The address matches the selected ward.',
-      })
-    } catch (error) {
-      setAddressCheck({
-        status: 'error',
-        result: null,
-        message: error.message || 'Could not check this address on the map.',
-      })
+  useEffect(() => {
+    const query = addressDetail.trim()
+    if (!selectedWard || query.length < 2 || skipAddressSearchRef.current) {
+      skipAddressSearchRef.current = false
+      setAddressSuggestions([])
+      setIsAddressSearching(false)
+      setAddressSearchFinished(false)
+      return undefined
     }
+
+    setAddressSuggestions([])
+    setIsAddressSearching(true)
+    setAddressSearchFinished(false)
+    const controller = new AbortController()
+    const timer = window.setTimeout(async () => {
+      try {
+        const results = await addressApi.searchAddress(
+          { addressDetail: query, wardName: selectedWard.name },
+          { signal: controller.signal }
+        )
+        if (controller.signal.aborted) return
+        const matchingResults = results.filter((result) => isResultInWard(result, selectedWard.name))
+        setAddressSuggestions(matchingResults.length > 0 ? matchingResults : results)
+      } catch {
+        if (!controller.signal.aborted) setAddressSuggestions([])
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsAddressSearching(false)
+          setAddressSearchFinished(true)
+        }
+      }
+    }, 1000)
+
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [addressDetail, selectedWard])
+
+  const handleSelectAddressSuggestion = (suggestion) => {
+    skipAddressSearchRef.current = true
+    setAddressDetail(suggestion.addressDetail || suggestion.streetName || suggestion.displayName)
+    setAddressSuggestions([])
+    setAddressSearchFinished(false)
   }
 
   const handleInputChange = (e) => {
@@ -254,13 +254,6 @@ const CreateWarehouse = () => {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!isFormValid) return
-    if (addressCheck.status === 'mismatch') {
-      setAddressCheck((current) => ({
-        ...current,
-        message: `Please correct the address so it belongs to ${selectedWard.name}.`,
-      }))
-      return
-    }
 
     navigate('/owner/confirm-postwarehouse', {
       state: {
@@ -393,7 +386,8 @@ const CreateWarehouse = () => {
                               value={selectedWardCode}
                               onChange={(event) => {
                                 setSelectedWardCode(event.target.value)
-                                resetAddressCheck()
+                                setAddressSuggestions([])
+                                setAddressSearchFinished(false)
                               }}
                               disabled={wardsLoading || Boolean(wardsError)}
                               className="w-full cursor-pointer appearance-none rounded-xl border border-[#fbd8c5] bg-white py-3 pr-9 pl-10 text-sm text-slate-700 transition focus:border-[#f97316] focus:ring-2 focus:ring-[#ffedd5] focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
@@ -443,7 +437,6 @@ const CreateWarehouse = () => {
                             value={addressDetail}
                             onChange={(event) => {
                               setAddressDetail(event.target.value)
-                              resetAddressCheck()
                             }}
                             maxLength={300}
                             placeholder="House number, street name, industrial park..."
@@ -451,21 +444,42 @@ const CreateWarehouse = () => {
                             required
                           />
                         </div>
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-[11px] leading-4 text-slate-500">
-                            Enter the precise location so tenants and inspectors can find the
-                            warehouse.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={handleAddressCheck}
-                            disabled={!addressDetail.trim() || !selectedWard || addressCheck.status === 'loading'}
-                            className="rounded-lg border border-[#fbd8c5] bg-white px-2.5 py-1.5 text-[11px] font-semibold text-[#ea580c] transition hover:border-[#f97316] hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {addressCheck.status === 'loading' ? 'Checking map...' : 'Check on map'}
-                          </button>
-                        </div>
+                        <p className="text-[11px] leading-4 text-slate-500">
+                          Start typing to search streets and addresses in the selected ward.
+                        </p>
                       </div>
+
+                      {selectedWard && addressDetail.trim().length >= 2 &&
+                        (isAddressSearching || addressSuggestions.length > 0 || addressSearchFinished) && (
+                          <div className="-mt-2 overflow-hidden rounded-xl border border-[#fbd8c5] bg-white shadow-lg">
+                            {isAddressSearching ? (
+                              <p className="px-3 py-2.5 text-xs text-slate-500">Searching addresses...</p>
+                            ) : addressSuggestions.length > 0 ? (
+                              <div className="max-h-60 overflow-y-auto py-1">
+                                {addressSuggestions.map((suggestion, index) => (
+                                  <button
+                                    key={`${suggestion.displayName}-${index}`}
+                                    type="button"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={() => handleSelectAddressSuggestion(suggestion)}
+                                    className="block w-full border-b border-slate-100 px-3 py-2.5 text-left last:border-b-0 hover:bg-orange-50"
+                                  >
+                                    <span className="block text-xs font-semibold text-slate-800">
+                                      {suggestion.addressDetail || suggestion.streetName || 'Address result'}
+                                    </span>
+                                    <span className="mt-0.5 block text-[11px] leading-4 text-slate-500">
+                                      {suggestion.displayName}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="px-3 py-2.5 text-xs text-slate-500">
+                                No matching street or address found.
+                              </p>
+                            )}
+                          </div>
+                        )}
 
                       {fullAddress && (
                         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
@@ -478,22 +492,6 @@ const CreateWarehouse = () => {
                         </div>
                       )}
 
-                      {addressCheck.status !== 'idle' && addressCheck.status !== 'loading' && (
-                        <div
-                          className={`rounded-xl border px-3 py-2.5 ${
-                            addressCheck.status === 'matched'
-                              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
-                              : 'border-amber-200 bg-amber-50 text-amber-900'
-                          }`}
-                        >
-                          <p className="text-xs font-semibold">{addressCheck.message}</p>
-                          {addressCheck.result?.displayName && (
-                            <p className="mt-1 text-[11px] leading-4 opacity-80">
-                              Map result: {addressCheck.result.displayName}
-                            </p>
-                          )}
-                        </div>
-                      )}
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

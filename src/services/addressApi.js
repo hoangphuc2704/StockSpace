@@ -2,6 +2,7 @@ const ADDRESS_API_BASE_URL =
   import.meta.env.VITE_ADDRESS_API_URL || 'https://provinces.open-api.vn/api/v2'
 const GEOCODING_API_URL =
   import.meta.env.VITE_GEOCODING_API_URL || 'https://nominatim.openstreetmap.org/search'
+const geocodingCache = new Map()
 
 const HO_CHI_MINH_CITY_CODE = 79
 
@@ -32,10 +33,13 @@ const addressApi = {
       .sort((first, second) => first.name.localeCompare(second.name, 'vi'))
   },
 
-  async searchAddress({ addressDetail, wardName }) {
+  async searchAddress({ addressDetail, wardName }, options = {}) {
     const query = [addressDetail, wardName, 'Thành phố Hồ Chí Minh', 'Việt Nam']
       .filter(Boolean)
       .join(', ')
+    const cacheKey = query.toLocaleLowerCase('vi')
+    if (geocodingCache.has(cacheKey)) return geocodingCache.get(cacheKey)
+
     const url = new URL(GEOCODING_API_URL)
     url.search = new URLSearchParams({
       q: query,
@@ -48,6 +52,7 @@ const addressApi = {
 
     const response = await fetch(url, {
       headers: { Accept: 'application/json' },
+      signal: options.signal,
     })
 
     if (!response.ok) {
@@ -57,18 +62,29 @@ const addressApi = {
     const results = await response.json()
     if (!Array.isArray(results)) return []
 
-    return results.map((result) => ({
-      displayName: result.display_name || '',
-      streetName:
-        result.address?.road ||
-        result.address?.pedestrian ||
-        result.address?.street ||
-        result.address?.highway ||
-        '',
-      address: result.address || {},
-      latitude: result.lat || '',
-      longitude: result.lon || '',
-    }))
+    const mappedResults = results.map((result) => {
+      const address = result.address || {}
+      const streetName =
+        address.road || address.pedestrian || address.street || address.highway || ''
+      const addressDetailValue = [
+        address.house_number,
+        streetName,
+        address.neighbourhood || address.quarter || address.industrial,
+      ]
+        .filter(Boolean)
+        .join(', ')
+
+      return {
+        displayName: result.display_name || '',
+        addressDetail: addressDetailValue,
+        streetName,
+        address,
+        latitude: result.lat || '',
+        longitude: result.lon || '',
+      }
+    })
+    geocodingCache.set(cacheKey, mappedResults)
+    return mappedResults
   },
 }
 
