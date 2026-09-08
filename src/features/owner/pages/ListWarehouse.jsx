@@ -20,6 +20,7 @@ import {
   Megaphone,
   Edit3,
   Trash2,
+  MessageCircle,
 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import Modal from '@/components/organisms/Modal'
@@ -63,6 +64,7 @@ const WarehouseManagement = () => {
   const [publicationWarehouse, setPublicationWarehouse] = useState(null)
   const [publicationHistoryWarehouse, setPublicationHistoryWarehouse] = useState(null)
   const [editingWarehouse, setEditingWarehouse] = useState(null)
+  const [rejectionReasonWarehouse, setRejectionReasonWarehouse] = useState(null)
   const [deleteWarehouseConfirm, setDeleteWarehouseConfirm] = useState(null)
   const [deletingWarehouseId, setDeletingWarehouseId] = useState(null)
 
@@ -328,6 +330,10 @@ const WarehouseManagement = () => {
                     {filteredWarehouses.length > 0 ? (
                       filteredWarehouses.map((wh) => {
                         const badge = getStatusBadge(wh.status)
+                        const rejectionReason = wh.reason || wh.rejectionReason || wh.rejectReason
+                        const isRejectedListing =
+                          ['INACTIVE', 'REJECTED'].includes(String(wh.status).toUpperCase()) &&
+                          Boolean(rejectionReason)
                         const isCurrentlyRequesting = requestingIds.includes(wh.id)
                         const inspection = inspectionsByWarehouse[String(wh.id)]
                         const inspectionBadge = getInspectionBadge(wh, inspection)
@@ -394,15 +400,6 @@ const WarehouseManagement = () => {
                                   {badge.icon}
                                   {badge.text}
                                 </span>
-                                {(wh.status === 'INACTIVE' || wh.status === 'REJECTED') &&
-                                  (wh.reason || wh.rejectionReason || wh.rejectReason) && (
-                                    <div
-                                      className="max-w-[120px] cursor-help truncate text-center text-[11px] font-medium text-red-600"
-                                      title={wh.reason || wh.rejectionReason || wh.rejectReason}
-                                    >
-                                      Lý do: {wh.reason || wh.rejectionReason || wh.rejectReason}
-                                    </div>
-                                  )}
                                 {wh.publicationStatus &&
                                   String(wh.publicationStatus).toUpperCase() !== 'DRAFT' && (
                                   <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
@@ -432,7 +429,7 @@ const WarehouseManagement = () => {
                                   )}
                                   {inspectionBadge.text}
                                 </span>
-                                {!(wh.isVerified ?? wh.verified) && (
+                                {!isRejectedListing && !(wh.isVerified ?? wh.verified) && (
                                   <div className="flex flex-col items-center gap-1">
                                     <button
                                       onClick={() => setInspectionConfirm(wh)}
@@ -464,38 +461,58 @@ const WarehouseManagement = () => {
                             {/* Cột 7: Nút Action xem chi tiết */}
                             <td className="px-6 py-4 text-center">
                               <TableActionMenu
-                                items={[
-                                  {
-                                    label: 'View details',
-                                    icon: Eye,
-                                    onClick: () => setSelectedWarehouse(wh),
-                                  },
-                                  {
-                                    label: 'Edit warehouse',
-                                    icon: Edit3,
-                                    onClick: () => setEditingWarehouse(wh),
-                                  },
-                                  {
-                                    label: 'Payment history',
-                                    icon: History,
-                                    onClick: () => setPublicationHistoryWarehouse(wh),
-                                  },
-                                  {
-                                    label: 'Delete listing',
-                                    icon: Trash2,
-                                    onClick: () => setDeleteWarehouseConfirm(wh),
-                                    danger: true,
-                                  },
-                                  ...(wh.status === 'AVAILABLE' && (wh.canPublish || wh.canRenew)
+                                items={
+                                  isRejectedListing
                                     ? [
                                         {
-                                          label: wh.canRenew ? 'Renew listing' : 'Publish listing',
-                                          icon: Megaphone,
-                                          onClick: () => setPublicationWarehouse(wh),
+                                          label: 'View rejection reason',
+                                          icon: MessageCircle,
+                                          onClick: () =>
+                                            setRejectionReasonWarehouse({
+                                              ...wh,
+                                              rejectionReason,
+                                            }),
+                                        },
+                                        {
+                                          label: 'Delete listing',
+                                          icon: Trash2,
+                                          onClick: () => setDeleteWarehouseConfirm(wh),
+                                          danger: true,
                                         },
                                       ]
-                                    : []),
-                                ]}
+                                    : [
+                                        {
+                                          label: 'View details',
+                                          icon: Eye,
+                                          onClick: () => setSelectedWarehouse(wh),
+                                        },
+                                        {
+                                          label: 'Edit warehouse',
+                                          icon: Edit3,
+                                          onClick: () => setEditingWarehouse(wh),
+                                        },
+                                        {
+                                          label: 'Payment history',
+                                          icon: History,
+                                          onClick: () => setPublicationHistoryWarehouse(wh),
+                                        },
+                                        {
+                                          label: 'Delete listing',
+                                          icon: Trash2,
+                                          onClick: () => setDeleteWarehouseConfirm(wh),
+                                          danger: true,
+                                        },
+                                        ...(wh.status === 'AVAILABLE' && (wh.canPublish || wh.canRenew)
+                                          ? [
+                                              {
+                                                label: wh.canRenew ? 'Renew listing' : 'Publish listing',
+                                                icon: Megaphone,
+                                                onClick: () => setPublicationWarehouse(wh),
+                                              },
+                                            ]
+                                          : []),
+                                      ]
+                                }
                               />
                             </td>
                           </tr>
@@ -700,6 +717,29 @@ const WarehouseManagement = () => {
 
             <div className="flex justify-end border-t border-slate-100 pt-4">
               <Button onClick={() => setSelectedWarehouse(null)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={!!rejectionReasonWarehouse}
+        onClose={() => setRejectionReasonWarehouse(null)}
+        title="Rejection reason"
+        className="max-w-md"
+      >
+        {rejectionReasonWarehouse && (
+          <div className="space-y-5">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <p className="text-xs font-bold tracking-wide text-red-700 uppercase">
+                {rejectionReasonWarehouse.name}
+              </p>
+              <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-red-900">
+                {rejectionReasonWarehouse.rejectionReason}
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={() => setRejectionReasonWarehouse(null)}>Close</Button>
             </div>
           </div>
         )}

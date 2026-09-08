@@ -279,8 +279,8 @@ const DraftModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="animate-in fade-in zoom-in-95 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="animate-in fade-in zoom-in-95 max-h-[calc(100dvh-1rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:p-5">
+        <div className="mb-3 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
             {isEdit ? (
               <Edit2 className="h-5 w-5 text-blue-600" />
@@ -297,7 +297,7 @@ const DraftModal = ({
           </button>
         </div>
 
-        <FormShell onSubmit={handleSubmit} className="space-y-4">
+        <FormShell onSubmit={handleSubmit} className="space-y-3">
           {!isEdit && (
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -368,7 +368,7 @@ const DraftModal = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-500">
                 Start Date <span className="text-rose-500">*</span>
@@ -379,7 +379,7 @@ const DraftModal = ({
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 disabled={Boolean(previewData)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
               />
             </div>
             <div>
@@ -392,12 +392,12 @@ const DraftModal = ({
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 disabled={Boolean(previewData)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-500">
                 Leased Width (m)

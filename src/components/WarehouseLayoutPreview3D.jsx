@@ -1,6 +1,13 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Billboard, ContactShadows, OrbitControls, Outlines, PivotControls, Text } from '@react-three/drei'
+import {
+  Billboard,
+  ContactShadows,
+  OrbitControls,
+  Outlines,
+  PivotControls,
+  Text,
+} from '@react-three/drei'
 import { ACESFilmicToneMapping } from 'three'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
@@ -15,6 +22,34 @@ const WORLD_SIZE = 22
 const CARDBOARD_COLOR = '#a5822a'
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+
+const hexToRgb = (hex) => {
+  const value = hex.replace('#', '')
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16),
+  }
+}
+
+const mixHexColors = (from, to, amount) => {
+  const start = hexToRgb(from)
+  const end = hexToRgb(to)
+  const mix = (first, second) => Math.round(first + (second - first) * amount)
+  return `#${[mix(start.r, end.r), mix(start.g, end.g), mix(start.b, end.b)]
+    .map((channel) => channel.toString(16).padStart(2, '0'))
+    .join('')}`
+}
+
+const getBinCapacityColor = ({ ratio, isOver, isReserved, hasItems, isSelected }) => {
+  if (isSelected) return '#0ea5e9'
+  if (isOver) return '#dc2626'
+  if (isReserved) return '#f59e0b'
+  if (!Number.isFinite(ratio)) return hasItems ? '#b45309' : '#a5822a'
+  if (ratio <= 0) return hasItems ? '#86efac' : '#a5822a'
+  if (ratio <= 0.5) return mixHexColors('#86efac', '#facc15', ratio / 0.5)
+  return mixHexColors('#facc15', '#dc2626', (ratio - 0.5) / 0.5)
+}
 
 const numberOf = (value, fallback = 0) => {
   const parsed = Number(value)
@@ -248,7 +283,11 @@ function WarehouseAccessPointMarkers({ accessPoints = [], worldWidth, worldDepth
           <group key={`${point.type}:${row}:${column}`} position={[x, 0.04, z]}>
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[markerWidth, 0.62]} />
-              <meshBasicMaterial color={isEntry ? '#10b981' : '#f43f5e'} transparent opacity={0.82} />
+              <meshBasicMaterial
+                color={isEntry ? '#10b981' : '#f43f5e'}
+                transparent
+                opacity={0.82}
+              />
             </mesh>
             <Text
               position={[0, 0.02, 0]}
@@ -601,7 +640,19 @@ function BinMesh({
   const isOver = weightCapacity?.isOverCapacity
   const isReserved = bin.status === 'reserved' || (bin.id && Number(bin.id) % 7 === 0)
   const hasCargo = hasItems || isReserved || showDemoCargo
-  const binBodyOpacity = hasCargo ? 0.18 : 0.72
+  const capacityRatio = weightCapacity?.ratio
+  const binColor = getBinCapacityColor({
+    ratio: capacityRatio,
+    isOver,
+    isReserved,
+    hasItems,
+    isSelected,
+  })
+  const binBodyOpacity = isSelected
+    ? 0.9
+    : hasCargo
+      ? clamp(0.18 + (Number.isFinite(capacityRatio) ? capacityRatio * 0.25 : 0.08), 0.18, 0.43)
+      : 0.72
 
   const ledColor = isOver ? '#dc2626' : isReserved ? '#f59e0b' : hasItems ? '#ef4444' : '#10b981'
 
@@ -688,7 +739,7 @@ function BinMesh({
         <mesh>
           <boxGeometry args={[width, binHeight, depth]} />
           <meshStandardMaterial
-            color={isSelected ? '#0ea5e9' : '#a5822a'}
+            color={binColor}
             transparent
             opacity={isSelected ? 0.9 : binBodyOpacity}
             roughness={0.62}
@@ -1200,7 +1251,7 @@ export default function WarehouseLayoutPreview3D({
     <div
       className={
         isFullscreen
-          ? 'fixed inset-0 z-[9999] h-screen w-screen overflow-hidden bg-slate-950 font-sans select-none'
+          ? 'fixed inset-0 z-9999 h-screen w-screen overflow-hidden bg-slate-950 font-sans select-none'
           : 'relative h-full w-full overflow-hidden bg-slate-950 font-sans select-none'
       }
     >
