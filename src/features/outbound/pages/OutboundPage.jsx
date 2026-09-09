@@ -5,12 +5,10 @@ import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
-import { ArrowUpRight, Search, Minus, Loader2, Download, Eye, Map as MapIcon, MapPin } from 'lucide-react'
-import DataTable from '@/components/organisms/DataTable'
+import { AlertCircle, ArrowUpRight, CheckCircle2, Search, Minus, Loader2, Download, Eye, Map as MapIcon, MapPin } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
-import TableActionMenu from '@/components/TableActionMenu'
 import receiptApi from '@/services/wms/receiptApi'
 import stockApi from '@/services/wms/stockApi'
 import productApi from '@/services/wms/productApi'
@@ -72,6 +70,7 @@ const OutboundPage = () => {
   const [availableLocations, setAvailableLocations] = useState([])
   const [selectedLocationStr, setSelectedLocationStr] = useState('')
   const [isLocationsLoading, setIsLocationsLoading] = useState(false)
+  const [stockSummary, setStockSummary] = useState(null)
 
   // Auto Outbound states
   const [previewData, setPreviewData] = useState(null)
@@ -129,68 +128,69 @@ const OutboundPage = () => {
   }, [selectedWarehouseId])
 
   useEffect(() => {
+    // Load the initial warehouse and SKU data for this page.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchInitialData()
   }, [fetchInitialData])
 
   useEffect(() => {
     if (selectedWarehouseId) {
+      // Refresh the receipt list whenever the warehouse context changes.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchReceipts()
     }
   }, [fetchReceipts, selectedWarehouseId])
 
-  // Fetch locations for Manual method when SKU changes
+  // Fetch the selected SKU's warehouse stock for both FIFO and manual outbound.
   useEffect(() => {
-    if (outboundMethod === 'MANUAL' && formSkuId && selectedWarehouseId) {
-      const fetchLocations = async () => {
-        setIsLocationsLoading(true)
-        setAvailableLocations([])
-        setSelectedLocationStr('')
-        try {
-          const res = await stockApi.getStockBySku(formSkuId)
-          const data = res.data?.data || {}
-          if (data.locations) {
-            // Filter locations for the selected warehouse
-            const locsInWarehouse = data.locations.filter(loc => loc.warehouseId === selectedWarehouseId)
-            
-            // Group by rackId + binId to get total quantity per bin (BE doesn't send rackId/binId directly in StockSummaryResponse, but we need it. 
-            // Wait, looking at StockLocationDto, it only has rackName and binName. But StockBatchResponse has rackId and binId.
-            // Let's use getStock API to fetch batches if getStockBySku lacks IDs.)
-            
-            // To be safe, let's fetch all stock batches for this warehouse and filter by SKU.
-            const batchesRes = await stockApi.getStock(selectedWarehouseId, { page: 0, size: 500 })
-            const batches = batchesRes.data?.data?.content || []
-            const skuBatches = batches.filter(b => b.skuId === formSkuId && b.quantity > 0)
-            
-            // Group by binId
-            const grouped = skuBatches.reduce((acc, curr) => {
-              const key = `${curr.rackId}_${curr.binId}`
-              if (!acc[key]) {
-                acc[key] = {
-                  rackId: curr.rackId,
-                  rackName: curr.rackName,
-                  binId: curr.binId,
-                  binName: curr.binName,
-                  quantity: 0
-                }
-              }
-              acc[key].quantity += curr.quantity
-              return acc
-            }, {})
-            
-            setAvailableLocations(Object.values(grouped))
-          }
-        } catch (error) {
-          showApiErrorToast(error, 'Could not load locations for SKU.')
-        } finally {
-          setIsLocationsLoading(false)
-        }
-      }
-      fetchLocations()
-    } else {
+    if (!isModalOpen || !formSkuId || !selectedWarehouseId) {
+      return undefined
+    }
+
+    let cancelled = false
+    const fetchStockAvailability = async () => {
+      setIsLocationsLoading(true)
       setAvailableLocations([])
       setSelectedLocationStr('')
+      setStockSummary(null)
+      try {
+        const batches = await stockApi.getAllStock(selectedWarehouseId, { size: 500 })
+        if (cancelled) return
+
+        const skuBatches = batches.filter(
+          (batch) => String(batch.skuId) === String(formSkuId) && Number(batch.quantity) > 0
+        )
+        const grouped = skuBatches.reduce((acc, batch) => {
+          const key = `${batch.rackId || batch.rackName || 'rack'}_${batch.binId || batch.binName || 'bin'}`
+          if (!acc[key]) {
+            acc[key] = {
+              rackId: batch.rackId,
+              rackName: batch.rackName,
+              binId: batch.binId,
+              binName: batch.binName,
+              quantity: 0,
+            }
+          }
+          acc[key].quantity += Number(batch.quantity) || 0
+          return acc
+        }, {})
+        const locations = Object.values(grouped).sort((first, second) => second.quantity - first.quantity)
+        const totalQuantity = locations.reduce((sum, location) => sum + location.quantity, 0)
+
+        setAvailableLocations(locations)
+        setStockSummary({ totalQuantity, locations })
+      } catch (error) {
+        if (!cancelled) showApiErrorToast(error, 'Could not load stock availability.')
+      } finally {
+        if (!cancelled) setIsLocationsLoading(false)
+      }
     }
-  }, [outboundMethod, formSkuId, selectedWarehouseId])
+
+    fetchStockAvailability()
+    return () => {
+      cancelled = true
+    }
+  }, [isModalOpen, formSkuId, selectedWarehouseId])
 
   const handleExport = async () => {
     if (!selectedWarehouseId) return
@@ -416,6 +416,24 @@ const OutboundPage = () => {
       return false
     })
   }, [receipts, activeTab])
+
+  const selectedSku = skus.find((sku) => String(sku.id) === String(formSkuId))
+  const requestedQuantity = Number(formTotalQuantity) || 0
+  const warehouseStockQuantity = stockSummary?.totalQuantity || 0
+  const selectedLocation = (() => {
+    if (!selectedLocationStr) return null
+    try {
+      return JSON.parse(selectedLocationStr)
+    } catch {
+      return null
+    }
+  })()
+  const availableForRequest = outboundMethod === 'MANUAL'
+    ? Number(selectedLocation?.quantity) || 0
+    : warehouseStockQuantity
+  const shortageQuantity = Math.max(requestedQuantity - availableForRequest, 0)
+  const projectedRemainingQuantity = Math.max(warehouseStockQuantity - requestedQuantity, 0)
+  const hasStockShortage = Boolean(stockSummary) && shortageQuantity > 0
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -667,6 +685,7 @@ const OutboundPage = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title="Create New Outbound Shipment"
+                className="max-h-[calc(100vh-1rem)] max-w-4xl overflow-auto sm:max-h-[calc(100vh-2rem)]"
               >
                 <FormShell onSubmit={handleCreateReceipt} className="space-y-4">
                   <div className="space-y-2 border-b border-slate-200 pb-4">
@@ -772,6 +791,93 @@ const OutboundPage = () => {
                     </div>
                   </div>
 
+                  {formSkuId && (
+                    <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4" aria-live="polite">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-xs font-bold tracking-[0.08em] text-slate-500 uppercase">
+                            Kiểm tra tồn kho trước khi xuất
+                          </p>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Số liệu được tổng hợp từ toàn bộ kệ và ô trong kho đã chọn.
+                          </p>
+                        </div>
+                        {isLocationsLoading ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang kiểm tra
+                          </span>
+                        ) : stockSummary ? (
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${hasStockShortage ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            {hasStockShortage ? <AlertCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                            {hasStockShortage ? `Thiếu ${shortageQuantity.toLocaleString('vi-VN')} đơn vị` : 'Đủ hàng để xuất'}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {isLocationsLoading ? (
+                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          {[1, 2, 3].map((item) => (
+                            <div key={item} className="h-20 animate-pulse rounded-lg bg-white" />
+                          ))}
+                        </div>
+                      ) : stockSummary ? (
+                        <>
+                          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                            <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3">
+                              <p className="text-xs text-slate-500">Tồn hiện tại trong kho</p>
+                              <p className="mt-1 text-xl font-bold tabular-nums text-slate-950">
+                                {warehouseStockQuantity.toLocaleString('vi-VN')}
+                                <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || 'đơn vị'}</span>
+                              </p>
+                              <p className="mt-1 text-xs text-slate-400">{stockSummary.locations.length} kệ/ô đang có hàng</p>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3">
+                              <p className="text-xs text-slate-500">Số lượng yêu cầu xuất</p>
+                              <p className="mt-1 text-xl font-bold tabular-nums text-slate-950">
+                                {requestedQuantity.toLocaleString('vi-VN')}
+                                <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || 'đơn vị'}</span>
+                              </p>
+                              <p className="mt-1 text-xs text-slate-400">{outboundMethod === 'AUTO' ? 'Phân bổ theo FIFO' : 'Tại vị trí đã chọn'}</p>
+                            </div>
+                            <div className={`rounded-lg border px-3.5 py-3 ${hasStockShortage ? 'border-rose-200 bg-rose-50/70' : 'border-emerald-200 bg-emerald-50/70'}`}>
+                              <p className="text-xs text-slate-500">Còn lại dự kiến sau xuất</p>
+                              <p className={`mt-1 text-xl font-bold tabular-nums ${hasStockShortage ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                {projectedRemainingQuantity.toLocaleString('vi-VN')}
+                                <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || 'đơn vị'}</span>
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {hasStockShortage
+                                  ? `Cần bổ sung ${shortageQuantity.toLocaleString('vi-VN')} đơn vị`
+                                  : 'Tồn kho đáp ứng yêu cầu'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {stockSummary.locations.length > 0 && (
+                            <div className="mt-4 border-t border-slate-200 pt-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="text-xs font-semibold text-slate-700">Phân bổ hàng trên kệ</p>
+                                <span className="text-xs text-slate-400">{stockSummary.locations.length} vị trí</span>
+                              </div>
+                              <div className="mt-2 grid max-h-32 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                                {stockSummary.locations.map((location) => (
+                                  <div key={`${location.rackId || location.rackName}_${location.binId || location.binName}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs">
+                                    <span className="truncate text-slate-600">
+                                      Kệ {location.rackName || '—'} · Ô {location.binName || '—'}
+                                    </span>
+                                    <span className="shrink-0 font-semibold tabular-nums text-slate-800">
+                                      {location.quantity.toLocaleString('vi-VN')}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      ) : null}
+                    </section>
+                  )}
+
                   {outboundMethod === 'AUTO' && (
                     <div className="space-y-4 pt-2">
                       <div className="flex items-center justify-between">
@@ -802,7 +908,7 @@ const OutboundPage = () => {
                               {previewData.items?.[0]?.shortageQuantity} sản phẩm so với yêu cầu. Bạn không thể tạo phiếu xuất này.
                             </div>
                           )}
-                          <div className="max-h-[350px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-5">
+                          <div className="max-h-[280px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                             <div className="relative border-l-2 border-emerald-200 ml-3 space-y-6">
                               {previewData.stops?.map((stop, index) => (
                                 <div
@@ -813,14 +919,14 @@ const OutboundPage = () => {
                                     {stop.sequence}
                                   </div>
                                   <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-                                    <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
-                                      <div className="flex items-center gap-2">
+                                    <div className="mb-3 flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                                      <div className="flex min-w-0 items-start gap-2">
                                         <MapPin className="h-4 w-4 text-rose-500" />
-                                        <span className="text-sm font-bold text-slate-800">
+                                        <span className="min-w-0 break-words text-sm font-bold text-slate-800">
                                           Kệ {stop.rackCode} — Ô {stop.binCode}
                                         </span>
                                       </div>
-                                      <span className="rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                                      <span className="shrink-0 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
                                         Tầng {stop.shelfLevel}
                                       </span>
                                     </div>
@@ -875,7 +981,14 @@ const OutboundPage = () => {
                     <Button
                       type="submit"
                       isLoading={isSubmitting}
-                      disabled={!formSkuId || (outboundMethod === 'AUTO' && !previewData?.complete)}
+                      disabled={
+                        !formSkuId ||
+                        isLocationsLoading ||
+                        !stockSummary ||
+                        hasStockShortage ||
+                        (outboundMethod === 'AUTO' && !previewData?.complete) ||
+                        (outboundMethod === 'MANUAL' && !selectedLocationStr)
+                      }
                     >
                       Confirm Outbound
                     </Button>

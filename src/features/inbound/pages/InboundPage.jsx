@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FormShell } from '@/form/FormControls'
 import { useSelector, useDispatch } from 'react-redux'
@@ -60,6 +60,10 @@ const InboundPage = () => {
   const [allocations, setAllocations] = useState({}) // { binId: quantity }
   const [binCapacities, setBinCapacities] = useState({})
   const [rackCapacities, setRackCapacities] = useState({})
+  const allocationScrollRef = useRef(null)
+  const allocationBinRefs = useRef({})
+  const [suggestionScrollTarget, setSuggestionScrollTarget] = useState(null)
+  const [suggestedBinIds, setSuggestedBinIds] = useState(() => new Set())
   const [isCapacityLoading, setIsCapacityLoading] = useState(false)
   const [capacityRefreshKey, setCapacityRefreshKey] = useState(0)
   const [formNote, setFormNote] = useState('')
@@ -82,6 +86,22 @@ const InboundPage = () => {
     () => Object.values(allocations).reduce((total, value) => total + (Number(value) || 0), 0),
     [allocations]
   )
+
+  useEffect(() => {
+    const targetId = suggestionScrollTarget?.binId
+    const scrollContainer = allocationScrollRef.current
+    const targetElement = targetId ? allocationBinRefs.current[String(targetId)] : null
+    if (!scrollContainer || !targetElement) return undefined
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      const containerRect = scrollContainer.getBoundingClientRect()
+      const targetRect = targetElement.getBoundingClientRect()
+      const targetScrollTop = scrollContainer.scrollTop + (targetRect.top - containerRect.top) - 12
+      scrollContainer.scrollTo({ top: Math.max(targetScrollTop, 0), behavior: 'smooth' })
+    })
+
+    return () => window.cancelAnimationFrame(animationFrame)
+  }, [isCapacityLoading, layout, suggestionScrollTarget])
 
   useEffect(() => {
     let active = true
@@ -488,6 +508,13 @@ const InboundPage = () => {
       })
 
       setAllocations(newAllocations)
+      setSuggestedBinIds(new Set(Object.keys(newAllocations).map(String)))
+      const firstSuggestedBinId = Object.keys(newAllocations)[0]
+      if (firstSuggestedBinId) {
+        setSuggestionScrollTarget({ binId: firstSuggestedBinId, requestedAt: Date.now() })
+      } else {
+        setSuggestionScrollTarget(null)
+      }
 
     } catch (error) {
       console.error('Error getting suggestions:', error)
@@ -597,6 +624,8 @@ const InboundPage = () => {
                       setSelectedWarehouseId(e.target.value)
                       setAllocations({})
                       setBinCapacities({})
+                      setSuggestedBinIds(new Set())
+                      setSuggestionScrollTarget(null)
                     }}
                   >
                     <option value="">-- Select Warehouse --</option>
@@ -788,7 +817,12 @@ const InboundPage = () => {
                         required
                         className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
                         value={formSkuId}
-                        onChange={(e) => setFormSkuId(e.target.value)}
+                        onChange={(e) => {
+                          setFormSkuId(e.target.value)
+                          setAllocations({})
+                          setSuggestedBinIds(new Set())
+                          setSuggestionScrollTarget(null)
+                        }}
                       >
                         <option value="">-- Select product --</option>
                         {skus.map((sku) => (
@@ -852,7 +886,10 @@ const InboundPage = () => {
                       )}
                     </div>
 
-                    <div className="max-h-100 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div
+                      ref={allocationScrollRef}
+                      className="max-h-100 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4"
+                    >
                       {isCapacityLoading ? (
                         <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
                           <Loader2 className="h-4 w-4 animate-spin" /> Loading Rack and Bin
@@ -946,6 +983,7 @@ const InboundPage = () => {
                                       maxVolume: Number(bin.maxVolume) || 0,
                                     }
                                     const currentAllocation = Number(allocations[bin.id]) || 0
+                                    const isSuggestedBin = suggestedBinIds.has(String(bin.id))
                                     const remainingReceiptUnits = Math.max(
                                       Number(formTotalQuantity) -
                                       (allocatedQuantity - currentAllocation),
@@ -1009,7 +1047,14 @@ const InboundPage = () => {
                                     return (
                                       <article
                                         key={bin.id}
-                                        className="rounded-xl border border-slate-200 bg-white p-3"
+                                        ref={(element) => {
+                                          if (element) allocationBinRefs.current[String(bin.id)] = element
+                                          else delete allocationBinRefs.current[String(bin.id)]
+                                        }}
+                                        className={`rounded-xl border bg-white p-3 transition-shadow ${isSuggestedBin
+                                            ? 'border-emerald-300 bg-emerald-50/20 ring-2 ring-emerald-100'
+                                            : 'border-slate-200'
+                                          }`}
                                       >
                                         <div className="flex items-start justify-between gap-3">
                                           <div className="min-w-0">

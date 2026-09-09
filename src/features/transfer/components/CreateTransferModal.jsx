@@ -3,18 +3,28 @@ import { ArrowRight, CheckCircle2, Loader2, Warehouse, X } from 'lucide-react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import warehouseApi from '@/services/warehouse/warehouseApi'
+import staffApi from '@/services/staff/staffApi'
 import stockApi from '@/services/wms/stockApi'
 import transferApi from '@/services/wms/transferApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 
-const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) => {
+const CreateTransferModal = ({
+  isOpen,
+  onClose,
+  sourceWarehouseId,
+  currentRole = 'TENANT',
+  onSuccess,
+}) => {
   useEscapeKey(isOpen, onClose)
 
   const [allWarehouses, setAllWarehouses] = useState([])
   const [products, setProducts] = useState([])
   const [loadingInitial, setLoadingInitial] = useState(true)
   const [loadingProducts, setLoadingProducts] = useState(false)
+  const [loadingStaff, setLoadingStaff] = useState(false)
+  const [sourceStaff, setSourceStaff] = useState([])
+  const [staffWarehouseIds, setStaffWarehouseIds] = useState([])
 
   const [selectedSourceWarehouseId, setSelectedSourceWarehouseId] = useState('')
   const [destinationWarehouseId, setDestinationWarehouseId] = useState('')
@@ -22,6 +32,8 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
   const [stockBatches, setStockBatches] = useState([])
   const [loadingBatches, setLoadingBatches] = useState(false)
   const [note, setNote] = useState('')
+  const [expectedArrivalAt, setExpectedArrivalAt] = useState('')
+  const [sourceStaffId, setSourceStaffId] = useState('')
 
   // Map of batchId -> quantity allocated
   const [allocations, setAllocations] = useState({})
@@ -33,8 +45,25 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
     const fetchWarehouses = async () => {
       setLoadingInitial(true)
       try {
-        const whRes = await warehouseApi.getMyWarehouses()
-        setAllWarehouses(whRes.data?.data || [])
+        const requests = [warehouseApi.getMyWarehouses()]
+        if (currentRole === 'STAFF') requests.push(staffApi.getMyWorkHistory())
+        const [whRes, historyRes] = await Promise.all(requests)
+        const warehousePayload = whRes.data?.data
+        setAllWarehouses(warehousePayload?.content || warehousePayload || [])
+        if (currentRole === 'STAFF') {
+          const assignments = historyRes?.data?.data?.warehouseAssignments || []
+          const assignedIds = assignments
+            .filter((assignment) => assignment.status === 'ACTIVE')
+            .map((assignment) => String(assignment.warehouseId))
+          setStaffWarehouseIds(assignedIds)
+          const assignedWarehouses = (warehousePayload?.content || warehousePayload || []).filter((warehouse) => assignedIds.includes(String(warehouse.id)))
+          const preferredSource = assignedWarehouses.some((warehouse) => String(warehouse.id) === String(sourceWarehouseId))
+            ? sourceWarehouseId
+            : assignedWarehouses[0]?.id || ''
+          setSelectedSourceWarehouseId(preferredSource)
+        } else {
+          setStaffWarehouseIds([])
+        }
       } catch (error) {
         showApiErrorToast(error, 'Could not load warehouses.')
       } finally {
@@ -50,7 +79,58 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
     setStockBatches([])
     setAllocations({})
     setNote('')
-  }, [isOpen, sourceWarehouseId])
+    setExpectedArrivalAt('')
+    let currentStaffId = ''
+    if (currentRole === 'STAFF') {
+      try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}')
+        currentStaffId = user.userId || user.id || ''
+      } catch {
+        currentStaffId = ''
+      }
+    }
+    setSourceStaffId(currentStaffId)
+    setSourceStaff([])
+    setStaffWarehouseIds([])
+  }, [currentRole, isOpen, sourceWarehouseId])
+
+  useEffect(() => {
+    if (!isOpen || !selectedSourceWarehouseId || currentRole !== 'TENANT') return
+
+    const fetchAssignedStaff = async () => {
+      setLoadingStaff(true)
+      try {
+        const response = await staffApi.listStaffs({ page: 0, size: 100 })
+        const staffList = response.data?.data?.content || response.data?.data || []
+        const assignedStaff = await Promise.all(
+          staffList.map(async (staff) => {
+            const staffUserId = staff.userId || staff.memberId
+            if (!staffUserId) return null
+            try {
+              const assignmentResponse = await staffApi.getWarehouseAssignments(staffUserId)
+              const assignments = assignmentResponse.data?.data || []
+              const isActive = assignments.some(
+                (assignment) =>
+                  assignment.status === 'ACTIVE' &&
+                  String(assignment.warehouseId) === String(selectedSourceWarehouseId)
+              )
+              return isActive ? { ...staff, userId: staffUserId } : null
+            } catch {
+              return null
+            }
+          })
+        )
+        setSourceStaff(assignedStaff.filter(Boolean))
+      } catch (error) {
+        showApiErrorToast(error, 'Could not load assigned staff.')
+        setSourceStaff([])
+      } finally {
+        setLoadingStaff(false)
+      }
+    }
+
+    fetchAssignedStaff()
+  }, [currentRole, isOpen, selectedSourceWarehouseId])
 
   useEffect(() => {
     if (!selectedSourceWarehouseId) {
@@ -95,7 +175,7 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
 
         // Filter by SKU and has quantity > 0
         const sourceBatches = allWarehouseBatches.filter(
-          (batch) => batch.skuId === selectedSkuId && batch.quantity > 0
+          (batch) => String(batch.skuId) === String(selectedSkuId) && Number(batch.quantity) > 0
         )
         setStockBatches(sourceBatches)
         setAllocations({})
@@ -160,6 +240,8 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
     const payload = {
       sourceWarehouseId: selectedSourceWarehouseId,
       destinationWarehouseId,
+      ...(sourceStaffId ? { sourceStaffId } : {}),
+      ...(expectedArrivalAt ? { expectedArrivalAt: `${expectedArrivalAt}:00` } : {}),
       note,
       items: [
         {
@@ -220,23 +302,33 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
         <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-3 sm:px-6">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs font-semibold text-slate-600">
             <span className="inline-flex items-center gap-1.5 text-blue-700">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-700 text-[10px] text-white">1</span>
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-blue-700 text-[10px] text-white">
+                1
+              </span>
               Route
             </span>
             <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
             <span className="inline-flex items-center gap-1.5">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px]">2</span>
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px]">
+                2
+              </span>
               Source allocation
             </span>
             <span className="h-px w-8 bg-slate-300" aria-hidden="true" />
             <span className="inline-flex items-center gap-1.5">
-              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px]">3</span>
+              <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px]">
+                3
+              </span>
               Submit for approval
             </span>
           </div>
           <p className="mt-2 flex items-start gap-1.5 text-xs leading-5 text-slate-500">
-            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" aria-hidden="true" />
-            Creating the request does not deduct stock. Source stock changes only after dispatch approval.
+            <CheckCircle2
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600"
+              aria-hidden="true"
+            />
+            Creating the request does not deduct stock. Source stock changes only after dispatch
+            approval.
           </p>
         </div>
 
@@ -272,15 +364,18 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                         setSelectedSourceWarehouseId(event.target.value)
                         setSelectedSkuId('')
                         setDestinationWarehouseId('')
+                        setSourceStaffId('')
                       }}
                       className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="">Select source warehouse</option>
-                      {allWarehouses.map((warehouse) => (
+                      {allWarehouses
+                        .filter((warehouse) => currentRole !== 'STAFF' || staffWarehouseIds.includes(String(warehouse.id)))
+                        .map((warehouse) => (
                         <option key={warehouse.id} value={warehouse.id}>
                           {warehouse.name}
                         </option>
-                      ))}
+                        ))}
                     </select>
                   </div>
 
@@ -306,13 +401,79 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
                     >
                       <option value="">Select destination warehouse</option>
                       {allWarehouses
-                        .filter((warehouse) => String(warehouse.id) !== String(selectedSourceWarehouseId))
+                        .filter((warehouse) => currentRole !== 'STAFF' || staffWarehouseIds.includes(String(warehouse.id)))
+                        .filter(
+                          (warehouse) => String(warehouse.id) !== String(selectedSourceWarehouseId)
+                        )
                         .map((warehouse) => (
                           <option key={warehouse.id} value={warehouse.id}>
                             {warehouse.name}
                           </option>
                         ))}
                     </select>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label
+                      htmlFor="transfer-source-staff"
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                    >
+                      Source staff <span className="font-normal text-slate-500">(optional)</span>
+                    </label>
+                    <select
+                      id="transfer-source-staff"
+                      value={sourceStaffId}
+                      onChange={(event) => setSourceStaffId(event.target.value)}
+                      disabled={
+                        !selectedSourceWarehouseId || loadingStaff || currentRole === 'STAFF'
+                      }
+                      className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      <option value="">
+                        {currentRole === 'STAFF'
+                          ? 'Current staff is not available'
+                          : loadingStaff
+                            ? 'Loading assigned staff'
+                            : 'Assign later'}
+                      </option>
+                      {currentRole === 'STAFF' && sourceStaffId && (
+                        <option value={sourceStaffId}>You — assigned source staff</option>
+                      )}
+                      {sourceStaff.map((staff) => (
+                        <option
+                          key={staff.userId || staff.memberId}
+                          value={staff.userId || staff.memberId}
+                        >
+                          {staff.fullName || staff.name || staff.email || 'Warehouse staff'}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {currentRole === 'STAFF'
+                        ? 'This request will use your staff account as the source picker.'
+                        : 'Only active staff assigned to the source warehouse can pick this transfer.'}
+                    </p>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="transfer-expected-arrival"
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                    >
+                      Expected arrival{' '}
+                      <span className="font-normal text-slate-500">(optional)</span>
+                    </label>
+                    <input
+                      id="transfer-expected-arrival"
+                      type="datetime-local"
+                      value={expectedArrivalAt}
+                      min={new Date().toISOString().slice(0, 16)}
+                      onChange={(event) => setExpectedArrivalAt(event.target.value)}
+                      className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      If blank, BE applies its default arrival window.
+                    </p>
                   </div>
                 </div>
               </section>
@@ -467,25 +628,26 @@ const CreateTransferModal = ({ isOpen, onClose, sourceWarehouseId, onSuccess }) 
 
             <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <p className="text-xs leading-5 text-slate-500">
-                The request will be saved as <span className="font-bold text-amber-700">Awaiting dispatch</span>.
+                The request will be saved as{' '}
+                <span className="font-bold text-amber-700">Awaiting dispatch</span>.
               </p>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting}
-                className="min-h-10 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-blue-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-                {submitting ? 'Creating transfer' : 'Create transfer request'}
-              </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={submitting}
+                  className="min-h-10 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-blue-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                  {submitting ? 'Creating transfer' : 'Create transfer request'}
+                </button>
               </div>
             </footer>
           </FormShell>
