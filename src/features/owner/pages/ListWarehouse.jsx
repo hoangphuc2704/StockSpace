@@ -265,18 +265,18 @@ const WarehouseManagement = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-4000 space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-4000 space-y-6 p-4 sm:p-6 md:p-8">
             {/* TIÊU ĐỀ TRANG */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Warehouse management</h1>
+                <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Warehouse management</h1>
                 <p className="text-sm text-slate-500">
                   View entire listings, check area performance, and quickly update status logistics.
                 </p>
               </div>
               <Button
                 onClick={() => navigate('/owner/postwarehouse')}
-                className="flex items-center gap-2 self-start rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-blue-700 sm:self-auto"
+                className="flex w-full items-center justify-center gap-2 self-start rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-md hover:bg-blue-700 sm:w-auto sm:self-auto"
               >
                 <Plus className="h-4 w-4" />
                 New warehouse
@@ -312,21 +312,21 @@ const WarehouseManagement = () => {
             </div>
 
             {/* BẢNG HIỂN THỊ DANH SÁCH KHO */}
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-left text-sm">
-                  <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold tracking-wider text-slate-400 uppercase">
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs">
+              <div className="overflow-x-auto overscroll-x-contain">
+                <table className="w-full min-w-[960px] text-left text-sm sm:min-w-[1120px]">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
                     <tr>
-                      <th className="px-6 py-4">Image &amp; Warehouse name</th>
-                      <th className="px-6 py-4">Warehouse type</th>
-                      <th className="px-6 py-4">Capacity</th>
-                      <th className="px-6 py-4">Rental price / m²</th>
-                      <th className="px-6 py-4 text-center">Status</th>
-                      <th className="px-6 py-4 text-center">Inspection</th>
-                      <th className="px-6 py-4 text-center">Actions</th>
+                      <th className="px-3 py-2.5 sm:px-5 sm:py-3">Image &amp; Warehouse name</th>
+                      <th className="px-3 py-2.5 sm:px-5 sm:py-3">Warehouse type</th>
+                      <th className="px-3 py-2.5 sm:px-5 sm:py-3">Capacity</th>
+                      <th className="px-3 py-2.5 sm:px-5 sm:py-3">Rental price / m²</th>
+                      <th className="px-3 py-2.5 text-center sm:px-5 sm:py-3">Status</th>
+                      <th className="px-3 py-2.5 text-center sm:px-5 sm:py-3">Inspection</th>
+                      <th className="px-3 py-2.5 text-center sm:px-5 sm:py-3">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
                     {filteredWarehouses.length > 0 ? (
                       filteredWarehouses.map((wh) => {
                         const badge = getStatusBadge(wh.status)
@@ -342,24 +342,24 @@ const WarehouseManagement = () => {
                         )
 
                         return (
-                          <tr key={wh.id} className="transition-colors hover:bg-slate-50/60">
+                          <tr key={wh.id} className="transition-colors hover:bg-slate-50">
                             {/* Cột 1: Ảnh & Tên kho */}
-                            <td className="max-w-xs px-6 py-4 md:max-w-sm">
-                              <div className="flex items-center gap-3">
+                            <td className="max-w-xs px-3 py-3 align-middle sm:px-5 sm:py-3.5 md:max-w-sm">
+                              <div className="flex items-center gap-2 sm:gap-3">
                                 <img
                                   src={wh.coverImageUrl}
                                   alt={wh.name}
-                                  className="h-12 w-16 shrink-0 rounded-lg border border-slate-200 object-cover"
+                                  className="h-10 w-14 shrink-0 rounded-lg border border-slate-200 object-cover sm:h-12 sm:w-16"
                                   onError={(e) => {
                                     e.target.src = 'https://placehold.co/150x100?text=Warehouse'
                                   }}
                                 />
                                 <div className="space-y-0.5">
-                                  <p className="group flex cursor-pointer items-center gap-1 font-bold text-slate-900 hover:text-blue-600">
+                                  <p className="group flex max-w-40 cursor-pointer items-center gap-1 truncate font-bold text-slate-900 hover:text-blue-600 sm:max-w-56">
                                     {wh.name}
                                     <ExternalLink className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
                                   </p>
-                                  <p className="flex max-w-50 items-center gap-0.5 truncate text-xs text-slate-400">
+                                  <p className="flex max-w-36 items-center gap-0.5 truncate text-xs text-slate-400 sm:max-w-50">
                                     <MapPin className="h-3 w-3 shrink-0" /> {wh.address}
                                   </p>
                                 </div>
@@ -367,21 +367,21 @@ const WarehouseManagement = () => {
                             </td>
 
                             {/* Cột 2: Loại hình */}
-                            <td className="px-6 py-4">
+                            <td className="px-3 py-3 align-middle sm:px-5 sm:py-3.5">
                               <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
                                 {wh.typeName || 'Type unknown'}
                               </span>
                             </td>
 
                             {/* Cột 3: Sức chứa */}
-                            <td className="px-6 py-4 font-mono font-semibold text-slate-900">
+                            <td className="px-3 py-3 align-middle font-mono font-semibold text-slate-900 sm:px-5 sm:py-3.5">
                               <div className="flex items-center gap-1">
                                 {wh.capacity ? wh.capacity.toLocaleString() : 0} m²
                               </div>
                             </td>
 
                             {/* Cột 4: Giá thuê */}
-                            <td className="px-6 py-4 font-bold text-slate-900">
+                            <td className="px-3 py-3 align-middle font-bold text-slate-900 sm:px-5 sm:py-3.5">
                               <span>{formatWarehousePricePerSquareMeter(wh)}</span>{' '}
                               {wh.rentalPricingType !== 'NEGOTIATED' && (
                                 <span className="text-xs font-normal text-slate-400">/m²</span>
@@ -392,7 +392,7 @@ const WarehouseManagement = () => {
                             </td>
 
                             {/* Cột 5: Trạng thái */}
-                            <td className="px-6 py-4 text-center">
+                            <td className="px-3 py-3 text-center align-middle sm:px-5 sm:py-3.5">
                               <div className="flex flex-col items-center gap-1.5">
                                 <span
                                   className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.bg}`}
@@ -415,7 +415,7 @@ const WarehouseManagement = () => {
                             </td>
 
                             {/* Cột 6: Kiểm định (không ảnh hưởng luồng thanh toán) */}
-                            <td className="px-6 py-4 text-center">
+                            <td className="px-3 py-3 text-center align-middle sm:px-5 sm:py-3.5">
                               <div className="flex flex-col items-center justify-center gap-1.5">
                                 <span
                                   className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${inspectionBadge.className}`}
@@ -459,7 +459,7 @@ const WarehouseManagement = () => {
                             </td>
 
                             {/* Cột 7: Nút Action xem chi tiết */}
-                            <td className="px-6 py-4 text-center">
+                            <td className="px-3 py-3 text-center align-middle sm:px-5 sm:py-3.5">
                               <TableActionMenu
                                 items={
                                   isRejectedListing
@@ -520,7 +520,7 @@ const WarehouseManagement = () => {
                       })
                     ) : (
                       <tr>
-                        <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-400">
+                        <td colSpan={7} className="px-3 py-10 text-center text-sm text-slate-400 sm:px-6 sm:py-12">
                           <Warehouse className="mx-auto mb-2 h-8 w-8 text-slate-300" />
                           No warehouses found matching the current data.
                         </td>
@@ -532,14 +532,14 @@ const WarehouseManagement = () => {
 
               {/* BỘ ĐIỀU HƯỚNG PHÂN TRANG */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between border-t border-slate-200 bg-white px-6 py-4">
+                <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
                   <div className="text-xs text-slate-500">
                     Show page{' '}
                     <span className="font-semibold text-slate-700">{currentPage + 1}</span> above
                     total <span className="font-semibold text-slate-700">{totalPages}</span> pages (
                     {totalElements} warehouse)
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex flex-wrap justify-end gap-1.5">
                     <button
                       onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
                       disabled={currentPage === 0}
@@ -687,7 +687,7 @@ const WarehouseManagement = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 rounded-xl border border-slate-100 bg-slate-50 p-4">
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase">Public rental price / m²</p>
                 <p className="mt-1 text-lg font-bold text-slate-900">

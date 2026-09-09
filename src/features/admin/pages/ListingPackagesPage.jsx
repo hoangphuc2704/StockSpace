@@ -113,7 +113,7 @@ const PackageFormModal = ({ packageToEdit, onClose, onSaved }) => {
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-500 focus:bg-white focus:outline-none"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-slate-700">Duration</label>
               <select
@@ -223,11 +223,11 @@ const ListingPackagesPage = () => {
         </button>
         <div className="flex items-center gap-2">
           <img src={logoDaidien} alt="StockSpace" className="h-10 w-16 object-contain" />
-          <span className="font-display text-xl font-bold tracking-tight text-slate-950">
+          <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline">
             StockSpace Admin
           </span>
         </div>
-        <div className="mr-24 ml-auto flex items-center sm:mr-28">
+        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
           <NotificationDropdown />
         </div>
       </header>
@@ -242,7 +242,7 @@ const ListingPackagesPage = () => {
       <div className="flex pt-14">
         <Sidebar currentRole="ADMIN" />
         <main
-          className={`min-w-0 flex-1 p-6 transition-all md:p-8 ${isSidebarExpanded ? 'md:pl-68' : 'md:pl-26'}`}
+          className={`min-w-0 flex-1 p-4 transition-all sm:p-6 md:p-8 ${isSidebarExpanded ? 'md:pl-68' : 'md:pl-26'}`}
         >
           <div className="mx-auto max-w-312.5 space-y-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -258,7 +258,7 @@ const ListingPackagesPage = () => {
               </div>
               <Button
                 onClick={() => setIsCreating(true)}
-                className="self-start rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white"
+                className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white sm:w-auto"
               >
                 <Plus className="mr-2 h-4 w-4" /> New package
               </Button>

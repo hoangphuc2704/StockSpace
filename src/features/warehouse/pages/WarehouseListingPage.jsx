@@ -14,7 +14,7 @@ const WarehouseSkeleton = () => (
     <div className="space-y-4 p-4">
       <div className="h-5 w-3/5 animate-pulse rounded bg-slate-200" />
       <div className="h-4 w-4/5 animate-pulse rounded bg-slate-100" />
-      <div className="grid grid-cols-2 gap-3 border-y border-slate-200 py-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 border-y border-slate-200 py-3">
         <div className="h-8 animate-pulse rounded bg-slate-100" />
         <div className="h-8 animate-pulse rounded bg-slate-100" />
       </div>

@@ -209,7 +209,7 @@ const AttendancePage = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-6 grid grid-cols-2 gap-4">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {statsData.map((s, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />

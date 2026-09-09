@@ -192,7 +192,7 @@ const OwnerDashboard = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-4000 space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-4000 space-y-6 p-4 sm:p-6 md:p-8">
             {/* Tiêu đề & Cụm nút bấm phía trên góc phải */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>

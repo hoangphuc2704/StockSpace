@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
 import { CircleDollarSign, CreditCard, RefreshCw, Wallet, MinusCircle } from 'lucide-react'
-import DataTable from '@/components/organisms/DataTable'
+import OwnerDataTable from '../components/OwnerDataTable'
 import Badge from '@/components/atoms/Badge'
 import Button from '@/components/atoms/Button'
 import WithdrawModal from '../../../components/organisms/WithdrawModal'
@@ -112,6 +112,7 @@ const WithdrawHistory = () => {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchWallet()
     fetchTransactions(0)
     fetchWithdrawals(0)
@@ -304,26 +305,26 @@ const WithdrawHistory = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-4000 space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-4000 space-y-6 p-4 sm:p-6 md:p-8">
             {/* Tiêu đề & Nút thao tác */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
-                <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-                  <Wallet className="h-7 w-7 text-blue-600" /> Wallet Management (Owner)
+                <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:text-2xl">
+                  <Wallet className="h-6 w-6 shrink-0 text-blue-600 sm:h-7 sm:w-7" /> Wallet Management (Owner)
                 </h1>
                 <p className="text-sm text-slate-500">
                   View balances, request withdrawals and manage your rebate cash flow.
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Button variant="outline" size="sm" onClick={handleRefresh}>
+              <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:items-center sm:gap-3">
+                <Button variant="outline" size="sm" onClick={handleRefresh} className="flex-1 sm:flex-none">
                   <RefreshCw className="mr-2 h-4 w-4" /> Refresh
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => setIsWithdrawModalOpen(true)}
-                  className="bg-rose-600 text-white hover:bg-rose-700"
+                  className="flex-1 bg-rose-600 text-white hover:bg-rose-700 sm:flex-none"
                 >
                   <MinusCircle className="mr-2 h-4 w-4" /> Withdraw money
                 </Button>
@@ -331,14 +332,14 @@ const WithdrawHistory = () => {
             </div>
 
             {/* Wallet Info Card */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                  <CircleDollarSign className="h-6 w-6" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 sm:h-12 sm:w-12">
+                  <CircleDollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-500">Available balance</p>
-                  <h2 className="text-3xl font-bold text-slate-900">
+                  <h2 className="break-words text-2xl font-bold text-slate-900 sm:text-3xl">
                     {wallet === null ? 'Loading...' : formatVND(wallet?.balance)}
                   </h2>
                 </div>
@@ -349,7 +350,7 @@ const WithdrawHistory = () => {
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex border-b border-slate-200">
                 <button
-                  className={`flex-1 px-6 py-4 text-sm font-bold transition-colors ${
+                    className={`flex-1 px-3 py-3 text-xs font-bold transition-colors sm:px-6 sm:py-4 sm:text-sm ${
                     activeTab === 'transactions'
                       ? 'border-b-2 border-blue-600 bg-blue-50/50 text-blue-600'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
@@ -359,7 +360,7 @@ const WithdrawHistory = () => {
                   Transaction history
                 </button>
                 <button
-                  className={`flex-1 px-6 py-4 text-sm font-bold transition-colors ${
+                    className={`flex-1 px-3 py-3 text-xs font-bold transition-colors sm:px-6 sm:py-4 sm:text-sm ${
                     activeTab === 'withdrawals'
                       ? 'border-b-2 border-blue-600 bg-blue-50/50 text-blue-600'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
@@ -370,18 +371,19 @@ const WithdrawHistory = () => {
                 </button>
               </div>
 
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 {activeTab === 'transactions' ? (
                   <>
-                    <DataTable
+                    <OwnerDataTable
                       columns={transactionColumns}
                       data={transactions}
+                      compact
                       isLoading={loadingTransactions}
                     />
 
                     {/* PHÂN TRANG GIAO DỊCH */}
                     {pagination.totalPages > 1 && (
-                      <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                      <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-slate-500">
                           Showing{' '}
                           <span className="font-semibold text-slate-700">
@@ -392,7 +394,7 @@ const WithdrawHistory = () => {
                             {pagination.totalElements}
                           </span>
                         </p>
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap justify-end gap-1">
                           <button
                             disabled={pagination.page === 0}
                             onClick={() => fetchTransactions(pagination.page - 1)}
@@ -428,15 +430,16 @@ const WithdrawHistory = () => {
                   </>
                 ) : (
                   <>
-                    <DataTable
+                    <OwnerDataTable
                       columns={withdrawalColumns}
                       data={withdrawals}
+                      compact
                       isLoading={loadingWithdrawals}
                     />
 
                     {/* PHÂN TRANG RÚT TIỀN */}
                     {withdrawPagination.totalPages > 1 && (
-                      <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                      <div className="mt-6 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-xs text-slate-500">
                           Showing{' '}
                           <span className="font-semibold text-slate-700">{withdrawals.length}</span>{' '}
@@ -445,7 +448,7 @@ const WithdrawHistory = () => {
                             {withdrawPagination.totalElements}
                           </span>
                         </p>
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-wrap justify-end gap-1">
                           <button
                             disabled={withdrawPagination.page === 0}
                             onClick={() => fetchWithdrawals(withdrawPagination.page - 1)}

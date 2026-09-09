@@ -324,7 +324,7 @@ const NotificationDropdown = () => {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 origin-top-right rounded-xl bg-white shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none flex flex-col overflow-hidden max-h-[85vh]">
+        <div className="absolute right-0 mt-2 flex max-h-[85vh] w-[min(24rem,calc(100vw-1rem))] origin-top-right flex-col overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none">
           {/* Header của Dropdown */}
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
             <h3 className="text-sm font-bold text-slate-800">Notice</h3>

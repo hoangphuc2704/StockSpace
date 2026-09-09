@@ -59,7 +59,7 @@ const SubscriptionPage = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1600px] space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-[1600px] space-y-6 p-4 sm:p-6 md:p-8">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900">
@@ -105,7 +105,7 @@ const SubscriptionPage = () => {
                     </Badge>
                   </div>
 
-                  <div className="mt-8 grid grid-cols-2 gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-4">
+                  <div className="mt-8 grid grid-cols-1 gap-4 rounded-xl bg-slate-50 p-4 sm:grid-cols-2 md:grid-cols-4">
                     <div>
                       <p className="text-xs text-slate-500">Price</p>
                       <p className="font-bold text-slate-900">

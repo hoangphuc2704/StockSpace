@@ -58,11 +58,11 @@ const StaffCareerHistoryPage = () => {
             isSidebarExpanded ? 'md:ml-64' : 'md:ml-20'
           }`}
         >
-          <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
+          <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 md:p-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
-                  <Briefcase className="h-8 w-8 text-primary" />
+                <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:text-3xl">
+                  <Briefcase className="h-7 w-7 shrink-0 text-primary sm:h-8 sm:w-8" />
                   Career History
                 </h1>
                 <p className="text-slate-500 mt-1">

@@ -97,7 +97,7 @@ const RegisterModal = ({ isOpen, onClose, onSwitchToLogin }) => {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 shadow-xl md:p-8"
+            className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-6 md:p-8"
             style={{
               msOverflowStyle: 'none',
               scrollbarWidth: 'none',

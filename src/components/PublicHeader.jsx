@@ -58,7 +58,7 @@ const PublicHeader = () => {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-stone-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-3">
             <img src={logoDaidien} alt="Logo" className="h-9 w-auto object-contain" />
             <span className="text-xl font-black tracking-tight text-stone-900 uppercase">
@@ -172,12 +172,93 @@ const PublicHeader = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="mr-24 p-2 text-stone-600 hover:text-[#FF5A1F] md:hidden"
+            className="mr-0 p-2 text-stone-600 hover:text-[#FF5A1F] md:hidden"
           >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </header>
+
+      {isMenuOpen && (
+        <div className="border-b border-stone-200 bg-white px-4 py-4 shadow-sm md:hidden">
+          <nav className="flex flex-col gap-1">
+            {['Home', 'About', 'Contact'].map((item) => (
+              <a
+                key={item}
+                href={`/#${item.toLowerCase()}`}
+                onClick={(event) => scrollToSection(event, item.toLowerCase())}
+                className="rounded-lg px-3 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-[#FF5A1F]"
+              >
+                {item}
+              </a>
+            ))}
+            <Link
+              to="/packages"
+              onClick={() => setIsMenuOpen(false)}
+              className="rounded-lg px-3 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 hover:text-[#FF5A1F]"
+            >
+              Price
+            </Link>
+          </nav>
+
+          <div className="mt-3 grid gap-2 border-t border-stone-100 pt-3 sm:grid-cols-2">
+            {!isAuthenticated ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoginOpen(true)
+                    setIsMenuOpen(false)
+                  }}
+                  className="rounded-md border border-stone-300 px-4 py-2.5 text-xs font-bold text-stone-700 uppercase hover:bg-stone-50"
+                >
+                  Sign in
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRegisterOpen(true)
+                    setIsMenuOpen(false)
+                  }}
+                  className="rounded-md border border-stone-300 px-4 py-2.5 text-xs font-bold text-stone-700 uppercase hover:bg-stone-50"
+                >
+                  Sign up
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate(getDashboardInfo(user?.role).url)
+                    setIsMenuOpen(false)
+                  }}
+                  className="rounded-md border border-stone-300 px-4 py-2.5 text-xs font-bold text-stone-700 uppercase hover:bg-stone-50"
+                >
+                  {getDashboardInfo(user?.role).label}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    dispatch(logoutThunk())
+                    setIsMenuOpen(false)
+                  }}
+                  className="rounded-md border border-red-200 px-4 py-2.5 text-xs font-bold text-red-600 uppercase hover:bg-red-50"
+                >
+                  Sign out
+                </button>
+              </>
+            )}
+            <Link
+              to="/warehouses"
+              onClick={() => setIsMenuOpen(false)}
+              className="inline-flex items-center justify-center rounded-md bg-[#FF5A1F] px-4 py-2.5 text-xs font-bold tracking-wider text-white uppercase transition-all hover:bg-[#e04e19] sm:col-span-2"
+            >
+              View Warehouses <ArrowRight size={14} className="ml-1" />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Auth Modals */}
       <LoginModal

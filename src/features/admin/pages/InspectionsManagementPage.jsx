@@ -251,7 +251,7 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
           </div>
 
           {/* People */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
                 <User size={11} /> Inspector
@@ -279,7 +279,7 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 text-xs text-slate-400">Creation date</p>
               <p className="text-slate-700">{formatDate(inspection.createdAt)}</p>
@@ -425,12 +425,12 @@ const InspectionsManagementPage = () => {
                 <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
               </a>
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-slate-950">
+            <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline">
               StockSpace Admin
             </span>
           </div>
         </div>
-        <div className="mr-24 ml-auto flex items-center sm:mr-28">
+        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
           <NotificationDropdown />
         </div>
       </header>
@@ -441,7 +441,7 @@ const InspectionsManagementPage = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-400 space-y-6 p-4 sm:p-6 md:p-8">
             {/* Page header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
@@ -466,7 +466,7 @@ const InspectionsManagementPage = () => {
             )}
 
             {/* Summary cards — 4 trạng thái */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
               {[
                 {
                   label: 'Waiting for assignment',

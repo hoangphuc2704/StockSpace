@@ -89,7 +89,7 @@ const StaffAcceptInvitationPage = () => {
   if (tokenStatus === 'invalid') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center shadow-2xl">
+        <div className="w-full max-w-md rounded-3xl bg-white p-5 text-center shadow-2xl sm:p-8">
           <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
             <AlertCircle className="h-10 w-10 text-red-500" />
           </div>
@@ -110,7 +110,7 @@ const StaffAcceptInvitationPage = () => {
   if (submitSuccess) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center shadow-2xl">
+        <div className="w-full max-w-md rounded-3xl bg-white p-5 text-center shadow-2xl sm:p-8">
           <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="h-10 w-10 text-green-500" />
           </div>
@@ -132,7 +132,7 @@ const StaffAcceptInvitationPage = () => {
   // Valid token — show form
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-10 max-w-md w-full shadow-2xl">
+      <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl sm:p-8">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="h-16 w-16 rounded-2xl bg-blue-600 flex items-center justify-center mx-auto mb-4">

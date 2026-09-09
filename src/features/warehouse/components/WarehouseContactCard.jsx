@@ -46,7 +46,7 @@ const WarehouseContactCard = ({
         </div>
 
         <div className="space-y-5 p-6">
-          <div className="grid grid-cols-2 gap-3 rounded-2xl bg-slate-50 p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 rounded-2xl bg-slate-50 p-4">
             <div>
               <p className="text-[10px] font-bold tracking-widest text-slate-400 uppercase">Listing price</p>
               <p className="mt-1 text-lg font-black text-slate-900">

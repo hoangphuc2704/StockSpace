@@ -232,7 +232,7 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
               <p className="mb-1 text-xs text-slate-400">Bank</p>
               <p className="font-semibold text-slate-800">{withdrawal.bankName || '—'}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
                 <p className="mb-1 text-xs text-slate-400">Account number</p>
                 <p className="font-mono font-semibold text-slate-800">
@@ -249,7 +249,7 @@ const DetailModal = ({ withdrawal, onClose, onApprove, onReject }) => {
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 text-xs text-slate-400">Creation date</p>
               <p className="text-slate-700">{formatDate(withdrawal.createdAt)}</p>
@@ -389,12 +389,12 @@ const AdminWithdrawalsPage = () => {
                 <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
               </a>
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-slate-950">
+            <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline">
               StockSpace Admin
             </span>
           </div>
         </div>
-        <div className="mr-24 ml-auto flex items-center sm:mr-28">
+        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
           <NotificationDropdown />
         </div>
       </header>
@@ -405,7 +405,7 @@ const AdminWithdrawalsPage = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-400 space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-400 space-y-6 p-4 sm:p-6 md:p-8">
             {/* Page header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>

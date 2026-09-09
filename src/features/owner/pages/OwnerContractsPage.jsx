@@ -8,7 +8,7 @@ import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import ContractViewerModal from '@/components/ContractViewerModal'
 import TableActionMenu from '@/components/TableActionMenu'
-import DataTable from '@/components/organisms/DataTable'
+import OwnerDataTable from '../components/OwnerDataTable'
 import Badge from '@/components/atoms/Badge'
 import { FileText, X, Edit2, Trash2, Send, Eye, Plus } from 'lucide-react'
 import contractApi from '@/services/contractApi'
@@ -299,7 +299,7 @@ const DraftModal = ({
 
         <FormShell onSubmit={handleSubmit} className="space-y-3">
           {!isEdit && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-2 block text-xs font-bold text-slate-500">
                   Warehouse <span className="text-rose-500">*</span>
@@ -368,7 +368,7 @@ const DraftModal = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-500">
                 Start Date <span className="text-rose-500">*</span>
@@ -397,7 +397,7 @@ const DraftModal = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-2 block text-xs font-bold text-slate-500">
                 Leased Width (m)
@@ -443,7 +443,7 @@ const DraftModal = ({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {isNegotiated && (
               <div>
                 <label className="mb-2 block text-xs font-bold text-slate-500">
@@ -801,10 +801,10 @@ const OwnerContractsPage = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-4000 space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-4000 space-y-6 p-4 sm:p-6 md:p-8">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">My Contracts</h1>
+                <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">My Contracts</h1>
                 <p className="text-sm text-slate-500">Manage your warehouse rental agreements.</p>
               </div>
               <button
@@ -812,14 +812,25 @@ const OwnerContractsPage = () => {
                   setEditContract(null)
                   setIsDraftOpen(true)
                 }}
-                className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700 sm:w-auto"
               >
                 <Plus size={18} /> New Draft
               </button>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <DataTable columns={columns} data={contracts} isLoading={loading} />
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs">
+              <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-950">Contract list</h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Manage warehouse rental agreements and available actions
+                  </p>
+                </div>
+                <span className="text-xs font-medium text-slate-500">
+                  {loading ? 'Loading contracts' : `${contracts.length} contracts displayed`}
+                </span>
+              </div>
+              <OwnerDataTable columns={columns} data={contracts} />
             </div>
           </main>
         </div>

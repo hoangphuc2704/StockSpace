@@ -118,12 +118,12 @@ const AdminAuditsPage = () => {
                 <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
               </a>
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-slate-950">
+            <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline">
               StockSpace Admin
             </span>
           </div>
         </div>
-        <div className="mr-24 ml-auto flex items-center sm:mr-28">
+        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
           <NotificationDropdown />
         </div>
       </header>
@@ -134,7 +134,7 @@ const AdminAuditsPage = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto flex h-[calc(100vh-3.5rem)] w-full max-w-7xl flex-col space-y-6 p-6 md:p-8">
+          <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] h-auto w-full max-w-7xl flex-col space-y-6 p-4 sm:p-6 md:h-[calc(100vh-3.5rem)] md:p-8">
             {/* Header */}
             <div className="flex shrink-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
@@ -253,7 +253,7 @@ const AdminAuditsPage = () => {
                 className="w-[90vw] max-w-4xl"
               >
                 <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
                     <div>
                       <p className="text-xs font-medium tracking-wider text-slate-500 uppercase">
                         Voucher Code

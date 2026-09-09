@@ -492,7 +492,7 @@ const InspectorInspectionsPage = () => {
             </span>
           </div>
         </div>
-        <div className="mr-24 ml-auto flex items-center sm:mr-28">
+        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
           <NotificationDropdown />
         </div>
       </header>
@@ -514,7 +514,7 @@ const InspectorInspectionsPage = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-7xl space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 md:p-8">
             <section className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-6 py-7 text-white shadow-sm">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-2xl">
@@ -531,7 +531,7 @@ const InspectorInspectionsPage = () => {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
                     <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Total</p>
                     <p className="mt-2 text-2xl font-bold">{totalElements || inspections.length}</p>

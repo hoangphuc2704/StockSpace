@@ -48,7 +48,7 @@ const Modal = ({ isOpen, onClose, title, children, className }) => {
                   <X className="h-5 w-5 text-slate-500" />
                 </button>
               </div>
-              <div className="p-6">{children}</div>
+              <div className="p-4 sm:p-6">{children}</div>
             </motion.div>
           </div>
         </>

@@ -497,12 +497,12 @@ const PermissionManagementPage = () => {
                 <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
               </a>
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-slate-950">
+            <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline">
               StockSpace Admin
             </span>
           </div>
         </div>
-        <div className="mr-24 ml-auto flex items-center sm:mr-28">
+        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
           <NotificationDropdown />
         </div>
       </header>
@@ -513,7 +513,7 @@ const PermissionManagementPage = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-400 space-y-8 p-4 sm:p-6 md:p-8">
             {/* Page header */}
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Decentralized Management</h1>

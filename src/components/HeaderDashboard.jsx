@@ -46,7 +46,7 @@ const Header = () => {
         </div>
       </div>
 
-      <div className="mr-24 flex items-center gap-2 sm:mr-28">
+      <div className="mr-0 flex items-center gap-2 sm:mr-4 md:mr-28">
         <NotificationDropdown />
       </div>
     </header>

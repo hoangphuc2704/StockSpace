@@ -122,7 +122,7 @@ const LoginModal = ({ isOpen, onClose, onSwitchToRegister }) => {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white p-8 shadow-xl"
+            className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white p-4 shadow-xl sm:p-6"
           >
             {/* ✅ [HEAD] Nút close có dispatch clearError */}
             <button

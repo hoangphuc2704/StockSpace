@@ -123,7 +123,7 @@ const StaffTasksPage = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-[1600px] space-y-8 p-4 sm:p-6 md:p-8">
             <div className="space-y-6">
               <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
                 <div>

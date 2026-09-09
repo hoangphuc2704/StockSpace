@@ -6,7 +6,7 @@ const PublicFooter = () => {
 
   return (
     <footer className="bg-[#121212] pt-16 pb-12 text-left text-stone-400">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-10 border-b border-stone-800 pb-16 sm:grid-cols-2 lg:grid-cols-12">
           <div id="about" className="scroll-mt-24 space-y-6 lg:col-span-4">
             <div className="flex items-center gap-2 text-white">

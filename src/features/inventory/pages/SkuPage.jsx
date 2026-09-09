@@ -336,7 +336,7 @@ const SkuPage = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-400 space-y-8 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-400 space-y-8 p-4 sm:p-6 md:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
@@ -718,7 +718,7 @@ const SkuPage = () => {
                       </div>
                     ) : detailData ? (
                       <div className="space-y-5">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
                             <p className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-slate-400 uppercase">
                               <Package className="h-3 w-3" /> Product Name

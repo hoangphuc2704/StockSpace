@@ -70,7 +70,7 @@ const OwnerProfile = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1200px] space-y-6 p-6 md:p-8">
+          <main className="mx-auto w-full max-w-[1200px] space-y-6 p-4 sm:p-6 md:p-8">
             {/* Header Tiêu đề */}
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Personal information</h1>

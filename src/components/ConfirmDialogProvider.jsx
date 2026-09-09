@@ -57,13 +57,14 @@ export function ConfirmDialogProvider({ children }) {
             <p className="pt-1.5 text-sm leading-6 text-slate-600">{dialog?.message}</p>
           </div>
 
-          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
-            <Button type="button" variant="outline" onClick={() => finish(false)}>
+          <div className="flex flex-col-reverse justify-end gap-3 border-t border-slate-100 pt-4 sm:flex-row">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => finish(false)}>
               {dialog?.cancelText}
             </Button>
             <Button
               type="button"
               variant={dialog?.danger ? 'danger' : 'primary'}
+              className="w-full sm:w-auto"
               onClick={() => finish(true)}
             >
               {dialog?.confirmText}

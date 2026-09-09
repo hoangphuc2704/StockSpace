@@ -220,23 +220,23 @@ export default function ProductManagementPage() {
                 <PackageSearch className="h-6 w-6" />
                 <span className="text-xs font-bold tracking-wider uppercase">Product catalog</span>
               </div>
-              <h1 className="mt-1 text-3xl font-bold">Categories &amp; SKU</h1>
+              <h1 className="mt-1 text-2xl font-bold sm:text-3xl">Categories &amp; SKU</h1>
               <p className="mt-1 text-sm text-slate-500">
                 Manage product categories and the SKU catalog used for inbound and outbound orders.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <button
                 type="button"
                 onClick={() => setCategoryFormOpen(true)}
-                className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold shadow-sm hover:bg-slate-50"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold shadow-sm hover:bg-slate-50 sm:w-auto"
               >
                 <Tag className="mr-2 h-4 w-4" /> Add category
               </button>
               <button
                 type="button"
                 onClick={() => setSkuForm({ ...emptySku })}
-                className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 sm:w-auto"
               >
                 <Plus className="mr-2 h-4 w-4" /> Add SKU
               </button>
@@ -265,7 +265,7 @@ export default function ProductManagementPage() {
                   <p className="mt-1 text-xs text-slate-500">System categories are read-only.</p>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
+                  <table className="w-full min-w-[520px] text-left text-sm sm:min-w-[640px]">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                       <tr>
                         <th className="px-5 py-3">Name</th>

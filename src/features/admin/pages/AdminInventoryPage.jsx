@@ -150,12 +150,12 @@ const AdminInventoryPage = () => {
                 <img src={logoDaidien} alt="Logo" className="h-10 w-17" />
               </a>
             </div>
-            <span className="font-display text-xl font-bold tracking-tight text-slate-950">
+            <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline">
               StockSpace Admin
             </span>
           </div>
         </div>
-        <div className="mr-24 ml-auto flex items-center sm:mr-28">
+        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
           <NotificationDropdown />
         </div>
       </header>
@@ -164,7 +164,7 @@ const AdminInventoryPage = () => {
         <Sidebar currentRole="ADMIN" />
 
         <div className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-[72px]'}`}>
-          <main className="mx-auto w-full max-w-7xl space-y-6 p-6 md:p-8 flex flex-col h-[calc(100vh-3.5rem)]">
+          <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] h-auto w-full max-w-7xl flex-col space-y-6 p-4 sm:p-6 md:h-[calc(100vh-3.5rem)] md:p-8">
             {/* Header & Warehouse Selector */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-2xl shadow-sm border border-slate-200 shrink-0">
               <div>

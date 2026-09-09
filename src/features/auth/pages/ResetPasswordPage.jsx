@@ -79,7 +79,7 @@ const ResetPasswordPage = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg"
+        className="w-full max-w-md rounded-2xl bg-white p-4 shadow-lg sm:p-6"
       >
         {/* Header */}
         <div className="mb-6">

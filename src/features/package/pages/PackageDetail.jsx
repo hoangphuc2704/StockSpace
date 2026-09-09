@@ -133,7 +133,7 @@ const PackageDetail = () => {
       <PublicHeader />
 
       <main className="py-20 lg:py-28">
-        <div className="mx-auto max-w-4xl px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <Link
             to="/packages"
             className="mb-8 inline-flex items-center text-sm font-bold tracking-wider text-stone-500 uppercase transition-colors hover:text-[#FF5A1F]"

@@ -368,14 +368,14 @@ const AIChatPanel = ({ chatRole }) => {
 
   return (
     <div
-      className={`fixed right-6 z-100 transition-[bottom] duration-200 sm:right-8 ${
+      className={`fixed right-3 z-100 transition-[bottom] duration-200 sm:right-8 ${
         isOpen ? 'bottom-4 sm:bottom-6' : 'bottom-24 sm:bottom-24'
       }`}
     >
       {isOpen ? (
         <section
           aria-label="StockSpace AI assistant"
-          className="flex h-[min(680px,calc(100vh-2rem))] w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:h-162.5 sm:w-105"
+          className="flex h-[min(680px,calc(100vh-2rem))] w-[calc(100vw-1.5rem)] max-w-105 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:h-162.5 sm:w-105"
         >
           <header className="relative overflow-hidden bg-slate-950 px-5 pt-5 pb-4 text-white">
             <div className="absolute -top-12 -right-8 h-32 w-32 rounded-full bg-orange-500/20 blur-2xl" />
@@ -662,7 +662,7 @@ const AIChatPanel = ({ chatRole }) => {
         <button
           type="button"
           onClick={handleOpen}
-          className="group relative flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-[0_12px_35px_rgba(15,23,42,0.35)] transition hover:-translate-y-1 hover:bg-slate-900"
+          className="group relative flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-[0_12px_35px_rgba(15,23,42,0.35)] transition hover:-translate-y-1 hover:bg-slate-900 sm:h-16 sm:w-16"
           aria-label="Open StockSpace AI assistant"
         >
           <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500" />
