@@ -435,6 +435,7 @@ function BinMesh({
   isSelected,
   editable,
   onSelect,
+  onDoubleClick,
   onMoveEntity,
   showDemoCargo,
   showBinLabels,
@@ -527,6 +528,11 @@ function BinMesh({
     })
   }
 
+  const handleBinDoubleClick = (event) => {
+    event.stopPropagation()
+    onDoubleClick({ type: 'bin', clientKey: bin.clientKey })
+  }
+
   return (
     <PivotControls
       visible={editable && isSelected}
@@ -580,6 +586,7 @@ function BinMesh({
       <group
         position={[x, y, z]}
         onClick={handleBinClick}
+        onDoubleClick={handleBinDoubleClick}
         onPointerOver={(event) => {
           event.stopPropagation()
           setIsHovered(true)
@@ -959,6 +966,7 @@ function RackMesh({
             }
             editable={editable}
             onSelect={onSelect}
+            onDoubleClick={onDoubleClick}
             onMoveEntity={onMoveEntity}
             showDemoCargo={showDemoCargo}
             showBinLabels={showBinLabels}

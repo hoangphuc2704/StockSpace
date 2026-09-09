@@ -105,6 +105,11 @@ const numberOf = (value, fallback = 0) => {
   const valueAsNumber = Number(value)
   return Number.isFinite(valueAsNumber) ? valueAsNumber : fallback
 }
+const getBinGeometricVolume = (width, length, height) => {
+  const dimensions = [width, length, height].map((value) => numberOf(value, 0))
+  if (dimensions.some((value) => value <= 0)) return 0
+  return Number((dimensions[0] * dimensions[1] * dimensions[2]).toFixed(6))
+}
 const formatMeters = (value) => `${numberOf(value).toFixed(2)}m`
 const integerOf = (value, fallback = 0) => Math.round(numberOf(value, fallback))
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
@@ -381,6 +386,7 @@ const serializeBin = (bin, rackIndex, binIndex) => ({
   code: bin.code?.trim() || `BIN-${rackIndex + 1}-${binIndex + 1}`,
   coordinateX: bin.coordinateX,
   coordinateY: bin.coordinateY,
+  maxVolume: numberOf(bin.maxVolume, 0),
   // The BE derives this from shelfLevel and rack.shelfCount.
   positionZ: undefined,
   width: bin.width,
@@ -526,6 +532,8 @@ const fitBinsToRack = (rack, { arrange = false, arrangePositions = false } = {})
         ? column * geometry.frontSlot + (geometry.frontSlot - geometry.length) / 2
         : row * rackLength + (rackLength - geometry.length) / 2
       const height = getBinHeightForRack({ height: rackHeight, shelfCount: levels })
+      const shouldCalculateNewBinVolume =
+        bin.id == null && numberOf(bin.maxVolume, 0) <= 0
       return {
         ...bin,
         shelfLevel,
@@ -543,6 +551,9 @@ const fitBinsToRack = (rack, { arrange = false, arrangePositions = false } = {})
           Math.max(rackLength - geometry.length, 0)
         ),
         positionZ: clamp(numberOf(bin.positionZ), 0, Math.max(rackHeight - height, 0)),
+        maxVolume: shouldCalculateNewBinVolume
+          ? getBinGeometricVolume(geometry.width, geometry.length, height)
+          : bin.maxVolume,
       }
     }),
   }
@@ -716,6 +727,7 @@ function RackElevationView({
   selectedBinKey,
   onAddBin,
   onSelectBin,
+  onEditBin,
   onMoveBin,
   onDropBin,
 }) {
@@ -942,6 +954,11 @@ function RackElevationView({
                         onClick={(event) => {
                           event.stopPropagation()
                           onSelectBin(bin.clientKey)
+                        }}
+                        onDoubleClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          if (canEdit && onEditBin) onEditBin(bin.clientKey)
                         }}
                         className={`absolute z-10 overflow-hidden rounded-lg border-2 px-1 text-left text-[10px] font-bold shadow-sm transition-all duration-200 ${selectedBinKey === bin.clientKey ? 'border-orange-500 bg-orange-400 text-white ring-4 ring-orange-100' : 'border-[#b8874d] bg-[#d8b17a] text-[#5b3b20] hover:bg-[#e5c894]'}`}
                         style={{
@@ -2178,6 +2195,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         width,
         length,
         height,
+        maxVolume: getBinGeometricVolume(width, length, height),
         positionZ: 0,
       })
       createdBins.push(nextBin)
@@ -2212,25 +2230,43 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     updateSelection,
   ])
 
-  const openBinEditConfiguration = useCallback(() => {
-    if (!canEditLayout || selection.type !== 'bin' || !selectedEntity || !selectedRack) return
+  const openBinEditConfiguration = useCallback(
+    (binKey = null) => {
+      const targetKey = binKey ?? (selection.type === 'bin' ? selection.key : null)
+      const targetBin = targetKey
+        ? getSelected(layout, { type: 'bin', key: targetKey })
+        : selectedEntity
+      const targetRack = targetBin
+        ? layout.racks.find(
+            (rack) =>
+              Array.isArray(rack?.bins) &&
+              rack.bins.some((bin) => bin?.clientKey === targetBin.clientKey)
+          )
+        : selectedRack
 
-    const levels = getRackLevelCount(selectedRack)
-    if (levels < 1) {
-      setError('Rack chưa có số tầng từ BE nên chưa thể chỉnh sửa Bin.')
-      return
-    }
+      if (!canEditLayout || !targetBin || !targetRack) return
 
-    setEditingBinKey(selectedEntity.clientKey)
-    setNewBinWidth(String(numberOf(selectedEntity.width, 0)))
-    setNewBinHeight(
-      String(numberOf(selectedEntity.height, 0) || getBinHeightForRack(selectedRack))
-    )
-    setNewBinShelfLevel(String(clamp(integerOf(selectedEntity.shelfLevel, 1), 1, levels)))
-    setNewBinQuantity(1)
-    setIsBinConfigOpen(true)
-    setError('')
-  }, [canEditLayout, selectedEntity, selectedRack, selection.type])
+      const levels = getRackLevelCount(targetRack)
+      if (levels < 1) {
+        setError('Rack chưa có số tầng từ BE nên chưa thể chỉnh sửa Bin.')
+        return
+      }
+
+      if (selection.type !== 'bin' || selection.key !== targetBin.clientKey) {
+        updateSelection({ type: 'bin', key: targetBin.clientKey }, false, true)
+      }
+      setEditingBinKey(targetBin.clientKey)
+      setNewBinWidth(String(numberOf(targetBin.width, 0)))
+      setNewBinHeight(
+        String(numberOf(targetBin.height, 0) || getBinHeightForRack(targetRack))
+      )
+      setNewBinShelfLevel(String(clamp(integerOf(targetBin.shelfLevel, 1), 1, levels)))
+      setNewBinQuantity(1)
+      setIsBinConfigOpen(true)
+      setError('')
+    },
+    [canEditLayout, layout, selectedEntity, selectedRack, selection, updateSelection]
+  )
 
   const updateSelectedBin = useCallback(() => {
     if (
@@ -2295,6 +2331,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         width,
         length,
         height,
+        maxVolume: getBinGeometricVolume(width, length, height),
         shelfLevel,
         coordinateX: position.x,
         coordinateY: position.y,
@@ -2671,13 +2708,18 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
   const focusRackIn3D = useCallback(
     (nextSelection) => {
-      const rackKey = nextSelection?.clientKey ?? nextSelection?.key
-      if (!rackKey) return
-      updateSelection({ type: 'rack', key: rackKey }, false, true)
+      const entityKey = nextSelection?.clientKey ?? nextSelection?.key
+      if (!entityKey) return
+      if (nextSelection?.type === 'bin') {
+        setBlockedMode(false)
+        openBinEditConfiguration(entityKey)
+        return
+      }
+      updateSelection({ type: 'rack', key: entityKey }, false, true)
       setBlockedMode(false)
-      setFocusedRackKey(rackKey)
+      setFocusedRackKey(entityKey)
     },
-    [updateSelection]
+    [openBinEditConfiguration, updateSelection]
   )
 
   const removeSelected = useCallback(() => {
@@ -4292,6 +4334,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             updateSelection({ type: 'bin', key: binKey }, false, true)
                             setBlockedMode(false)
                           }}
+                          onEditBin={(binKey) => {
+                            setFocusedRackKey(null)
+                            setBlockedMode(false)
+                            openBinEditConfiguration(binKey)
+                          }}
                           onMoveBin={(...args) => {
                             setFocusedRackKey(null)
                             moveEntityFromPreview(...args)
@@ -4535,6 +4582,19 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                       )
                                     }
                                     onClick={(event) => event.stopPropagation()}
+                                    onDoubleClick={(event) => {
+                                      event.preventDefault()
+                                      event.stopPropagation()
+                                      if (
+                                        canEditLayout &&
+                                        !blockedMode &&
+                                        !isMultiSelectMode &&
+                                        !event.ctrlKey &&
+                                        !event.metaKey
+                                      ) {
+                                        openBinEditConfiguration(bin.clientKey)
+                                      }
+                                    }}
                                     className={`absolute touch-none overflow-hidden rounded-md border text-slate-800 shadow-sm transition-all duration-200 ${selectedItemSet.has(`bin:${bin.clientKey}`) ? 'z-20 border-orange-500 bg-orange-400 text-white ring-4 ring-orange-100' : 'z-10 border-[#b8874d] bg-[#d8b17a] hover:bg-[#e5c894]'}`}
                                     style={{
                                       left: `${(bin.coordinateX / getRackFootprint(rack).width) * 100}%`,
