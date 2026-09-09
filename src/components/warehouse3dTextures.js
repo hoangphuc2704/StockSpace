@@ -11,8 +11,8 @@ export function createWarehouseFloorTexture() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  // Nền bê tông sáng để mô hình 3D dễ quan sát hơn
-  ctx.fillStyle = '#dbe3e8'
+  // Bê tông xám trung tính theo phong cách kho công nghiệp/CAD
+  ctx.fillStyle = '#9aa5ab'
   ctx.fillRect(0, 0, 2048, 2048)
 
   // Tạo đốm hạt bê tông (concrete speckle noise)

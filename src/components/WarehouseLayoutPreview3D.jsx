@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import {
   Billboard,
@@ -13,14 +13,9 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import {
   createWarehouseFloorTexture,
-  createWoodPalletTexture,
-  createCardboardTexture,
-  createAisleSignTexture,
 } from './warehouse3dTextures'
 
 const WORLD_SIZE = 22
-const CARDBOARD_COLOR = '#a5822a'
-
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
 const hexToRgb = (hex) => {
@@ -41,12 +36,11 @@ const mixHexColors = (from, to, amount) => {
     .join('')}`
 }
 
-const getBinCapacityColor = ({ ratio, isOver, isReserved, hasItems, isSelected }) => {
+const getBinCapacityColor = ({ ratio, isOver, hasItems, isSelected }) => {
   if (isSelected) return '#0ea5e9'
   if (isOver) return '#dc2626'
-  if (isReserved) return '#f59e0b'
-  if (!Number.isFinite(ratio)) return hasItems ? '#b45309' : '#a5822a'
-  if (ratio <= 0) return hasItems ? '#86efac' : '#a5822a'
+  if (!Number.isFinite(ratio)) return hasItems ? '#d0a642' : '#4ade80'
+  if (ratio <= 0) return hasItems ? '#d0a642' : '#4ade80'
   if (ratio <= 0.5) return mixHexColors('#86efac', '#facc15', ratio / 0.5)
   return mixHexColors('#facc15', '#dc2626', (ratio - 0.5) / 0.5)
 }
@@ -152,6 +146,41 @@ const getBinWeightCapacity = (bin, capacityMetric) => {
   }
 }
 
+const getBinVolumeCapacity = (bin, capacityMetric) => {
+  const source = capacityMetric || bin
+  const currentVolumeValue = source?.currentVolumeM3 ?? source?.currentVolume
+  const maxVolumeValue = source?.maxVolumeM3 ?? source?.maxVolume
+  const maxVolume = numberOf(maxVolumeValue)
+
+  if (currentVolumeValue === null || currentVolumeValue === undefined || maxVolume <= 0) {
+    return null
+  }
+
+  const reportedPercent = numberOf(source?.volumeUtilizationPercent, NaN)
+  const ratio = Number.isFinite(reportedPercent)
+    ? reportedPercent / 100
+    : numberOf(currentVolumeValue) / maxVolume
+
+  return {
+    ratio: clamp(ratio, 0, 1),
+    isOverCapacity: ratio > 1 || source?.capacityStatus === 'OVER_CAPACITY',
+  }
+}
+
+const getStoredSkuQuantity = (capacityMetric) =>
+  Array.isArray(capacityMetric?.storedSkus)
+    ? capacityMetric.storedSkus.reduce((total, sku) => total + numberOf(sku?.quantity), 0)
+    : 0
+
+const getMetricRatio = (current, maximum) => {
+  const currentValue = numberOf(current)
+  const maximumValue = numberOf(maximum)
+  return maximumValue > 0 ? clamp(currentValue / maximumValue, 0, 1) : null
+}
+
+const formatMetric = (value, maximumFractionDigits = 2) =>
+  numberOf(value).toLocaleString('vi-VN', { maximumFractionDigits })
+
 /**
  * Tính toán Bounding Box của tất cả các Kệ trong kho để tự động Zoom To vừa vặn màn hình
  */
@@ -248,76 +277,6 @@ function WarehouseFloor({ width, depth, floorTexture }) {
   )
 }
 
-function WarehouseAccessPointMarkers({ accessPoints = [], worldWidth, worldDepth }) {
-  const points = Array.isArray(accessPoints) ? accessPoints : []
-  const halfWidth = worldWidth / 2
-  const halfDepth = worldDepth / 2
-  const cellWidth = worldWidth / 10
-  const cellDepth = worldDepth / 10
-
-  return (
-    <group>
-      {points.map((point) => {
-        const row = clamp(numberOf(point.row), 0, 9)
-        const column = clamp(numberOf(point.column), 0, 9)
-        const isEntry = point.type === 'ENTRY'
-        const isTopEdge = row === 0
-        const isBottomEdge = row === 9
-        const isLeftEdge = column === 0
-        let x = -halfWidth + (column + 0.5) * cellWidth
-        let z = -halfDepth + (row + 0.5) * cellDepth
-        let arrow
-
-        if (isTopEdge) {
-          arrow = '↓'
-        } else if (isBottomEdge) {
-          arrow = '↑'
-        } else if (isLeftEdge) {
-          arrow = '→'
-        } else {
-          arrow = '←'
-        }
-
-        const markerWidth = clamp(Math.min(cellWidth, cellDepth) * 0.72, 0.9, 1.8)
-        return (
-          <group key={`${point.type}:${row}:${column}`} position={[x, 0.04, z]}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[markerWidth, 0.62]} />
-              <meshBasicMaterial
-                color={isEntry ? '#10b981' : '#f43f5e'}
-                transparent
-                opacity={0.82}
-              />
-            </mesh>
-            <Text
-              position={[0, 0.02, 0]}
-              rotation={[-Math.PI / 2, 0, 0]}
-              fontSize={0.46}
-              color="#ffffff"
-              anchorX="center"
-              anchorY="middle"
-              depthTest={false}
-            >
-              {arrow}
-            </Text>
-            <Text
-              position={[0, 0.03, 0.27]}
-              rotation={[-Math.PI / 2, 0, 0]}
-              fontSize={0.16}
-              color="#ffffff"
-              anchorX="center"
-              anchorY="middle"
-              depthTest={false}
-            >
-              {isEntry ? 'IN' : 'OUT'}
-            </Text>
-          </group>
-        )
-      })}
-    </group>
-  )
-}
-
 /**
  * Điều khiển Camera thông minh: Tự động Zoom To bao quát toàn bộ cụm Kệ thực tế
  */
@@ -334,9 +293,9 @@ function WarehouseCameraController({
   const controlsRef = useRef(null)
 
   useEffect(() => {
-    let targetX = racksBounds.centerX
-    let targetY = Math.max(racksBounds.centerY, 2.5)
-    let targetZ = racksBounds.centerZ
+    let targetX
+    let targetY
+    let targetZ
     let cameraX
     let cameraY
     let cameraZ
@@ -394,16 +353,16 @@ function WarehouseCameraController({
       cameraY = Math.max(rackHeight * 0.65, 2.6) + distance * 0.15
       cameraZ = rackCenterZ + frontDirectionZ * distance
     } else {
-      // Overview: keep the camera close enough to the actual rack cluster so
-      // the 3D view does not show excessive empty space on either side.
+      // Isometric overview: frame the complete warehouse footprint, including
+      // the complete warehouse footprint, not only the rack cluster.
       const span = Math.max(racksBounds.span, 6)
-      const scale = Math.max(span / 14, 0.75)
+      const distance = Math.max(span * 0.95, 14)
       targetX = racksBounds.centerX
-      targetY = Math.max(racksBounds.centerY, 2.2)
+      targetY = Math.max(racksBounds.centerY, 1.8)
       targetZ = racksBounds.centerZ
-      cameraX = racksBounds.centerX + 14 * scale
-      cameraY = targetY + 8.5 * scale
-      cameraZ = racksBounds.centerZ + 16 * scale
+      cameraX = racksBounds.centerX + distance
+      cameraY = targetY + distance * 1.35
+      cameraZ = racksBounds.centerZ + distance
     }
 
     camera.position.set(cameraX, cameraY, cameraZ)
@@ -438,141 +397,34 @@ function WarehouseCameraController({
 }
 
 // --- MÔ HÌNH KIỆN HÀNG: PALLET GỖ + CÁC THÙNG CARTON VÀNG SÁNG (MODULAR TIÊU CHUẨN) ---
-function CargoPalletAndBoxes({
-  width,
-  depth,
-  binHeight,
-  palletTexture,
-  cardboardTexture,
-  weightCapacity,
-  isSelected,
-  isReserved,
-}) {
-  const palletH = 0.12
-
-  // Phân bố các pallet kích thước thực tế (~1.0m - 1.2m) thay vì kéo dãn 1 pallet khổng lồ
-  const unitSize = 1.15
-  const countX = Math.max(1, Math.min(8, Math.floor(width / unitSize) || 1))
-  const countZ = Math.max(1, Math.min(12, Math.floor(depth / unitSize) || 1))
-
-  const palletW = Math.max((width - 0.05 * (countX - 1)) / countX, 0.4)
-  const palletD = Math.max((depth - 0.05 * (countZ - 1)) / countZ, 0.4)
-
-  const subBoxW = (palletW - 0.04) / 2
-  const subBoxD = (palletD - 0.04) / 2
-  const subBoxH = Math.max((binHeight - palletH) * 0.48, 0.2)
-  const topBoxH = Math.max((binHeight - palletH) * 0.42, 0.16)
-
-  const palletPositions = useMemo(() => {
-    const list = []
-    const startX = -width / 2 + palletW / 2
-    const startZ = -depth / 2 + palletD / 2
-    const stepX = countX > 1 ? (width - palletW) / (countX - 1) : 0
-    const stepZ = countZ > 1 ? (depth - palletD) / (countZ - 1) : 0
-
-    for (let ix = 0; ix < countX; ix++) {
-      for (let iz = 0; iz < countZ; iz++) {
-        list.push({
-          x: startX + ix * stepX,
-          z: startZ + iz * stepZ,
-          key: `p-${ix}-${iz}`,
-        })
-      }
-    }
-    return list
-  }, [width, depth, countX, countZ, palletW, palletD])
+function CargoPalletAndBoxes({ width, depth, binHeight, weightCapacity, isSelected }) {
+  const cargoHeight = Math.max(binHeight * 0.82, 0.2)
+  const cargoColor = isSelected ? '#22d3ee' : '#d0a642'
 
   return (
-    <group position={[0, -binHeight / 2, 0]}>
-      {palletPositions.map((p) => (
-        <group key={p.key} position={[p.x, 0, p.z]}>
-          {/* 1. PALLET GỖ EURO TIÊU CHUẨN */}
-          <group position={[0, 0, 0]}>
-            {/* 3 Thanh trượt đế dưới */}
-            {[-palletD * 0.38, 0, palletD * 0.38].map((pz, idx) => (
-              <mesh key={`bp-${idx}`} position={[0, 0.015, pz]}>
-                <boxGeometry args={[palletW * 0.98, 0.025, Math.min(palletD * 0.18, 0.1)]} />
-                <meshStandardMaterial map={palletTexture} roughness={0.75} />
-              </mesh>
-            ))}
+    <group position={[0, -binHeight / 2 + 0.03, 0]}>
+      <mesh position={[0, cargoHeight / 2, 0]} castShadow>
+        <boxGeometry args={[width * 0.9, cargoHeight, depth * 0.9]} />
+        <meshStandardMaterial
+          color={cargoColor}
+          transparent
+          opacity={isSelected ? 0.72 : 0.94}
+          roughness={0.72}
+          metalness={0.12}
+          emissive={isSelected ? '#06b6d4' : '#000000'}
+          emissiveIntensity={isSelected ? 0.5 : 0}
+        />
+      </mesh>
 
-            {/* 9 Cục gù chân pallet */}
-            {[-palletW * 0.38, 0, palletW * 0.38].map((px, xi) =>
-              [-palletD * 0.38, 0, palletD * 0.38].map((pz, zi) => (
-                <mesh key={`b-${xi}-${zi}`} position={[px, 0.065, pz]}>
-                  <boxGeometry
-                    args={[Math.min(palletW * 0.14, 0.09), 0.075, Math.min(palletD * 0.14, 0.09)]}
-                  />
-                  <meshStandardMaterial map={palletTexture} roughness={0.75} />
-                </mesh>
-              ))
-            )}
-
-            {/* 5 Thanh nan ván mặt trên */}
-            {[-palletD * 0.4, -palletD * 0.2, 0, palletD * 0.2, palletD * 0.4].map((pz, idx) => (
-              <mesh key={`tp-${idx}`} position={[0, 0.115, pz]}>
-                <boxGeometry args={[palletW * 0.98, 0.025, palletD * 0.18]} />
-                <meshStandardMaterial map={palletTexture} roughness={0.75} />
-              </mesh>
-            ))}
-          </group>
-
-          {/* 2. CÁC THÙNG CARTON VÀNG SÁNG XẾP TRÊN PALLET */}
-          <group position={[0, palletH, 0]}>
-            {/* 4 Thùng carton tầng 1 (2x2) màu vàng sáng chuẩn carton */}
-            {[
-              [-subBoxW / 2, -subBoxD / 2],
-              [subBoxW / 2, -subBoxD / 2],
-              [-subBoxW / 2, subBoxD / 2],
-              [subBoxW / 2, subBoxD / 2],
-            ].map(([bx, bz], idx) => (
-              <mesh key={`box-${idx}`} position={[bx, subBoxH / 2, bz]}>
-                <boxGeometry args={[subBoxW * 0.94, subBoxH, subBoxD * 0.94]} />
-                <meshStandardMaterial
-                  map={cardboardTexture}
-                  color={isSelected ? '#93c5fd' : '#ffffff'}
-                  roughness={0.7}
-                  metalness={0.02}
-                  emissive={isSelected ? '#0284c7' : '#000000'}
-                  emissiveIntensity={isSelected ? 0.3 : 0}
-                />
-              </mesh>
-            ))}
-
-            {/* Thùng tầng 2: Nếu là Reserved (Đặt trước) thì màu vàng/cam rực rỡ như ảnh 1 */}
-            {isReserved ? (
-              <mesh position={[0, subBoxH + topBoxH / 2, 0]}>
-                <boxGeometry args={[palletW * 0.88, topBoxH, palletD * 0.88]} />
-                <meshStandardMaterial color={CARDBOARD_COLOR} roughness={0.8} />
-              </mesh>
-            ) : (
-              <mesh position={[0, subBoxH + topBoxH / 2, 0]}>
-                <boxGeometry args={[palletW * 0.88, topBoxH, palletD * 0.88]} />
-                <meshStandardMaterial
-                  map={cardboardTexture}
-                  color={isSelected ? '#93c5fd' : '#ffffff'}
-                  roughness={0.7}
-                  metalness={0.02}
-                  emissive={isSelected ? '#0284c7' : '#000000'}
-                  emissiveIntensity={isSelected ? 0.3 : 0}
-                />
-              </mesh>
-            )}
-
-            {/* Ruy băng đỏ cảnh báo nếu bị Quá tải */}
-            {weightCapacity?.isOverCapacity && (
-              <mesh position={[0, subBoxH * 0.5, 0]}>
-                <boxGeometry args={[palletW * 0.98, subBoxH * 0.2, palletD * 0.98]} />
-                <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.6} />
-              </mesh>
-            )}
-          </group>
-        </group>
-      ))}
+      {weightCapacity?.isOverCapacity && (
+        <mesh position={[0, cargoHeight * 0.5, depth * 0.46]}>
+          <boxGeometry args={[width * 0.92, Math.min(cargoHeight * 0.18, 0.12), 0.025]} />
+          <meshStandardMaterial color="#ef4444" emissive="#ef4444" emissiveIntensity={0.55} />
+        </mesh>
+      )}
     </group>
   )
 }
-
 function BinMesh({
   bin,
   rack,
@@ -584,11 +436,10 @@ function BinMesh({
   editable,
   onSelect,
   onMoveEntity,
-  onShowBinDetail,
-  palletTexture,
-  cardboardTexture,
   showDemoCargo,
+  showBinLabels,
 }) {
+  const [isHovered, setIsHovered] = useState(false)
   const rotation = normalizeRotation(rack.rotation)
   const quarterTurn = isQuarterTurn(rotation)
   const rackStorageWidth = quarterTurn ? rack.length : rack.width
@@ -632,29 +483,34 @@ function BinMesh({
   const y = shelfY + 0.06 + binHeight / 2
   const quantity = getBinQuantity(bin)
   const weightCapacity = getBinWeightCapacity(bin, capacityMetric)
+  const volumeCapacity = getBinVolumeCapacity(bin, capacityMetric)
+  const storedQuantity = getStoredSkuQuantity(capacityMetric)
   const binCode = getDisplayCode(bin, 'BIN')
 
   // Trạng thái ô hàng
   const hasItems =
-    (quantity !== null && quantity > 0) || (weightCapacity && weightCapacity.ratio > 0.05)
-  const isOver = weightCapacity?.isOverCapacity
-  const isReserved = bin.status === 'reserved' || (bin.id && Number(bin.id) % 7 === 0)
-  const hasCargo = hasItems || isReserved || showDemoCargo
-  const capacityRatio = weightCapacity?.ratio
+    (quantity !== null && quantity > 0) ||
+    storedQuantity > 0 ||
+    (weightCapacity && weightCapacity.ratio > 0.05) ||
+    (volumeCapacity && volumeCapacity.ratio > 0.05)
+  const isOver = weightCapacity?.isOverCapacity || volumeCapacity?.isOverCapacity
+  const hasCargo = hasItems || showDemoCargo
+  const isHighlighted = isSelected || isHovered
+  const capacityRatios = [weightCapacity?.ratio, volumeCapacity?.ratio].filter(Number.isFinite)
+  const capacityRatio = capacityRatios.length ? Math.max(...capacityRatios) : null
   const binColor = getBinCapacityColor({
-    ratio: capacityRatio,
+    ratio: weightCapacity || volumeCapacity ? capacityRatio : null,
     isOver,
-    isReserved,
     hasItems,
-    isSelected,
+    isSelected: isHighlighted,
   })
-  const binBodyOpacity = isSelected
-    ? 0.9
+  const binBodyOpacity = isHighlighted
+    ? 0.62
     : hasCargo
       ? clamp(0.18 + (Number.isFinite(capacityRatio) ? capacityRatio * 0.25 : 0.08), 0.18, 0.43)
       : 0.72
 
-  const ledColor = isOver ? '#dc2626' : isReserved ? '#f59e0b' : hasItems ? '#ef4444' : '#10b981'
+  const ledColor = isOver ? '#dc2626' : hasItems ? '#ef4444' : '#10b981'
 
   const capacityLabel = weightCapacity
     ? isOver
@@ -668,19 +524,6 @@ function BinMesh({
       type: 'bin',
       clientKey: bin.clientKey,
       multi: event.ctrlKey || event.metaKey,
-    })
-    onShowBinDetail?.({
-      bin,
-      rack,
-      capacityMetric,
-      isOver,
-      isReserved,
-      hasItems,
-      quantity,
-      weightCapacity,
-      shelfLevel: level,
-      binCode,
-      rackCode: getDisplayCode(rack, 'RACK'),
     })
   }
 
@@ -734,17 +577,30 @@ function BinMesh({
         )
       }}
     >
-      <group position={[x, y, z]} onClick={handleBinClick}>
+      <group
+        position={[x, y, z]}
+        onClick={handleBinClick}
+        onPointerOver={(event) => {
+          event.stopPropagation()
+          setIsHovered(true)
+        }}
+        onPointerOut={(event) => {
+          event.stopPropagation()
+          setIsHovered(false)
+        }}
+      >
         {/* Thân Bin là một khối hộp đầy đủ, không dùng wireframe như trước. */}
         <mesh>
           <boxGeometry args={[width, binHeight, depth]} />
           <meshStandardMaterial
             color={binColor}
             transparent
-            opacity={isSelected ? 0.9 : binBodyOpacity}
+            opacity={binBodyOpacity}
             roughness={0.62}
             metalness={0.12}
-            depthWrite={isSelected || !hasCargo}
+            emissive={isHighlighted ? '#06b6d4' : '#000000'}
+            emissiveIntensity={isHighlighted ? 0.85 : 0}
+            depthWrite={isHighlighted || !hasCargo}
           />
         </mesh>
 
@@ -765,11 +621,8 @@ function BinMesh({
             width={width * 0.94}
             depth={depth * 0.94}
             binHeight={binHeight}
-            palletTexture={palletTexture}
-            cardboardTexture={cardboardTexture}
             weightCapacity={weightCapacity}
-            isSelected={isSelected}
-            isReserved={isReserved}
+            isSelected={isHighlighted}
           />
         ) : (
           // Ô TRỐNG: mặt sàn đặc của Bin
@@ -786,20 +639,26 @@ function BinMesh({
         )}
 
         {/* Khung viền khi được chọn (Highlight Cyan Glowing Outline) */}
-        {isSelected && (
+        {isHighlighted && (
           <mesh position={[0, 0, 0]}>
             <boxGeometry args={[width * 1.05, binHeight * 1.05, depth * 1.05]} />
             <meshBasicMaterial transparent opacity={0} depthWrite={false} />
-            <Outlines color="#06b6d4" thickness={0.08} screenspace />
+            <Outlines color="#22d3ee" thickness={isSelected ? 0.1 : 0.07} screenspace />
           </mesh>
         )}
 
-        {/* Chỉ hiện nhãn khi chọn Bin để toàn cảnh không bị dày đặc chữ. */}
-        {isSelected && (
+        {/* Hiển thị nhãn ngắn trên từng Bin, giống bản đồ vận hành thực tế. */}
+        {(isSelected || showBinLabels) && (
           <Billboard position={[0, binHeight / 2 + 0.18, 0]} follow>
             <group>
+              {showBinLabels && !isSelected && (
+                <mesh position={[0, 0.015, -0.01]}>
+                  <planeGeometry args={[Math.min(width * 0.9, 0.78), 0.14]} />
+                  <meshBasicMaterial color="#0f2942" transparent opacity={0.82} />
+                </mesh>
+              )}
               <Text
-                fontSize={clamp(width * 0.12, 0.06, 0.13)}
+                fontSize={clamp(width * (isSelected ? 0.12 : 0.1), 0.045, 0.13)}
                 color="#ffffff"
                 anchorX="center"
                 anchorY="middle"
@@ -808,7 +667,7 @@ function BinMesh({
               >
                 {binCode}
               </Text>
-              {quantity !== null && (
+              {isSelected && quantity !== null && (
                 <Text
                   position={[0, -0.09, 0]}
                   fontSize={clamp(width * 0.08, 0.045, 0.085)}
@@ -821,7 +680,7 @@ function BinMesh({
                   {`${quantity} kiện`}
                 </Text>
               )}
-              {capacityLabel && (
+              {isSelected && capacityLabel && (
                 <Text
                   position={[0, -0.17, 0]}
                   fontSize={clamp(width * 0.07, 0.04, 0.075)}
@@ -844,7 +703,7 @@ function BinMesh({
 
 // --- CỘT TRỤ THÉP CÔNG NGHIỆP MÀU XANH VỚI ỐP BẢO VỆ CHÂN CỘT TRÒN VÀNG ---
 function UprightColumn({ position, height, size, isSelected }) {
-  const metalColor = isSelected ? '#3b82f6' : '#1d4ed8'
+  const metalColor = isSelected ? '#0ea5e9' : '#18324b'
 
   return (
     <group position={position}>
@@ -864,7 +723,7 @@ function UprightColumn({ position, height, size, isSelected }) {
 
 // --- DẦM NGANG ĐỠ TẦNG MÀU CAM AN TOÀN ---
 function LoadBeam({ position, length, height, depth, rotation = [0, 0, 0], isSelected }) {
-  const beamColor = isSelected ? '#fb923c' : '#ea580c'
+  const beamColor = isSelected ? '#38bdf8' : '#b9974b'
 
   return (
     <group position={position} rotation={rotation}>
@@ -883,15 +742,6 @@ function LoadBeam({ position, length, height, depth, rotation = [0, 0, 0], isSel
   )
 }
 
-function DiagonalBrace({ position, length, thickness = 0.035, rotation }) {
-  return (
-    <mesh position={position} rotation={rotation}>
-      <boxGeometry args={[thickness, length, thickness]} />
-      <meshStandardMaterial color="#64748b" roughness={0.5} metalness={0.72} />
-    </mesh>
-  )
-}
-
 // --- KHUNG GIÁ KỆ HOÀN CHỈNH (SELECTIVE PALLET RACK FRAME) ---
 function RackFrame({ width, depth, rackHeight, levels, isSelected }) {
   const postSize = clamp(Math.min(width, depth) * 0.065, 0.08, 0.14)
@@ -901,9 +751,6 @@ function RackFrame({ width, depth, rackHeight, levels, isSelected }) {
   const postZ = Math.max(depth / 2 - postSize / 2, 0)
   const beamLengthX = Math.max(width - postSize, 0.5)
   const beamLengthZ = Math.max(depth - postSize, 0.5)
-  const braceThickness = clamp(postSize * 0.42, 0.035, 0.07)
-  const sideBraceLength = Math.max(Math.sqrt(beamLengthZ ** 2 + rackHeight ** 2), 0.5)
-  const sideBraceAngle = Math.atan2(beamLengthZ, rackHeight)
   const shelfY = (levelIndex) => getShelfY(levelIndex, levels, rackHeight)
 
   const postPositions = [
@@ -924,24 +771,6 @@ function RackFrame({ width, depth, rackHeight, levels, isSelected }) {
           size={postSize}
           isSelected={isSelected}
         />
-      ))}
-
-      {/* Giằng chữ X ở hai đầu kệ, giống kết cấu pallet rack thực tế. */}
-      {[-postX, postX].map((x, frameIndex) => (
-        <group key={`side-brace-frame-${frameIndex}`} position={[x, rackHeight / 2, 0]}>
-          <DiagonalBrace
-            position={[0, 0, 0]}
-            length={sideBraceLength}
-            thickness={braceThickness}
-            rotation={[sideBraceAngle, 0, 0]}
-          />
-          <DiagonalBrace
-            position={[0, 0, 0]}
-            length={sideBraceLength}
-            thickness={braceThickness}
-            rotation={[-sideBraceAngle, 0, 0]}
-          />
-        </group>
       ))}
 
       {/* Các tầng dầm đỡ ngang màu cam an toàn + Sàn lưới thép wire mesh */}
@@ -1022,10 +851,8 @@ function RackMesh({
   onSelect,
   onDoubleClick,
   onMoveEntity,
-  onShowBinDetail,
-  palletTexture,
-  cardboardTexture,
   showDemoCargo,
+  showBinLabels,
   capacityByBinId,
 }) {
   const rotation = normalizeRotation(rack.rotation)
@@ -1133,10 +960,8 @@ function RackMesh({
             editable={editable}
             onSelect={onSelect}
             onMoveEntity={onMoveEntity}
-            onShowBinDetail={onShowBinDetail}
-            palletTexture={palletTexture}
-            cardboardTexture={cardboardTexture}
             showDemoCargo={showDemoCargo}
+            showBinLabels={showBinLabels}
           />
         ))}
       </group>
@@ -1153,24 +978,23 @@ export default function WarehouseLayoutPreview3D({
   onMoveEntity = () => {},
   editable = true,
   onDoubleClick = () => {},
+  onClearFocus = () => {},
   focusedRackKey = null,
   showDemoCargo = false,
+  showBinLabels = true,
 }) {
   const [cameraPreset, setCameraPreset] = useState('DEFAULT')
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [selectedBinInfo, setSelectedBinInfo] = useState(null)
 
-  // Bắt phím Escape để thoát chế độ Toàn màn hình
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        if (isFullscreen) setIsFullscreen(false)
-        if (selectedBinInfo) setSelectedBinInfo(null)
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsFullscreen(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isFullscreen, selectedBinInfo])
+  }, [])
 
   const racks = useMemo(() => {
     return Array.isArray(layout?.racks)
@@ -1194,34 +1018,57 @@ export default function WarehouseLayoutPreview3D({
     [racks, focusedRackKey]
   )
 
-  // Đồng bộ selectedBinInfo nếu selection từ bên ngoài thay đổi (ví dụ click từ 2D list)
-  useEffect(() => {
-    if (selection?.type === 'bin') {
-      const targetKey = selection.clientKey ?? selection.key
-      for (const r of racks) {
-        const found = (r.bins || []).find((b) => String(b.clientKey ?? b.id) === String(targetKey))
-        if (found) {
-          const cap = capacityByBinId?.[String(found.id)]
-          const qty = getBinQuantity(found)
-          const weightCap = getBinWeightCapacity(found, cap)
-          setSelectedBinInfo({
-            bin: found,
-            rack: r,
-            capacityMetric: cap,
-            isOver: weightCap?.isOverCapacity,
-            isReserved: found.status === 'reserved',
-            hasItems: (qty !== null && qty > 0) || (weightCap && weightCap.ratio > 0.05),
-            quantity: qty,
-            weightCapacity: weightCap,
-            shelfLevel: found.shelfLevel ?? '—',
-            binCode: getDisplayCode(found, 'BIN'),
-            rackCode: getDisplayCode(r, 'RACK'),
-          })
-          break
-        }
+  const selectedBinInfo = (() => {
+    if (selection?.type !== 'bin') return null
+
+    const targetKey = selection.clientKey ?? selection.key
+    for (const rack of racks) {
+      const found = (rack.bins || []).find(
+        (bin) => String(bin.clientKey ?? bin.id) === String(targetKey)
+      )
+      if (!found) continue
+
+      const capacityMetric = capacityByBinId?.[String(found.id)]
+      const quantity = getBinQuantity(found)
+      const weightCapacity = getBinWeightCapacity(found, capacityMetric)
+      const volumeCapacity = getBinVolumeCapacity(found, capacityMetric)
+      const storedQuantity = getStoredSkuQuantity(capacityMetric)
+      return {
+        bin: found,
+        rack,
+        capacityMetric,
+        isOver: weightCapacity?.isOverCapacity || volumeCapacity?.isOverCapacity,
+        hasItems:
+          (quantity !== null && quantity > 0) ||
+          storedQuantity > 0 ||
+          (weightCapacity && weightCapacity.ratio > 0.05) ||
+          (volumeCapacity && volumeCapacity.ratio > 0.05),
+        quantity,
+        shelfLevel: found.shelfLevel ?? '—',
+        binCode: getDisplayCode(found, 'BIN'),
+        rackCode: getDisplayCode(rack, 'RACK'),
       }
     }
-  }, [selection, racks, capacityByBinId])
+
+    return null
+  })()
+
+  const selectedMetric = selectedBinInfo?.capacityMetric
+  const selectedStoredSkus = Array.isArray(selectedMetric?.storedSkus)
+    ? selectedMetric.storedSkus
+    : []
+  const selectedQuantity = selectedBinInfo?.quantity ?? getStoredSkuQuantity(selectedMetric)
+  const selectedCurrentWeight = numberOf(selectedMetric?.currentWeightKg ?? selectedBinInfo?.bin?.currentWeight)
+  const selectedMaxWeight = numberOf(selectedMetric?.maxWeightKg ?? selectedBinInfo?.bin?.maxWeight)
+  const selectedCurrentVolume = numberOf(selectedMetric?.currentVolumeM3)
+  const selectedMaxVolume = numberOf(selectedMetric?.maxVolumeM3 ?? selectedBinInfo?.bin?.maxVolume)
+  const selectedWeightRatio = getMetricRatio(selectedCurrentWeight, selectedMaxWeight)
+  const selectedVolumeRatio = getMetricRatio(selectedCurrentVolume, selectedMaxVolume)
+  const selectedStatus = selectedBinInfo?.isOver
+    ? { label: 'QUÁ TẢI', className: 'bg-rose-500/15 text-rose-300 ring-1 ring-rose-400/30' }
+    : selectedBinInfo?.hasItems
+      ? { label: 'ĐANG LƯU HÀNG', className: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30' }
+      : { label: 'CÒN TRỐNG', className: 'bg-slate-700/70 text-slate-300 ring-1 ring-white/10' }
 
   // Bounding box thông minh của cụm Kệ thực tế
   const racksBounds = useMemo(() => {
@@ -1234,280 +1081,232 @@ export default function WarehouseLayoutPreview3D({
     )
   }, [racks, layout?.width, layout?.length, worldWidth, worldDepth])
 
+  const sceneBounds = useMemo(
+    () => ({
+      centerX: 0,
+      centerY: Math.max(racksBounds.centerY, 1.8),
+      centerZ: 0,
+      sizeX: Math.max(racksBounds.sizeX, worldWidth * 0.86),
+      sizeZ: Math.max(racksBounds.sizeZ, worldDepth * 0.86),
+      maxH: racksBounds.maxH,
+      span: Math.max(racksBounds.span, worldWidth, worldDepth),
+    }),
+    [racksBounds, worldDepth, worldWidth]
+  )
+
   // Khởi tạo các textures chất lượng cao
   const floorTexture = useMemo(() => createWarehouseFloorTexture(), [])
-  const palletTexture = useMemo(() => createWoodPalletTexture(), [])
-  const cardboardTexture = useMemo(() => createCardboardTexture(), [])
 
   useEffect(() => {
     return () => {
       floorTexture?.dispose()
-      palletTexture?.dispose()
-      cardboardTexture?.dispose()
     }
-  }, [floorTexture, palletTexture, cardboardTexture])
+  }, [floorTexture])
 
   return (
     <div
       className={
         isFullscreen
-          ? 'fixed inset-0 z-9999 h-screen w-screen overflow-hidden bg-slate-950 font-sans select-none'
-          : 'relative h-full w-full overflow-hidden bg-slate-950 font-sans select-none'
+          ? 'fixed inset-0 z-9999 h-screen w-screen overflow-hidden rounded-none bg-[#8b969d] font-sans select-none'
+          : 'relative h-full w-full overflow-hidden rounded-2xl bg-[#8b969d] font-sans select-none'
       }
     >
-      {/* 1. THANH ĐIỀU KHIỂN GÓC NHÌN & NÚT ZOOM TOÀN CẢNH (Quick Camera Presets) */}
-      <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-1.5 rounded-xl border border-white/10 bg-slate-900/85 px-2.5 py-1.5 shadow-xl backdrop-blur-md">
-        <span className="mr-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
-          Góc nhìn:
-        </span>
-
-        {/* Nút chính: Zoom To Toàn Cảnh (Fit Kệ) */}
-        <button
-          type="button"
-          onClick={() => setCameraPreset('DEFAULT')}
-          className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition ${
-            cameraPreset === 'DEFAULT'
-              ? 'bg-sky-500 text-white shadow-[0_0_12px_rgba(14,165,233,0.5)]'
-              : 'border border-sky-500/40 bg-sky-950/60 text-sky-300 hover:bg-sky-900/80 hover:text-white'
-          }`}
-          title="Tự động căn giữa và zoom to vừa vặn toàn bộ cụm kệ"
+      <div className={`absolute inset-0 ${isFullscreen ? 'lg:right-80' : ''}`}>
+        <Canvas
+          shadows
+          camera={{ position: [18, 18, 18], fov: 44 }}
+          className="h-full w-full"
+          onPointerMissed={() => {
+            onSelect({ type: 'layout' })
+          }}
         >
-          🔍 Zoom To Toàn Cảnh
-        </button>
+          <color attach="background" args={['#a9b5bb']} />
+          <fogExp2 attach="fog" args={['#a9b5bb', 0.0035]} />
 
-        {/* Nút Zoom Cận Cảnh */}
-        <button
-          type="button"
-          onClick={() => setCameraPreset('CLOSE_UP')}
-          className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${
-            cameraPreset === 'CLOSE_UP'
-              ? 'border border-sky-400/60 bg-sky-500/30 text-sky-200'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-          }`}
-          title="Zoom sát lại gần các tầng kệ và thùng hàng"
-        >
-          🔎 Cận cảnh
-        </button>
+          <ambientLight intensity={1.05} color="#dbe7ee" />
+          <directionalLight
+            castShadow
+            position={[18, 28, 16]}
+            intensity={2.1}
+            color="#fff8e7"
+            shadow-mapSize={[2048, 2048]}
+            shadow-bias={-0.0002}
+          />
+          <directionalLight position={[-18, 16, -12]} intensity={0.7} color="#9edcff" />
 
-        {/* Nút Mặt Bằng 2D */}
-        <button
-          type="button"
-          onClick={() => setCameraPreset('TOP_DOWN')}
-          className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${
-            cameraPreset === 'TOP_DOWN'
-              ? 'border border-sky-400/60 bg-sky-500/30 text-sky-200'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          📐 Mặt bằng (2D)
-        </button>
+          <WarehouseFloor width={worldWidth} depth={worldDepth} floorTexture={floorTexture} />
+          <ContactShadows
+            position={[0, 0.02, 0]}
+            scale={[Math.max(worldWidth * 0.96, 1), Math.max(worldDepth * 0.96, 1)]}
+            opacity={0.28}
+            blur={2.4}
+            far={3.5}
+            resolution={512}
+          />
+          {racks.map((rack) => (
+            <RackMesh
+              key={rack.clientKey}
+              rack={rack}
+              layout={layout}
+              worldWidth={worldWidth}
+              worldDepth={worldDepth}
+              selection={selection}
+              selectedItems={selectedItems}
+              editable={editable}
+              onSelect={onSelect}
+              onDoubleClick={onDoubleClick}
+              onMoveEntity={onMoveEntity}
+              showDemoCargo={showDemoCargo}
+              showBinLabels={showBinLabels}
+              capacityByBinId={capacityByBinId}
+            />
+          ))}
 
-        {/* Nút Trực Diện */}
-        <button
-          type="button"
-          onClick={() => setCameraPreset('FRONT')}
-          className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${
-            cameraPreset === 'FRONT'
-              ? 'border border-sky-400/60 bg-sky-500/30 text-sky-200'
-              : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          📍 Trực diện
-        </button>
-      </div>
-
-      {/* 2. NÚT PHÓNG TO TOÀN MÀN HÌNH (Fullscreen Expand Button) */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setIsFullscreen((prev) => !prev)}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/40 bg-slate-900/90 px-3 py-1.5 text-xs font-bold text-sky-300 shadow-xl backdrop-blur-md transition hover:border-sky-400 hover:bg-sky-600 hover:text-white"
-          title={isFullscreen ? 'Thu nhỏ cửa sổ (Esc)' : 'Phóng to toàn màn hình'}
-        >
-          {isFullscreen ? (
-            <>
-              <svg
-                viewBox="0 0 24 24"
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-              </svg>
-              <span>✕ Thu nhỏ</span>
-            </>
-          ) : (
-            <>
-              <svg
-                viewBox="0 0 24 24"
-                width="14"
-                height="14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-              >
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-              </svg>
-              <span>⛶ Phóng to Toàn màn hình</span>
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* 3. MODAL / HUD POPUP CHI TIẾT Ô CHỨA KHI NHẤN VÀO THÙNG HÀNG */}
-      {selectedBinInfo && (
-        <div className="animate-in fade-in slide-in-from-bottom-4 absolute right-4 bottom-16 z-30 w-80 max-w-[90vw] rounded-2xl border border-sky-500/40 bg-slate-900/95 p-4 text-white shadow-2xl backdrop-blur-xl">
-          <div className="flex items-start justify-between border-b border-white/10 pb-3">
-            <div>
-              <span className="rounded bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold text-sky-400">
-                {selectedBinInfo.rackCode} • TẦNG {selectedBinInfo.shelfLevel}
-              </span>
-              <h4 className="mt-1 text-base font-extrabold text-white">
-                {selectedBinInfo.binCode}
-              </h4>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedBinInfo(null)}
-              className="rounded-lg bg-slate-800 p-1 text-slate-400 hover:bg-slate-700 hover:text-white"
-              title="Đóng thông tin"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="mt-3 space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Kích thước:</span>
-              <span className="font-semibold text-slate-200">
-                {selectedBinInfo.bin.length}m (Dài) × {selectedBinInfo.bin.width}m (Rộng) ×{' '}
-                {selectedBinInfo.bin.height}m (Cao)
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Thể tích ô:</span>
-              <span className="font-semibold text-slate-200">
-                {selectedBinInfo.bin.maxVolume > 0
-                  ? `${selectedBinInfo.bin.maxVolume} m³`
-                  : 'Tiêu chuẩn'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Tải trọng:</span>
-              <span className="font-semibold text-emerald-400">
-                {selectedBinInfo.capacityMetric?.currentWeightKg ??
-                  selectedBinInfo.bin.currentWeight ??
-                  0}{' '}
-                kg /{' '}
-                {selectedBinInfo.capacityMetric?.maxWeightKg ??
-                  selectedBinInfo.bin.maxWeight ??
-                  1000}{' '}
-                kg
-              </span>
-            </div>
-            {selectedBinInfo.quantity !== null && (
-              <div className="flex justify-between">
-                <span className="text-slate-400">Số lượng kiện:</span>
-                <span className="font-bold text-sky-400">{selectedBinInfo.quantity} kiện hàng</span>
-              </div>
-            )}
-            <div className="flex items-center justify-between border-t border-white/5 pt-1">
-              <span className="text-slate-400">Trạng thái:</span>
-              <span
-                className={`rounded px-2 py-0.5 text-[10px] font-bold ${
-                  selectedBinInfo.isOver
-                    ? 'border border-rose-500/40 bg-rose-500/20 text-rose-400'
-                    : selectedBinInfo.isReserved
-                      ? 'border border-amber-500/40 bg-amber-500/20 text-amber-400'
-                      : selectedBinInfo.hasItems
-                        ? 'border border-emerald-500/40 bg-emerald-500/20 text-emerald-400'
-                        : 'bg-slate-800 text-slate-400'
-                }`}
-              >
-                {selectedBinInfo.isOver
-                  ? '⚠ QUÁ TẢI'
-                  : selectedBinInfo.isReserved
-                    ? 'ĐẶT TRƯỚC'
-                    : selectedBinInfo.hasItems
-                      ? 'ĐÃ LƯU HÀNG'
-                      : 'CÒN TRỐNG'}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. 3D WEBGL CANVAS (THREE.JS + R3F) */}
-      <Canvas
-        camera={{ position: [18, 14, 20], fov: 50 }}
-        className="h-full w-full"
-        onPointerMissed={() => {
-          onSelect({ type: 'layout' })
-          setSelectedBinInfo(null)
-        }}
-      >
-        {/* Nền sáng, dễ quan sát mô hình */}
-        <color attach="background" args={['#eaf3f8']} />
-        <fogExp2 attach="fog" args={['#eaf3f8', 0.004]} />
-
-        {/* Ánh sáng khuếch tán, không tạo bóng */}
-        <ambientLight intensity={1.35} color="#ffffff" />
-        <directionalLight position={[20, 30, 15]} intensity={1.45} color="#fffaf0" />
-        <directionalLight position={[-20, 20, -15]} intensity={0.5} color="#dbeafe" />
-
-        {/* Mặt sàn bê tông và các mốc cửa ra vào */}
-        <WarehouseFloor width={worldWidth} depth={worldDepth} floorTexture={floorTexture} />
-        <ContactShadows
-          position={[0, 0.02, 0]}
-          scale={[Math.max(worldWidth * 0.96, 1), Math.max(worldDepth * 0.96, 1)]}
-          opacity={0.24}
-          blur={2.4}
-          far={3.5}
-          resolution={512}
-        />
-        <WarehouseAccessPointMarkers
-          accessPoints={layout?.accessPoints}
-          worldWidth={worldWidth}
-          worldDepth={worldDepth}
-        />
-
-        {/* Danh sách các Kệ (Racks) */}
-        {racks.map((rack) => (
-          <RackMesh
-            key={rack.clientKey}
-            rack={rack}
-            layout={layout}
+          <WarehouseCameraController
+            focusedRack={focusedRack}
+            cameraPreset={cameraPreset}
+            racksBounds={sceneBounds}
+            layoutWidth={numberOf(layout?.width, 1)}
+            layoutLength={numberOf(layout?.length, 1)}
             worldWidth={worldWidth}
             worldDepth={worldDepth}
-            selection={selection}
-            selectedItems={selectedItems}
-            editable={editable}
-            onSelect={onSelect}
-            onDoubleClick={onDoubleClick}
-            onMoveEntity={onMoveEntity}
-            onShowBinDetail={setSelectedBinInfo}
-            palletTexture={palletTexture}
-            cardboardTexture={cardboardTexture}
-            showDemoCargo={showDemoCargo}
-            capacityByBinId={capacityByBinId}
           />
+
+          <WarehousePostProcessing />
+        </Canvas>
+      </div>
+
+      <div className="absolute top-3 left-3 z-20 flex items-center gap-1 rounded-xl border border-white/60 bg-white/85 p-1 shadow-lg backdrop-blur-md">
+        {[
+          ['DEFAULT', 'Toàn cảnh'],
+          ['CLOSE_UP', 'Cận cảnh'],
+          ['TOP_DOWN', 'Mặt bằng'],
+          ['FRONT', 'Trực diện'],
+        ].map(([preset, label]) => (
+          <button
+            key={preset}
+            type="button"
+            onClick={() => {
+              setCameraPreset(preset)
+              if (preset === 'DEFAULT') onClearFocus()
+            }}
+            className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition ${
+              cameraPreset === preset
+                ? 'bg-sky-600 text-white shadow-[0_0_12px_rgba(14,165,233,0.4)]'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            {label}
+          </button>
         ))}
+      </div>
 
-        {/* Bộ điều khiển Camera mượt mà tự động Zoom To */}
-        <WarehouseCameraController
-          focusedRack={focusedRack}
-          cameraPreset={cameraPreset}
-          racksBounds={racksBounds}
-          layoutWidth={numberOf(layout?.width, 1)}
-          layoutLength={numberOf(layout?.length, 1)}
-          worldWidth={worldWidth}
-          worldDepth={worldDepth}
-        />
+      <button
+        type="button"
+        onClick={() => setIsFullscreen((previous) => !previous)}
+        className={`absolute top-3 right-3 z-20 rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg backdrop-blur-md transition hover:bg-sky-600 hover:text-white ${isFullscreen ? 'lg:right-[21rem]' : ''}`}
+        title={isFullscreen ? 'Thu nhỏ (Esc)' : 'Mở toàn màn hình'}
+      >
+        {isFullscreen ? '✕ Thu nhỏ' : '⛶ Toàn màn hình'}
+      </button>
 
-        <WarehousePostProcessing />
-      </Canvas>
+      <div className="absolute bottom-3 left-3 z-20 flex items-center gap-3 rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[10px] font-semibold text-slate-600 shadow-lg backdrop-blur-md">
+        <span className="font-black tracking-wider text-slate-400 uppercase">Trạng thái</span>
+        <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-emerald-400" />Còn trống</span>
+        <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-yellow-400" />Đang chứa</span>
+        <span className="inline-flex items-center gap-1"><i className="h-2 w-2 rounded-full bg-red-500" />Gần đầy</span>
+      </div>
+
+      {isFullscreen && (
+        <aside className="absolute top-0 right-0 bottom-0 z-30 flex w-80 max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-l-2xl border-l border-white/10 bg-[#071629]/96 text-white shadow-2xl backdrop-blur-xl">
+          <div className="border-b border-white/10 px-4 py-4">
+            <p className="text-[9px] font-black tracking-[0.2em] text-sky-300 uppercase">Warehouse intelligence</p>
+            <h3 className="mt-1 text-base font-extrabold">{layout?.name || 'Sơ đồ kho'}</h3>
+            <p className="mt-1 text-[11px] text-slate-400">Thông tin Bin được chọn</p>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            {selectedBinInfo ? (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-bold tracking-wider text-cyan-300 uppercase">Selected Bin</p>
+                      <h4 className="mt-1 text-2xl font-black">{selectedBinInfo.binCode}</h4>
+                      <p className="mt-1 text-xs text-slate-300">{selectedBinInfo.rackCode} · Tầng {selectedBinInfo.shelfLevel}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-[9px] font-black ${selectedStatus.className}`}>
+                      {selectedStatus.label}
+                    </span>
+                  </div>
+                </div>
+
+                <section className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                  <div className="mb-2 flex justify-between text-[11px]">
+                    <span className="text-slate-400">Tải trọng</span>
+                    <span className="font-bold text-emerald-300">
+                      {formatMetric(selectedCurrentWeight, 2)} / {selectedMaxWeight > 0 ? `${formatMetric(selectedMaxWeight, 2)} kg` : '—'}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-700">
+                    <div
+                      className={`h-full rounded-full ${selectedBinInfo.isOver ? 'bg-red-500' : 'bg-gradient-to-r from-emerald-400 via-yellow-400 to-orange-500'}`}
+                      style={{ width: `${Math.round((selectedWeightRatio || 0) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="mt-3 mb-2 flex justify-between text-[11px]">
+                    <span className="text-slate-400">Thể tích</span>
+                    <span className="font-bold text-sky-300">
+                      {formatMetric(selectedCurrentVolume, 3)} / {selectedMaxVolume > 0 ? `${formatMetric(selectedMaxVolume, 3)} m³` : '—'}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-slate-700">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-sky-400 to-violet-400"
+                      style={{ width: `${Math.round((selectedVolumeRatio || 0) * 100)}%` }}
+                    />
+                  </div>
+                </section>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <p className="text-[10px] text-slate-500">Số lượng</p>
+                    <p className="mt-1 text-lg font-black">{formatMetric(selectedQuantity, 0)}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <p className="text-[10px] text-slate-500">Kích thước</p>
+                    <p className="mt-1 text-sm font-black">{formatMetric(selectedBinInfo.bin?.width, 2)} × {formatMetric(selectedBinInfo.bin?.length, 2)}</p>
+                    <p className="text-[10px] text-slate-400">W × L m</p>
+                  </div>
+                </div>
+
+                <section>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h5 className="text-xs font-bold text-slate-200">SKU trong Bin</h5>
+                    <span className="text-[10px] text-slate-500">{selectedStoredSkus.length} SKU</span>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedStoredSkus.length > 0 ? selectedStoredSkus.map((sku, index) => (
+                      <div key={sku.skuId || sku.skuCode || index} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                        <span className="truncate pr-2 text-xs font-bold">{sku.skuCode || sku.skuName || 'SKU'}</span>
+                        <span className="shrink-0 rounded-lg bg-sky-500/15 px-2 py-1 text-xs font-black text-sky-300">{formatMetric(sku.quantity, 0)}</span>
+                      </div>
+                    )) : (
+                      <p className="rounded-xl border border-dashed border-white/15 px-3 py-4 text-center text-[11px] text-slate-500">Chưa có dữ liệu SKU.</p>
+                    )}
+                  </div>
+                </section>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
+                <p className="text-sm font-bold text-slate-200">Chưa chọn Bin</p>
+                <p className="mt-2 text-xs leading-5 text-slate-400">Nhấn vào một Bin trên mô hình để xem thông tin chi tiết.</p>
+              </div>
+            )}
+          </div>
+          <div className="border-t border-white/10 px-4 py-3 text-[10px] text-slate-500">StockSpace WMS · Đang đồng bộ</div>
+        </aside>
+      )}
+
     </div>
   )
 }

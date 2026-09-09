@@ -5,6 +5,7 @@ import {
   AlertCircle,
   Grid3X3,
   Loader2,
+  Pencil,
   Plus,
   Package2,
   RotateCcw,
@@ -524,7 +525,7 @@ const fitBinsToRack = (rack, { arrange = false, arrangePositions = false } = {})
       const automaticCoordinateY = geometry.rotated
         ? column * geometry.frontSlot + (geometry.frontSlot - geometry.length) / 2
         : row * rackLength + (rackLength - geometry.length) / 2
-      const height = getBinHeightForRack({ height: rackHeight })
+      const height = getBinHeightForRack({ height: rackHeight, shelfCount: levels })
       return {
         ...bin,
         shelfLevel,
@@ -1244,6 +1245,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [newBinHeight, setNewBinHeight] = useState('')
   const [newBinShelfLevel, setNewBinShelfLevel] = useState('')
   const [newBinQuantity, setNewBinQuantity] = useState(1)
+  const [editingBinKey, setEditingBinKey] = useState(null)
   const [isMoveBinOpen, setIsMoveBinOpen] = useState(false)
   const [moveBinTargetRackKey, setMoveBinTargetRackKey] = useState('')
   const [moveBinShelfLevel, setMoveBinShelfLevel] = useState('')
@@ -2086,8 +2088,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       return
     }
 
-    setNewBinWidth('')
-    setNewBinHeight('')
+    const nextBinGeometry = getAutomaticBinGeometry(targetRack, Math.max(currentBinCount + 1, 1))
+    setEditingBinKey(null)
+    setNewBinWidth(String(Number(nextBinGeometry.width.toFixed(6))))
+    setNewBinHeight(String(getBinHeightForRack(targetRack)))
     setNewBinShelfLevel('1')
     setNewBinQuantity(1)
     setIsBinConfigOpen(true)
@@ -2206,6 +2210,111 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     newBinWidth,
     selectedRack,
     updateSelection,
+  ])
+
+  const openBinEditConfiguration = useCallback(() => {
+    if (!canEditLayout || selection.type !== 'bin' || !selectedEntity || !selectedRack) return
+
+    const levels = getRackLevelCount(selectedRack)
+    if (levels < 1) {
+      setError('Rack chưa có số tầng từ BE nên chưa thể chỉnh sửa Bin.')
+      return
+    }
+
+    setEditingBinKey(selectedEntity.clientKey)
+    setNewBinWidth(String(numberOf(selectedEntity.width, 0)))
+    setNewBinHeight(
+      String(numberOf(selectedEntity.height, 0) || getBinHeightForRack(selectedRack))
+    )
+    setNewBinShelfLevel(String(clamp(integerOf(selectedEntity.shelfLevel, 1), 1, levels)))
+    setNewBinQuantity(1)
+    setIsBinConfigOpen(true)
+    setError('')
+  }, [canEditLayout, selectedEntity, selectedRack, selection.type])
+
+  const updateSelectedBin = useCallback(() => {
+    if (
+      !canEditLayout ||
+      editingBinKey == null ||
+      selection.type !== 'bin' ||
+      !selectedEntity ||
+      !selectedRack
+    ) {
+      return
+    }
+
+    const levels = getRackLevelCount(selectedRack)
+    const shelfLevel = integerOf(newBinShelfLevel, 0)
+    const width = numberOf(newBinWidth, 0)
+    const length = numberOf(selectedEntity.length, 0)
+    const height = numberOf(newBinHeight, 0)
+    const rackFootprint = getRackFootprint(selectedRack)
+
+    if (width <= 0 || length <= 0 || height <= 0) {
+      setError('Vui lòng nhập chiều rộng và chiều cao Bin lớn hơn 0.')
+      return
+    }
+    if (shelfLevel < 1 || shelfLevel > levels) {
+      setError('Tầng Bin không hợp lệ với số tầng của Rack.')
+      return
+    }
+    if (width > rackFootprint.width || length > rackFootprint.length) {
+      setError(
+        `Bin (Dài ${formatMeters(length)} × Rộng ${formatMeters(width)}) không vừa mặt bằng Rack ${formatMeters(rackFootprint.width)} × ${formatMeters(rackFootprint.length)}.`
+      )
+      return
+    }
+
+    const currentX = numberOf(selectedEntity.coordinateX, 0)
+    const currentY = numberOf(selectedEntity.coordinateY, 0)
+    const candidate = { coordinateX: currentX, coordinateY: currentY, width, length }
+    const canKeepPosition =
+      shelfLevel === integerOf(selectedEntity.shelfLevel, 0) &&
+      currentX >= 0 &&
+      currentY >= 0 &&
+      currentX + width <= rackFootprint.width &&
+      currentY + length <= rackFootprint.length &&
+      !(selectedRack.bins || []).some(
+        (bin) =>
+          bin.clientKey !== editingBinKey &&
+          integerOf(bin.shelfLevel, 0) === shelfLevel &&
+          rectanglesTooClose(candidate, bin)
+      )
+    const position = canKeepPosition
+      ? { x: currentX, y: currentY }
+      : findAvailableBinPosition(selectedRack, shelfLevel, width, length, editingBinKey)
+
+    if (!position) {
+      setError('Không còn vị trí trống ở tầng mới. Bin hiện tại vẫn được giữ nguyên.')
+      return
+    }
+
+    setLayout((current) =>
+      updateBin(current, editingBinKey, (bin) => ({
+        ...bin,
+        width,
+        length,
+        height,
+        shelfLevel,
+        coordinateX: position.x,
+        coordinateY: position.y,
+        positionZ: 0,
+      }))
+    )
+    setIsBinConfigOpen(false)
+    setEditingBinKey(null)
+    setBlockedMode(false)
+    setError('')
+    setMessage(`${selectedEntity.name || selectedEntity.code || 'Bin'} đã được cập nhật.`)
+  }, [
+    canEditLayout,
+    editingBinKey,
+    newBinHeight,
+    newBinShelfLevel,
+    newBinWidth,
+    selectedEntity,
+    selectedRack,
+    selection.type,
   ])
 
   const openMoveBinConfiguration = useCallback(() => {
@@ -3138,11 +3247,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         Bin configuration
                       </p>
                       <h2 id="bin-config-title" className="mt-1 text-lg font-bold text-slate-900">
-                        Thêm Bin vào {selectedRack.name || selectedRack.code || 'Rack'}
+                        {editingBinKey ? 'Chỉnh sửa' : 'Thêm Bin vào'}{' '}
+                        {selectedRack.name || selectedRack.code || 'Rack'}
                       </h2>
                       <p className="mt-1 text-xs text-slate-600">
-                        Nhập kích thước thực tế. Các Bin hiện tại sẽ được giữ nguyên, không tự co
-                        lại.
+                        {editingBinKey
+                          ? 'Cập nhật kích thước hoặc tầng của Bin đã chọn. Vị trí hiện tại sẽ được giữ nếu vẫn phù hợp.'
+                          : 'Kích thước mặc định được căn theo Rack và chiều cao mỗi tầng. Bạn vẫn có thể chỉnh trước khi thêm.'}
                       </p>
                     </div>
                     <button
@@ -3175,8 +3286,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                               role="tooltip"
                               className="pointer-events-none absolute bottom-[calc(100%+0.5rem)] left-1/2 z-20 w-max max-w-[calc(100vw-3rem)] -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-medium whitespace-nowrap text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100"
                             >
-                              Rộng {preset.width}m × Dài {numberOf(selectedRack.length)}m × Cao{' '}
-                              {preset.height}m
+                              Rộng {preset.width}m × Dài{' '}
+                              {editingBinKey
+                                ? numberOf(selectedEntity?.length)
+                                : numberOf(selectedRack.length)}
+                              m × Cao {preset.height}m
                               <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
                             </div>
                           </div>
@@ -3199,13 +3313,19 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       Chiều dài Bin (m) - theo Rack
                       <input
                         type="number"
-                        value={numberOf(selectedRack.length) || ''}
+                        value={
+                          (editingBinKey
+                            ? numberOf(selectedEntity?.length)
+                            : numberOf(selectedRack.length)) || ''
+                        }
                         readOnly
                         disabled
                         className={`${inputClass} mt-1 cursor-not-allowed bg-slate-100 text-slate-500`}
                       />
                       <span className="mt-1 block text-[11px] font-normal text-slate-500">
-                        Bằng chiều dài của Rack đang chọn.
+                        {editingBinKey
+                          ? 'Chiều dài hiện tại của Bin được giữ nguyên.'
+                          : 'Bằng chiều dài của Rack đang chọn.'}
                       </span>
                     </label>
                     <label className="text-xs font-semibold text-slate-600">
@@ -3216,7 +3336,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         step="0.01"
                         value={newBinHeight}
                         onChange={(event) => setNewBinHeight(event.target.value)}
-                        placeholder="BE sẽ kiểm tra theo tầng"
+                        placeholder={String(getBinHeightForRack(selectedRack))}
                         className={`${inputClass} mt-1`}
                       />
                     </label>
@@ -3234,32 +3354,35 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         ))}
                       </select>
                     </label>
-                    <label className="text-xs font-semibold text-slate-600">
-                      Số lượng thêm
-                      <input
-                        type="number"
-                        min="1"
-                        max={Math.max(
-                          getRackMaxBinCount(selectedRack) - (selectedRack.bins?.length || 0),
-                          1
-                        )}
-                        step="1"
-                        value={newBinQuantity}
-                        onChange={(event) => setNewBinQuantity(event.target.value)}
-                        className={`${inputClass} mt-1`}
-                      />
-                      <span className="mt-1 block text-[11px] font-normal text-slate-500">
-                        Còn trống{' '}
-                        {Math.max(
-                          getRackMaxBinCount(selectedRack) - (selectedRack.bins?.length || 0),
-                          0
-                        )}{' '}
-                        vị trí theo giới hạn Rack.
-                      </span>
-                    </label>
+                    {!editingBinKey && (
+                      <label className="text-xs font-semibold text-slate-600">
+                        Số lượng thêm
+                        <input
+                          type="number"
+                          min="1"
+                          max={Math.max(
+                            getRackMaxBinCount(selectedRack) - (selectedRack.bins?.length || 0),
+                            1
+                          )}
+                          step="1"
+                          value={newBinQuantity}
+                          onChange={(event) => setNewBinQuantity(event.target.value)}
+                          className={`${inputClass} mt-1`}
+                        />
+                        <span className="mt-1 block text-[11px] font-normal text-slate-500">
+                          Còn trống{' '}
+                          {Math.max(
+                            getRackMaxBinCount(selectedRack) - (selectedRack.bins?.length || 0),
+                            0
+                          )}{' '}
+                          vị trí theo giới hạn Rack.
+                        </span>
+                      </label>
+                    )}
                     <p className="text-[11px] text-slate-500 sm:col-span-2">
-                      Vị trí trống sẽ được chọn tự động trong tầng đã chọn. BE sẽ tính lại vị trí
-                      đứng theo `shelfLevel` khi lưu.
+                      {editingBinKey
+                        ? 'Sau khi lưu, Bin sẽ được cập nhật ngay trên layout và vẫn giữ mã/tồn kho hiện tại.'
+                        : 'Vị trí trống sẽ được chọn tự động trong tầng đã chọn. BE sẽ tính lại vị trí đứng theo `shelfLevel` khi lưu.'}
                     </p>
                   </div>
 
@@ -3280,11 +3403,15 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     </button>
                     <button
                       type="button"
-                      onClick={addBinToSelectedRack}
+                      onClick={editingBinKey ? updateSelectedBin : addBinToSelectedRack}
                       className={`${primaryButtonClass} inline-flex items-center justify-center`}
                     >
-                      <Plus className="mr-1.5 h-4 w-4" />
-                      Thêm Bin
+                      {editingBinKey ? (
+                        <Save className="mr-1.5 h-4 w-4" />
+                      ) : (
+                        <Plus className="mr-1.5 h-4 w-4" />
+                      )}
+                      {editingBinKey ? 'Lưu thay đổi' : 'Thêm Bin'}
                     </button>
                   </div>
                 </div>
@@ -3756,13 +3883,23 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           Thêm Bin
                         </button>
                         {selection.type === 'bin' && (
-                          <button
-                            type="button"
-                            onClick={openMoveBinConfiguration}
-                            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
-                          >
-                            Chuyển Rack
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={openBinEditConfiguration}
+                              className="inline-flex items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-100"
+                            >
+                              <Pencil className="mr-1 h-3.5 w-3.5" />
+                              Sửa Bin
+                            </button>
+                            <button
+                              type="button"
+                              onClick={openMoveBinConfiguration}
+                              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+                            >
+                              Chuyển Rack
+                            </button>
+                          </>
                         )}
                       </div>
                     )}
@@ -4175,6 +4312,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         selectedItems={selectedItems}
                         editable={!isReadOnly && !isMultiSelectMode && selectedItems.length <= 1}
                         focusedRackKey={focusedRackKey}
+                        onClearFocus={() => setFocusedRackKey(null)}
                         onDoubleClick={focusRackIn3D}
                         onMoveEntity={moveEntityFromPreview}
                         onSelect={(nextSelection) => {
@@ -4453,6 +4591,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           selectedItems={selectedItems}
                           editable={!isReadOnly && !isMultiSelectMode && selectedItems.length <= 1}
                           focusedRackKey={focusedRackKey}
+                          onClearFocus={() => setFocusedRackKey(null)}
                           onDoubleClick={focusRackIn3D}
                           onMoveEntity={moveEntityFromPreview}
                           onSelect={(nextSelection) => {
