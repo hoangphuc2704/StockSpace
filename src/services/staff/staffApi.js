@@ -6,8 +6,10 @@ const staffApi = {
   // ========================
 
   /** GET /api/tenant/staffs - Danh sách nhân viên kho */
-  listStaffs: ({ page = 0, size = 10, keyword = '' } = {}) => {
-    return api.get('/tenant/staffs', { params: { page, size, keyword } })
+  listStaffs: ({ page = 0, size = 10, keyword = '', warehouseId, active } = {}) => {
+    return api.get('/tenant/staffs', {
+      params: { page, size, keyword, warehouseId, active },
+    })
   },
 
   /** POST /api/tenant/staffs/invite - Gửi lời mời nhân viên qua email */

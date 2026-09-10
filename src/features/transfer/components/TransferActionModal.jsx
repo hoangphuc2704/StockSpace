@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, CheckCircle2, Loader2, PackageCheck, RotateCcw, Undo2, X } from 'lucide-react'
+import {
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  PackageCheck,
+  RotateCcw,
+  Undo2,
+  UserRound,
+  X,
+} from 'lucide-react'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import layoutApi from '@/services/layoutApi'
+import staffApi from '@/services/staff/staffApi'
 import transferApi, { createTransferIdempotencyKey } from '@/services/wms/transferApi'
 import { showApiErrorToast } from '@/config/apiError'
 import { toast } from 'react-hot-toast'
@@ -18,6 +28,12 @@ const modalCopy = {
     eyebrow: 'Forward movement',
     action: 'Request retry',
     icon: RotateCcw,
+  },
+  assignDestinationStaff: {
+    title: 'Assign destination receiver',
+    eyebrow: 'Destination warehouse',
+    action: 'Save assignment',
+    icon: UserRound,
   },
   returnReceive: {
     title: 'Receive returned stock',
@@ -61,6 +77,9 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
   const [reason, setReason] = useState('')
   const [expectedArrivalAt, setExpectedArrivalAt] = useState('')
   const [destinationWarehouseId, setDestinationWarehouseId] = useState('')
+  const [destinationStaffId, setDestinationStaffId] = useState('')
+  const [destinationStaff, setDestinationStaff] = useState([])
+  const [loadingStaff, setLoadingStaff] = useState(false)
   const [lines, setLines] = useState([])
   const [layout, setLayout] = useState(null)
   const [loadingLayout, setLoadingLayout] = useState(false)
@@ -81,6 +100,9 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
     setReason('')
     setExpectedArrivalAt('')
     setDestinationWarehouseId('')
+    setDestinationStaffId(
+      mode === 'assignDestinationStaff' ? transfer.destinationStaff?.id || '' : ''
+    )
     if (mode === 'pick') {
       setLines(
         sourceAllocations.map((allocation) => ({
@@ -103,6 +125,47 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
       setLines([])
     }
   }, [isOpen, mode, transfer, items, sourceAllocations])
+
+  useEffect(() => {
+    if (!isOpen || !transfer || !['retry', 'assignDestinationStaff'].includes(mode)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDestinationStaff([])
+      return
+    }
+
+    const warehouseId = mode === 'assignDestinationStaff'
+      ? (transfer.currentDestinationWarehouse || transfer.destinationWarehouse)?.id
+      : destinationWarehouseId
+    if (!warehouseId) {
+      setDestinationStaff([])
+      return
+    }
+
+    const loadDestinationStaff = async () => {
+      setLoadingStaff(true)
+      try {
+        const response = await staffApi.listStaffs({
+          page: 0,
+          size: 100,
+          warehouseId,
+          active: true,
+        })
+        const staffList = response.data?.data?.content || response.data?.data || []
+        setDestinationStaff(
+          staffList.map((staff) => ({
+            ...staff,
+            userId: staff.userId || staff.memberId,
+          }))
+        )
+      } catch (error) {
+        showApiErrorToast(error, 'Could not load destination staff.')
+        setDestinationStaff([])
+      } finally {
+        setLoadingStaff(false)
+      }
+    }
+    loadDestinationStaff()
+  }, [destinationWarehouseId, isOpen, mode, transfer])
 
   useEffect(() => {
     if (!isOpen || mode !== 'returnReceive' || !transfer?.sourceWarehouse?.id) return
@@ -154,8 +217,15 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
         return toast.error('Select a destination and enter a reason.')
       payload = {
         destinationWarehouseId,
+        ...(destinationStaffId ? { destinationStaffId } : {}),
         ...(expectedArrivalAt ? { expectedArrivalAt: `${expectedArrivalAt}:00` } : {}),
         reason: reason.trim(),
+      }
+    } else if (mode === 'assignDestinationStaff') {
+      if (!destinationStaffId) return toast.error('Select the staff member who will receive this transfer.')
+      payload = {
+        destinationStaffId,
+        ...(reason.trim() ? { reason: reason.trim() } : {}),
       }
     } else if (mode === 'returnReceive') {
       const returnLines = lines.filter((line) => Number(line.quantity) > 0)
@@ -189,6 +259,8 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
         await transferApi.pickTransfer(transfer.id, payload, createTransferIdempotencyKey())
       if (mode === 'retry')
         await transferApi.retryTransfer(transfer.id, payload, createTransferIdempotencyKey())
+      if (mode === 'assignDestinationStaff')
+        await transferApi.assignDestinationStaff(transfer.id, payload, createTransferIdempotencyKey())
       if (mode === 'returnReceive')
         await transferApi.receiveReturn(transfer.id, payload, createTransferIdempotencyKey())
       if (mode === 'reconcile')
@@ -252,7 +324,10 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                   <select
                     required
                     value={destinationWarehouseId}
-                    onChange={(e) => setDestinationWarehouseId(e.target.value)}
+                    onChange={(e) => {
+                      setDestinationWarehouseId(e.target.value)
+                      setDestinationStaffId('')
+                    }}
                     className={selectClass}
                   >
                     <option value="">Select destination</option>
@@ -277,6 +352,29 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                   />
                 </Field>
               </div>
+            )}
+            {(mode === 'retry' || mode === 'assignDestinationStaff') && (
+              <Field
+                label={mode === 'retry' ? 'Destination staff (optional)' : 'Destination staff *'}
+                hint="Only active staff assigned to the current destination can receive this transfer."
+              >
+                <select
+                  required={mode === 'assignDestinationStaff'}
+                  value={destinationStaffId}
+                  onChange={(e) => setDestinationStaffId(e.target.value)}
+                  disabled={loadingStaff}
+                  className={selectClass}
+                >
+                  <option value="">
+                    {loadingStaff ? 'Loading assigned staff' : 'Select destination staff'}
+                  </option>
+                  {destinationStaff.map((staff) => (
+                    <option key={staff.userId || staff.memberId} value={staff.userId || staff.memberId}>
+                      {staff.fullName || staff.name || staff.email || 'Warehouse staff'}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             )}
             {mode === 'pick' && (
               <div className="space-y-3">
@@ -395,8 +493,16 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                 </select>
               </Field>
             )}
-            {(mode === 'retry' || mode === 'returnReceive' || mode === 'reconcile') && (
-              <Field label={mode === 'reconcile' ? 'Resolution note (optional)' : 'Reason'}>
+            {(mode === 'retry' || mode === 'assignDestinationStaff' || mode === 'returnReceive' || mode === 'reconcile') && (
+              <Field
+                label={
+                  mode === 'reconcile'
+                    ? 'Resolution note (optional)'
+                    : mode === 'assignDestinationStaff'
+                      ? 'Assignment note (optional)'
+                      : 'Reason'
+                }
+              >
                 <textarea
                   required={mode === 'retry'}
                   maxLength={2000}

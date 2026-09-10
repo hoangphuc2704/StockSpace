@@ -25,6 +25,15 @@ const transferApi = {
     return api.get(`/tenant/inventory/transfers/${id}`)
   },
 
+  // Tenant giao hoặc đổi staff nhận hàng ở kho đích hiện tại
+  assignDestinationStaff: (id, data, idempotencyKey) => {
+    return api.patch(
+      `/tenant/inventory/transfers/${id}/destination-staff`,
+      data,
+      idempotencyConfig(idempotencyKey)
+    )
+  },
+
   // Approve Dispatch (Bên gửi xuất hàng)
   allocateTransfer: (id, idempotencyKey) => {
     return api.patch(

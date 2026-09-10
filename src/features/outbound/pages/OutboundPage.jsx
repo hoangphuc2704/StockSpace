@@ -5,7 +5,7 @@ import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
-import { AlertCircle, ArrowUpRight, CheckCircle2, Search, Minus, Loader2, Download, Eye, Map as MapIcon, MapPin } from 'lucide-react'
+import { AlertCircle, ArrowUpRight, CheckCircle2, Search, Minus, Plus, Loader2, Download, Eye, Map as MapIcon, MapPin } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
@@ -59,18 +59,23 @@ const OutboundPage = () => {
   const [isExporting, setIsExporting] = useState(false)
   const [activeTab, setActiveTab] = useState('ALL')
 
-  // Form states
+  // Form states. The receipt API accepts an items[] collection, so each
+  // product/quantity pair is kept as an independent line.
   const [outboundMethod, setOutboundMethod] = useState('AUTO') // 'AUTO' | 'MANUAL'
-  const [formSkuId, setFormSkuId] = useState('')
-  const [formTotalQuantity, setFormTotalQuantity] = useState(1)
+  const createOutboundLine = () => ({
+    id: `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    skuId: '',
+    quantity: 1,
+    location: '',
+  })
+  const [outboundLines, setOutboundLines] = useState(() => [createOutboundLine()])
+  const [activeOutboundLineId, setActiveOutboundLineId] = useState(null)
   const [formNote, setFormNote] = useState('')
   const [formReceiverName, setFormReceiverName] = useState('')
   
   // Manual Outbound states
-  const [availableLocations, setAvailableLocations] = useState([])
-  const [selectedLocationStr, setSelectedLocationStr] = useState('')
   const [isLocationsLoading, setIsLocationsLoading] = useState(false)
-  const [stockSummary, setStockSummary] = useState(null)
+  const [warehouseStockBatches, setWarehouseStockBatches] = useState([])
 
   // Auto Outbound states
   const [previewData, setPreviewData] = useState(null)
@@ -141,44 +146,38 @@ const OutboundPage = () => {
     }
   }, [fetchReceipts, selectedWarehouseId])
 
-  // Fetch the selected SKU's warehouse stock for both FIFO and manual outbound.
+  const activeOutboundLine = outboundLines.find((line) => line.id === activeOutboundLineId) || outboundLines[0]
+  const formSkuId = activeOutboundLine?.skuId || ''
+  const formTotalQuantity = activeOutboundLine?.quantity ?? 1
+  const selectedLocationStr = activeOutboundLine?.location || ''
+  const updateOutboundLine = (lineId, patch) => {
+    setOutboundLines((previous) => previous.map((line) => (
+      line.id === lineId ? { ...line, ...patch } : line
+    )))
+  }
+
   useEffect(() => {
-    if (!isModalOpen || !formSkuId || !selectedWarehouseId) {
+    if (outboundLines.length > 0 && !outboundLines.some((line) => line.id === activeOutboundLineId)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setActiveOutboundLineId(outboundLines[0].id)
+    }
+  }, [activeOutboundLineId, outboundLines])
+
+  // Fetch stock once for the selected warehouse and derive availability for
+  // every SKU line from the same snapshot.
+  useEffect(() => {
+    if (!isModalOpen || !selectedWarehouseId) {
       return undefined
     }
 
     let cancelled = false
     const fetchStockAvailability = async () => {
       setIsLocationsLoading(true)
-      setAvailableLocations([])
-      setSelectedLocationStr('')
-      setStockSummary(null)
+      setWarehouseStockBatches([])
       try {
         const batches = await stockApi.getAllStock(selectedWarehouseId, { size: 500 })
         if (cancelled) return
-
-        const skuBatches = batches.filter(
-          (batch) => String(batch.skuId) === String(formSkuId) && Number(batch.quantity) > 0
-        )
-        const grouped = skuBatches.reduce((acc, batch) => {
-          const key = `${batch.rackId || batch.rackName || 'rack'}_${batch.binId || batch.binName || 'bin'}`
-          if (!acc[key]) {
-            acc[key] = {
-              rackId: batch.rackId,
-              rackName: batch.rackName,
-              binId: batch.binId,
-              binName: batch.binName,
-              quantity: 0,
-            }
-          }
-          acc[key].quantity += Number(batch.quantity) || 0
-          return acc
-        }, {})
-        const locations = Object.values(grouped).sort((first, second) => second.quantity - first.quantity)
-        const totalQuantity = locations.reduce((sum, location) => sum + location.quantity, 0)
-
-        setAvailableLocations(locations)
-        setStockSummary({ totalQuantity, locations })
+        setWarehouseStockBatches(Array.isArray(batches) ? batches : [])
       } catch (error) {
         if (!cancelled) showApiErrorToast(error, 'Could not load stock availability.')
       } finally {
@@ -190,7 +189,41 @@ const OutboundPage = () => {
     return () => {
       cancelled = true
     }
-  }, [isModalOpen, formSkuId, selectedWarehouseId])
+  }, [isModalOpen, selectedWarehouseId])
+
+  const stockSummaryByLine = useMemo(() => {
+    const summaries = {}
+    outboundLines.forEach((line) => {
+      const skuBatches = warehouseStockBatches.filter(
+        (batch) => String(batch.skuId) === String(line.skuId) && Number(batch.quantity) > 0
+      )
+      const grouped = skuBatches.reduce((acc, batch) => {
+        const key = `${batch.rackId || batch.rackName || 'rack'}_${batch.binId || batch.binName || 'bin'}`
+        if (!acc[key]) {
+          acc[key] = {
+            rackId: batch.rackId,
+            rackName: batch.rackName,
+            binId: batch.binId,
+            binName: batch.binName,
+            quantity: 0,
+          }
+        }
+        acc[key].quantity += Number(batch.quantity) || 0
+        return acc
+      }, {})
+      const locations = Object.values(grouped).sort((first, second) => second.quantity - first.quantity)
+      summaries[line.id] = {
+        totalQuantity: locations.reduce((sum, location) => sum + location.quantity, 0),
+        locations,
+      }
+    })
+    return summaries
+  }, [outboundLines, warehouseStockBatches])
+
+  const activeStockSummary = stockSummaryByLine[activeOutboundLine?.id] || null
+  const availableLocationsForActiveLine = activeStockSummary?.locations || []
+  const availableLocations = availableLocationsForActiveLine
+  const stockSummary = activeStockSummary
 
   const handleExport = async () => {
     if (!selectedWarehouseId) return
@@ -247,15 +280,12 @@ const OutboundPage = () => {
   }
 
   const handlePreview = async () => {
-    const skuError = required(formSkuId, 'Product')
-    if (skuError) {
-      toast.error('Select a product.')
+    if (outboundLines.some((line) => required(line.skuId, 'Product'))) {
+      toast.error('Select a product for every line.')
       return
     }
-    const requestedQuantity = Number(formTotalQuantity)
-    const quantityError = positiveInteger(requestedQuantity)
-    if (quantityError) {
-      toast.error(quantityError)
+    if (outboundLines.some((line) => positiveInteger(Number(line.quantity)))) {
+      toast.error('Enter a valid whole quantity for every SKU.')
       return
     }
 
@@ -264,12 +294,10 @@ const OutboundPage = () => {
     try {
       const payload = {
         warehouseId: selectedWarehouseId,
-        items: [
-          {
-            skuId: formSkuId,
-            quantity: requestedQuantity,
-          },
-        ],
+        items: outboundLines.map((line) => ({
+          skuId: line.skuId,
+          quantity: Number(line.quantity),
+        })),
       }
       const response = await receiptApi.getPickListSuggestions(payload)
       setPreviewData(response.data?.data || response.data)
@@ -283,27 +311,53 @@ const OutboundPage = () => {
 
   const handleCreateReceipt = async (e) => {
     e.preventDefault()
-    
+    if (outboundLines.some((line) => !line.skuId)) {
+      toast.error('Select a product for every line.')
+      return
+    }
+    if (outboundLines.some((line) => positiveInteger(Number(line.quantity)))) {
+      toast.error('Enter a valid whole quantity for every SKU.')
+      return
+    }
     if (outboundMethod === 'AUTO' && !previewData?.complete) {
       toast.error('Cannot create outbound receipt with shortage.')
       return
     }
-    
-    let rackId = null
-    let binId = null
-    
+
+    const payloadItems = []
     if (outboundMethod === 'MANUAL') {
-      if (!selectedLocationStr) {
-        toast.error('Please select a location.')
-        return
+      for (const line of outboundLines) {
+        if (!line.location) {
+          toast.error('Select a location for every SKU.')
+          return
+        }
+        let location
+        try {
+          location = JSON.parse(line.location)
+        } catch {
+          toast.error('The selected stock location is invalid.')
+          return
+        }
+        if (Number(line.quantity) > Number(location.quantity)) {
+          toast.error(`Quantity for ${location.rackName || 'the selected location'} exceeds available stock.`)
+          return
+        }
+        payloadItems.push({
+          skuId: line.skuId,
+          quantity: Number(line.quantity),
+          note: formNote,
+          rackId: location.rackId,
+          binId: location.binId,
+        })
       }
-      const loc = JSON.parse(selectedLocationStr)
-      if (Number(formTotalQuantity) > loc.quantity) {
-        toast.error(`Quantity exceeds available stock in this location (Max: ${loc.quantity}).`)
-        return
-      }
-      rackId = loc.rackId
-      binId = loc.binId
+    } else {
+      outboundLines.forEach((line) => {
+        payloadItems.push({
+          skuId: line.skuId,
+          quantity: Number(line.quantity),
+          note: formNote,
+        })
+      })
     }
 
     setIsSubmitting(true)
@@ -312,26 +366,19 @@ const OutboundPage = () => {
         warehouseId: selectedWarehouseId,
         type: 'OUTBOUND',
         receiverName: formReceiverName,
-        items: [
-          {
-            skuId: formSkuId,
-            quantity: Number(formTotalQuantity),
-            note: formNote,
-            ...(rackId && binId && { rackId, binId })
-          },
-        ],
+        items: payloadItems,
       }
       await receiptApi.createReceipt(payload)
       toast.success('Outbound receipt created.')
       setIsModalOpen(false)
       fetchReceipts()
 
-      setFormSkuId('')
-      setFormTotalQuantity(1)
+      const emptyLine = createOutboundLine()
+      setOutboundLines([emptyLine])
+      setActiveOutboundLineId(emptyLine.id)
       setFormNote('')
       setFormReceiverName('')
       setPreviewData(null)
-      setSelectedLocationStr('')
     } catch (error) {
       console.error('Error creating receipt:', error)
       showApiErrorToast(error, 'Could not create receipt.')
@@ -434,6 +481,37 @@ const OutboundPage = () => {
   const shortageQuantity = Math.max(requestedQuantity - availableForRequest, 0)
   const projectedRemainingQuantity = Math.max(warehouseStockQuantity - requestedQuantity, 0)
   const hasStockShortage = Boolean(stockSummary) && shortageQuantity > 0
+  const outboundLineSummaries = outboundLines.map((line) => {
+    const summary = stockSummaryByLine[line.id]
+    const quantity = Number(line.quantity) || 0
+    const selectedLocation = (() => {
+      if (!line.location) return null
+      try {
+        return JSON.parse(line.location)
+      } catch {
+        return null
+      }
+    })()
+    const availableQuantity = outboundMethod === 'MANUAL'
+      ? Number(selectedLocation?.quantity) || 0
+      : Number(summary?.totalQuantity) || 0
+    return {
+      ...line,
+      summary,
+      quantity,
+      availableQuantity,
+      shortageQuantity: Math.max(quantity - availableQuantity, 0),
+    }
+  })
+  const hasAnyStockShortage = outboundLineSummaries.some((line) => line.shortageQuantity > 0)
+  const allOutboundLinesValid = outboundLineSummaries.every(
+    (line) => line.skuId && positiveInteger(line.quantity) === '' && line.summary
+  )
+  const previewShortageQuantity = (previewData?.items || []).reduce(
+    (total, item) => total + (Number(item.shortageQuantity) || 0),
+    0
+  )
+  const allManualLocationsSelected = outboundLines.every((line) => Boolean(line.location))
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -717,47 +795,115 @@ const OutboundPage = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">
-                        Select Product (SKU)
-                      </label>
-                      <select
-                        required
-                        className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
-                        value={formSkuId}
-                        onChange={(e) => {
-                          setFormSkuId(e.target.value)
+                  <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-900">Products in this shipment</h3>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          Add multiple SKUs. FIFO preview and stock validation run for every line.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const nextLine = createOutboundLine()
+                          setOutboundLines((previous) => [...previous, nextLine])
+                          setActiveOutboundLineId(nextLine.id)
                           setPreviewData(null)
-                          setSelectedLocationStr('')
                         }}
                       >
-                        <option value="">-- Select product --</option>
-                        {skus.map((sku) => (
-                          <option key={sku.id} value={sku.id}>
-                            [{sku.skuCode}] {sku.name}
-                          </option>
-                        ))}
-                      </select>
+                        <Plus className="mr-1.5 h-4 w-4" /> Add SKU
+                      </Button>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">Total Quantity</label>
-                      <InputField
-                        type="number"
-                        min="1"
-                        required
-                        value={formTotalQuantity}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          setFormTotalQuantity(value)
-                          setPreviewData(null)
-                        }}
-                      />
+                    <div className="space-y-2">
+                      {outboundLines.map((line, index) => {
+                        const lineSku = skus.find((sku) => String(sku.id) === String(line.skuId))
+                        const lineSummary = stockSummaryByLine[line.id]
+                        const isActive = line.id === activeOutboundLine?.id
+                        const lineShortage = Math.max(
+                          Number(line.quantity || 0) - Number(lineSummary?.totalQuantity || 0),
+                          0
+                        )
+                        return (
+                          <div
+                            key={line.id}
+                            className={`rounded-lg border p-3 transition-colors ${isActive ? 'border-blue-300 bg-white ring-1 ring-blue-100' : 'border-slate-200 bg-white/80'}`}
+                          >
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_140px_auto] sm:items-end">
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-600">SKU {index + 1}</label>
+                                <select
+                                  required
+                                  value={line.skuId}
+                                  onFocus={() => setActiveOutboundLineId(line.id)}
+                                  onChange={(event) => {
+                                    updateOutboundLine(line.id, { skuId: event.target.value, location: '' })
+                                    setActiveOutboundLineId(line.id)
+                                    setPreviewData(null)
+                                  }}
+                                  className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
+                                >
+                                  <option value="">-- Select product --</option>
+                                  {skus
+                                    .filter((sku) => !outboundLines.some((other) => other.id !== line.id && String(other.skuId) === String(sku.id)))
+                                    .map((sku) => (
+                                      <option key={sku.id} value={sku.id}>
+                                        [{sku.skuCode}] {sku.name}
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-semibold text-slate-600">Quantity</label>
+                                <InputField
+                                  type="number"
+                                  min="1"
+                                  required
+                                  value={line.quantity}
+                                  onFocus={() => setActiveOutboundLineId(line.id)}
+                                  onChange={(event) => {
+                                    updateOutboundLine(line.id, { quantity: event.target.value })
+                                    setPreviewData(null)
+                                  }}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                disabled={outboundLines.length === 1}
+                                onClick={() => {
+                                  setOutboundLines((previous) => previous.filter((item) => item.id !== line.id))
+                                  if (line.id === activeOutboundLine?.id) {
+                                    const nextLine = outboundLines.find((item) => item.id !== line.id)
+                                    setActiveOutboundLineId(nextLine?.id || null)
+                                  }
+                                  setPreviewData(null)
+                                }}
+                                className="h-9 rounded-md px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                              <span className="text-slate-500">
+                                {lineSku ? `${lineSku.name} · ${lineSku.uomCode || lineSku.uomName || 'units'}` : 'Choose a SKU to check warehouse stock'}
+                              </span>
+                              {line.skuId && !isLocationsLoading && (
+                                <span className={lineShortage > 0 ? 'font-semibold text-rose-600' : 'font-semibold text-emerald-600'}>
+                                  {lineShortage > 0 ? `Short ${lineShortage}` : `Available ${lineSummary?.totalQuantity || 0}`}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
+                  </section>
 
                     {outboundMethod === 'MANUAL' && (
-                      <div className="space-y-1.5 col-span-2">
+                      <div className="space-y-1.5">
                         <label className="text-sm font-medium text-slate-700">
                           Location (Rack & Bin) {isLocationsLoading && <Loader2 className="inline h-3 w-3 animate-spin text-slate-400" />}
                         </label>
@@ -765,7 +911,7 @@ const OutboundPage = () => {
                           required
                           className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
                           value={selectedLocationStr}
-                          onChange={(e) => setSelectedLocationStr(e.target.value)}
+                          onChange={(e) => updateOutboundLine(activeOutboundLine?.id, { location: e.target.value })}
                           disabled={!formSkuId || isLocationsLoading}
                         >
                           <option value="">-- Select location --</option>
@@ -781,7 +927,7 @@ const OutboundPage = () => {
                       </div>
                     )}
 
-                    <div className="space-y-1.5 col-span-2">
+                    <div className="space-y-1.5">
                       <label className="text-sm font-medium text-slate-700">Tên nơi nhận (Receiver Name)</label>
                       <InputField
                         placeholder="Ví dụ: Khách hàng B"
@@ -789,7 +935,6 @@ const OutboundPage = () => {
                         onChange={(e) => setFormReceiverName(e.target.value)}
                       />
                     </div>
-                  </div>
 
                   {formSkuId && (
                     <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4" aria-live="polite">
@@ -905,7 +1050,7 @@ const OutboundPage = () => {
                           {!previewData.complete && (
                             <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                               <strong>Phát hiện thiếu hàng!</strong> Hệ thống đang thiếu{' '}
-                              {previewData.items?.[0]?.shortageQuantity} sản phẩm so với yêu cầu. Bạn không thể tạo phiếu xuất này.
+                              {previewShortageQuantity} sản phẩm so với yêu cầu. Bạn không thể tạo phiếu xuất này.
                             </div>
                           )}
                           <div className="max-h-[280px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
@@ -982,12 +1127,11 @@ const OutboundPage = () => {
                       type="submit"
                       isLoading={isSubmitting}
                       disabled={
-                        !formSkuId ||
+                        !allOutboundLinesValid ||
                         isLocationsLoading ||
-                        !stockSummary ||
-                        hasStockShortage ||
+                        hasAnyStockShortage ||
                         (outboundMethod === 'AUTO' && !previewData?.complete) ||
-                        (outboundMethod === 'MANUAL' && !selectedLocationStr)
+                        (outboundMethod === 'MANUAL' && !allManualLocationsSelected)
                       }
                     >
                       Confirm Outbound

@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+import { useNavigate } from 'react-router-dom'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import DataTable from '@/components/organisms/DataTable'
 import Badge from '@/components/atoms/Badge'
 import TableActionMenu from '@/components/TableActionMenu'
-import { ListTodo, CheckCircle2, Clock } from 'lucide-react'
+import { ListTodo } from 'lucide-react'
 import staffApi from '@/services/staff/staffApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 
 const StaffTasksPage = () => {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const currentWarehouseId = useSelector((state) => state.auth.warehouseId)
   const [tasks, setTasks] = useState([])
@@ -93,7 +95,13 @@ const StaffTasksPage = () => {
       render: (row) => {
         const actionItems = (row.allowedActions || []).map(action => ({
           label: action,
-          onClick: () => toast.info(`Action ${action} clicked for ${row.operationId}`)
+          onClick: () => {
+            if (row.operationType === 'TRANSFER') {
+              navigate(`/staff/transfers?transferId=${row.operationId}&action=${action}`)
+              return
+            }
+            toast.info(`Open ${row.operationType.toLowerCase()} ${row.operationId} to continue.`)
+          }
         }))
 
         if (actionItems.length === 0) {
