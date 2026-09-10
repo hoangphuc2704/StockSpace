@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, CheckCircle2, Loader2, Warehouse, X } from 'lucide-react'
+import { ArrowRight, CheckCircle2, Loader2, Plus, Warehouse, X } from 'lucide-react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import warehouseApi from '@/services/warehouse/warehouseApi'
@@ -18,26 +18,42 @@ const CreateTransferModal = ({
 }) => {
   useEscapeKey(isOpen, onClose)
 
+  const createTransferLine = () => ({
+    id: `transfer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    skuId: '',
+    allocations: {},
+  })
+
   const [allWarehouses, setAllWarehouses] = useState([])
   const [products, setProducts] = useState([])
   const [loadingInitial, setLoadingInitial] = useState(true)
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [loadingStaff, setLoadingStaff] = useState(false)
   const [sourceStaff, setSourceStaff] = useState([])
+  const [destinationStaff, setDestinationStaff] = useState([])
   const [staffWarehouseIds, setStaffWarehouseIds] = useState([])
 
   const [selectedSourceWarehouseId, setSelectedSourceWarehouseId] = useState('')
   const [destinationWarehouseId, setDestinationWarehouseId] = useState('')
-  const [selectedSkuId, setSelectedSkuId] = useState('')
-  const [stockBatches, setStockBatches] = useState([])
+  const [transferLines, setTransferLines] = useState(() => [createTransferLine()])
+  const [activeTransferLineId, setActiveTransferLineId] = useState(null)
+  const [stockBatchesBySku, setStockBatchesBySku] = useState({})
   const [loadingBatches, setLoadingBatches] = useState(false)
   const [note, setNote] = useState('')
   const [expectedArrivalAt, setExpectedArrivalAt] = useState('')
   const [sourceStaffId, setSourceStaffId] = useState('')
+  const [destinationStaffId, setDestinationStaffId] = useState('')
 
-  // Map of batchId -> quantity allocated
-  const [allocations, setAllocations] = useState({})
   const [submitting, setSubmitting] = useState(false)
+
+  const activeTransferLine = transferLines.find((line) => line.id === activeTransferLineId) || transferLines[0]
+  const stockBatches = stockBatchesBySku[String(activeTransferLine?.skuId)] || []
+  const allocations = activeTransferLine?.allocations || {}
+  const updateTransferLine = (lineId, patch) => {
+    setTransferLines((previous) => previous.map((line) => (
+      line.id === lineId ? { ...line, ...patch } : line
+    )))
+  }
 
   useEffect(() => {
     if (!isOpen) return
@@ -75,11 +91,13 @@ const CreateTransferModal = ({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedSourceWarehouseId(sourceWarehouseId || '')
     setDestinationWarehouseId('')
-    setSelectedSkuId('')
-    setStockBatches([])
-    setAllocations({})
+    const emptyLine = createTransferLine()
+    setTransferLines([emptyLine])
+    setActiveTransferLineId(emptyLine.id)
+    setStockBatchesBySku({})
     setNote('')
     setExpectedArrivalAt('')
+    setDestinationStaffId('')
     let currentStaffId = ''
     if (currentRole === 'STAFF') {
       try {
@@ -91,6 +109,7 @@ const CreateTransferModal = ({
     }
     setSourceStaffId(currentStaffId)
     setSourceStaff([])
+    setDestinationStaff([])
     setStaffWarehouseIds([])
   }, [currentRole, isOpen, sourceWarehouseId])
 
@@ -100,27 +119,19 @@ const CreateTransferModal = ({
     const fetchAssignedStaff = async () => {
       setLoadingStaff(true)
       try {
-        const response = await staffApi.listStaffs({ page: 0, size: 100 })
+        const response = await staffApi.listStaffs({
+          page: 0,
+          size: 100,
+          warehouseId: selectedSourceWarehouseId,
+          active: true,
+        })
         const staffList = response.data?.data?.content || response.data?.data || []
-        const assignedStaff = await Promise.all(
-          staffList.map(async (staff) => {
-            const staffUserId = staff.userId || staff.memberId
-            if (!staffUserId) return null
-            try {
-              const assignmentResponse = await staffApi.getWarehouseAssignments(staffUserId)
-              const assignments = assignmentResponse.data?.data || []
-              const isActive = assignments.some(
-                (assignment) =>
-                  assignment.status === 'ACTIVE' &&
-                  String(assignment.warehouseId) === String(selectedSourceWarehouseId)
-              )
-              return isActive ? { ...staff, userId: staffUserId } : null
-            } catch {
-              return null
-            }
-          })
+        setSourceStaff(
+          staffList.map((staff) => ({
+            ...staff,
+            userId: staff.userId || staff.memberId,
+          }))
         )
-        setSourceStaff(assignedStaff.filter(Boolean))
       } catch (error) {
         showApiErrorToast(error, 'Could not load assigned staff.')
         setSourceStaff([])
@@ -131,6 +142,40 @@ const CreateTransferModal = ({
 
     fetchAssignedStaff()
   }, [currentRole, isOpen, selectedSourceWarehouseId])
+
+  useEffect(() => {
+    if (!isOpen || !destinationWarehouseId || currentRole !== 'TENANT') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setDestinationStaff([])
+      return
+    }
+
+    const fetchAssignedDestinationStaff = async () => {
+      setLoadingStaff(true)
+      try {
+        const response = await staffApi.listStaffs({
+          page: 0,
+          size: 100,
+          warehouseId: destinationWarehouseId,
+          active: true,
+        })
+        const staffList = response.data?.data?.content || response.data?.data || []
+        setDestinationStaff(
+          staffList.map((staff) => ({
+            ...staff,
+            userId: staff.userId || staff.memberId,
+          }))
+        )
+      } catch (error) {
+        showApiErrorToast(error, 'Could not load destination staff.')
+        setDestinationStaff([])
+      } finally {
+        setLoadingStaff(false)
+      }
+    }
+
+    fetchAssignedDestinationStaff()
+  }, [currentRole, destinationWarehouseId, isOpen])
 
   useEffect(() => {
     if (!selectedSourceWarehouseId) {
@@ -159,26 +204,21 @@ const CreateTransferModal = ({
   }, [selectedSourceWarehouseId])
 
   useEffect(() => {
-    if (!selectedSkuId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setStockBatches([])
-      setAllocations({})
-      return
-    }
-
     const fetchBatches = async () => {
+      if (!selectedSourceWarehouseId) return
       setLoadingBatches(true)
       try {
-        // We use getAllStock to get StockBatchResponse objects which contain rackId and binId.
-        // getStockBySku returns StockLocationDto which lacks rackId and binId.
+        // Load the source snapshot once. Every SKU line then gets its own
+        // batch list and allocation map from this response.
         const allWarehouseBatches = await stockApi.getAllStock(selectedSourceWarehouseId)
-
-        // Filter by SKU and has quantity > 0
-        const sourceBatches = allWarehouseBatches.filter(
-          (batch) => String(batch.skuId) === String(selectedSkuId) && Number(batch.quantity) > 0
-        )
-        setStockBatches(sourceBatches)
-        setAllocations({})
+        const batchesBySku = (Array.isArray(allWarehouseBatches) ? allWarehouseBatches : [])
+          .filter((batch) => Number(batch.quantity) > 0)
+          .reduce((groups, batch) => {
+            const key = String(batch.skuId)
+            groups[key] = [...(groups[key] || []), batch]
+            return groups
+          }, {})
+        setStockBatchesBySku(batchesBySku)
       } catch (error) {
         showApiErrorToast(error, 'Could not load stock batches.')
       } finally {
@@ -186,19 +226,24 @@ const CreateTransferModal = ({
       }
     }
     fetchBatches()
-  }, [selectedSkuId, selectedSourceWarehouseId])
+  }, [selectedSourceWarehouseId])
 
   if (!isOpen) return null
 
   const handleAllocationChange = (batchId, value) => {
-    setAllocations((previous) => ({
-      ...previous,
-      [batchId]: Number(value),
-    }))
+    updateTransferLine(activeTransferLine?.id, {
+      allocations: {
+        ...(activeTransferLine?.allocations || {}),
+        [batchId]: Number(value),
+      },
+    })
   }
 
-  const totalRequestedQuantity = Object.values(allocations).reduce(
-    (sum, quantity) => sum + (Number(quantity) || 0),
+  const totalTransferQuantity = transferLines.reduce(
+    (sum, line) => sum + Object.values(line.allocations || {}).reduce(
+      (lineSum, quantity) => lineSum + (Number(quantity) || 0),
+      0
+    ),
     0
   )
 
@@ -209,47 +254,62 @@ const CreateTransferModal = ({
       toast.error('Select a destination warehouse.')
       return
     }
-    if (!selectedSkuId) {
-      toast.error('Select a product to transfer.')
+    if (transferLines.some((line) => !line.skuId)) {
+      toast.error('Select a product for every line.')
       return
     }
-    if (totalRequestedQuantity <= 0) {
-      toast.error('Allocate at least 1 unit to transfer.')
-      return
-    }
+    const selectedSkuIds = new Set()
+    const transferItems = []
+    for (const line of transferLines) {
+      if (selectedSkuIds.has(String(line.skuId))) {
+        toast.error('Each SKU can only appear once in a transfer.')
+        return
+      }
+      selectedSkuIds.add(String(line.skuId))
 
-    const sourceAllocations = []
-    for (let index = 0; index < stockBatches.length; index += 1) {
-      const batch = stockBatches[index]
-      const batchKey = batch.id || batch.stockBatchId || `batch-${index}`
-      const quantity = allocations[batchKey] || 0
-      if (quantity > 0) {
-        if (quantity > batch.quantity) {
+      const lineBatches = stockBatchesBySku[String(line.skuId)] || []
+      const sourceAllocations = []
+      let lineQuantity = 0
+      for (let index = 0; index < lineBatches.length; index += 1) {
+        const batch = lineBatches[index]
+        const batchKey = batch.id || batch.stockBatchId || `batch-${index}`
+        const quantity = Number(line.allocations?.[batchKey]) || 0
+        if (quantity <= 0) continue
+        if (quantity > Number(batch.quantity)) {
           toast.error(`Quantity for batch in ${batch.rackName} exceeds available stock.`)
           return
         }
+        lineQuantity += quantity
         sourceAllocations.push({
           sourceStockBatchId: batch.id || batch.stockBatchId || batch.batchId || null,
           sourceRackId: batch.rackId,
           sourceBinId: batch.binId,
-          quantity: Number(quantity),
+          quantity,
         })
       }
+      if (lineQuantity <= 0) {
+        toast.error(`Allocate at least 1 unit for ${line.skuId}.`)
+        return
+      }
+      transferItems.push({
+        skuId: line.skuId,
+        requestedQuantity: lineQuantity,
+        sourceAllocations,
+      })
+    }
+    if (totalTransferQuantity <= 0 || transferItems.length === 0) {
+      toast.error('Allocate at least 1 unit to transfer.')
+      return
     }
 
     const payload = {
       sourceWarehouseId: selectedSourceWarehouseId,
       destinationWarehouseId,
       ...(sourceStaffId ? { sourceStaffId } : {}),
+      ...(destinationStaffId ? { destinationStaffId } : {}),
       ...(expectedArrivalAt ? { expectedArrivalAt: `${expectedArrivalAt}:00` } : {}),
       note,
-      items: [
-        {
-          skuId: selectedSkuId,
-          requestedQuantity: totalRequestedQuantity,
-          sourceAllocations,
-        },
-      ],
+      items: transferItems,
     }
 
     try {
@@ -362,9 +422,12 @@ const CreateTransferModal = ({
                       value={selectedSourceWarehouseId}
                       onChange={(event) => {
                         setSelectedSourceWarehouseId(event.target.value)
-                        setSelectedSkuId('')
+                        const emptyLine = createTransferLine()
+                        setTransferLines([emptyLine])
+                        setActiveTransferLineId(emptyLine.id)
                         setDestinationWarehouseId('')
                         setSourceStaffId('')
+                        setDestinationStaffId('')
                       }}
                       className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     >
@@ -395,7 +458,10 @@ const CreateTransferModal = ({
                       id="transfer-destination"
                       required
                       value={destinationWarehouseId}
-                      onChange={(event) => setDestinationWarehouseId(event.target.value)}
+                      onChange={(event) => {
+                        setDestinationWarehouseId(event.target.value)
+                        setDestinationStaffId('')
+                      }}
                       disabled={!selectedSourceWarehouseId}
                       className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                     >
@@ -413,7 +479,7 @@ const CreateTransferModal = ({
                     </select>
                   </div>
                 </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
                     <label
                       htmlFor="transfer-source-staff"
@@ -457,6 +523,41 @@ const CreateTransferModal = ({
                   </div>
                   <div>
                     <label
+                      htmlFor="transfer-destination-staff"
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                    >
+                      Destination staff{' '}
+                      <span className="font-normal text-slate-500">(optional)</span>
+                    </label>
+                    <select
+                      id="transfer-destination-staff"
+                      value={destinationStaffId}
+                      onChange={(event) => setDestinationStaffId(event.target.value)}
+                      disabled={!destinationWarehouseId || loadingStaff || currentRole !== 'TENANT'}
+                      className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                    >
+                      <option value="">
+                        {!destinationWarehouseId
+                          ? 'Select destination first'
+                          : loadingStaff
+                            ? 'Loading assigned staff'
+                            : 'Assign later'}
+                      </option>
+                      {destinationStaff.map((staff) => (
+                        <option
+                          key={staff.userId || staff.memberId}
+                          value={staff.userId || staff.memberId}
+                        >
+                          {staff.fullName || staff.name || staff.email || 'Warehouse staff'}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-slate-500">
+                      This staff member confirms arrival and receives stock at the destination.
+                    </p>
+                  </div>
+                  <div>
+                    <label
                       htmlFor="transfer-expected-arrival"
                       className="mb-1.5 block text-sm font-semibold text-slate-700"
                     >
@@ -482,40 +583,96 @@ const CreateTransferModal = ({
                 aria-labelledby="transfer-product-heading"
                 className="border-t border-slate-200 pt-5"
               >
-                <div className="mb-3">
-                  <h3
-                    id="transfer-product-heading"
-                    className="text-sm font-semibold text-slate-950"
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 id="transfer-product-heading" className="text-sm font-semibold text-slate-950">
+                      Products to move
+                    </h3>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      Add multiple SKUs and allocate each one from its own source batches.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextLine = createTransferLine()
+                      setTransferLines((previous) => [...previous, nextLine])
+                      setActiveTransferLineId(nextLine.id)
+                    }}
+                    disabled={!selectedSourceWarehouseId || loadingProducts}
+                    className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Product to move
-                  </h3>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    Only SKUs with available stock at the selected source are shown.
-                  </p>
+                    <Plus className="h-4 w-4" aria-hidden="true" /> Add SKU
+                  </button>
                 </div>
-                <label
-                  htmlFor="transfer-sku"
-                  className="mb-1.5 block text-sm font-semibold text-slate-700"
-                >
-                  Product SKU <span className="text-rose-600">*</span>
-                </label>
-                <select
-                  id="transfer-sku"
-                  required
-                  value={selectedSkuId}
-                  onChange={(event) => setSelectedSkuId(event.target.value)}
-                  disabled={!selectedSourceWarehouseId || loadingProducts}
-                  className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
-                >
-                  <option value="">
-                    {loadingProducts ? 'Loading available products' : 'Select product SKU'}
-                  </option>
-                  {products.map((product) => (
-                    <option key={product.skuId} value={product.skuId}>
-                      [{product.skuCode}] {product.skuName} (Available: {product.totalQuantity})
-                    </option>
-                  ))}
-                </select>
+
+                <div className="space-y-2">
+                  {transferLines.map((line, index) => {
+                    const product = products.find((item) => String(item.skuId) === String(line.skuId))
+                    const lineQuantity = Object.values(line.allocations || {}).reduce(
+                      (sum, quantity) => sum + (Number(quantity) || 0),
+                      0
+                    )
+                    const isActive = line.id === activeTransferLine?.id
+                    return (
+                      <div
+                        key={line.id}
+                        className={`rounded-lg border p-3 transition-colors ${isActive ? 'border-blue-300 bg-white ring-1 ring-blue-100' : 'border-slate-200 bg-slate-50/50'}`}
+                      >
+                        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                          <div>
+                            <label htmlFor={`transfer-sku-${line.id}`} className="mb-1.5 block text-xs font-semibold text-slate-600">
+                              Product SKU {index + 1} <span className="text-rose-600">*</span>
+                            </label>
+                            <select
+                              id={`transfer-sku-${line.id}`}
+                              required
+                              value={line.skuId}
+                              onFocus={() => setActiveTransferLineId(line.id)}
+                              onChange={(event) => {
+                                updateTransferLine(line.id, { skuId: event.target.value, allocations: {} })
+                                setActiveTransferLineId(line.id)
+                              }}
+                              disabled={!selectedSourceWarehouseId || loadingProducts}
+                              className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 transition-colors outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
+                            >
+                              <option value="">
+                                {loadingProducts ? 'Loading available products' : 'Select product SKU'}
+                              </option>
+                              {products
+                                .filter((item) => !transferLines.some((other) => other.id !== line.id && String(other.skuId) === String(item.skuId)))
+                                .map((item) => (
+                                  <option key={item.skuId} value={item.skuId}>
+                                    [{item.skuCode}] {item.skuName} (Available: {item.totalQuantity})
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={transferLines.length === 1}
+                            onClick={() => {
+                              setTransferLines((previous) => previous.filter((item) => item.id !== line.id))
+                              if (line.id === activeTransferLine?.id) {
+                                const nextLine = transferLines.find((item) => item.id !== line.id)
+                                setActiveTransferLineId(nextLine?.id || null)
+                              }
+                            }}
+                            className="h-9 rounded-md px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                          <span>{product ? `${product.skuName} · Available ${product.totalQuantity}` : 'Choose a SKU to load source batches'}</span>
+                          <button type="button" onClick={() => setActiveTransferLineId(line.id)} className="font-semibold text-blue-700 hover:underline">
+                            {isActive ? `Allocating ${lineQuantity}` : `Configure allocation (${lineQuantity})`}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </section>
 
               <section
@@ -538,7 +695,7 @@ const CreateTransferModal = ({
                     className="self-start rounded border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-800 sm:self-auto"
                     aria-live="polite"
                   >
-                    Total selected: {totalRequestedQuantity.toLocaleString()}
+                    Total selected: {totalTransferQuantity.toLocaleString()}
                   </output>
                 </div>
 
@@ -629,7 +786,7 @@ const CreateTransferModal = ({
             <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
               <p className="text-xs leading-5 text-slate-500">
                 The request will be saved as{' '}
-                <span className="font-bold text-amber-700">Awaiting dispatch</span>.
+                <span className="font-bold text-amber-700">Pending allocation</span>.
               </p>
               <div className="flex flex-col-reverse gap-2 sm:flex-row">
                 <button

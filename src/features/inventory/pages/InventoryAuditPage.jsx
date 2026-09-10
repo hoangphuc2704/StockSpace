@@ -19,6 +19,11 @@ import { showApiErrorToast } from '@/config/apiError'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const STATUS_CONFIG = {
+  EDIT_REQUESTED: {
+    label: 'Yêu cầu mở lại',
+    className: 'border-purple-200 bg-purple-50 text-purple-800',
+  },
+  REOPENED: { label: 'Đã mở lại', className: 'border-indigo-200 bg-indigo-50 text-indigo-800' },
   PENDING: { label: 'Kế hoạch cũ', className: 'border-slate-200 bg-slate-100 text-slate-700' },
   DRAFT: { label: 'Bản nháp', className: 'border-slate-200 bg-slate-100 text-slate-700' },
   IN_PROGRESS: { label: 'Đang kiểm đếm', className: 'border-blue-200 bg-blue-50 text-blue-800' },
