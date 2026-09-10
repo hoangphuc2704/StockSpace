@@ -9,7 +9,6 @@ import Header from '@/components/HeaderDashboard'
 import ContractViewerModal from '@/components/ContractViewerModal'
 import TableActionMenu from '@/components/TableActionMenu'
 import OwnerDataTable from '../components/OwnerDataTable'
-import Badge from '@/components/atoms/Badge'
 import { FileText, X, Edit2, Trash2, Send, Eye, Plus } from 'lucide-react'
 import contractApi from '@/services/contractApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
@@ -18,6 +17,47 @@ import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { validateDateRange } from '@/config/validation'
 import { formatVND } from '@/utils/currency'
+
+const CONTRACT_STATUS_META = {
+  DRAFT: { label: 'Draft', className: 'border-slate-200 bg-slate-100 text-slate-700' },
+  PENDING_TENANT_CONFIRM: {
+    label: 'Pending confirmation',
+    className: 'border-amber-200 bg-amber-50 text-amber-800',
+  },
+  CHANGES_REQUESTED: {
+    label: 'Changes requested',
+    className: 'border-amber-200 bg-amber-50 text-amber-800',
+  },
+  ACTIVE: { label: 'Active', className: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  REJECTED: { label: 'Rejected', className: 'border-rose-200 bg-rose-50 text-rose-800' },
+  EXPIRED: { label: 'Expired', className: 'border-slate-200 bg-slate-100 text-slate-700' },
+}
+
+const getContractStatusMeta = (status) =>
+  CONTRACT_STATUS_META[status] || {
+    label: status || 'Unknown',
+    className: 'border-slate-200 bg-slate-100 text-slate-700',
+  }
+
+const formatContractReference = (id) =>
+  `CT-${String(id || '').slice(0, 8).toUpperCase() || '-'}`
+
+const formatContractDate = (dateString) => {
+  if (!dateString) return '-'
+  const date = new Date(`${dateString}T00:00:00`)
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('en-GB')
+}
+
+const getDaysUntilEnd = (contract) => {
+  if (contract.status !== 'ACTIVE' || !contract.endDate) return null
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const endDate = new Date(`${contract.endDate}T00:00:00`)
+  if (Number.isNaN(endDate.getTime())) return null
+
+  return Math.ceil((endDate - today) / 86_400_000)
+}
 
 // ─── Contract Draft Modal ───────────────────────────────────────────────────────────
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
@@ -697,42 +737,88 @@ const OwnerContractsPage = () => {
 
   const columns = [
     {
-      header: 'Tenant',
+      header: 'Contract',
       render: (row) => (
         <div>
-          <p className="font-bold text-slate-900">{row.tenantName}</p>
-          <p className="text-[10px] text-slate-400">{row.tenantEmail}</p>
+          <p className="font-mono text-xs font-semibold text-slate-900">
+            {formatContractReference(row.id)}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">Warehouse rental contract</p>
         </div>
       ),
     },
-    { header: 'Warehouse', accessor: 'warehouseName' },
+    {
+      header: 'Tenant',
+      render: (row) => (
+        <div>
+          <p className="font-semibold text-slate-900">{row.tenantName || '-'}</p>
+          <p className="mt-1 text-xs text-slate-500">{row.tenantEmail || 'Tenant'}</p>
+        </div>
+      ),
+    },
+    {
+      header: 'Warehouse',
+      render: (row) => (
+        <div>
+          <p className="max-w-72 truncate font-semibold text-slate-900">
+            {row.warehouseName || '-'}
+          </p>
+          <p className="mt-1 max-w-72 truncate text-xs text-slate-500">
+            {row.warehouseAddress || 'No warehouse address'}
+          </p>
+        </div>
+      ),
+    },
     {
       header: 'Rent',
       render: (row) => (
-        <span className="text-primary font-semibold">{formatVND(row.finalMonthlyRent || 0)}</span>
+        <div className="text-right">
+          <p className="font-semibold text-slate-950 tabular-nums">
+            {formatVND(row.finalMonthlyRent || 0)}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">/ month</p>
+        </div>
       ),
     },
     {
       header: 'Term',
       render: (row) => (
         <div className="text-xs">
-          <div>Start: {row.startDate}</div>
-          <div>End: {row.endDate}</div>
+          <div className="font-medium text-slate-800 tabular-nums">
+            {formatContractDate(row.startDate)}{' '}
+            <span className="px-1 text-slate-400">→</span>{' '}
+            {formatContractDate(row.endDate)}
+          </div>
+          {row.status === 'EXPIRED' ? (
+            <p className="mt-1 font-medium text-rose-700">Expired</p>
+          ) : (
+            (() => {
+              const daysUntilEnd = getDaysUntilEnd(row)
+              if (daysUntilEnd === null || daysUntilEnd < 0 || daysUntilEnd > 30) return null
+              return (
+                <p
+                  className={`mt-1 font-medium ${daysUntilEnd <= 7 ? 'text-rose-700' : 'text-amber-700'}`}
+                >
+                  {daysUntilEnd === 0 ? 'Expires today' : `Expires in ${daysUntilEnd} days`}
+                </p>
+              )
+            })()
+          )}
         </div>
       ),
     },
     {
       header: 'Status',
       render: (row) => {
-        const variants = {
-          DRAFT: 'secondary',
-          PENDING_TENANT_CONFIRM: 'warning',
-          CHANGES_REQUESTED: 'warning',
-          ACTIVE: 'success',
-          REJECTED: 'danger',
-          EXPIRED: 'slate',
-        }
-        return <Badge variant={variants[row.status] || 'slate'}>{row.status}</Badge>
+        const statusMeta = getContractStatusMeta(row.status)
+        return (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] font-semibold ${statusMeta.className}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-80" aria-hidden="true" />
+            {statusMeta.label}
+          </span>
+        )
       },
     },
     {
@@ -830,7 +916,7 @@ const OwnerContractsPage = () => {
                   {loading ? 'Loading contracts' : `${contracts.length} contracts displayed`}
                 </span>
               </div>
-              <OwnerDataTable columns={columns} data={contracts} />
+              <OwnerDataTable columns={columns} data={contracts} wide />
             </div>
           </main>
         </div>

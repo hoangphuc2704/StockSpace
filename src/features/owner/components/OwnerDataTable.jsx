@@ -1,6 +1,13 @@
 import { twMerge } from 'tailwind-merge'
 
-const OwnerDataTable = ({ columns, data, compact = false, className, isLoading = false }) => {
+const OwnerDataTable = ({
+  columns,
+  data,
+  compact = false,
+  wide = false,
+  className,
+  isLoading = false,
+}) => {
   const styles = compact
     ? {
         table: 'w-full min-w-[620px] text-left text-xs sm:min-w-[760px]',
@@ -11,12 +18,14 @@ const OwnerDataTable = ({ columns, data, compact = false, className, isLoading =
         dataCell: 'px-3 py-2.5 text-slate-600 sm:px-4 sm:py-3',
       }
     : {
-        table: 'w-full min-w-[680px] text-left text-sm sm:min-w-[900px]',
+        table: `w-full ${wide ? 'min-w-[1060px]' : 'min-w-[680px] sm:min-w-[900px]'} text-left text-sm`,
         head: 'border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase',
         cell: 'px-3 py-2.5 sm:px-5 sm:py-3',
         body: 'divide-y divide-slate-200',
         row: 'transition-colors hover:bg-slate-50',
-        dataCell: 'px-3 py-3 align-middle text-slate-600 sm:px-5 sm:py-3.5',
+        dataCell: wide
+          ? 'px-5 py-3.5 align-middle text-slate-600'
+          : 'px-3 py-3 align-middle text-slate-600 sm:px-5 sm:py-3.5',
       }
 
   return (

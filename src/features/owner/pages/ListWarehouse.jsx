@@ -216,12 +216,12 @@ const WarehouseManagement = () => {
   }
 
   const getInspectionBadge = (warehouse, inspection) => {
-    const status = (warehouse.isVerified ?? warehouse.verified) ? 'PASSED' : inspection?.status
+    const isPassed =
+      Boolean(warehouse.isVerified ?? warehouse.verified) || inspection?.status === 'PASSED'
+    const status = isPassed ? 'PASSED' : inspection ? 'REQUESTED' : null
     const configs = {
-      PENDING: ['bg-amber-50 text-amber-700 border-amber-200', 'Waiting for assignment'],
-      IN_PROGRESS: ['bg-blue-50 text-blue-700 border-blue-200', 'Inspection in progress'],
+      REQUESTED: ['bg-blue-50 text-blue-700 border-blue-200', 'Inspection requested'],
       PASSED: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Inspection passed'],
-      FAILED: ['bg-red-50 text-red-700 border-red-200', 'Inspection failed'],
     }
     const [className, text] = configs[status] || [
       'bg-slate-100 text-slate-600 border-slate-200',
@@ -337,9 +337,7 @@ const WarehouseManagement = () => {
                         const isCurrentlyRequesting = requestingIds.includes(wh.id)
                         const inspection = inspectionsByWarehouse[String(wh.id)]
                         const inspectionBadge = getInspectionBadge(wh, inspection)
-                        const requestPending = ['PENDING', 'IN_PROGRESS'].includes(
-                          inspectionBadge.status
-                        )
+                        const inspectionRequested = Boolean(inspection)
 
                         return (
                           <tr key={wh.id} className="transition-colors hover:bg-slate-50">
@@ -422,18 +420,18 @@ const WarehouseManagement = () => {
                                 >
                                   {inspectionBadge.status === 'PASSED' ? (
                                     <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                                  ) : inspectionBadge.status === 'IN_PROGRESS' ? (
-                                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                                  ) : inspectionBadge.status === 'REQUESTED' ? (
+                                    <Clock className="mr-1 h-3.5 w-3.5" />
                                   ) : (
                                     <AlertTriangle className="mr-1 h-3.5 w-3.5" />
                                   )}
                                   {inspectionBadge.text}
                                 </span>
-                                {!isRejectedListing && !(wh.isVerified ?? wh.verified) && (
+                                {!isRejectedListing && inspectionBadge.status !== 'PASSED' && (
                                   <div className="flex flex-col items-center gap-1">
                                     <button
                                       onClick={() => setInspectionConfirm(wh)}
-                                      disabled={isCurrentlyRequesting || requestPending}
+                                      disabled={isCurrentlyRequesting || inspectionRequested}
                                       className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
                                     >
                                       {isCurrentlyRequesting ? (
@@ -441,14 +439,8 @@ const WarehouseManagement = () => {
                                           <Loader2 className="h-3 w-3 animate-spin" />
                                           Sending...
                                         </>
-                                      ) : requestPending ? (
-                                        inspectionBadge.status === 'PENDING' ? (
-                                          'Request submitted'
-                                        ) : (
-                                          'Being inspected'
-                                        )
-                                      ) : inspectionBadge.status === 'FAILED' ? (
-                                        'Request re-inspection'
+                                      ) : inspectionRequested ? (
+                                        'Inspection requested'
                                       ) : (
                                         'Request inspection'
                                       )}

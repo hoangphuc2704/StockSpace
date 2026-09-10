@@ -5,7 +5,6 @@ import {
   AlertCircle,
   Grid3X3,
   Loader2,
-  Pencil,
   Plus,
   Package2,
   RotateCcw,
@@ -25,6 +24,7 @@ import warehouseApi from '@/services/warehouse/warehouseApi'
 import stockApi from '@/services/wms/stockApi'
 import { getEnglishApiMessage } from '@/utils/englishMessages'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
+import useEscapeKey from '@/hooks/useEscapeKey'
 
 const DEFAULT_LAYOUT_SIZE = 100
 // Racks can be smaller than the old 4m hard limit. Keep a small positive
@@ -1266,6 +1266,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [isMoveBinOpen, setIsMoveBinOpen] = useState(false)
   const [moveBinTargetRackKey, setMoveBinTargetRackKey] = useState('')
   const [moveBinShelfLevel, setMoveBinShelfLevel] = useState('')
+  const moveBinDialogRef = useRef(null)
+  const binConfigDialogRef = useRef(null)
+  const rackConfigDialogRef = useRef(null)
   const [draftWarehouseId, setDraftWarehouseId] = useState('')
   const draftWarehouseIdRef = useRef('')
   const [selection, setSelection] = useState({ type: 'layout', key: null })
@@ -1345,6 +1348,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           width: warehouse.width ?? warehouse.warehouseWidth,
           length: warehouse.length ?? warehouse.warehouseLength ?? warehouse.height,
           height: warehouse.height ?? warehouse.warehouseHeight,
+          area: warehouse.area ?? warehouse.warehouseArea ?? warehouse.capacity,
         }))
     }
     return rentedWarehouses
@@ -1355,6 +1359,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         width: warehouse.width ?? warehouse.warehouseWidth,
         length: warehouse.length ?? warehouse.warehouseLength ?? warehouse.height,
         height: warehouse.height ?? warehouse.warehouseHeight,
+        area: warehouse.area ?? warehouse.warehouseArea ?? warehouse.capacity,
       }))
   }, [isOwner, ownedWarehouses, rentedWarehouses])
 
@@ -1391,6 +1396,17 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     searchParams,
     warehouses,
   ])
+
+  const selectedWarehouse = useMemo(
+    () => warehouses.find((warehouse) => warehouse.id === selectedWarehouseId) || null,
+    [selectedWarehouseId, warehouses]
+  )
+  const leasedLayoutAreaM2 = numberOf(layout?.width) * numberOf(layout?.length)
+  const ownedWarehouseAreaM2 = numberOf(selectedWarehouse?.area, 0)
+  const previewAreaM2 = isOwner && ownedWarehouseAreaM2 > 0
+    ? ownedWarehouseAreaM2
+    : leasedLayoutAreaM2
+  const previewAreaLabel = isOwner ? 'Diện tích toàn kho' : 'Diện tích đang thuê'
 
   useActiveWarehouseContext(selectedWarehouseId)
 
@@ -2935,6 +2951,58 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     return () => window.removeEventListener('keydown', handleKeyboardShortcut)
   }, [copySelected, isReadOnly, pasteCopied, removeSelected, selectedItems.length, selection.type])
 
+  useEscapeKey(isMoveBinOpen, () => setIsMoveBinOpen(false))
+  useEscapeKey(isBinConfigOpen, () => setIsBinConfigOpen(false))
+  useEscapeKey(isRackConfigOpen, () => setIsRackConfigOpen(false))
+
+  useEffect(() => {
+    const dialog = isMoveBinOpen
+      ? moveBinDialogRef.current
+      : isBinConfigOpen
+        ? binConfigDialogRef.current
+        : isRackConfigOpen
+          ? rackConfigDialogRef.current
+          : null
+    if (!dialog) return
+
+    const firstControl =
+      dialog.querySelector('input:not([disabled]), select, textarea') ||
+      dialog.querySelector('button:not([aria-label="Đóng"])')
+    firstControl?.focus()
+  }, [isBinConfigOpen, isMoveBinOpen, isRackConfigOpen])
+
+  useEffect(() => {
+    if (!isMoveBinOpen && !isBinConfigOpen && !isRackConfigOpen) return undefined
+
+    const handlePopupKeyDown = (event) => {
+      if (event.key !== 'Enter' || event.isComposing) return
+      const tagName = event.target?.tagName
+      if (tagName === 'BUTTON' || tagName === 'TEXTAREA') return
+
+      event.preventDefault()
+      if (isMoveBinOpen) {
+        moveSelectedBinToRack()
+      } else if (isBinConfigOpen) {
+        if (editingBinKey) updateSelectedBin()
+        else addBinToSelectedRack()
+      } else if (isRackConfigOpen) {
+        addRackFromConfiguration()
+      }
+    }
+
+    document.addEventListener('keydown', handlePopupKeyDown)
+    return () => document.removeEventListener('keydown', handlePopupKeyDown)
+  }, [
+    addBinToSelectedRack,
+    addRackFromConfiguration,
+    editingBinKey,
+    isBinConfigOpen,
+    isMoveBinOpen,
+    isRackConfigOpen,
+    moveSelectedBinToRack,
+    updateSelectedBin,
+  ])
+
   const createWarehouseFromDraft = useCallback(async () => {
     if (draftWarehouseIdRef.current) return draftWarehouseIdRef.current
     if (!pendingOwnerDraft) throw new Error('No warehouse draft found.')
@@ -3152,6 +3220,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     onClick={() => setIsMoveBinOpen(false)}
                   />
                   <div
+                    ref={moveBinDialogRef}
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="move-bin-title"
@@ -3270,7 +3339,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                 </div>
               )}
             {isBinConfigOpen && canEditLayout && selectedRack && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                 <button
                   type="button"
                   aria-label="Đóng cấu hình Bin"
@@ -3278,6 +3347,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   onClick={() => setIsBinConfigOpen(false)}
                 />
                 <div
+                  ref={binConfigDialogRef}
                   role="dialog"
                   aria-modal="true"
                   aria-labelledby="bin-config-title"
@@ -3468,6 +3538,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                   onClick={() => setIsRackConfigOpen(false)}
                 />
                 <div
+                  ref={rackConfigDialogRef}
                   role="dialog"
                   aria-modal="true"
                   aria-labelledby="rack-config-title"
@@ -3925,23 +3996,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           Thêm Bin
                         </button>
                         {selection.type === 'bin' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={openBinEditConfiguration}
-                              className="inline-flex items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-700 transition hover:bg-cyan-100"
-                            >
-                              <Pencil className="mr-1 h-3.5 w-3.5" />
-                              Sửa Bin
-                            </button>
-                            <button
-                              type="button"
-                              onClick={openMoveBinConfiguration}
-                              className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
-                            >
-                              Chuyển Rack
-                            </button>
-                          </>
+                          <button
+                            type="button"
+                            onClick={openMoveBinConfiguration}
+                            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+                          >
+                            Chuyển Rack
+                          </button>
                         )}
                       </div>
                     )}
@@ -4354,6 +4415,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     <div className="h-140 overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50 shadow-inner">
                       <WarehouseLayoutPreview3D
                         layout={layout}
+                        warehouseAreaM2={previewAreaM2}
+                        warehouseAreaLabel={previewAreaLabel}
                         capacityByBinId={capacityByBinId}
                         selection={{ ...selection, clientKey: selection.key }}
                         selectedItems={selectedItems}
@@ -4646,6 +4709,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       <div className="h-[560px] overflow-hidden rounded-2xl border border-slate-200 bg-white">
                         <WarehouseLayoutPreview3D
                           layout={layout}
+                          warehouseAreaM2={previewAreaM2}
+                          warehouseAreaLabel={previewAreaLabel}
                           capacityByBinId={capacityByBinId}
                           selection={{ ...selection, clientKey: selection.key }}
                           selectedItems={selectedItems}

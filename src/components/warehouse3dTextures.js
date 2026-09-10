@@ -1,5 +1,11 @@
 // warehouse3dTextures.js - Bộ tạo Texture Công nghiệp Canvas chất lượng cao cho StockSpace 3D
-import { CanvasTexture, ClampToEdgeWrapping, RepeatWrapping, LinearFilter, SRGBColorSpace } from 'three'
+import {
+  CanvasTexture,
+  ClampToEdgeWrapping,
+  RepeatWrapping,
+  LinearFilter,
+  SRGBColorSpace,
+} from 'three'
 
 /** Texture bê tông đơn sắc cho sàn kho 3D. */
 export function createWarehouseFloorTexture() {
@@ -105,21 +111,21 @@ export function createCardboardTexture() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  // Màu carton theo nhận diện kho hàng
-  ctx.fillStyle = '#a5822a'
+  // Màu carton kraft sáng, gần với thùng giấy thực tế.
+  ctx.fillStyle = '#6E260E'
   ctx.fillRect(0, 0, 512, 512)
 
   // Bụi hạt giấy carton vàng ấm
-  ctx.fillStyle = '#b5943d'
-  for (let i = 0; i < 600; i++) {
-    const x = Math.random() * 512
-    const y = Math.random() * 512
-    ctx.fillRect(x, y, 2, 2)
-  }
+  // ctx.fillStyle = '#d1aa73'
+  // for (let i = 0; i < 600; i++) {
+  //   const x = Math.random() * 512
+  //   const y = Math.random() * 512
+  //   ctx.fillRect(x, y, 2, 2)
+  // }
 
   // Dải băng dính niêm phong miệng thùng vàng hổ phách
-  ctx.fillStyle = 'rgba(120, 86, 20, 0.72)'
-  ctx.fillRect(0, 238, 512, 36)
+  // ctx.fillStyle = 'rgba(224, 205, 166, 0.72)'
+  // ctx.fillRect(0, 238, 512, 36)
 
   // Nhãn vận chuyển màu trắng dán trên thùng
   ctx.fillStyle = '#ffffff'
@@ -141,7 +147,7 @@ export function createCardboardTexture() {
   ctx.font = 'bold 9px monospace'
   ctx.fillText('*STOCKSPACE-WMS*', 295, 162)
   ctx.font = '8px sans-serif'
-  ctx.fillText('FRAGILE / HÀNG DỄ VỠ', 295, 178)
+  ctx.fillText('FRAGILE / HANDLE WITH CARE', 295, 178)
 
   // Biểu tượng ly dễ vỡ màu đỏ nổi bật
   ctx.strokeStyle = '#ef4444'
