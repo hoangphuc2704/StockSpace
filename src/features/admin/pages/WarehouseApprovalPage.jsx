@@ -36,7 +36,10 @@ import warehouseApi from '../../../services/warehouse/warehouseApi'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import { required } from '@/config/validation'
-import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
+import {
+  formatWarehousePricePerSquareMeter,
+  isWarehousePricePerSquareMeter,
+} from '@/utils/warehousePricing'
 
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
 const numberOf = (value, fallback = 0) => {
@@ -241,11 +244,15 @@ const WarehouseApprovalPage = () => {
       ),
     },
     {
-      header: 'Price / m²',
+      header: 'Rental price',
       render: (row) => (
         <span className="text-primary font-bold">
           {formatWarehousePricePerSquareMeter(row)}
-          {row.rentalPricingType !== 'NEGOTIATED' && ' /m²'}
+          {isWarehousePricePerSquareMeter(row)
+            ? ' /m²/month'
+            : row.rentalPricingType !== 'NEGOTIATED'
+              ? ' /month'
+              : ''}
         </span>
       ),
     },
@@ -502,9 +509,13 @@ const WarehouseApprovalPage = () => {
                       ? `${warehouseDetail.area} m²`
                       : '—'}
                 </DetailItem>
-                <DetailItem icon={Package2} label="Price / m²">
+                <DetailItem icon={Package2} label="Rental price">
                   {formatWarehousePricePerSquareMeter(warehouseDetail)}
-                  {warehouseDetail?.rentalPricingType !== 'NEGOTIATED' && ' /m²'}
+                  {isWarehousePricePerSquareMeter(warehouseDetail)
+                    ? ' /m²/month'
+                    : warehouseDetail?.rentalPricingType !== 'NEGOTIATED'
+                      ? ' /month'
+                      : ''}
                 </DetailItem>
                 <DetailItem icon={ShieldCheck} label="Owner">
                   {warehouseDetail?.ownerName || warehouseDetail?.owner}

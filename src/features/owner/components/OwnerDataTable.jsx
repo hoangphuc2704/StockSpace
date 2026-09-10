@@ -11,16 +11,16 @@ const OwnerDataTable = ({
   const styles = compact
     ? {
         table: 'w-full min-w-[620px] text-left text-xs sm:min-w-[760px]',
-        head: 'border-b border-slate-200 bg-slate-50/80 text-[10px] font-semibold tracking-wider text-slate-600 uppercase',
-        cell: 'px-3 py-2 sm:px-4 sm:py-2.5',
+        head: 'border-b border-slate-200 bg-slate-50/80 text-[10px] font-bold tracking-wider text-slate-600 uppercase',
+        cell: 'px-3 py-2 font-bold sm:px-4 sm:py-2.5',
         body: 'divide-y divide-slate-100',
         row: 'transition-colors hover:bg-slate-50/60',
         dataCell: 'px-3 py-2.5 text-slate-600 sm:px-4 sm:py-3',
       }
     : {
         table: `w-full ${wide ? 'min-w-[1060px]' : 'min-w-[680px] sm:min-w-[900px]'} text-left text-sm`,
-        head: 'border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase',
-        cell: 'px-3 py-2.5 sm:px-5 sm:py-3',
+        head: 'border-b border-slate-200 bg-slate-50 text-[11px] font-bold tracking-[0.08em] text-slate-600 uppercase',
+        cell: 'px-3 py-2.5 font-bold sm:px-5 sm:py-3',
         body: 'divide-y divide-slate-200',
         row: 'transition-colors hover:bg-slate-50',
         dataCell: wide
@@ -34,7 +34,14 @@ const OwnerDataTable = ({
         <thead className={styles.head}>
           <tr>
             {columns.map((column, index) => (
-              <th key={index} className={twMerge(styles.cell, column.headerClassName)}>
+              <th
+                key={index}
+                className={twMerge(
+                  styles.cell,
+                  index > 0 && 'border-l border-slate-200',
+                  column.headerClassName
+                )}
+              >
                 {column.header}
               </th>
             ))}
@@ -45,7 +52,14 @@ const OwnerDataTable = ({
             ? Array.from({ length: 3 }).map((_, rowIndex) => (
                 <tr key={rowIndex} className={styles.row} aria-hidden="true">
                   {columns.map((column, columnIndex) => (
-                    <td key={columnIndex} className={twMerge(styles.dataCell, column.cellClassName)}>
+                    <td
+                      key={columnIndex}
+                      className={twMerge(
+                        styles.dataCell,
+                        columnIndex > 0 && 'border-l border-slate-200',
+                        column.cellClassName
+                      )}
+                    >
                       <span className="block h-4 animate-pulse rounded bg-slate-200" />
                     </td>
                   ))}
@@ -54,7 +68,14 @@ const OwnerDataTable = ({
             : data.map((row, rowIndex) => (
                 <tr key={rowIndex} className={styles.row}>
                   {columns.map((column, columnIndex) => (
-                    <td key={columnIndex} className={twMerge(styles.dataCell, column.cellClassName)}>
+                    <td
+                      key={columnIndex}
+                      className={twMerge(
+                        styles.dataCell,
+                        columnIndex > 0 && 'border-l border-slate-200',
+                        column.cellClassName
+                      )}
+                    >
                       {column.render ? column.render(row) : row[column.accessor]}
                     </td>
                   ))}

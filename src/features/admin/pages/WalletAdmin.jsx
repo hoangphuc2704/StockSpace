@@ -270,21 +270,21 @@ const WalletAdmin = () => {
 
   // --- Cá»˜T Báº¢NG GIAO Dá»ŠCH ---
   const transactionColumns = [
-    {
-      header: 'Transaction code',
-      render: (row) => (
-        <div>
-          <p className="text-xs font-semibold text-slate-400">
-            ID: <span className="font-sans text-slate-600">{row.id.substring(0, 8)}...</span>
-          </p>
-          {row.paymentCode && (
-            <p className="mt-0.5 inline-block rounded bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-blue-600">
-              Code: {row.paymentCode}
-            </p>
-          )}
-        </div>
-      ),
-    },
+    // {
+    //   header: 'Transaction code',
+    //   render: (row) => (
+    //     <div>
+    //       <p className="text-xs font-semibold text-slate-400">
+    //         ID: <span className="font-sans text-slate-600">{row.id.substring(0, 8)}...</span>
+    //       </p>
+    //       {row.paymentCode && (
+    //         <p className="mt-0.5 inline-block rounded bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-blue-600">
+    //           Code: {row.paymentCode}
+    //         </p>
+    //       )}
+    //     </div>
+    //   ),
+    // },
     {
       header: 'Type & Method',
       render: (row) => (

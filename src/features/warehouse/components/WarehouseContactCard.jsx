@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { Check, Copy, LogIn, Phone, ShieldCheck, UserRound } from 'lucide-react'
 import Button from '@/components/atoms/Button'
-import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
+import {
+  formatWarehousePricePerSquareMeter,
+  getWarehousePriceUnit,
+} from '@/utils/warehousePricing'
 
 const WarehouseContactCard = ({
   isAuthenticated,
@@ -14,7 +17,7 @@ const WarehouseContactCard = ({
 }) => {
   const [isCopied, setIsCopied] = useState(false)
   const phone = contact?.phone || ''
-  const pricingUnit = rentalPricingType === 'NEGOTIATED' ? '' : '/m²'
+  const pricingUnit = getWarehousePriceUnit({ rentalPricingType })
   const priceDisplay = formatWarehousePricePerSquareMeter(
     { rentalPrice, rentalPricingType, area },
     'Negotiated'

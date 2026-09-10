@@ -15,10 +15,19 @@ export const getWarehousePricePerSquareMeter = (warehouse = {}) => {
 
   if (rentalPrice == null) return null
   if (warehouse.rentalPricingType === 'NEGOTIATED') return null
-  if (warehouse.rentalPricingType === 'PER_SQUARE_METER_MONTHLY') return rentalPrice
 
-  const area = getWarehouseArea(warehouse)
-  return area > 0 ? rentalPrice / area : rentalPrice
+  // The API stores the published value as entered by the owner:
+  // FIXED_MONTHLY is the total monthly warehouse price, while
+  // PER_SQUARE_METER_MONTHLY is the monthly price per m².
+  return rentalPrice
+}
+
+export const isWarehousePricePerSquareMeter = (warehouse = {}) =>
+  warehouse.rentalPricingType === 'PER_SQUARE_METER_MONTHLY'
+
+export const getWarehousePriceUnit = (warehouse = {}) => {
+  if (warehouse.rentalPricingType === 'NEGOTIATED') return ''
+  return isWarehousePricePerSquareMeter(warehouse) ? '/m²/month' : '/month'
 }
 
 export const formatWarehousePricePerSquareMeter = (warehouse, fallback = 'Negotiated') =>

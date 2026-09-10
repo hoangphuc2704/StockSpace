@@ -176,21 +176,21 @@ const WithdrawHistory = () => {
 
   // --- ĐỊNH NGHĨA CÁC CỘT CHO DATATABLE GIAO DỊCH ---
   const transactionColumns = [
-    {
-      header: 'Transaction code',
-      render: (row) => (
-        <div>
-          <p className="text-xs font-semibold text-slate-400">
-            ID: <span className="font-sans text-slate-600">{row.id.substring(0, 8)}...</span>
-          </p>
-          {row.paymentCode && (
-            <p className="mt-0.5 inline-block rounded bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-blue-600">
-              Code: {row.paymentCode}
-            </p>
-          )}
-        </div>
-      ),
-    },
+    // {
+    //   header: 'Transaction code',
+    //   render: (row) => (
+    //     <div>
+    //       <p className="text-xs font-semibold text-slate-400">
+    //         ID: <span className="font-sans text-slate-600">{row.id.substring(0, 8)}...</span>
+    //       </p>
+    //       {row.paymentCode && (
+    //         <p className="mt-0.5 inline-block rounded bg-blue-50 px-1.5 py-0.5 text-xs font-bold text-blue-600">
+    //           Code: {row.paymentCode}
+    //         </p>
+    //       )}
+    //     </div>
+    //   ),
+    // },
     {
       header: 'Type & Method',
       render: (row) => (
@@ -310,7 +310,8 @@ const WithdrawHistory = () => {
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h1 className="flex items-center gap-2 text-xl font-bold text-slate-900 sm:text-2xl">
-                  <Wallet className="h-6 w-6 shrink-0 text-blue-600 sm:h-7 sm:w-7" /> Wallet Management (Owner)
+                  <Wallet className="h-6 w-6 shrink-0 text-blue-600 sm:h-7 sm:w-7" /> Wallet
+                  Management (Owner)
                 </h1>
                 <p className="text-sm text-slate-500">
                   View balances, request withdrawals and manage your rebate cash flow.
@@ -318,7 +319,12 @@ const WithdrawHistory = () => {
               </div>
 
               <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:items-center sm:gap-3">
-                <Button variant="outline" size="sm" onClick={handleRefresh} className="flex-1 sm:flex-none">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  className="flex-1 sm:flex-none"
+                >
                   <RefreshCw className="mr-2 h-4 w-4" /> Refresh
                 </Button>
                 <Button
@@ -339,7 +345,7 @@ const WithdrawHistory = () => {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-slate-500">Available balance</p>
-                  <h2 className="break-words text-2xl font-bold text-slate-900 sm:text-3xl">
+                  <h2 className="text-2xl font-bold break-words text-slate-900 sm:text-3xl">
                     {wallet === null ? 'Loading...' : formatVND(wallet?.balance)}
                   </h2>
                 </div>
@@ -350,7 +356,7 @@ const WithdrawHistory = () => {
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex border-b border-slate-200">
                 <button
-                    className={`flex-1 px-3 py-3 text-xs font-bold transition-colors sm:px-6 sm:py-4 sm:text-sm ${
+                  className={`flex-1 px-3 py-3 text-xs font-bold transition-colors sm:px-6 sm:py-4 sm:text-sm ${
                     activeTab === 'transactions'
                       ? 'border-b-2 border-blue-600 bg-blue-50/50 text-blue-600'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
@@ -360,7 +366,7 @@ const WithdrawHistory = () => {
                   Transaction history
                 </button>
                 <button
-                    className={`flex-1 px-3 py-3 text-xs font-bold transition-colors sm:px-6 sm:py-4 sm:text-sm ${
+                  className={`flex-1 px-3 py-3 text-xs font-bold transition-colors sm:px-6 sm:py-4 sm:text-sm ${
                     activeTab === 'withdrawals'
                       ? 'border-b-2 border-blue-600 bg-blue-50/50 text-blue-600'
                       : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'

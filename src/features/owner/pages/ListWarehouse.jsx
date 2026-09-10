@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -17,6 +17,7 @@ import {
   Loader2,
   Eye,
   History,
+  FileText,
   Megaphone,
   Edit3,
   Trash2,
@@ -33,9 +34,20 @@ import warehouseApi from '../../../services/warehouse/warehouseApi'
 import { closeMobileSidebar } from '../../../store/uiSlide'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
-import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
+import {
+  formatWarehousePricePerSquareMeter,
+  isWarehousePricePerSquareMeter,
+} from '@/utils/warehousePricing'
 import ListingPublicationModal from '../components/ListingPublicationModal'
 import EditWarehouseModal from '../components/EditWarehouseModal'
+import InspectionReportModal from '../components/InspectionReportModal'
+
+const getResponsivePageSize = () => {
+  if (typeof window === 'undefined') return 5
+  if (window.innerWidth >= 1536) return 12
+  if (window.innerWidth >= 1024) return 8
+  return 5
+}
 
 const WarehouseManagement = () => {
   const navigate = useNavigate()
@@ -49,7 +61,8 @@ const WarehouseManagement = () => {
 
   // State quản lý phân trang đồng bộ từ API thực tế
   const [currentPage, setCurrentPage] = useState(0) // API trả về "page": 0 ở trang đầu tiên
-  const pageSize = 5 // API trả về "size": 5
+  const [pageSize, setPageSize] = useState(getResponsivePageSize)
+  const pageSizeRef = useRef(pageSize)
   const [totalPages, setTotalPages] = useState(0) // API trả về "totalPages": 1
   const [totalElements, setTotalElements] = useState(0) // API trả về "totalElements": 2
 
@@ -58,6 +71,7 @@ const WarehouseManagement = () => {
   const [requestingIds, setRequestingIds] = useState([])
   const [inspectionsByWarehouse, setInspectionsByWarehouse] = useState({})
   const [inspectionConfirm, setInspectionConfirm] = useState(null)
+  const [inspectionReport, setInspectionReport] = useState(null)
 
   // State quản lý xem chi tiết kho bằng Modal
   const [selectedWarehouse, setSelectedWarehouse] = useState(null)
@@ -67,6 +81,19 @@ const WarehouseManagement = () => {
   const [rejectionReasonWarehouse, setRejectionReasonWarehouse] = useState(null)
   const [deleteWarehouseConfirm, setDeleteWarehouseConfirm] = useState(null)
   const [deletingWarehouseId, setDeletingWarehouseId] = useState(null)
+
+  useEffect(() => {
+    const handleResize = () => {
+      const nextSize = getResponsivePageSize()
+      if (nextSize === pageSizeRef.current) return
+      pageSizeRef.current = nextSize
+      setPageSize(nextSize)
+      setCurrentPage(0)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Inspection is optional and does not gate Admin approval or listing payment.
   const handleRequestInspection = async (warehouseId) => {
@@ -86,10 +113,7 @@ const WarehouseManagement = () => {
         setInspectionConfirm(null)
         setRefreshTrigger((prev) => prev + 1)
       } else {
-        showApiErrorToast(
-          { response: { data: res?.data || res } },
-          'Inspection request failed.'
-        )
+        showApiErrorToast({ response: { data: res?.data || res } }, 'Inspection request failed.')
       }
     } catch (error) {
       console.error('Error when sending inspection request:', error)
@@ -162,7 +186,6 @@ const WarehouseManagement = () => {
           if (!current || timestamp > currentTimestamp) latestByWarehouse[key] = inspection
         })
         setInspectionsByWarehouse(latestByWarehouse)
-
       } catch (error) {
         console.error('Error getting inventory list:', error)
         setWarehouses([])
@@ -216,17 +239,22 @@ const WarehouseManagement = () => {
   }
 
   const getInspectionBadge = (warehouse, inspection) => {
+    const inspectionStatus = String(inspection?.status || '').toUpperCase()
     const isPassed =
-      Boolean(warehouse.isVerified ?? warehouse.verified) || inspection?.status === 'PASSED'
-    const status = isPassed ? 'PASSED' : inspection ? 'REQUESTED' : null
+      Boolean(warehouse.isVerified ?? warehouse.verified) || inspectionStatus === 'PASSED'
+    const status = isPassed
+      ? 'PASSED'
+      : inspectionStatus === 'FAILED'
+        ? 'FAILED'
+        : inspection
+          ? 'REQUESTED'
+          : null
     const configs = {
       REQUESTED: ['bg-blue-50 text-blue-700 border-blue-200', 'Inspection requested'],
-      PASSED: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Inspection passed'],
+      PASSED: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Passed'],
+      FAILED: ['bg-rose-50 text-rose-700 border-rose-200', 'Failed'],
     }
-    const [className, text] = configs[status] || [
-      'bg-slate-100 text-slate-600 border-slate-200',
-      'Not requested',
-    ]
+    const [className, text] = configs[status] || ['', '']
     return { status, className, text }
   }
 
@@ -269,7 +297,9 @@ const WarehouseManagement = () => {
             {/* TIÊU ĐỀ TRANG */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Warehouse management</h1>
+                <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+                  Warehouse management
+                </h1>
                 <p className="text-sm text-slate-500">
                   View entire listings, check area performance, and quickly update status logistics.
                 </p>
@@ -315,15 +345,29 @@ const WarehouseManagement = () => {
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs">
               <div className="overflow-x-auto overscroll-x-contain">
                 <table className="w-full min-w-[960px] text-left text-sm sm:min-w-[1120px]">
-                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
+                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold tracking-[0.08em] text-slate-600 uppercase">
                     <tr>
-                      <th className="px-3 py-2.5 sm:px-5 sm:py-3">Image &amp; Warehouse name</th>
-                      <th className="px-3 py-2.5 sm:px-5 sm:py-3">Warehouse type</th>
-                      <th className="px-3 py-2.5 sm:px-5 sm:py-3">Capacity</th>
-                      <th className="px-3 py-2.5 sm:px-5 sm:py-3">Rental price / m²</th>
-                      <th className="px-3 py-2.5 text-center sm:px-5 sm:py-3">Status</th>
-                      <th className="px-3 py-2.5 text-center sm:px-5 sm:py-3">Inspection</th>
-                      <th className="px-3 py-2.5 text-center sm:px-5 sm:py-3">Actions</th>
+                      <th className="border-l border-slate-200 px-3 py-2.5 font-bold first:border-l-0 sm:px-5 sm:py-3">
+                        Image &amp; Warehouse name
+                      </th>
+                      <th className="border-l border-slate-200 px-3 py-2.5 font-bold first:border-l-0 sm:px-5 sm:py-3">
+                        Warehouse type
+                      </th>
+                      <th className="border-l border-slate-200 px-3 py-2.5 font-bold first:border-l-0 sm:px-5 sm:py-3">
+                        Capacity
+                      </th>
+                      <th className="border-l border-slate-200 px-3 py-2.5 font-bold first:border-l-0 sm:px-5 sm:py-3">
+                        Rental price
+                      </th>
+                      <th className="border-l border-slate-200 px-3 py-2.5 text-center font-bold first:border-l-0 sm:px-5 sm:py-3">
+                        Status
+                      </th>
+                      <th className="border-l border-slate-200 px-3 py-2.5 text-center font-bold first:border-l-0 sm:px-5 sm:py-3">
+                        Inspection
+                      </th>
+                      <th className="border-l border-slate-200 px-3 py-2.5 text-center font-bold first:border-l-0 sm:px-5 sm:py-3">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 font-medium text-slate-700">
@@ -337,12 +381,11 @@ const WarehouseManagement = () => {
                         const isCurrentlyRequesting = requestingIds.includes(wh.id)
                         const inspection = inspectionsByWarehouse[String(wh.id)]
                         const inspectionBadge = getInspectionBadge(wh, inspection)
-                        const inspectionRequested = Boolean(inspection)
 
                         return (
                           <tr key={wh.id} className="transition-colors hover:bg-slate-50">
                             {/* Cột 1: Ảnh & Tên kho */}
-                            <td className="max-w-xs px-3 py-3 align-middle sm:px-5 sm:py-3.5 md:max-w-sm">
+                            <td className="max-w-xs border-l border-slate-200 px-3 py-3 align-middle first:border-l-0 sm:px-5 sm:py-3.5 md:max-w-sm">
                               <div className="flex items-center gap-2 sm:gap-3">
                                 <img
                                   src={wh.coverImageUrl}
@@ -365,32 +408,38 @@ const WarehouseManagement = () => {
                             </td>
 
                             {/* Cột 2: Loại hình */}
-                            <td className="px-3 py-3 align-middle sm:px-5 sm:py-3.5">
+                            <td className="border-l border-slate-200 px-3 py-3 align-middle first:border-l-0 sm:px-5 sm:py-3.5">
                               <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
                                 {wh.typeName || 'Type unknown'}
                               </span>
                             </td>
 
                             {/* Cột 3: Sức chứa */}
-                            <td className="px-3 py-3 align-middle font-mono font-semibold text-slate-900 sm:px-5 sm:py-3.5">
+                            <td className="border-l border-slate-200 px-3 py-3 align-middle font-mono font-semibold text-slate-900 first:border-l-0 sm:px-5 sm:py-3.5">
                               <div className="flex items-center gap-1">
                                 {wh.capacity ? wh.capacity.toLocaleString() : 0} m²
                               </div>
                             </td>
 
                             {/* Cột 4: Giá thuê */}
-                            <td className="px-3 py-3 align-middle font-bold text-slate-900 sm:px-5 sm:py-3.5">
+                            <td className="border-l border-slate-200 px-3 py-3 align-middle font-bold text-slate-900 first:border-l-0 sm:px-5 sm:py-3.5">
                               <span>{formatWarehousePricePerSquareMeter(wh)}</span>{' '}
-                              {wh.rentalPricingType !== 'NEGOTIATED' && (
-                                <span className="text-xs font-normal text-slate-400">/m²</span>
-                              )}
+                              {isWarehousePricePerSquareMeter(wh) ? (
+                                <span className="text-xs font-normal text-slate-400">/m²/month</span>
+                              ) : wh.rentalPricingType !== 'NEGOTIATED' ? (
+                                <span className="text-xs font-normal text-slate-400">/month</span>
+                              ) : null}
                               <span className="mt-1 block text-[11px] font-medium text-slate-400">
-                                {wh.rentalPricingType === 'NEGOTIATED' ? 'negotiated' : 'price per square meter'}
+                                {wh.rentalPricingType === 'NEGOTIATED'
+                                  ? 'negotiated'
+                                  : isWarehousePricePerSquareMeter(wh)
+                                    ? 'price per square meter'
+                                    : 'total price per month'}
                               </span>
                             </td>
 
                             {/* Cột 5: Trạng thái */}
-                            <td className="px-3 py-3 text-center align-middle sm:px-5 sm:py-3.5">
+                            <td className="border-l border-slate-200 px-3 py-3 text-center align-middle first:border-l-0 sm:px-5 sm:py-3.5">
                               <div className="flex flex-col items-center gap-1.5">
                                 <span
                                   className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badge.bg}`}
@@ -398,40 +447,45 @@ const WarehouseManagement = () => {
                                   {badge.icon}
                                   {badge.text}
                                 </span>
-                                {wh.publicationStatus &&
-                                  String(wh.publicationStatus).toUpperCase() !== 'DRAFT' && (
-                                  <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-700">
-                                    Listing: {wh.publicationStatus}
-                                  </span>
-                                )}
-                                {wh.status === 'PENDING_APPROVAL' && (
-                                  <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-700">
-                                    Listing payment starts after approval
-                                  </span>
-                                )}
                               </div>
                             </td>
 
                             {/* Cột 6: Kiểm định (không ảnh hưởng luồng thanh toán) */}
-                            <td className="px-3 py-3 text-center align-middle sm:px-5 sm:py-3.5">
+                            <td className="border-l border-slate-200 px-3 py-3 text-center align-middle first:border-l-0 sm:px-5 sm:py-3.5">
                               <div className="flex flex-col items-center justify-center gap-1.5">
-                                <span
-                                  className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${inspectionBadge.className}`}
-                                >
-                                  {inspectionBadge.status === 'PASSED' ? (
-                                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                                  ) : inspectionBadge.status === 'REQUESTED' ? (
-                                    <Clock className="mr-1 h-3.5 w-3.5" />
-                                  ) : (
-                                    <AlertTriangle className="mr-1 h-3.5 w-3.5" />
-                                  )}
-                                  {inspectionBadge.text}
-                                </span>
-                                {!isRejectedListing && inspectionBadge.status !== 'PASSED' && (
+                                {inspectionBadge.status && (
+                                  <>
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${inspectionBadge.className}`}
+                                    >
+                                      {inspectionBadge.status === 'PASSED' ? (
+                                        <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+                                      ) : inspectionBadge.status === 'REQUESTED' ? (
+                                        <Clock className="mr-1 h-3.5 w-3.5" />
+                                      ) : (
+                                        <AlertTriangle className="mr-1 h-3.5 w-3.5" />
+                                      )}
+                                      {inspectionBadge.text}
+                                    </span>
+                                    {['PASSED', 'FAILED'].includes(
+                                      String(inspection?.status || '').toUpperCase()
+                                    ) && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setInspectionReport(inspection)}
+                                        className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                                      >
+                                        <FileText className="h-3.5 w-3.5" />
+                                        View report
+                                      </button>
+                                    )}
+                                  </>
+                                )}
+                                {!isRejectedListing && !inspectionBadge.status && (
                                   <div className="flex flex-col items-center gap-1">
                                     <button
                                       onClick={() => setInspectionConfirm(wh)}
-                                      disabled={isCurrentlyRequesting || inspectionRequested}
+                                      disabled={isCurrentlyRequesting}
                                       className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
                                     >
                                       {isCurrentlyRequesting ? (
@@ -439,8 +493,6 @@ const WarehouseManagement = () => {
                                           <Loader2 className="h-3 w-3 animate-spin" />
                                           Sending...
                                         </>
-                                      ) : inspectionRequested ? (
-                                        'Inspection requested'
                                       ) : (
                                         'Request inspection'
                                       )}
@@ -451,7 +503,7 @@ const WarehouseManagement = () => {
                             </td>
 
                             {/* Cột 7: Nút Action xem chi tiết */}
-                            <td className="px-3 py-3 text-center align-middle sm:px-5 sm:py-3.5">
+                            <td className="border-l border-slate-200 px-3 py-3 text-center align-middle first:border-l-0 sm:px-5 sm:py-3.5">
                               <TableActionMenu
                                 items={
                                   isRejectedListing
@@ -494,10 +546,13 @@ const WarehouseManagement = () => {
                                           onClick: () => setDeleteWarehouseConfirm(wh),
                                           danger: true,
                                         },
-                                        ...(wh.status === 'AVAILABLE' && (wh.canPublish || wh.canRenew)
+                                        ...(wh.status === 'AVAILABLE' &&
+                                        (wh.canPublish || wh.canRenew)
                                           ? [
                                               {
-                                                label: wh.canRenew ? 'Renew listing' : 'Publish listing',
+                                                label: wh.canRenew
+                                                  ? 'Renew listing'
+                                                  : 'Publish listing',
                                                 icon: Megaphone,
                                                 onClick: () => setPublicationWarehouse(wh),
                                               },
@@ -512,7 +567,10 @@ const WarehouseManagement = () => {
                       })
                     ) : (
                       <tr>
-                        <td colSpan={7} className="px-3 py-10 text-center text-sm text-slate-400 sm:px-6 sm:py-12">
+                        <td
+                          colSpan={7}
+                          className="px-3 py-10 text-center text-sm text-slate-400 sm:px-6 sm:py-12"
+                        >
                           <Warehouse className="mx-auto mb-2 h-8 w-8 text-slate-300" />
                           No warehouses found matching the current data.
                         </td>
@@ -679,17 +737,25 @@ const WarehouseManagement = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:grid-cols-2">
               <div>
-                <p className="text-xs font-bold text-slate-500 uppercase">Public rental price / m²</p>
+                <p className="text-xs font-bold text-slate-500 uppercase">
+                  Public rental price
+                </p>
                 <p className="mt-1 text-lg font-bold text-slate-900">
                   {formatWarehousePricePerSquareMeter(selectedWarehouse)}
-                  {selectedWarehouse.rentalPricingType !== 'NEGOTIATED' && ' /m²'}
+                  {isWarehousePricePerSquareMeter(selectedWarehouse)
+                    ? ' /m²/month'
+                    : selectedWarehouse.rentalPricingType !== 'NEGOTIATED'
+                      ? ' /month'
+                      : ''}
                 </p>
                 <p className="text-xs text-slate-500">
                   {selectedWarehouse.rentalPricingType === 'NEGOTIATED'
                     ? 'Agreed directly with tenant'
-                    : 'Price calculated per square meter'}
+                    : isWarehousePricePerSquareMeter(selectedWarehouse)
+                      ? 'Price per square meter per month'
+                      : 'Total price per month'}
                 </p>
               </div>
               <div>
@@ -736,6 +802,14 @@ const WarehouseManagement = () => {
           </div>
         )}
       </Modal>
+
+      {inspectionReport && (
+        <InspectionReportModal
+          inspection={inspectionReport}
+          warehouse={warehouses.find((warehouse) => String(warehouse.id) === String(inspectionReport.warehouseId))}
+          onClose={() => setInspectionReport(null)}
+        />
+      )}
 
       {publicationWarehouse && (
         <ListingPublicationModal

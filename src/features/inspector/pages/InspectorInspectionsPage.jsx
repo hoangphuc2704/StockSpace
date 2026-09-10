@@ -38,9 +38,18 @@ import { validateInspectionResult } from '@/config/validation'
 
 const formatDate = (value) => (value ? new Date(value).toLocaleDateString('en-US') : '---')
 
+const formatDateTime = (value) =>
+  value
+    ? new Date(value).toLocaleString('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      })
+    : '---'
+
 const shortId = (value) => (value ? `#${String(value).slice(0, 8).toUpperCase()}` : '---')
 
 const getInspectionDate = (inspection) =>
+  inspection?.inspectedAt ||
   inspection?.inspectionDate ||
   inspection?.scheduledAt ||
   inspection?.appointmentDate ||
@@ -48,14 +57,26 @@ const getInspectionDate = (inspection) =>
   null
 
 const getOwnerName = (inspection) =>
-  inspection?.ownerName || inspection?.warehouseOwnerName || inspection?.createdByName || 'Not updated'
+  inspection?.ownerName ||
+  inspection?.warehouseOwnerName ||
+  inspection?.createdByName ||
+  'Not updated'
+
+const getInspectorName = (inspection) =>
+  inspection?.inspectorName ||
+  inspection?.inspector?.fullName ||
+  inspection?.inspector?.name ||
+  'Not assigned'
 
 const getAddress = (inspection) =>
-  inspection?.warehouseAddress || inspection?.address || inspection?.location || 'No address available'
+  inspection?.warehouseAddress ||
+  inspection?.address ||
+  inspection?.location ||
+  'No address available'
 
 const getSummaryText = (inspection) =>
-  inspection?.reportNotes ||
   inspection?.notes ||
+  inspection?.reportNotes ||
   inspection?.description ||
   inspection?.inspectionNote ||
   'No additional description is available.'
@@ -73,6 +94,28 @@ const CHECKLIST_ITEMS = [
   { key: 'electrical', label: 'Electrical and lighting systems operate correctly' },
   { key: 'structure', label: 'Warehouse structure is stable' },
   { key: 'cleanliness', label: 'Cleanliness and environment meet requirements' },
+]
+
+const OWNER_INFORMATION_ITEMS = [
+  {
+    key: 'warehouseName',
+    label: 'Warehouse name matches the owner-provided information',
+    value: (inspection) => inspection.warehouseName || 'Not provided',
+  },
+  {
+    key: 'warehouseAddress',
+    label: 'Warehouse address matches the owner-provided information',
+    value: (inspection) => getAddress(inspection),
+  },
+  {
+    key: 'ownerName',
+    label: 'Warehouse owner matches the submitted record',
+    value: (inspection) => getOwnerName(inspection),
+  },
+  {
+    key: 'physicalDetails',
+    label: 'Warehouse type, capacity, dimensions and layout match the submitted information',
+  },
 ]
 
 const StatCard = ({ title, value, hint, icon: Icon, tone = 'slate' }) => {
@@ -110,7 +153,7 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-slate-900/45 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -118,10 +161,10 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 16, scale: 0.98 }}
         transition={{ duration: 0.18 }}
-        className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="border-b border-slate-100 px-6 py-5">
+        <div className="shrink-0 border-b border-slate-100 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-3">
@@ -139,93 +182,128 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
           </div>
         </div>
 
-        <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1.35fr_0.95fr]">
-          <section className="space-y-5">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Inspection Details</h3>
-              <div className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
-                <div className="flex items-start gap-3">
-                  <Warehouse className="mt-0.5 h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="font-medium text-slate-500">Warehouse</p>
-                    <p className="mt-1 font-semibold text-slate-900">{inspection.warehouseName}</p>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="grid gap-6 px-6 py-6 lg:grid-cols-[1.35fr_0.95fr]">
+            <section className="space-y-5">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">Warehouse Information</h3>
+                <div className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
+                  <div className="flex items-start gap-3">
+                    <Warehouse className="mt-0.5 h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-500">Warehouse</p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {inspection.warehouseName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <User className="mt-0.5 h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-500">Warehouse Owner</p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {getOwnerName(inspection)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <ClipboardCheck className="mt-0.5 h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-500">Inspected by</p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {getInspectorName(inspection)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 md:col-span-2">
+                    <MapPin className="mt-0.5 h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-500">Address</p>
+                      <p className="mt-1 font-semibold text-slate-900">{getAddress(inspection)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CalendarDays className="mt-0.5 h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-500">Inspection date</p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {formatDateTime(getInspectionDate(inspection))}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Clock3 className="mt-0.5 h-4 w-4 text-slate-400" />
+                    <div>
+                      <p className="font-medium text-slate-500">Last Updated</p>
+                      <p className="mt-1 font-semibold text-slate-900">
+                        {formatDate(inspection.updatedAt || inspection.createdAt)}
+                      </p>
+                    </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h3 className="text-sm font-semibold text-slate-900">Inspection Description</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  {getSummaryText(inspection)}
+                </p>
+              </div>
+            </section>
+
+            <aside className="space-y-4">
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
                 <div className="flex items-start gap-3">
-                  <User className="mt-0.5 h-4 w-4 text-slate-400" />
+                  <ShieldCheck className="mt-0.5 h-5 w-5 text-blue-600" />
                   <div>
-                    <p className="font-medium text-slate-500">Warehouse Owner</p>
-                    <p className="mt-1 font-semibold text-slate-900">{getOwnerName(inspection)}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3 md:col-span-2">
-                  <MapPin className="mt-0.5 h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="font-medium text-slate-500">Address</p>
-                    <p className="mt-1 font-semibold text-slate-900">{getAddress(inspection)}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CalendarDays className="mt-0.5 h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="font-medium text-slate-500">Scheduled / Created</p>
-                    <p className="mt-1 font-semibold text-slate-900">
-                      {formatDate(getInspectionDate(inspection))}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Clock3 className="mt-0.5 h-4 w-4 text-slate-400" />
-                  <div>
-                    <p className="font-medium text-slate-500">Last Updated</p>
-                    <p className="mt-1 font-semibold text-slate-900">
-                      {formatDate(inspection.updatedAt || inspection.createdAt)}
+                    <h3 className="text-sm font-semibold text-slate-900">Inspection Guidelines</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      Verify the warehouse condition, compare it with the registration details, and
+                      document any issues that affect the inspection result.
                     </p>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Description and Existing Notes</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{getSummaryText(inspection)}</p>
-            </div>
-          </section>
-
-          <aside className="space-y-4">
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="mt-0.5 h-5 w-5 text-blue-600" />
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">Inspection Guidelines</h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Verify the warehouse condition, compare it with the registration details, and
-                    document any issues that affect the inspection result.
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <h3 className="text-sm font-semibold text-slate-900">Actions</h3>
+                <div className="mt-4 space-y-3">
+                  <button
+                    onClick={() => {
+                      onClose()
+                      onOpenSubmit(inspection)
+                    }}
+                    disabled={!canSubmit}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                  >
+                    <FileText className="h-4 w-4" />
+                    {canSubmit ? 'Create Inspection Report' : 'Inspection Completed'}
+                  </button>
+                  <p className="text-xs leading-5 text-slate-500">
+                    After submission, the inspection will be updated to passed or failed.
                   </p>
                 </div>
               </div>
-            </div>
+            </aside>
+          </div>
+        </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Actions</h3>
-              <div className="mt-4 space-y-3">
-                <button
-                  onClick={() => {
-                    onClose()
-                    onOpenSubmit(inspection)
-                  }}
-                  disabled={!canSubmit}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-                >
-                  <FileText className="h-4 w-4" />
-                  {canSubmit ? 'Create Inspection Report' : 'Inspection Completed'}
-                </button>
-                <p className="text-xs leading-5 text-slate-500">
-                  After submission, the inspection will be updated to passed or failed.
-                </p>
-              </div>
-            </div>
-          </aside>
+        <div
+          className={`flex shrink-0 items-center justify-between gap-4 border-t px-6 py-4 ${
+            inspection.status === 'PASSED'
+              ? 'border-emerald-200 bg-emerald-50'
+              : inspection.status === 'FAILED'
+                ? 'border-rose-200 bg-rose-50'
+                : 'border-slate-100 bg-slate-50'
+          }`}
+        >
+          <div>
+            <p className="text-xs font-bold tracking-widest text-slate-500 uppercase">
+              Inspection result
+            </p>
+            <p className="mt-1 text-sm text-slate-600">Final result recorded by the inspector</p>
+          </div>
+          <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
         </div>
       </motion.div>
     </div>
@@ -245,6 +323,11 @@ const SubmitReportModal = ({ inspection, onClose }) => {
     structure: true,
     cleanliness: true,
   })
+  const [ownerInformationChecklist, setOwnerInformationChecklist] = useState(() =>
+    Object.fromEntries(OWNER_INFORMATION_ITEMS.map((item) => [item.key, true]))
+  )
+  const [ownerInformationReasons, setOwnerInformationReasons] = useState({})
+  const [reportDate] = useState(() => inspection.inspectedAt || new Date().toISOString())
 
   useEffect(() => {
     dispatch(clearActionError())
@@ -254,6 +337,14 @@ const SubmitReportModal = ({ inspection, onClose }) => {
 
   const toggleChecklist = (key) => {
     setChecklist((current) => ({ ...current, [key]: !current[key] }))
+  }
+
+  const toggleOwnerInformation = (key) => {
+    setOwnerInformationChecklist((current) => ({ ...current, [key]: !current[key] }))
+  }
+
+  const updateOwnerInformationReason = (key, value) => {
+    setOwnerInformationReasons((current) => ({ ...current, [key]: value }))
   }
 
   const handleSubmit = async (event) => {
@@ -270,12 +361,42 @@ const SubmitReportModal = ({ inspection, onClose }) => {
       return
     }
 
+    const missingReasons = OWNER_INFORMATION_ITEMS.filter(
+      (item) =>
+        !ownerInformationChecklist[item.key] &&
+        !String(ownerInformationReasons[item.key] || '').trim()
+    )
+    if (missingReasons.length > 0) {
+      setLocalError('Enter a reason for every owner-provided information item that is incorrect.')
+      return
+    }
+
+    if (
+      status === 'PASSED' &&
+      OWNER_INFORMATION_ITEMS.some((item) => !ownerInformationChecklist[item.key])
+    ) {
+      setLocalError('All owner-provided information must be verified before selecting Passed.')
+      return
+    }
+
     const result = await dispatch(
       submitReport({
         id: inspection.id,
         payload: {
           status,
-          reportNotes: notes.trim(),
+          notes: notes.trim(),
+          checklistData: {
+            ...checklist,
+            ownerInformation: Object.fromEntries(
+              OWNER_INFORMATION_ITEMS.map((item) => [
+                item.key,
+                {
+                  verified: ownerInformationChecklist[item.key],
+                  reason: String(ownerInformationReasons[item.key] || '').trim(),
+                },
+              ])
+            ),
+          },
         },
       })
     )
@@ -287,7 +408,7 @@ const SubmitReportModal = ({ inspection, onClose }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -295,16 +416,13 @@ const SubmitReportModal = ({ inspection, onClose }) => {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.98 }}
         transition={{ duration: 0.18 }}
-        className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="border-b border-slate-100 px-6 py-5">
+        <div className="shrink-0 border-b border-slate-100 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold text-slate-900">Create Inspection Report</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                {inspection.warehouseName} · {shortId(inspection.id)}
-              </p>
             </div>
             <button
               onClick={onClose}
@@ -315,94 +433,188 @@ const SubmitReportModal = ({ inspection, onClose }) => {
           </div>
         </div>
 
-        <FormShell onSubmit={handleSubmit} className="space-y-5 px-6 py-6">
-          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="space-y-5">
+        <FormShell
+          onSubmit={handleSubmit}
+          className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-6"
+        >
+          <div className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm sm:grid-cols-2">
+            <div className="flex items-start gap-3">
+              <CalendarDays className="mt-0.5 h-4 w-4 text-slate-400" />
               <div>
-                <label className="mb-3 block text-sm font-semibold text-slate-800">
-                  Inspection Result
-                </label>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => setStatus('PASSED')}
-                    className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
-                      status === 'PASSED'
-                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      <CheckCircle2 className="h-4 w-4" />
-                      Passed
-                    </div>
-                    <p className="mt-2 text-xs leading-5">
-                      Select when every checklist item passes and the warehouse can be approved.
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatus('FAILED')}
-                    className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
-                      status === 'FAILED'
-                        ? 'border-rose-300 bg-rose-50 text-rose-700'
-                        : 'border-slate-200 bg-white text-slate-600 hover:border-rose-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      <XCircle className="h-4 w-4" />
-                      Failed
-                    </div>
-                    <p className="mt-2 text-xs leading-5">
-                      Select when an item is noncompliant and the owner must make corrections.
-                    </p>
-                  </button>
-                </div>
+                <p className="font-medium text-slate-500">Inspection date</p>
+                <p className="mt-1 font-semibold text-slate-900">{formatDateTime(reportDate)}</p>
               </div>
-
+            </div>
+            <div className="flex items-start gap-3">
+              <User className="mt-0.5 h-4 w-4 text-slate-400" />
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-800">
-                  Report / Detailed Notes
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  rows={7}
-                  placeholder="Describe the current condition, verified details, passed items, and required corrections..."
-                  className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700 outline-none transition-colors focus:border-blue-400 focus:bg-white"
-                />
+                <p className="font-medium text-slate-500">Inspector</p>
+                <p className="mt-1 font-semibold text-slate-900">{getInspectorName(inspection)}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 sm:col-span-2">
+              <Warehouse className="mt-0.5 h-4 w-4 text-slate-400" />
+              <div>
+                <p className="font-medium text-slate-500">Warehouse inspected</p>
+                <p className="mt-1 font-semibold text-slate-900">{inspection.warehouseName}</p>
+                <p className="mt-1 text-slate-600">{getAddress(inspection)}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 sm:col-span-2">
+              <User className="mt-0.5 h-4 w-4 text-slate-400" />
+              <div>
+                <p className="font-medium text-slate-500">Warehouse Owner</p>
+                <p className="mt-1 font-semibold text-slate-900">{getOwnerName(inspection)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Owner Information Checklist
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  Verify the information submitted by the owner against the actual warehouse.
+                  Uncheck an item and explain the issue if it is incorrect.
+                </p>
+              </div>
+              <Badge variant="outline">
+                {Object.values(ownerInformationChecklist).filter(Boolean).length}/
+                {OWNER_INFORMATION_ITEMS.length}
+              </Badge>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {OWNER_INFORMATION_ITEMS.map((item) => {
+                const isVerified = ownerInformationChecklist[item.key]
+                return (
+                  <div
+                    key={item.key}
+                    className={`rounded-2xl border bg-white p-3 ${
+                      isVerified ? 'border-slate-200' : 'border-rose-200'
+                    }`}
+                  >
+                    <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={isVerified}
+                        onChange={() => toggleOwnerInformation(item.key)}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300"
+                      />
+                      <span className="leading-5">
+                        <span className="block font-semibold text-slate-800">{item.label}</span>
+                        {item.value && (
+                          <span className="mt-1 block text-xs text-slate-500">
+                            Submitted: {item.value(inspection)}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                    {!isVerified && (
+                      <textarea
+                        value={ownerInformationReasons[item.key] || ''}
+                        onChange={(event) =>
+                          updateOwnerInformationReason(item.key, event.target.value)
+                        }
+                        rows={2}
+                        placeholder="Explain what is incorrect and what needs to be corrected..."
+                        className="mt-3 w-full resize-none rounded-xl border border-rose-200 bg-rose-50/40 px-3 py-2 text-xs leading-5 text-slate-700 outline-none focus:border-rose-400 focus:bg-white"
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-slate-900">Inspection Checklist</h3>
+                <Badge variant="outline">
+                  {passedCount}/{CHECKLIST_ITEMS.length}
+                </Badge>
+              </div>
+              <div className="mt-4 space-y-3">
+                {CHECKLIST_ITEMS.map((item) => (
+                  <label
+                    key={item.key}
+                    className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checklist[item.key]}
+                      onChange={() => toggleChecklist(item.key)}
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300"
+                    />
+                    <span className="leading-5">{item.label}</span>
+                  </label>
+                ))}
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-slate-900">Inspection Checklist</h3>
-                  <Badge variant="outline">{passedCount}/{CHECKLIST_ITEMS.length}</Badge>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {CHECKLIST_ITEMS.map((item) => (
-                    <label
-                      key={item.key}
-                      className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checklist[item.key]}
-                        onChange={() => toggleChecklist(item.key)}
-                        className="mt-0.5 h-4 w-4 rounded border-slate-300"
-                      />
-                      <span className="leading-5">{item.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-600">
+              Selecting <span className="font-semibold text-slate-900">Passed</span> requires every
+              checklist item to pass. Otherwise, select{' '}
+              <span className="font-semibold text-slate-900">Failed</span> and explain why.
+            </div>
+          </div>
 
-              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-600">
-                Selecting <span className="font-semibold text-slate-900">Passed</span> requires
-                every checklist item to pass. Otherwise, select{' '}
-                <span className="font-semibold text-slate-900">Failed</span> and explain why.
-              </div>
+          <div className="space-y-5">
+            <div>
+              <label className="mb-2 block text-sm font-semibold text-slate-800">
+                Report / Detailed Notes
+              </label>
+              <textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                rows={7}
+                placeholder="Describe the current condition, verified details, passed items, and required corrections..."
+                className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700 transition-colors outline-none focus:border-blue-400 focus:bg-white"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-3 block text-sm font-semibold text-slate-800">
+              Inspection Result
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setStatus('PASSED')}
+                className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
+                  status === 'PASSED'
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Passed
+                </div>
+                <p className="mt-2 text-xs leading-5">
+                  Select when every checklist item passes and the warehouse can be approved.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus('FAILED')}
+                className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
+                  status === 'FAILED'
+                    ? 'border-rose-300 bg-rose-50 text-rose-700'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-rose-200'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <XCircle className="h-4 w-4" />
+                  Failed
+                </div>
+                <p className="mt-2 text-xs leading-5">
+                  Select when an item is noncompliant and the owner must make corrections.
+                </p>
+              </button>
             </div>
           </div>
 
@@ -426,7 +638,11 @@ const SubmitReportModal = ({ inspection, onClose }) => {
               disabled={actionLoading}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {actionLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
               Save Inspection Result
             </button>
           </div>
@@ -458,7 +674,9 @@ const InspectorInspectionsPage = () => {
 
   const stats = useMemo(() => {
     const pending = inspections.filter((inspection) => inspection.status === 'PENDING').length
-    const inProgress = inspections.filter((inspection) => inspection.status === 'IN_PROGRESS').length
+    const inProgress = inspections.filter(
+      (inspection) => inspection.status === 'IN_PROGRESS'
+    ).length
     const passed = inspections.filter((inspection) => inspection.status === 'PASSED').length
     const failed = inspections.filter((inspection) => inspection.status === 'FAILED').length
 
@@ -518,7 +736,7 @@ const InspectorInspectionsPage = () => {
             <section className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 px-6 py-7 text-white shadow-sm">
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div className="max-w-2xl">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-blue-100">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold tracking-[0.22em] text-blue-100 uppercase">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     Inspection Workspace
                   </div>
@@ -533,19 +751,21 @@ const InspectorInspectionsPage = () => {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Total</p>
+                    <p className="text-xs tracking-[0.16em] text-slate-300 uppercase">Total</p>
                     <p className="mt-2 text-2xl font-bold">{totalElements || inspections.length}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Pending</p>
+                    <p className="text-xs tracking-[0.16em] text-slate-300 uppercase">Pending</p>
                     <p className="mt-2 text-2xl font-bold">{stats.pending}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">In Progress</p>
+                    <p className="text-xs tracking-[0.16em] text-slate-300 uppercase">
+                      In Progress
+                    </p>
                     <p className="mt-2 text-2xl font-bold">{stats.inProgress}</p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3">
-                    <p className="text-xs uppercase tracking-[0.16em] text-slate-300">Completed</p>
+                    <p className="text-xs tracking-[0.16em] text-slate-300 uppercase">Completed</p>
                     <p className="mt-2 text-2xl font-bold">{stats.passed + stats.failed}</p>
                   </div>
                 </div>
@@ -639,30 +859,29 @@ const InspectorInspectionsPage = () => {
                     <table className="w-full min-w-[920px] text-left text-sm">
                       <thead className="bg-slate-50 text-slate-500">
                         <tr>
-                          <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
+                          <th className="px-5 py-4 text-xs font-bold tracking-wide uppercase">
                             Inspection
                           </th>
-                          <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
+                          <th className="px-5 py-4 text-xs font-bold tracking-wide uppercase">
                             Warehouse
                           </th>
-                          <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
+                          <th className="px-5 py-4 text-xs font-bold tracking-wide uppercase">
                             Owner
                           </th>
-                          <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
-                            Scheduled / Created
+                          <th className="px-5 py-4 text-xs font-bold tracking-wide uppercase">
+                            Inspection date
                           </th>
-                          <th className="px-5 py-4 text-xs font-bold uppercase tracking-wide">
+                          <th className="px-5 py-4 text-xs font-bold tracking-wide uppercase">
                             Status
                           </th>
-                          <th className="px-5 py-4 text-right text-xs font-bold uppercase tracking-wide">
+                          <th className="px-5 py-4 text-right text-xs font-bold tracking-wide uppercase">
                             Actions
                           </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
                         {filteredInspections.map((inspection) => {
-                          const statusConfig =
-                            STATUS_CONFIG[inspection.status] || STATUS_CONFIG.ALL
+                          const statusConfig = STATUS_CONFIG[inspection.status] || STATUS_CONFIG.ALL
                           const canSubmit =
                             inspection.status === 'PENDING' || inspection.status === 'IN_PROGRESS'
 
@@ -678,7 +897,8 @@ const InspectorInspectionsPage = () => {
                                   {shortId(inspection.id)}
                                 </p>
                                 <p className="mt-2 text-sm text-slate-600">
-                                  Updated: {formatDate(inspection.updatedAt || inspection.createdAt)}
+                                  Updated:{' '}
+                                  {formatDate(inspection.updatedAt || inspection.createdAt)}
                                 </p>
                               </td>
                               <td className="px-5 py-4">

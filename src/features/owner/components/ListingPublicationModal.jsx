@@ -102,9 +102,9 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-start justify-between border-b border-slate-100 p-6">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="flex shrink-0 items-start justify-between border-b border-slate-100 p-6">
           <div>
             <div className="flex items-center gap-2 text-blue-600">
               <Megaphone className="h-5 w-5" />
@@ -126,7 +126,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
           </button>
         </div>
 
-        <div className="space-y-4 p-6">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
           {warehouse.publicationStatus &&
             String(warehouse.publicationStatus).toUpperCase() !== 'DRAFT' && (
             <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 p-4 text-sm">
@@ -272,7 +272,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
           )}
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 p-6">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-slate-100 bg-slate-50/70 p-6">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           {!historyOnly && (
             <Button type="button" onClick={handlePurchase} isLoading={isPurchasing} disabled={!isApprovedForPayment || isLoading || packages.length === 0 || !selectedPackageId || !startDate}>

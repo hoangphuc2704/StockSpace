@@ -9,7 +9,7 @@ import Header from '@/components/HeaderDashboard'
 import ContractViewerModal from '@/components/ContractViewerModal'
 import TableActionMenu from '@/components/TableActionMenu'
 import OwnerDataTable from '../components/OwnerDataTable'
-import { FileText, X, Edit2, Trash2, Send, Eye, Plus } from 'lucide-react'
+import { FileText, X, Edit2, Trash2, Send, Eye, Plus, RefreshCw } from 'lucide-react'
 import contractApi from '@/services/contractApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import uploadApi from '@/services/uploadApi'
@@ -29,6 +29,10 @@ const CONTRACT_STATUS_META = {
     className: 'border-amber-200 bg-amber-50 text-amber-800',
   },
   ACTIVE: { label: 'Active', className: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  SCHEDULED: {
+    label: 'Scheduled',
+    className: 'border-blue-200 bg-blue-50 text-blue-800',
+  },
   REJECTED: { label: 'Rejected', className: 'border-rose-200 bg-rose-50 text-rose-800' },
   EXPIRED: { label: 'Expired', className: 'border-slate-200 bg-slate-100 text-slate-700' },
 }
@@ -39,13 +43,18 @@ const getContractStatusMeta = (status) =>
     className: 'border-slate-200 bg-slate-100 text-slate-700',
   }
 
-const formatContractReference = (id) =>
-  `CT-${String(id || '').slice(0, 8).toUpperCase() || '-'}`
-
 const formatContractDate = (dateString) => {
   if (!dateString) return '-'
   const date = new Date(`${dateString}T00:00:00`)
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('en-GB')
+}
+
+const addDaysToDate = (dateString, days) => {
+  if (!dateString) return ''
+  const date = new Date(`${dateString}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return ''
+  date.setDate(date.getDate() + days)
+  return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-')
 }
 
 const getDaysUntilEnd = (contract) => {
@@ -74,6 +83,7 @@ const DraftModal = ({
   useEscapeKey(isOpen, onClose)
 
   const isEdit = !!contractId
+  const isRenewal = Boolean(existingData.renewedFromContractId)
 
   const [warehouseId, setWarehouseId] = useState(existingData.warehouseId || '')
   const [tenantEmail, setTenantEmail] = useState(existingData.tenantEmail || '')
@@ -327,7 +337,7 @@ const DraftModal = ({
             ) : (
               <Plus className="h-5 w-5 text-blue-600" />
             )}
-            {isEdit ? 'Edit Contract Draft' : 'Create Contract Draft'}
+            {isEdit ? (isRenewal ? 'Edit Renewal Draft' : 'Edit Contract Draft') : 'Create Contract Draft'}
           </h3>
           <button
             onClick={onClose}
@@ -418,7 +428,7 @@ const DraftModal = ({
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                disabled={Boolean(previewData)}
+                disabled={Boolean(previewData) || isRenewal}
                 className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
               />
             </div>
@@ -450,7 +460,7 @@ const DraftModal = ({
                 required
                 value={leasedWidth}
                 onChange={(e) => setLeasedWidth(e.target.value)}
-                disabled={Boolean(previewData)}
+                disabled={Boolean(previewData) || isRenewal}
                 readOnly={isFixedPricing && Boolean(defaultLayout)}
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none"
               />
@@ -467,7 +477,7 @@ const DraftModal = ({
                 required
                 value={leasedLength}
                 onChange={(e) => setLeasedLength(e.target.value)}
-                disabled={Boolean(previewData)}
+                disabled={Boolean(previewData) || isRenewal}
                 readOnly={isFixedPricing && Boolean(defaultLayout)}
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none"
               />
@@ -627,6 +637,231 @@ const DraftModal = ({
   )
 }
 
+// ─── Contract Renewal Modal ─────────────────────────────────────────────────────────
+const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
+  useEscapeKey(isOpen, onClose)
+
+  const [endDate, setEndDate] = useState('')
+  const [negotiatedMonthlyRent, setNegotiatedMonthlyRent] = useState('')
+  const [ownerNote, setOwnerNote] = useState('')
+  const [contractFiles, setContractFiles] = useState([])
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+
+  const startDate = addDaysToDate(sourceContract?.endDate, 1)
+  const isNegotiated = sourceContract?.pricingType === 'NEGOTIATED'
+
+  useEffect(() => {
+    if (isOpen && sourceContract) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEndDate('')
+      setNegotiatedMonthlyRent(
+        sourceContract.pricingType === 'NEGOTIATED' ? sourceContract.finalMonthlyRent || '' : ''
+      )
+      setOwnerNote('')
+      setContractFiles([])
+      setError(null)
+    }
+  }, [isOpen, sourceContract])
+
+  if (!isOpen || !sourceContract) return null
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+
+    const dateError = validateDateRange(startDate, endDate)
+    if (dateError) {
+      setError(dateError)
+      return
+    }
+    if (new Date(endDate) < new Date(addDaysToDate(startDate, 6))) {
+      setError('A renewal must last at least 7 days.')
+      return
+    }
+    if (isNegotiated && Number(negotiatedMonthlyRent) <= 0) {
+      setError('Negotiated monthly rent must be greater than 0.')
+      return
+    }
+
+    setSubmitting(true)
+    setError(null)
+
+    try {
+      let uploadedUrls
+      if (contractFiles.length > 0) {
+        const response = await uploadApi.uploadImages(contractFiles.map((item) => item.file))
+        if (!response?.data?.success) {
+          throw new Error(response?.data?.message || 'Could not upload paper contract files.')
+        }
+        uploadedUrls = response.data.data
+      }
+
+      const payload = {
+        endDate,
+        negotiatedMonthlyRent: isNegotiated ? Number(negotiatedMonthlyRent) : null,
+        ownerNote: ownerNote.trim() || undefined,
+        paperContractFiles: uploadedUrls,
+      }
+      const response = await contractApi.createRenewalDraft(sourceContract.id, payload)
+      toast.success('Renewal draft created.')
+      onSuccess?.(apiData(response))
+      onClose()
+    } catch (requestError) {
+      setError(requestError.response?.data?.message || requestError.message || 'Could not create renewal draft.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="animate-in fade-in zoom-in-95 max-h-[calc(100dvh-1rem)] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <RefreshCw className="h-5 w-5 text-blue-600" />
+            Request Contract Renewal
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <FormShell onSubmit={handleSubmit} className="space-y-4">
+          <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-950">
+            <p className="font-bold">{sourceContract.warehouseName || 'Warehouse'}</p>
+            <p className="mt-1 text-blue-800">
+              Tenant: {sourceContract.tenantName || sourceContract.tenantEmail || '-'}
+            </p>
+            <p className="mt-1 text-blue-800">
+              Current contract: {formatContractDate(sourceContract.startDate)} →{' '}
+              {formatContractDate(sourceContract.endDate)}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-2 block text-xs font-bold text-slate-500">Renewal Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                readOnly
+                className="w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-1.5 text-sm text-slate-700"
+              />
+              <p className="mt-1 text-xs text-slate-500">Automatically starts after the current contract ends.</p>
+            </div>
+            <div>
+              <label className="mb-2 block text-xs font-bold text-slate-500">
+                Renewal End Date <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="date"
+                required
+                min={addDaysToDate(startDate, 6)}
+                value={endDate}
+                onChange={(event) => setEndDate(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-1.5 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              />
+              <p className="mt-1 text-xs text-slate-500">Minimum renewal duration: 7 days.</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            Pricing model: <strong>{sourceContract.pricingType || '-'}</strong>. Warehouse, tenant,
+            leased dimensions, and layout are inherited from the current contract.
+          </div>
+
+          {isNegotiated && (
+            <div>
+              <label className="mb-2 block text-xs font-bold text-slate-500">
+                Negotiated Monthly Rent <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="number"
+                min="1"
+                required
+                value={negotiatedMonthlyRent}
+                onChange={(event) => setNegotiatedMonthlyRent(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Current amount: {formatVND(sourceContract.finalMonthlyRent || 0)} / month
+              </p>
+            </div>
+          )}
+
+          <div>
+            <label className="mb-2 block text-xs font-bold text-slate-500">Owner Note</label>
+            <textarea
+              value={ownerNote}
+              onChange={(event) => setOwnerNote(event.target.value)}
+              rows={3}
+              maxLength={2000}
+              className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+              placeholder="Add renewal terms or a note for the tenant..."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700">Paper Contract Files (optional now)</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(event) => {
+                if (event.target.files && event.target.files.length > 0) {
+                  const newFiles = Array.from(event.target.files).map((file) => ({
+                    file,
+                    preview: URL.createObjectURL(file),
+                  }))
+                  setContractFiles((previous) => [...previous, ...newFiles])
+                  event.target.value = null
+                }
+              }}
+              className="w-full text-sm"
+            />
+            <p className="text-xs text-slate-500">
+              At least one paper contract file is required before submitting the renewal to the tenant.
+            </p>
+            <div className="flex gap-2">
+              {contractFiles.map((item, index) => (
+                <img
+                  key={index}
+                  src={item.preview}
+                  alt="Paper contract preview"
+                  className="h-16 w-16 rounded object-cover"
+                />
+              ))}
+            </div>
+          </div>
+
+          {error && <p className="text-sm text-rose-600">{error}</p>}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {submitting ? 'Creating...' : 'Create Renewal Draft'}
+            </button>
+          </div>
+        </FormShell>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const OwnerContractsPage = () => {
   const dispatch = useDispatch()
@@ -641,6 +876,10 @@ const OwnerContractsPage = () => {
   // Draft modal state
   const [isDraftOpen, setIsDraftOpen] = useState(false)
   const [editContract, setEditContract] = useState(null)
+
+  // Renewal modal state
+  const [isRenewalOpen, setIsRenewalOpen] = useState(false)
+  const [renewalSource, setRenewalSource] = useState(null)
 
   // Viewer Modal
   const [viewerOpen, setViewerOpen] = useState(false)
@@ -701,11 +940,15 @@ const OwnerContractsPage = () => {
     fetchWarehouses()
   }, [fetchWarehouses])
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this draft?')) return
+  const handleDelete = async (contract) => {
+    const isRenewalDraft = Boolean(contract?.renewedFromContractId)
+    const message = isRenewalDraft
+      ? 'Cancel this renewal draft? The current contract will remain unchanged.'
+      : 'Are you sure you want to delete this draft?'
+    if (!window.confirm(message)) return
     try {
-      await contractApi.deleteDraft(id)
-      toast.success('Draft deleted')
+      await contractApi.deleteDraft(contract.id)
+      toast.success(isRenewalDraft ? 'Renewal draft cancelled' : 'Draft deleted')
       fetchContracts()
     } catch (error) {
       showApiErrorToast(error, 'Could not delete draft')
@@ -736,17 +979,17 @@ const OwnerContractsPage = () => {
   }
 
   const columns = [
-    {
-      header: 'Contract',
-      render: (row) => (
-        <div>
-          <p className="font-mono text-xs font-semibold text-slate-900">
-            {formatContractReference(row.id)}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Warehouse rental contract</p>
-        </div>
-      ),
-    },
+    // {
+    //   header: 'Contract',
+    //   render: (row) => (
+    //     <div>
+    //       <p className="font-mono text-xs font-semibold text-slate-900">
+    //         {formatContractReference(row.id)}
+    //       </p>
+    //       <p className="mt-1 text-xs text-slate-500">Warehouse rental contract</p>
+    //     </div>
+    //   ),
+    // },
     {
       header: 'Tenant',
       render: (row) => (
@@ -785,8 +1028,7 @@ const OwnerContractsPage = () => {
       render: (row) => (
         <div className="text-xs">
           <div className="font-medium text-slate-800 tabular-nums">
-            {formatContractDate(row.startDate)}{' '}
-            <span className="px-1 text-slate-400">→</span>{' '}
+            {formatContractDate(row.startDate)} <span className="px-1 text-slate-400">→</span>{' '}
             {formatContractDate(row.endDate)}
           </div>
           {row.status === 'EXPIRED' ? (
@@ -826,13 +1068,21 @@ const OwnerContractsPage = () => {
       render: (row) => (
         <TableActionMenu
           items={[
+            row.canCreateRenewal && {
+              label: 'Request Renewal',
+              icon: RefreshCw,
+              onClick: () => {
+                setRenewalSource(row)
+                setIsRenewalOpen(true)
+              },
+            },
             row.paperContractFiles?.length > 0 && {
               label: 'View Paper Contract',
               icon: FileText,
               onClick: () => handleViewContract(row.paperContractFiles),
             },
-            (row.canEdit || row.canViewLayout) && {
-              label: row.canEdit ? 'Configure Layout' : 'View Layout',
+            (row.canEditContractLayout || row.canViewLayout) && {
+              label: row.canEditContractLayout ? 'Configure Layout' : 'View Layout',
               icon: Eye,
               onClick: () => window.open(`/owner/contracts/${row.id}/layout`, '_blank'),
             },
@@ -850,9 +1100,9 @@ const OwnerContractsPage = () => {
               onClick: () => handleSubmit(row.id),
             },
             row.canDelete && {
-              label: 'Delete',
+              label: row.renewedFromContractId ? 'Cancel Renewal Draft' : 'Delete Draft',
               icon: Trash2,
-              onClick: () => handleDelete(row.id),
+              onClick: () => handleDelete(row),
               danger: true,
             },
           ].filter(Boolean)}
@@ -931,6 +1181,18 @@ const OwnerContractsPage = () => {
           warehouses={warehouses}
           warehousesLoading={warehousesLoading}
           onSuccess={handleDraftSuccess}
+        />
+      )}
+
+      {isRenewalOpen && (
+        <RenewalModal
+          isOpen={isRenewalOpen}
+          sourceContract={renewalSource}
+          onClose={() => {
+            setIsRenewalOpen(false)
+            setRenewalSource(null)
+          }}
+          onSuccess={() => fetchContracts()}
         />
       )}
 

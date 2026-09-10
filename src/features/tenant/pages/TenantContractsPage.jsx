@@ -26,37 +26,38 @@ import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import { formatVND } from '@/utils/currency'
 
 const CONTRACT_STATUS_META = {
-  DRAFT: { label: 'Bản nháp', className: 'border-slate-200 bg-slate-100 text-slate-700' },
+  DRAFT: { label: 'Draft', className: 'border-slate-200 bg-slate-100 text-slate-700' },
   PENDING_TENANT_CONFIRM: {
-    label: 'Chờ xác nhận',
+    label: 'Pending confirmation',
     className: 'border-amber-200 bg-amber-50 text-amber-800',
   },
   CHANGES_REQUESTED: {
-    label: 'Yêu cầu chỉnh sửa',
+    label: 'Changes requested',
     className: 'border-amber-200 bg-amber-50 text-amber-800',
   },
   ACTIVE: {
-    label: 'Đang hoạt động',
+    label: 'Active',
     className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
   },
-  REJECTED: { label: 'Đã từ chối', className: 'border-rose-200 bg-rose-50 text-rose-800' },
-  EXPIRED: { label: 'Đã hết hạn', className: 'border-slate-200 bg-slate-100 text-slate-700' },
+  SCHEDULED: { label: 'Scheduled', className: 'border-blue-200 bg-blue-50 text-blue-800' },
+  REJECTED: { label: 'Rejected', className: 'border-rose-200 bg-rose-50 text-rose-800' },
+  EXPIRED: { label: 'Expired', className: 'border-slate-200 bg-slate-100 text-slate-700' },
 }
 
 const getStatusMeta = (status) =>
   CONTRACT_STATUS_META[status] || {
-    label: status || 'Không xác định',
+    label: status || 'Unknown',
     className: 'border-slate-200 bg-slate-100 text-slate-700',
   }
 
 const formatContractDate = (dateString) => {
   if (!dateString) return '-'
   const date = new Date(`${dateString}T00:00:00`)
-  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('vi-VN')
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString('en-GB')
 }
 
 const formatContractReference = (id) =>
-  `HĐ-${
+  `CT-${
     String(id || '')
       .slice(0, 8)
       .toUpperCase() || '-'
@@ -134,7 +135,7 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div>
             <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
-              Rà soát hợp đồng
+              Contract review
             </p>
             <h3 id="contract-reason-title" className="mt-1 text-lg font-bold text-slate-950">
               {title}
@@ -153,7 +154,7 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
         <FormShell onSubmit={handleSubmit} className="space-y-5 px-5 py-5">
           {isRejecting && (
             <div className="border-l-2 border-rose-500 bg-rose-50 px-3 py-2.5 text-sm leading-5 text-rose-900">
-              Từ chối hợp đồng sẽ kết thúc quy trình phê duyệt hiện tại cho thỏa thuận này.
+              Rejecting this contract will end the current approval process for this agreement.
             </div>
           )}
           <div>
@@ -161,14 +162,14 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
               htmlFor="contract-reason"
               className="mb-1.5 block text-sm font-semibold text-slate-800"
             >
-              Lý do <span className="text-rose-600">*</span>
+              Reason <span className="text-rose-600">*</span>
             </label>
             <textarea
               id="contract-reason"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
               rows={4}
-              placeholder={`Nhập lý do ${isRejecting ? 'từ chối' : 'yêu cầu chỉnh sửa'} hợp đồng...`}
+              placeholder={`Enter a reason to ${isRejecting ? 'reject' : 'request changes to'} the contract...`}
               className="w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-800 transition-colors outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
           </div>
@@ -179,7 +180,7 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
               onClick={onClose}
               className="min-h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
             >
-              Hủy
+              Cancel
             </button>
             <button
               type="submit"
@@ -191,7 +192,7 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
               }`}
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-              {submitting ? 'Đang gửi' : 'Gửi yêu cầu'}
+              {submitting ? 'Sending...' : 'Send request'}
             </button>
           </footer>
         </FormShell>
@@ -255,9 +256,8 @@ const TenantContractsPage = () => {
 
   const nearestExpiringContract = useMemo(
     () =>
-      contracts
-        .filter(isExpiringSoon)
-        .sort((a, b) => getDaysUntilEnd(a) - getDaysUntilEnd(b))[0] || null,
+      contracts.filter(isExpiringSoon).sort((a, b) => getDaysUntilEnd(a) - getDaysUntilEnd(b))[0] ||
+      null,
     [contracts]
   )
 
@@ -293,22 +293,22 @@ const TenantContractsPage = () => {
   const getActions = (contract) =>
     [
       contract.paperContractFiles?.length > 0 && {
-        label: 'Xem hợp đồng giấy',
+        label: 'View paper contract',
         icon: FileText,
         onClick: () => handleViewContract(contract.paperContractFiles),
       },
       contract.canViewLayout && {
-        label: 'Xem sơ đồ kho',
+        label: 'View warehouse layout',
         icon: Eye,
         onClick: () => window.open(`/tenant/contracts/${contract.id}/layout`, '_blank'),
       },
       contract.canConfirm && {
-        label: 'Xác nhận hợp đồng',
+        label: 'Confirm contract',
         icon: CheckCircle,
         onClick: () => handleConfirmContract(contract.id),
       },
       contract.canRequestChanges && {
-        label: 'Yêu cầu chỉnh sửa',
+        label: 'Request changes',
         icon: Edit3,
         onClick: () => {
           setSelectedContractId(contract.id)
@@ -317,7 +317,7 @@ const TenantContractsPage = () => {
         },
       },
       contract.canReject && {
-        label: 'Từ chối hợp đồng',
+        label: 'Reject contract',
         icon: X,
         onClick: () => {
           setSelectedContractId(contract.id)
@@ -327,7 +327,7 @@ const TenantContractsPage = () => {
         danger: true,
       },
       contract.canManageWms && {
-        label: 'Mở WMS',
+        label: 'Open WMS',
         icon: PackageOpen,
         onClick: () =>
           window.open(`/tenant/inventory?warehouseId=${contract.warehouseId}`, '_blank'),
@@ -363,17 +363,17 @@ const TenantContractsPage = () => {
                   Tenant operations
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
-                  Hợp đồng của tôi
+                  My Contracts
                 </h1>
                 <p className="mt-1.5 text-sm leading-6 text-slate-600">
-                  Quản lý và theo dõi các hợp đồng thuê kho của bạn.
+                  Manage and track your warehouse rental contracts.
                 </p>
               </div>
 
               <dl className="grid grid-cols-3 divide-x divide-slate-200 border border-slate-200 bg-white text-left">
                 <div className="min-w-[104px] px-3 py-2.5 sm:px-4">
                   <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
-                    Tổng hợp đồng
+                    Total contracts
                   </dt>
                   <dd className="mt-1 text-lg font-semibold text-slate-950 tabular-nums">
                     {loading ? '-' : contractSummary.total}
@@ -381,7 +381,7 @@ const TenantContractsPage = () => {
                 </div>
                 <div className="min-w-[104px] px-3 py-2.5 sm:px-4">
                   <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
-                    Đang hoạt động
+                    Active
                   </dt>
                   <dd className="mt-1 text-lg font-semibold text-emerald-700 tabular-nums">
                     {loading ? '-' : contractSummary.active}
@@ -389,7 +389,7 @@ const TenantContractsPage = () => {
                 </div>
                 <div className="min-w-[104px] px-3 py-2.5 sm:px-4">
                   <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
-                    Sắp hết hạn
+                    Expiring soon
                   </dt>
                   <dd className="mt-1 text-lg font-semibold text-amber-700 tabular-nums">
                     {loading ? '-' : contractSummary.expiringSoon}
@@ -411,12 +411,12 @@ const TenantContractsPage = () => {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">
                     {getDaysUntilEnd(nearestExpiringContract) <= 7
-                      ? 'Hợp đồng sắp hết hạn'
-                      : 'Có hợp đồng cần theo dõi'}
+                      ? 'Contract expiring soon'
+                      : 'Contract requires attention'}
                   </p>
                   <p className="mt-0.5 text-sm opacity-85">
-                    {nearestExpiringContract.warehouseName || 'Kho chưa xác định'} · còn{' '}
-                    {getDaysUntilEnd(nearestExpiringContract)} ngày, đến{' '}
+                    {nearestExpiringContract.warehouseName || 'Unknown warehouse'} ·{' '}
+                    {getDaysUntilEnd(nearestExpiringContract)} days remaining, until{' '}
                     {formatContractDate(nearestExpiringContract.endDate)}.
                   </p>
                 </div>
@@ -434,14 +434,11 @@ const TenantContractsPage = () => {
                     id="contract-records-heading"
                     className="text-sm font-semibold text-slate-950"
                   >
-                    Danh sách hợp đồng
+                    Contract list
                   </h2>
-                  <p className="mt-0.5 text-xs text-slate-500">
-                    Hồ sơ thuê kho và các thao tác hiện có theo từng hợp đồng
-                  </p>
                 </div>
                 <span className="text-xs font-medium text-slate-500">
-                  {loading ? 'Đang tải hồ sơ' : `${contracts.length} hợp đồng hiển thị`}
+                  {loading ? 'Loading contracts' : `${contracts.length} contracts displayed`}
                 </span>
               </div>
 
@@ -465,29 +462,26 @@ const TenantContractsPage = () => {
                   </div>
                 ) : contracts.length > 0 ? (
                   <table className="w-full min-w-[1060px] text-left text-sm">
-                    <caption className="sr-only">Danh sách hợp đồng thuê kho</caption>
+                    <caption className="sr-only">Warehouse rental contracts</caption>
                     <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
                       <tr>
                         <th scope="col" className="px-5 py-3">
-                          Hợp đồng
+                          Owner
                         </th>
                         <th scope="col" className="px-5 py-3">
-                          Chủ kho
-                        </th>
-                        <th scope="col" className="px-5 py-3">
-                          Kho bãi
+                          Warehouse
                         </th>
                         <th scope="col" className="px-5 py-3 text-right">
-                          Giá thuê
+                          Rent
                         </th>
                         <th scope="col" className="px-5 py-3">
-                          Thời hạn
+                          Term
                         </th>
                         <th scope="col" className="px-5 py-3">
-                          Trạng thái
+                          Status
                         </th>
                         <th scope="col" className="px-5 py-3 text-right">
-                          Thao tác
+                          Actions
                         </th>
                       </tr>
                     </thead>
@@ -498,30 +492,24 @@ const TenantContractsPage = () => {
                         return (
                           <tr key={contract.id} className="transition-colors hover:bg-slate-50">
                             <td className="px-5 py-3.5 align-middle">
-                              <p className="font-mono text-xs font-semibold text-slate-900">
-                                {formatContractReference(contract.id)}
-                              </p>
-                              <p className="mt-1 text-xs text-slate-500">Hợp đồng thuê kho</p>
-                            </td>
-                            <td className="px-5 py-3.5 align-middle">
                               <p className="font-semibold text-slate-900">
                                 {contract.ownerName || '-'}
                               </p>
-                              <p className="mt-1 text-xs text-slate-500">Chủ kho</p>
+                              <p className="mt-1 text-xs text-slate-500">Warehouse owner</p>
                             </td>
                             <td className="px-5 py-3.5 align-middle">
                               <p className="max-w-72 truncate font-semibold text-slate-900">
                                 {contract.warehouseName || '-'}
                               </p>
                               <p className="mt-1 max-w-72 truncate text-xs text-slate-500">
-                                {contract.warehouseAddress || 'Không có địa chỉ kho'}
+                                {contract.warehouseAddress || 'No warehouse address'}
                               </p>
                             </td>
                             <td className="px-5 py-3.5 text-right align-middle">
                               <p className="font-semibold text-slate-950 tabular-nums">
                                 {formatVND(contract.finalMonthlyRent || 0)}
                               </p>
-                              <p className="mt-1 text-xs text-slate-500">/ tháng</p>
+                              <p className="mt-1 text-xs text-slate-500">/ month</p>
                             </td>
                             <td className="px-5 py-3.5 align-middle">
                               <p className="font-medium text-slate-800 tabular-nums">
@@ -530,18 +518,24 @@ const TenantContractsPage = () => {
                                 {formatContractDate(contract.endDate)}
                               </p>
                               {contract.status === 'EXPIRED' ? (
-                                <p className="mt-1 text-xs font-medium text-rose-700">Đã hết hạn</p>
+                                <p className="mt-1 text-xs font-medium text-rose-700">Expired</p>
                               ) : (
                                 (() => {
                                   const daysUntilEnd = getDaysUntilEnd(contract)
-                                  if (daysUntilEnd === null || daysUntilEnd < 0 || daysUntilEnd > 30) {
+                                  if (
+                                    daysUntilEnd === null ||
+                                    daysUntilEnd < 0 ||
+                                    daysUntilEnd > 30
+                                  ) {
                                     return null
                                   }
                                   return (
                                     <p
                                       className={`mt-1 text-xs font-medium ${daysUntilEnd <= 7 ? 'text-rose-700' : 'text-amber-700'}`}
                                     >
-                                      {daysUntilEnd === 0 ? 'Hết hạn hôm nay' : `Còn ${daysUntilEnd} ngày`}
+                                      {daysUntilEnd === 0
+                                        ? 'Expires today'
+                                        : `${daysUntilEnd} days remaining`}
                                     </p>
                                   )
                                 })()
@@ -560,7 +554,7 @@ const TenantContractsPage = () => {
                             </td>
                             <td className="px-5 py-3.5 text-right align-middle">
                               <TableActionMenu
-                                label={`Thao tác cho ${formatContractReference(contract.id)}`}
+                                label={`Actions for ${formatContractReference(contract.id)}`}
                                 items={actions}
                               />
                             </td>
@@ -572,9 +566,9 @@ const TenantContractsPage = () => {
                 ) : (
                   <div className="flex min-h-72 flex-col items-center justify-center px-6 py-12 text-center">
                     <FileText className="h-7 w-7 text-slate-400" aria-hidden="true" />
-                    <h3 className="mt-3 text-sm font-semibold text-slate-800">Chưa có hợp đồng</h3>
+                    <h3 className="mt-3 text-sm font-semibold text-slate-800">No contracts yet</h3>
                     <p className="mt-1 max-w-sm text-sm leading-6 text-slate-500">
-                      Bạn chưa có hợp đồng thuê kho nào để theo dõi.
+                      You do not have any warehouse rental contracts to track.
                     </p>
                   </div>
                 )}
@@ -586,7 +580,7 @@ const TenantContractsPage = () => {
 
       <ReasonModal
         isOpen={reasonModalOpen}
-        title={reasonAction === 'reject' ? 'Từ chối hợp đồng' : 'Yêu cầu chỉnh sửa'}
+        title={reasonAction === 'reject' ? 'Reject contract' : 'Request changes'}
         action={reasonAction}
         contractId={selectedContractId}
         onClose={() => setReasonModalOpen(false)}

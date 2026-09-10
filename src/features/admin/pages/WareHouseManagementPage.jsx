@@ -44,7 +44,10 @@ import Modal from '../../../components/organisms/Modal'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import { toast } from 'react-hot-toast'
-import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
+import {
+  formatWarehousePricePerSquareMeter,
+  isWarehousePricePerSquareMeter,
+} from '@/utils/warehousePricing'
 
 // ─── Enum / Constants từ BE ───────────────────────────────────────────────────
 const STATUS_OPTIONS = ['', 'PENDING_APPROVAL', 'AVAILABLE', 'INACTIVE']
@@ -156,11 +159,15 @@ const DetailModal = ({ warehouse, onClose, onApprove, onReject }) => {
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
-                <DollarSign size={11} /> Price / m²
+                <DollarSign size={11} /> Rental price
               </p>
               <p className="font-bold text-slate-900">
                 {formatWarehousePricePerSquareMeter(warehouse)}
-                {warehouse.rentalPricingType !== 'NEGOTIATED' && ' /m²'}
+                {isWarehousePricePerSquareMeter(warehouse)
+                  ? ' /m²/month'
+                  : warehouse.rentalPricingType !== 'NEGOTIATED'
+                    ? ' /month'
+                    : ''}
               </p>
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
@@ -624,9 +631,11 @@ const WareHouseManagementPage = () => {
                               <p className="text-xs text-slate-500">{w.typeName || '—'}</p>
                               <p className="font-bold text-slate-800">
                                 {formatWarehousePricePerSquareMeter(w)}
-                                {w.rentalPricingType !== 'NEGOTIATED' && (
-                                  <span className="text-xs font-normal text-slate-400">/m²</span>
-                                )}
+                                {isWarehousePricePerSquareMeter(w) ? (
+                                  <span className="text-xs font-normal text-slate-400">/m²/month</span>
+                                ) : w.rentalPricingType !== 'NEGOTIATED' ? (
+                                  <span className="text-xs font-normal text-slate-400">/month</span>
+                                ) : null}
                               </p>
                             </td>
                             <td className="px-4 py-3.5">

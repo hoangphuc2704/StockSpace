@@ -6,6 +6,8 @@ const contractApi = {
 
   preview: (payload) => api.post('/owner/contracts/preview', payload),
   createDraft: (payload) => api.post('/owner/contracts', payload),
+  createRenewalDraft: (sourceContractId, payload) =>
+    api.post(`/owner/contracts/${sourceContractId}/renewal-draft`, payload),
   updateDraft: (id, payload) => api.put(`/owner/contracts/${id}`, payload),
   submit: (id) => api.post(`/owner/contracts/${id}/submit`),
   deleteDraft: (id) => api.delete(`/owner/contracts/${id}`),

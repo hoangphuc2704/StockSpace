@@ -2,11 +2,19 @@ import { motion } from 'framer-motion'
 import { ArrowRight, MapPin, Maximize2, Warehouse } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { cn } from '@/utils/cn'
-import { formatWarehousePricePerSquareMeter } from '@/utils/warehousePricing'
+import {
+  formatWarehousePricePerSquareMeter,
+  isWarehousePricePerSquareMeter,
+} from '@/utils/warehousePricing'
 
 const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
   const isGrid = viewMode === 'grid'
-  const priceLabel = warehouse.rentalPricingType === 'NEGOTIATED' ? 'Giá thuê' : 'Giá / m²'
+  const isPerSquareMeter = isWarehousePricePerSquareMeter(warehouse)
+  const priceLabel = warehouse.rentalPricingType === 'NEGOTIATED'
+    ? 'Giá thuê'
+    : isPerSquareMeter
+      ? 'Giá / m² / tháng'
+      : 'Giá / tháng'
 
   return (
     <motion.article
@@ -79,7 +87,9 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
             <p className="mt-1 truncate text-lg font-semibold text-slate-950 tabular-nums">
               {formatWarehousePricePerSquareMeter(warehouse, 'Thương lượng')}
               {warehouse.rentalPricingType !== 'NEGOTIATED' && (
-                <span className="ml-1 text-xs font-medium text-slate-500">/ m²</span>
+                <span className="ml-1 text-xs font-medium text-slate-500">
+                  {isPerSquareMeter ? '/ m² / tháng' : '/ tháng'}
+                </span>
               )}
             </p>
           </div>

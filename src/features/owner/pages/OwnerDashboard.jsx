@@ -3,7 +3,7 @@ import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
-import { Warehouse, Clock, Wallet, PlusCircle, Loader2, X } from 'lucide-react'
+import { Warehouse, Clock, Wallet, PlusCircle, Loader2, X, FileText } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import StatCard from '@/components/molecules/StatCard'
 
@@ -19,6 +19,7 @@ import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { positiveNumber } from '@/config/validation'
 import Badge from '../../../components/atoms/Badge'
+import InspectionReportModal from '../components/InspectionReportModal'
 
 const OwnerDashboard = () => {
   const dispatch = useDispatch()
@@ -32,6 +33,7 @@ const OwnerDashboard = () => {
   // Kiểm định là chức năng tùy chọn, không chặn duyệt hoặc thanh toán listing.
   const [inspections, setInspections] = useState([])
   const [loadingInspections, setLoadingInspections] = useState(true)
+  const [inspectionReport, setInspectionReport] = useState(null)
 
   // --- STATE THỐNG KÊ ---
   const [totalWarehouses, setTotalWarehouses] = useState(0)
@@ -249,7 +251,7 @@ const OwnerDashboard = () => {
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-blue-600">
                           <Clock className="h-5 w-5" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-bold text-slate-900">
                             {insp.warehouseName || 'Unknown Warehouse'}
                           </p>
@@ -258,6 +260,16 @@ const OwnerDashboard = () => {
                             {insp.createdAt ? new Date(insp.createdAt).toLocaleDateString() : 'N/A'}
                           </p>
                         </div>
+                        {['PASSED', 'FAILED'].includes(String(insp.status || '').toUpperCase()) && (
+                          <button
+                            type="button"
+                            onClick={() => setInspectionReport(insp)}
+                            className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            View report
+                          </button>
+                        )}
                       </div>
                     ))
                   )}
@@ -276,6 +288,13 @@ const OwnerDashboard = () => {
           </main>
         </div>
       </div>
+
+      {inspectionReport && (
+        <InspectionReportModal
+          inspection={inspectionReport}
+          onClose={() => setInspectionReport(null)}
+        />
+      )}
 
       {/* --- POPUP MODAL NHẬP SỐ TIỀN NẠP --- */}
       {isModalOpen && (
