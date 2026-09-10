@@ -134,7 +134,7 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
       >
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
           <div>
-            <p className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
+            <p className="tracking-0.1em text-xs font-semibold text-slate-500 uppercase">
               Contract review
             </p>
             <h3 id="contract-reason-title" className="mt-1 text-lg font-bold text-slate-950">
@@ -355,7 +355,7 @@ const TenantContractsPage = () => {
             isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
           }`}
         >
-          <main className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
+          <main className="max-w-1600px mx-auto w-full space-y-5 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
             <header className="flex flex-col gap-5 border-b border-slate-300 pb-5 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <div className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-[0.12em] text-slate-500 uppercase">
@@ -371,7 +371,7 @@ const TenantContractsPage = () => {
               </div>
 
               <dl className="grid grid-cols-3 divide-x divide-slate-200 border border-slate-200 bg-white text-left">
-                <div className="min-w-[104px] px-3 py-2.5 sm:px-4">
+                <div className="min-w-104px px-3 py-2.5 sm:px-4">
                   <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                     Total contracts
                   </dt>
@@ -379,7 +379,7 @@ const TenantContractsPage = () => {
                     {loading ? '-' : contractSummary.total}
                   </dd>
                 </div>
-                <div className="min-w-[104px] px-3 py-2.5 sm:px-4">
+                <div className="min-w-104px px-3 py-2.5 sm:px-4">
                   <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                     Active
                   </dt>
@@ -387,7 +387,7 @@ const TenantContractsPage = () => {
                     {loading ? '-' : contractSummary.active}
                   </dd>
                 </div>
-                <div className="min-w-[104px] px-3 py-2.5 sm:px-4">
+                <div className="min-w-104px px-3 py-2.5 sm:px-4">
                   <dt className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                     Expiring soon
                   </dt>
@@ -444,7 +444,7 @@ const TenantContractsPage = () => {
 
               <div className="overflow-x-auto">
                 {loading ? (
-                  <div className="min-w-[1060px] divide-y divide-slate-200" aria-hidden="true">
+                  <div className="min-w-1060px divide-y divide-slate-200" aria-hidden="true">
                     {Array.from({ length: 5 }).map((_, index) => (
                       <div
                         key={index}
@@ -461,7 +461,7 @@ const TenantContractsPage = () => {
                     ))}
                   </div>
                 ) : contracts.length > 0 ? (
-                  <table className="w-full min-w-[1060px] text-left text-sm">
+                  <table className="min-w-1060px w-full text-left text-sm">
                     <caption className="sr-only">Warehouse rental contracts</caption>
                     <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
                       <tr>
