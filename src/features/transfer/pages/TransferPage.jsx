@@ -402,6 +402,7 @@ const TransferPage = ({ currentRole }) => {
   const [receiveTransfer, setReceiveTransfer] = useState(null)
   const [action, setAction] = useState(null)
   const [detailId, setDetailId] = useState(null)
+  const [taskIntentHandled, setTaskIntentHandled] = useState('')
   const [currentUserId] = useState(() => {
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}')
@@ -455,6 +456,30 @@ const TransferPage = ({ currentRole }) => {
     fetchWarehouses()
     fetchTransfers()
   }, [fetchTransfers, fetchWarehouses])
+
+  useEffect(() => {
+    const transferId = searchParams.get('transferId')
+    const requestedAction = searchParams.get('action')
+    if (!transferId || !transfers.length) return
+    const intent = `${transferId}:${requestedAction || 'VIEW'}`
+    if (taskIntentHandled === intent) return
+    const transfer = transfers.find((item) => String(item.id) === String(transferId))
+    if (!transfer) return
+
+    // Staff task actions remain on the transfer screen so the same BE-aware
+    // controls and validation are used in both entry points.
+    if (requestedAction === 'PICK') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAction({ mode: 'pick', transfer })
+    }
+    if (requestedAction === 'RECEIVE') {
+      setReceiveTransfer(transfer)
+    }
+    if (requestedAction === 'VIEW') {
+      setDetailId(transfer.id)
+    }
+    setTaskIntentHandled(intent)
+  }, [searchParams, taskIntentHandled, transfers])
 
   const contextTransfers = useMemo(
     () =>
@@ -602,8 +627,15 @@ const TransferPage = ({ currentRole }) => {
     const tenant = currentRole === 'TENANT'
     const staff = currentRole === 'STAFF'
     const isAssignedPicker =
-      !transfer.sourceStaff?.id || String(transfer.sourceStaff.id) === String(currentUserId)
-    if ((tenant || staff) && transfer.status === 'PENDING')
+      staff
+        ? Boolean(transfer.sourceStaff?.id) &&
+          String(transfer.sourceStaff.id) === String(currentUserId)
+        : true
+    const isAssignedReceiver =
+      staff &&
+      transfer.destinationStaff?.id &&
+      String(transfer.destinationStaff.id) === String(currentUserId)
+    if (transfer.status === 'PENDING' && (tenant || (staff && isAssignedPicker)))
       return {
         label: staff ? 'Allocate source stock' : 'Allocate stock',
         icon: PackageCheck,
@@ -617,11 +649,15 @@ const TransferPage = ({ currentRole }) => {
       }
     if (tenant && transfer.status === 'READY_TO_DISPATCH')
       return { label: 'Approve dispatch', icon: Truck, onClick: () => handleApprove(transfer) }
+    if (isAssignedReceiver && ['IN_TRANSIT', 'OVERDUE'].includes(transfer.status))
+      return {
+        label: 'Confirm arrival',
+        icon: Truck,
+        onClick: () => handleArrive(transfer),
+      }
     if (
-      tenant &&
+      (tenant || isAssignedReceiver) &&
       [
-        'IN_TRANSIT',
-        'OVERDUE',
         'ARRIVED_AT_DESTINATION',
         'RECEIVING',
         'PARTIALLY_RECEIVED',
@@ -668,23 +704,24 @@ const TransferPage = ({ currentRole }) => {
 
   const getRoleHint = (transfer) => {
     if (currentRole !== 'STAFF') return ''
-    if (
-      ['ALLOCATED', 'PICKING'].includes(transfer.status) &&
-      transfer.sourceStaff?.id &&
-      String(transfer.sourceStaff.id) !== String(currentUserId)
-    )
-      return 'Assigned to another source staff'
+    if (['PENDING', 'ALLOCATED', 'PICKING'].includes(transfer.status)) {
+      if (!transfer.sourceStaff?.id) return 'Waiting for tenant to assign source staff'
+      if (String(transfer.sourceStaff.id) !== String(currentUserId))
+        return 'Assigned to another source staff'
+    }
     if (transfer.status === 'READY_TO_DISPATCH') return 'Waiting for tenant approval'
-    if (
-      [
-        'IN_TRANSIT',
-        'OVERDUE',
-        'ARRIVED_AT_DESTINATION',
-        'RECEIVING',
-        'PARTIALLY_RECEIVED',
-      ].includes(transfer.status)
-    )
-      return 'Waiting for tenant to record receipt'
+    if (['IN_TRANSIT', 'OVERDUE'].includes(transfer.status)) {
+      if (!transfer.destinationStaff?.id) return 'Waiting for tenant to assign destination staff'
+      if (String(transfer.destinationStaff.id) !== String(currentUserId))
+        return 'Assigned to another destination staff'
+      return 'Ready to confirm arrival'
+    }
+    if (['ARRIVED_AT_DESTINATION', 'RECEIVING', 'PARTIALLY_RECEIVED'].includes(transfer.status)) {
+      if (!transfer.destinationStaff?.id) return 'Waiting for tenant to assign destination staff'
+      if (String(transfer.destinationStaff.id) !== String(currentUserId))
+        return 'Assigned to another destination staff'
+      return 'Ready to record receipt'
+    }
     if (['RETRY_REQUESTED', 'RETURN_REQUESTED', 'RECONCILING'].includes(transfer.status))
       return 'Tenant action required'
     if (['COMPLETED', 'RETURNED', 'LOST', 'REJECTED', 'CANCELLED'].includes(transfer.status))
@@ -695,6 +732,27 @@ const TransferPage = ({ currentRole }) => {
   const getSecondaryActions = (transfer) =>
     [
       { label: 'View details & timeline', icon: Eye, onClick: () => setDetailId(transfer.id) },
+      currentRole === 'TENANT' &&
+      [
+        'PENDING',
+        'ALLOCATED',
+        'PICKING',
+        'READY_TO_DISPATCH',
+        'RETRY_REQUESTED',
+        'IN_TRANSIT',
+        'OVERDUE',
+        'ARRIVED_AT_DESTINATION',
+        'RECEIVING',
+        'PARTIALLY_RECEIVED',
+      ].includes(transfer.status)
+        ? {
+            label: transfer.destinationStaff?.id
+              ? 'Change destination staff'
+              : 'Assign destination staff',
+            icon: PackageCheck,
+            onClick: () => setAction({ mode: 'assignDestinationStaff', transfer }),
+          }
+        : null,
       currentRole === 'TENANT' && ['IN_TRANSIT', 'OVERDUE'].includes(transfer.status)
         ? { label: 'Mark arrived', icon: PackageCheck, onClick: () => handleArrive(transfer) }
         : null,
@@ -1110,6 +1168,14 @@ const TransferPage = ({ currentRole }) => {
                                     'Not assigned'}
                                 </strong>
                               </span>
+                              <span className="mt-1 block text-xs text-slate-600">
+                                Destination staff:{' '}
+                                <strong>
+                                  {transfer.destinationStaff?.fullName ||
+                                    transfer.destinationStaff?.name ||
+                                    'Not assigned'}
+                                </strong>
+                              </span>
                             </td>
                             <td className="px-5 py-4 text-right align-top">
                               <div className="flex items-center justify-end gap-2">
@@ -1206,6 +1272,7 @@ const TransferPage = ({ currentRole }) => {
         isOpen={Boolean(receiveTransfer)}
         onClose={() => setReceiveTransfer(null)}
         transfer={receiveTransfer}
+        currentRole={currentRole}
         onSuccess={handleReceiveSuccess}
       />
       <TransferActionModal

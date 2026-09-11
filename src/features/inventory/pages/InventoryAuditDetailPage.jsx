@@ -27,6 +27,11 @@ import { showApiErrorToast } from '@/config/apiError'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 
 const STATUS_CONFIG = {
+  EDIT_REQUESTED: {
+    label: 'Yêu cầu mở lại',
+    className: 'border-purple-200 bg-purple-50 text-purple-800',
+  },
+  REOPENED: { label: 'Đã mở lại', className: 'border-indigo-200 bg-indigo-50 text-indigo-800' },
   PENDING: { label: 'Kế hoạch cũ', className: 'border-slate-200 bg-slate-100 text-slate-700' },
   DRAFT: { label: 'Bản nháp', className: 'border-slate-200 bg-slate-100 text-slate-700' },
   IN_PROGRESS: { label: 'Đang kiểm đếm', className: 'border-blue-200 bg-blue-50 text-blue-800' },
@@ -63,6 +68,10 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
   const [isRecountModalOpen, setIsRecountModalOpen] = useState(false)
   const [recountReason, setRecountReason] = useState('')
   const [recounting, setRecounting] = useState(false)
+  const [isEditRequestModalOpen, setIsEditRequestModalOpen] = useState(false)
+  const [editReason, setEditReason] = useState('')
+  const [requestingEdit, setRequestingEdit] = useState(false)
+  const [approvingEdit, setApprovingEdit] = useState(false)
   const [isUnexpectedModalOpen, setIsUnexpectedModalOpen] = useState(false)
   const [unexpectedSkuId, setUnexpectedSkuId] = useState('')
   const [unexpectedRackId, setUnexpectedRackId] = useState('')
@@ -110,16 +119,30 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     if (id) fetchAuditDetail()
   }, [fetchAuditDetail, id])
 
-  const isCounting = audit?.status === 'IN_PROGRESS'
-  const canStart = audit?.status === 'DRAFT' || audit?.status === 'RECOUNT_REQUIRED'
-  const isSubmitted = audit?.status === 'SUBMITTED'
   const currentUserId = currentUser?.userId || currentUser?.id
+  const canOperateAsStaff =
+    currentRole !== 'STAFF' ||
+    Boolean(
+      audit?.assignedToId &&
+        currentUserId &&
+        String(audit.assignedToId) === String(currentUserId)
+    )
+  const isCounting =
+    canOperateAsStaff && (audit?.status === 'IN_PROGRESS' || audit?.status === 'REOPENED')
+  const canStart =
+    canOperateAsStaff && (audit?.status === 'DRAFT' || audit?.status === 'RECOUNT_REQUIRED')
+  const isSubmitted = audit?.status === 'SUBMITTED'
+  const isEditRequested = audit?.status === 'EDIT_REQUESTED'
   const canApprove =
     isSubmitted &&
     currentRole === 'TENANT' &&
     (!audit?.assignedToId || !currentUserId || String(audit.assignedToId) !== String(currentUserId))
   const canTenantCancel =
     currentRole === 'TENANT' && audit?.status !== 'APPROVED' && audit?.status !== 'CANCELLED'
+  const canSaveNotes =
+    canOperateAsStaff && currentRole === 'STAFF' && (isSubmitted || isEditRequested) && items.length > 0
+  const canRequestEdit = canOperateAsStaff && currentRole === 'STAFF' && isSubmitted
+  const canApproveEdit = currentRole === 'TENANT' && isEditRequested
 
   const handleItemChange = (itemId, field, value) => {
     setItems((current) =>
@@ -158,6 +181,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     }
   }
 
+  const buildNotesPayload = () => ({
+    items: items.map((item) => ({
+      itemId: item.id,
+      note: item.note || '',
+      varianceReason: item.varianceReason || '',
+    })),
+  })
+
   const handleStartAudit = async () => {
     try {
       setStarting(true)
@@ -187,6 +218,22 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       }
     } catch (error) {
       showApiErrorToast(error, 'Không thể lưu kết quả kiểm đếm.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveNotes = async () => {
+    if (!items.length) return
+    try {
+      setSaving(true)
+      const res = await auditApi.saveNotes(id, buildNotesPayload())
+      if (res.data?.success) {
+        toast.success('Đã lưu ghi chú kiểm kê.')
+        fetchAuditDetail()
+      }
+    } catch (error) {
+      showApiErrorToast(error, 'Không thể lưu ghi chú kiểm kê.')
     } finally {
       setSaving(false)
     }
@@ -259,6 +306,41 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       showApiErrorToast(error, 'Không thể yêu cầu kiểm đếm lại.')
     } finally {
       setRecounting(false)
+    }
+  }
+
+  const handleRequestEdit = async (event) => {
+    event.preventDefault()
+    const reason = editReason.trim()
+    if (!reason) return
+    try {
+      setRequestingEdit(true)
+      const res = await auditApi.requestEdit(id, { reason })
+      if (res.data?.success) {
+        toast.success('Đã gửi yêu cầu mở lại phiếu.')
+        setIsEditRequestModalOpen(false)
+        setEditReason('')
+        fetchAuditDetail()
+      }
+    } catch (error) {
+      showApiErrorToast(error, 'Không thể gửi yêu cầu mở lại phiếu.')
+    } finally {
+      setRequestingEdit(false)
+    }
+  }
+
+  const handleApproveEdit = async () => {
+    try {
+      setApprovingEdit(true)
+      const res = await auditApi.approveEdit(id)
+      if (res.data?.success) {
+        toast.success('Đã cho phép sửa lại số lượng.')
+        fetchAuditDetail()
+      }
+    } catch (error) {
+      showApiErrorToast(error, 'Không thể duyệt yêu cầu mở lại.')
+    } finally {
+      setApprovingEdit(false)
     }
   }
 
@@ -460,8 +542,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     {items.length} dòng trong vòng kiểm đếm hiện tại
                   </p>
                 </div>
-                {currentRole === 'STAFF' && (
+                {currentRole === 'STAFF' && isCounting && (
                   <span className="text-xs text-slate-500">Chế độ blind count</span>
+                )}
+                {canSaveNotes && (
+                  <span className="text-xs text-purple-700">Chỉ có thể cập nhật ghi chú</span>
                 )}
               </div>
               <div className="overflow-x-auto">
@@ -536,7 +621,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                             {COUNT_STATUS_LABELS[item.countStatus] || item.countStatus || '-'}
                           </td>
                           <td className="px-4 py-3">
-                            {isCounting ? (
+                            {isCounting || canSaveNotes ? (
                               <input
                                 type="text"
                                 aria-label={`Ghi chú ${item.skuCode || item.id}`}
@@ -567,6 +652,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             </section>
 
             <div className="flex flex-wrap justify-end gap-2 border-t border-slate-300 pt-4">
+              {currentRole === 'STAFF' && !canOperateAsStaff && (
+                <span className="mr-auto border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-600">
+                  Phiếu này chưa được phân công cho bạn
+                </span>
+              )}
               {canTenantCancel && (
                 <Button
                   variant="outline"
@@ -616,6 +706,27 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   </Button>
                 </>
               )}
+              {canSaveNotes && (
+                <Button
+                  variant="outline"
+                  onClick={handleSaveNotes}
+                  isLoading={saving}
+                  className="flex items-center gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  Lưu ghi chú
+                </Button>
+              )}
+              {canRequestEdit && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditRequestModalOpen(true)}
+                  className="flex items-center gap-2 text-purple-700"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Xin sửa số lượng
+                </Button>
+              )}
               {isSubmitted && currentRole === 'TENANT' && (
                 <>
                   <Button
@@ -638,9 +749,24 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   )}
                 </>
               )}
+              {canApproveEdit && (
+                <Button
+                  onClick={handleApproveEdit}
+                  isLoading={approvingEdit}
+                  className="flex items-center gap-2 bg-purple-700 text-white hover:bg-purple-800"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Cho phép sửa lại
+                </Button>
+              )}
               {isSubmitted && currentRole === 'STAFF' && (
                 <span className="border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-600">
                   Đang chờ Tenant duyệt kết quả
+                </span>
+              )}
+              {isEditRequested && currentRole === 'STAFF' && (
+                <span className="border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-800">
+                  Đang chờ Tenant cho phép sửa số lượng
                 </span>
               )}
             </div>
@@ -675,6 +801,42 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               isLoading={cancelling}
             >
               Xác nhận hủy
+            </Button>
+          </div>
+        </FormShell>
+      </Modal>
+
+      <Modal
+        isOpen={isEditRequestModalOpen}
+        onClose={() => setIsEditRequestModalOpen(false)}
+        title="Xin mở lại phiếu kiểm kê"
+        size="md"
+      >
+        <FormShell onSubmit={handleRequestEdit} className="space-y-4">
+          <div className="rounded-lg border border-purple-100 bg-purple-50 px-3 py-2 text-sm text-purple-900">
+            Tenant sẽ xem xét yêu cầu trước khi cho phép cập nhật lại số lượng đã kiểm đếm.
+          </div>
+          <label className="block text-sm font-medium text-slate-700">
+            Lý do <span className="text-red-600">*</span>
+            <textarea
+              rows={4}
+              value={editReason}
+              onChange={(event) => setEditReason(event.target.value)}
+              required
+              placeholder="Mô tả lý do cần sửa lại số lượng..."
+              className="mt-1.5 w-full rounded-md border border-slate-300 p-3 outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100"
+            />
+          </label>
+          <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
+            <Button type="button" variant="outline" onClick={() => setIsEditRequestModalOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              type="submit"
+              className="bg-purple-700 text-white hover:bg-purple-800"
+              isLoading={requestingEdit}
+            >
+              Gửi yêu cầu
             </Button>
           </div>
         </FormShell>

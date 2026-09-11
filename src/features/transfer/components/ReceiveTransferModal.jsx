@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import layoutApi from '@/services/layoutApi'
+import staffApi from '@/services/staff/staffApi'
 import transferApi, { createTransferIdempotencyKey } from '@/services/wms/transferApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { AlertCircle, CheckCircle2, X, PackageCheck, Loader2, Plus, Trash2 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 
-const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
+const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRole = 'TENANT' }) => {
   useEscapeKey(isOpen, onClose)
 
   const [layout, setLayout] = useState(null)
@@ -27,7 +28,9 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
       try {
         const destinationWarehouse =
           transfer.currentDestinationWarehouse || transfer.destinationWarehouse
-        const res = await layoutApi.getTenantWarehouseLayout(destinationWarehouse?.id)
+        const res = currentRole === 'STAFF'
+          ? await staffApi.getStaffLayout(destinationWarehouse?.id)
+          : await layoutApi.getTenantWarehouseLayout(destinationWarehouse?.id)
         const payload = res.data?.data || res.data || {}
         setLayout(payload)
       } catch (error) {
@@ -54,7 +57,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess }) => {
     })
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAllocations(initialAllocations)
-  }, [isOpen, transfer])
+  }, [currentRole, isOpen, transfer])
 
   if (!isOpen) return null
 
