@@ -186,7 +186,7 @@ const SystemPolicyPage = () => {
                         <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline">StockSpace Admin</span>
                     </div>
                 </div>
-                <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
+                <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-4">
                     <NotificationDropdown />
                 </div>
             </header>

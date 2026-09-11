@@ -16,6 +16,7 @@ import {
   HiOutlineArchiveBox,
   HiOutlineTag,
 } from 'react-icons/hi2'
+import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import useEscapeKey from '../hooks/useEscapeKey'
@@ -112,17 +113,39 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
   useEscapeKey(isMobileOpen, () => dispatch(closeMobileSidebar()))
   const menuItems = SIDEBAR_MENUS[currentRole] || []
 
+  useEffect(() => {
+    if (!isMobileOpen) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isMobileOpen])
+
   const handleNavigation = (path) => {
     navigate(path)
     dispatch(closeMobileSidebar())
   }
 
   return (
-    <aside
-      className={`fixed top-14 bottom-0 left-0 z-40 flex flex-col overflow-x-hidden overflow-y-auto bg-white transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'
-        } ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
-        } `}
-    >
+    <>
+      {isMobileOpen && (
+        <button
+          type="button"
+          aria-label="Close navigation"
+          className="fixed inset-0 z-30 bg-slate-950/35 backdrop-blur-[1px] md:hidden"
+          onClick={() => dispatch(closeMobileSidebar())}
+        />
+      )}
+
+      <aside
+        aria-label={`${currentRole.toLowerCase()} navigation`}
+        className={`fixed top-14 bottom-0 left-0 z-40 flex max-w-[calc(100vw-1rem)] flex-col overflow-x-hidden overflow-y-auto bg-white shadow-xl transition-all duration-150 ease-in-out md:shadow-none ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'
+          } ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
+          } `}
+      >
       {/* Danh sách Menu điều hướng */}
       <nav className="flex-1 space-y-1 py-3">
         {menuItems.map((item, idx) => {
@@ -139,6 +162,7 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
                   ? 'bg-slate-100 font-semibold text-slate-950'
                   : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
                 } `}
+              title={!isSidebarExpanded ? item.text : undefined}
             >
               <item.icon
                 className={`shrink-0 transition-transform group-hover:scale-105 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'
@@ -171,6 +195,7 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
             ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
             : 'flex-col justify-center gap-1 py-3 text-[10px]'
             } `}
+          title={!isSidebarExpanded ? 'Logout' : undefined}
         >
           <HiOutlineArrowRightOnRectangle
             className={`shrink-0 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'}`}
@@ -178,7 +203,8 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
           <span className="whitespace-nowrap">Logout</span>
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }
 

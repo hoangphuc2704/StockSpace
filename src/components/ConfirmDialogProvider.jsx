@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useRef, useState } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Info } from 'lucide-react'
 import Modal from '@/components/organisms/Modal'
 import Button from '@/components/atoms/Button'
 
@@ -24,7 +24,10 @@ export function ConfirmDialogProvider({ children }) {
         message: normalized.message || 'Are you sure you want to continue?',
         confirmText: normalized.confirmText || 'Confirm',
         cancelText: normalized.cancelText || 'Cancel',
-        danger: Boolean(normalized.danger),
+        type:
+          normalized.type === 'danger' || normalized.danger === true
+            ? 'danger'
+            : 'normal',
       })
     })
   }, [])
@@ -35,6 +38,9 @@ export function ConfirmDialogProvider({ children }) {
     setDialog(null)
     resolve?.(result)
   }, [])
+
+  const isDanger = dialog?.type === 'danger'
+  const DialogIcon = isDanger ? AlertTriangle : Info
 
   return (
     <ConfirmDialogContext.Provider value={confirm}>
@@ -49,21 +55,26 @@ export function ConfirmDialogProvider({ children }) {
           <div className="flex items-start gap-3">
             <div
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                dialog?.danger ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+                isDanger ? 'bg-rose-100 text-rose-600' : 'bg-blue-100 text-blue-600'
               }`}
             >
-              <AlertTriangle className="h-5 w-5" />
+              <DialogIcon className="h-5 w-5" />
             </div>
             <p className="pt-1.5 text-sm leading-6 text-slate-600">{dialog?.message}</p>
           </div>
 
           <div className="flex flex-col-reverse justify-end gap-3 border-t border-slate-100 pt-4 sm:flex-row">
-            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => finish(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => finish(false)}
+            >
               {dialog?.cancelText}
             </Button>
             <Button
               type="button"
-              variant={dialog?.danger ? 'danger' : 'primary'}
+              variant={isDanger ? 'danger' : 'primary'}
               className="w-full sm:w-auto"
               onClick={() => finish(true)}
             >

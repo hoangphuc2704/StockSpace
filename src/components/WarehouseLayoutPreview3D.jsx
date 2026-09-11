@@ -9,10 +9,18 @@ import {
   PivotControls,
   Text,
 } from '@react-three/drei'
-import { ACESFilmicToneMapping, DoubleSide } from 'three'
+import { ACESFilmicToneMapping, DoubleSide, MeshStandardMaterial, Shape } from 'three'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
-import { createCardboardTexture, createWarehouseFloorTexture } from './warehouse3dTextures'
+import {
+  createCardboardTexture,
+  createWarehouseFloorTexture,
+  createWallPanelTexture,
+  createRoofCorrugatedTexture,
+  createRollUpDoorTexture,
+  createBuildingSignTexture,
+  createSafetySignTexture,
+} from './warehouse3dTextures'
 
 const WORLD_SIZE = 22
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
@@ -241,89 +249,548 @@ function WarehousePostProcessing() {
   return null
 }
 
-// --- SÀN KHO BÊ TÔNG ---
-function WarehouseFloor({ width, depth, floorTexture }) {
-  // The 3D floor must represent exactly the same footprint as the 2D layout.
-  const floorW = Math.max(width, 0.1)
-  const floorD = Math.max(depth, 0.1)
-  const aisleCount = 5
-  const aislePositions = Array.from(
-    { length: aisleCount },
-    (_, index) => -floorW / 2 + ((index + 1) / (aisleCount + 1)) * floorW
-  )
+// --- SÀN KHO BÊ TÔNG CÔNG NGHIỆP RỘNG LỚN ---
+function WarehouseFloor({
+  width,
+  depth,
+  buildingWidth: propBuildingWidth,
+  buildingLength: propBuildingLength,
+  floorTexture,
+}) {
+  const floorW = propBuildingWidth || Math.max(width + 22, 38)
+  const floorD = propBuildingLength || Math.max(depth + 24, 46)
+
+  // Tọa độ ranh giới vùng đặt kệ hàng (Active Storage Bay Footprint)
+  const storageW = Math.max(width, 1)
+  const storageD = Math.max(depth, 1)
 
   return (
     <group position={[0, -0.01, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+      {/* 1. Mặt sàn bê tông toàn bộ tòa nhà kho rộng lớn */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[floorW, floorD]} />
-        <meshStandardMaterial map={floorTexture} roughness={0.45} metalness={0.15} />
+        <meshStandardMaterial map={floorTexture} roughness={0.4} metalness={0.15} />
       </mesh>
 
-      {/* Các đường thẳng song song làm mốc nhận biết lối đi giữa các Rack. */}
-      <group position={[0, 0.018, 0]} raycast={() => null}>
-        {aislePositions.map((x, index) => (
-          <Line
-            key={`aisle-line-${index}`}
-            points={[
-              [x, 0, -floorD / 2],
-              [x, 0, floorD / 2],
-            ]}
-            color={index === Math.floor(aisleCount / 2) ? '#6fa9c4' : '#31556b'}
-            transparent
-            opacity={index === Math.floor(aisleCount / 2) ? 0.82 : 0.58}
-            lineWidth={index === Math.floor(aisleCount / 2) ? 1.3 : 0.9}
-            raycast={() => null}
-          />
-        ))}
+      {/* 2. Đường viền ranh giới Khu Vực Lưu Trữ Kệ Hàng (Active Rack Storage Bay) */}
+      <group position={[0, 0.015, 0]} raycast={() => null}>
+        <Line
+          points={[
+            [-storageW / 2, 0, -storageD / 2],
+            [storageW / 2, 0, -storageD / 2],
+            [storageW / 2, 0, storageD / 2],
+            [-storageW / 2, 0, storageD / 2],
+            [-storageW / 2, 0, -storageD / 2],
+          ]}
+          color="#38bdf8"
+          transparent
+          opacity={0.65}
+          lineWidth={1.6}
+          raycast={() => null}
+        />
       </group>
     </group>
   )
 }
 
-function WarehouseWalls({ width, depth, height }) {
-  const wallWidth = Math.max(width, 0.1)
-  const wallDepth = Math.max(depth, 0.1)
-  const wallHeight = Math.max(height, 0.8)
-  const wallThickness = clamp(Math.min(wallWidth, wallDepth) * 0.012, 0.12, 0.28)
+// =========================================================================
+// KIẾN TRÚC TÒA NHÀ KHO THỰC TẾ (REALISTIC WAREHOUSE ARCHITECTURE - NGÔI NHÀ)
+// Mô phỏng phong cách nhà kho công nghiệp hiện đại chuẩn như my-react-app:
+// - 4 Bức tường panel kim loại công nghiệp xám nhạt với rãnh ghép & đinh tán
+// - Tường trước với 2 cửa cuốn xe nâng Inbound / Outbound, đệm dock & cửa thoát hiểm
+// - Biển thương hiệu StockSpace lớn mặt tiền tòa nhà
+// - Cột thép chữ I chịu lực dọc 2 bên tường
+// - Mái dốc tôn sóng công nghiệp kèm tấm lấy sáng Polycarbonate
+// - Hệ vì kèo không gian (Space Trusses), ống gió HVAC & ống PCCC đỏ
+// - Chế độ hiển thị: Mờ X-Ray (nhìn thấu kệ bên trong), Đầy đủ (Solid), hoặc Ẩn (Hidden)
+// =========================================================================
+function WarehouseBuildingArchitecture({
+  width,
+  depth,
+  buildingWidth: propBuildingWidth,
+  buildingLength: propBuildingLength,
+  wallHeight: propWallHeight,
+  racksBounds,
+  roofMode = 'xray',
+  cameraPreset = 'DEFAULT',
+}) {
+  const buildingWidth = propBuildingWidth || Math.max(width + 22, 38)
+  const buildingLength = propBuildingLength || Math.max(depth + 24, 46)
+  const wallHeight = propWallHeight || Math.max(racksBounds?.maxH ? racksBounds.maxH + 4.5 : 11.0, 11.0)
+  const roofApex = wallHeight + 2.5
+  const wallThickness = 0.32
+
+  // Thông số hình học mái dốc công nghiệp
+  const roofPitch = Math.atan2(roofApex - wallHeight, buildingWidth / 2)
+  const trussRafterLen = Math.hypot(buildingWidth / 2, roofApex - wallHeight)
+
+  // Độ vươn mái che công nghiệp (Overhangs)
+  const eaveOverhang = 0.5 // Mái hiên vươn qua mép tường bên 0.5m
+  const gableOverhang = 0.6 // Mái đua qua tường đầu hồi trước & sau 0.6m
+  const roofLength = buildingLength + 2 * gableOverhang
+
+  // Chiều dài thực tế của mặt nghiêng dốc mái từ đỉnh nóc ra đến mép hiên
+  const halfSpanWithOverhang = buildingWidth / 2 + eaveOverhang
+  const roofSlopeLen = halfSpanWithOverhang / Math.cos(roofPitch)
+
+  // Tọa độ tâm 2 cánh mái để giáp mí tuyệt đối chuẩn xác tại đỉnh nóc X = 0, Y = roofApex
+  const leftRoofCenterX = -halfSpanWithOverhang / 2
+  const rightRoofCenterX = halfSpanWithOverhang / 2
+  const roofCenterY = roofApex - (halfSpanWithOverhang / 2) * Math.tan(roofPitch)
+
+  // Khởi tạo các texture kiến trúc công nghiệp
+  const wallTexture = useMemo(() => createWallPanelTexture(), [])
+  const roofTexture = useMemo(() => createRoofCorrugatedTexture(), [])
+  const door1Texture = useMemo(() => createRollUpDoorTexture('BAY 01 • INBOUND DOCK'), [])
+  const door2Texture = useMemo(() => createRollUpDoorTexture('BAY 02 • OUTBOUND DOCK'), [])
+  const buildingSignTexture = useMemo(() => createBuildingSignTexture(), [])
+  const exitSignTexture = useMemo(() => createSafetySignTexture('EXIT'), [])
+  const fireSignTexture = useMemo(() => createSafetySignTexture('FIRE'), [])
+  const ppeSignTexture = useMemo(() => createSafetySignTexture('PPE'), [])
+
+  useEffect(() => {
+    return () => {
+      wallTexture?.dispose()
+      roofTexture?.dispose()
+      door1Texture?.dispose()
+      door2Texture?.dispose()
+      buildingSignTexture?.dispose()
+      exitSignTexture?.dispose()
+      fireSignTexture?.dispose()
+      ppeSignTexture?.dispose()
+    }
+  }, [
+    wallTexture,
+    roofTexture,
+    door1Texture,
+    door2Texture,
+    buildingSignTexture,
+    exitSignTexture,
+    fireSignTexture,
+    ppeSignTexture,
+  ])
+
+  // Cấu hình vật liệu tường panel
+  const wallMaterial = useMemo(
+    () =>
+      new MeshStandardMaterial({
+        map: wallTexture,
+        roughness: 0.55,
+        metalness: 0.25,
+      }),
+    [wallTexture]
+  )
+
+  // Tường đầu hồi tam giác
+  const gableShape = useMemo(() => {
+    const shape = new Shape()
+    shape.moveTo(-buildingWidth / 2, 0)
+    shape.lineTo(buildingWidth / 2, 0)
+    shape.lineTo(0, roofApex - wallHeight)
+    shape.closePath()
+    return shape
+  }, [buildingWidth, roofApex, wallHeight])
+
+  // Cột thép chữ I dọc tường (khoảng cách 6.5m chuẩn công nghiệp)
+  const steelColumns = useMemo(() => {
+    const items = []
+    const spacing = 6.5
+    const halfLen = buildingLength / 2
+    for (let z = -halfLen + 3; z <= halfLen - 3; z += spacing) {
+      items.push(z)
+    }
+    return items
+  }, [buildingLength])
+
+  // Hệ vì kèo thép
+  const trussZList = useMemo(() => {
+    const items = []
+    const spacing = 6.5
+    const halfLen = buildingLength / 2
+    for (let z = -halfLen + 3; z <= halfLen - 3; z += spacing) {
+      items.push(z)
+    }
+    return items
+  }, [buildingLength])
+
+  // Cửa cuốn trước chuẩn công nghiệp
+  const doorH = 5.0
+  const doorW = 5.2
+  const door1X = -8
+  const door2X = 8
+  const centerPillarW = (door2X - doorW / 2) - (door1X + doorW / 2) // 10.8m
+  const leftOuterPillarW = Math.max(buildingWidth / 2 - (Math.abs(door1X) + doorW / 2), 1) // ~11m
+  const leftOuterPillarX = -buildingWidth / 2 + leftOuterPillarW / 2
+  const rightOuterPillarX = buildingWidth / 2 - leftOuterPillarW / 2
+
+  // Chế độ mái: khi cameraPreset là TOP_DOWN thì tự động ẩn mái để dễ quan sát mặt bằng
+  const effectiveRoofMode = cameraPreset === 'TOP_DOWN' ? 'hidden' : roofMode
+  const isRoofVisible = effectiveRoofMode !== 'hidden'
+  const isRoofXray = effectiveRoofMode === 'xray'
 
   return (
-    <group position={[0, wallHeight / 2 - 0.01, 0]}>
-      <mesh position={[-wallWidth / 2, 0, 0]} castShadow receiveShadow>
-        <boxGeometry args={[wallThickness, wallHeight, wallDepth + wallThickness * 2]} />
-        <WarehouseWallMaterial />
+    <group position={[0, 0, 0]}>
+      {/* 1. Mặt đất bao quanh bên ngoài nhà kho (Ground surround không còn bị hụt khoảng tối) */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.04, 0]}
+        receiveShadow
+        raycast={() => null}
+      >
+        <planeGeometry args={[buildingWidth + 90, buildingLength + 90]} />
+        <meshStandardMaterial color="#090d16" roughness={0.92} metalness={0.08} />
       </mesh>
-      <mesh position={[wallWidth / 2, 0, 0]} castShadow receiveShadow>
-        <boxGeometry args={[wallThickness, wallHeight, wallDepth + wallThickness * 2]} />
-        <WarehouseWallMaterial />
-      </mesh>
-      <mesh position={[0, 0, -wallDepth / 2]} castShadow receiveShadow>
-        <boxGeometry args={[wallWidth, wallHeight, wallThickness]} />
-        <WarehouseWallMaterial />
-      </mesh>
-      <mesh position={[0, 0, wallDepth / 2]} castShadow receiveShadow>
-        <boxGeometry args={[wallWidth, wallHeight, wallThickness]} />
-        <WarehouseWallMaterial />
-      </mesh>
+
+      {/* 2. Cột thép chịu lực dọc theo 2 tường bên (Structural I-Columns) */}
+      <group raycast={() => null}>
+        {steelColumns.map((z, idx) => (
+          <group key={`col-${idx}`}>
+            {/* Cột tường trái */}
+            <mesh position={[-buildingWidth / 2 + 0.2, wallHeight / 2, z]} castShadow>
+              <boxGeometry args={[0.4, wallHeight, 0.4]} />
+              <meshStandardMaterial color="#334155" roughness={0.45} metalness={0.7} />
+            </mesh>
+            {/* Cột tường phải */}
+            <mesh position={[buildingWidth / 2 - 0.2, wallHeight / 2, z]} castShadow>
+              <boxGeometry args={[0.4, wallHeight, 0.4]} />
+              <meshStandardMaterial color="#334155" roughness={0.45} metalness={0.7} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* 3. Bốn Bức Tường Nhà Kho (Walls) */}
+      <group raycast={() => null}>
+        {/* TƯỜNG SAU (Back Wall) */}
+        <mesh
+          position={[0, wallHeight / 2, -buildingLength / 2]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[buildingWidth, wallHeight, wallThickness]} />
+          <primitive object={wallMaterial} attach="material" />
+        </mesh>
+
+        {/* TƯỜNG TRÁI (Left Wall) */}
+        <mesh
+          position={[-buildingWidth / 2, wallHeight / 2, 0]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[wallThickness, wallHeight, buildingLength]} />
+          <primitive object={wallMaterial} attach="material" />
+        </mesh>
+
+        {/* TƯỜNG PHẢI (Right Wall) */}
+        <mesh
+          position={[buildingWidth / 2, wallHeight / 2, 0]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[wallThickness, wallHeight, buildingLength]} />
+          <primitive object={wallMaterial} attach="material" />
+        </mesh>
+
+        {/* TƯỜNG TRƯỚC (Front Wall) CÓ 2 CỬA CUỐN & MẶT TIỀN */}
+        <group position={[0, 0, buildingLength / 2]}>
+          {/* Mảng tường trên cửa (Upper front banner wall) */}
+          <mesh
+            position={[0, doorH + (wallHeight - doorH) / 2, 0]}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={[buildingWidth, wallHeight - doorH, wallThickness]} />
+            <primitive object={wallMaterial} attach="material" />
+          </mesh>
+
+          {/* Trụ tường bên ngoài bên trái */}
+          <mesh
+            position={[leftOuterPillarX, doorH / 2, 0]}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={[leftOuterPillarW, doorH, wallThickness]} />
+            <primitive object={wallMaterial} attach="material" />
+          </mesh>
+
+          {/* Trụ tường bên ngoài bên phải */}
+          <mesh
+            position={[rightOuterPillarX, doorH / 2, 0]}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={[leftOuterPillarW, doorH, wallThickness]} />
+            <primitive object={wallMaterial} attach="material" />
+          </mesh>
+
+          {/* Trụ giữa giữa 2 cửa cuốn */}
+          <mesh position={[0, doorH / 2, 0]} castShadow receiveShadow>
+            <boxGeometry args={[centerPillarW, doorH, wallThickness]} />
+            <primitive object={wallMaterial} attach="material" />
+          </mesh>
+
+          {/* Cửa cuốn Inbound (Door 1) */}
+          <mesh position={[door1X, doorH / 2, 0.05]} castShadow>
+            <boxGeometry args={[doorW, doorH, 0.1]} />
+            <meshStandardMaterial map={door1Texture} roughness={0.5} metalness={0.4} />
+          </mesh>
+
+          {/* Cửa cuốn Outbound (Door 2) */}
+          <mesh position={[door2X, doorH / 2, 0.05]} castShadow>
+            <boxGeometry args={[doorW, doorH, 0.1]} />
+            <meshStandardMaterial map={door2Texture} roughness={0.5} metalness={0.4} />
+          </mesh>
+
+          {/* Đệm cao su dock xe tải chân cửa (Dock Bumpers) */}
+          {[
+            door1X - doorW / 2 - 0.2,
+            door1X + doorW / 2 + 0.2,
+            door2X - doorW / 2 - 0.2,
+            door2X + doorW / 2 + 0.2,
+          ].map((bx, bIdx) => (
+            <mesh key={`dock-bumper-${bIdx}`} position={[bx, 0.6, 0.2]}>
+              <boxGeometry args={[0.35, 1.2, 0.4]} />
+              <meshStandardMaterial color="#1e293b" roughness={0.9} />
+            </mesh>
+          ))}
+
+          {/* Cửa thoát hiểm nhân viên ở giữa (Personnel Emergency Door) */}
+          <mesh position={[0, 1.3, 0.06]} castShadow>
+            <boxGeometry args={[1.8, 2.6, 0.12]} />
+            <meshStandardMaterial color="#475569" roughness={0.6} metalness={0.5} />
+          </mesh>
+
+          {/* Biển EXIT phát quang trên cửa thoát hiểm */}
+          <mesh position={[0, 2.9, 0.18]}>
+            <planeGeometry args={[1.2, 0.5]} />
+            <meshBasicMaterial map={exitSignTexture} side={DoubleSide} />
+          </mesh>
+
+          {/* Biển hiệu thương hiệu StockSpace lớn mặt tiền tòa nhà (Building Facade Sign) */}
+          <mesh position={[0, wallHeight - 2.2, 0.18]}>
+            <planeGeometry args={[12, 2.8]} />
+            <meshBasicMaterial map={buildingSignTexture} side={DoubleSide} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* 4. Trạm PCCC & Biển an toàn gắn tường trong kho */}
+      <group raycast={() => null}>
+        {[-buildingWidth / 2 + 0.35, buildingWidth / 2 - 0.35].map((wx, idx) => (
+          <group key={`safety-station-${idx}`}>
+            <mesh position={[wx, 1.2, 4]}>
+              <boxGeometry args={[0.25, 1.6, 0.9]} />
+              <meshStandardMaterial color="#b91c1c" roughness={0.3} metalness={0.4} />
+            </mesh>
+            <mesh
+              position={[wx + (idx === 0 ? 0.15 : -0.15), 2.3, 4]}
+              rotation={[0, idx === 0 ? Math.PI / 2 : -Math.PI / 2, 0]}
+            >
+              <planeGeometry args={[0.9, 0.45]} />
+              <meshBasicMaterial map={fireSignTexture} side={DoubleSide} />
+            </mesh>
+            <mesh
+              position={[wx + (idx === 0 ? 0.15 : -0.15), 2.3, 10]}
+              rotation={[0, idx === 0 ? Math.PI / 2 : -Math.PI / 2, 0]}
+            >
+              <planeGeometry args={[0.9, 0.45]} />
+              <meshBasicMaterial map={ppeSignTexture} side={DoubleSide} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+
+      {/* 5. Mái Nhà Công Nghiệp & Vì Kèo Thép (Roof & Trusses) */}
+      {isRoofVisible && (
+        <group raycast={() => null}>
+          {/* 2 Tường đầu hồi hình tam giác ở trước & sau */}
+          <mesh position={[0, wallHeight, buildingLength / 2]}>
+            <shapeGeometry args={[gableShape]} />
+            <meshStandardMaterial
+              map={wallTexture}
+              transparent={isRoofXray}
+              opacity={isRoofXray ? 0.3 : 1.0}
+              depthWrite={!isRoofXray}
+              side={DoubleSide}
+            />
+          </mesh>
+          <mesh position={[0, wallHeight, -buildingLength / 2]} rotation={[0, Math.PI, 0]}>
+            <shapeGeometry args={[gableShape]} />
+            <meshStandardMaterial
+              map={wallTexture}
+              transparent={isRoofXray}
+              opacity={isRoofXray ? 0.3 : 1.0}
+              depthWrite={!isRoofXray}
+              side={DoubleSide}
+            />
+          </mesh>
+
+          {/* Mái dốc trái (Left Roof Slope) - khớp mí đỉnh nóc X=0 và phủ tường trái */}
+          <mesh
+            position={[leftRoofCenterX, roofCenterY, 0]}
+            rotation={[-Math.PI / 2, -roofPitch, 0]}
+            castShadow
+            receiveShadow
+          >
+            <planeGeometry args={[roofSlopeLen, roofLength]} />
+            <meshStandardMaterial
+              map={roofTexture}
+              roughness={0.55}
+              metalness={0.35}
+              side={DoubleSide}
+              transparent={isRoofXray}
+              opacity={isRoofXray ? 0.22 : 1.0}
+              depthWrite={!isRoofXray}
+            />
+          </mesh>
+
+          {/* Mái dốc phải (Right Roof Slope) - khớp mí đỉnh nóc X=0 và phủ tường phải */}
+          <mesh
+            position={[rightRoofCenterX, roofCenterY, 0]}
+            rotation={[-Math.PI / 2, roofPitch, 0]}
+            castShadow
+            receiveShadow
+          >
+            <planeGeometry args={[roofSlopeLen, roofLength]} />
+            <meshStandardMaterial
+              map={roofTexture}
+              roughness={0.55}
+              metalness={0.35}
+              side={DoubleSide}
+              transparent={isRoofXray}
+              opacity={isRoofXray ? 0.22 : 1.0}
+              depthWrite={!isRoofXray}
+            />
+          </mesh>
+
+          {/* Thanh tôn úp nóc đỉnh mái (Ridge Cap) - che khít hoàn hảo mối ghép đỉnh */}
+          <mesh position={[0, roofApex + 0.04, 0]}>
+            <boxGeometry args={[0.55, 0.08, roofLength + 0.05]} />
+            <meshStandardMaterial
+              color="#334155"
+              roughness={0.5}
+              metalness={0.6}
+              transparent={isRoofXray}
+              opacity={isRoofXray ? 0.25 : 1.0}
+              depthWrite={!isRoofXray}
+            />
+          </mesh>
+
+          {/* Tấm lấy sáng Polycarbonate tự nhiên (Skylights) - ốp sát chuẩn mặt nghiêng mái */}
+          {[-12, 0, 12].map((sz, sIdx) => {
+            const skylightDistX = buildingWidth / 4
+            const skylightY = roofApex - skylightDistX * Math.tan(roofPitch) + 0.03
+            return (
+              <group key={`skylight-${sIdx}`}>
+                {/* Tấm lấy sáng mái trái */}
+                <mesh
+                  position={[-skylightDistX, skylightY, sz]}
+                  rotation={[-Math.PI / 2, -roofPitch, 0]}
+                >
+                  <planeGeometry args={[2.8, 4.8]} />
+                  <meshStandardMaterial
+                    color="#bae6fd"
+                    roughness={0.15}
+                    metalness={0.1}
+                    transparent
+                    opacity={isRoofXray ? 0.25 : 0.65}
+                    depthWrite={false}
+                    side={DoubleSide}
+                  />
+                </mesh>
+                {/* Tấm lấy sáng mái phải */}
+                <mesh
+                  position={[skylightDistX, skylightY, sz]}
+                  rotation={[-Math.PI / 2, roofPitch, 0]}
+                >
+                  <planeGeometry args={[2.8, 4.8]} />
+                  <meshStandardMaterial
+                    color="#bae6fd"
+                    roughness={0.15}
+                    metalness={0.1}
+                    transparent
+                    opacity={isRoofXray ? 0.25 : 0.65}
+                    depthWrite={false}
+                    side={DoubleSide}
+                  />
+                </mesh>
+              </group>
+            )
+          })}
+
+          {/* Hệ vì kèo thép chịu lực (Space Trusses) */}
+          {trussZList.map((tz, tIdx) => (
+            <group key={`truss-${tIdx}`} position={[0, wallHeight, tz]}>
+              {/* Thanh đáy giằng ngang */}
+              <mesh position={[0, -0.1, 0]}>
+                <boxGeometry args={[buildingWidth - 0.4, 0.2, 0.2]} />
+                <meshStandardMaterial color="#475569" roughness={0.4} metalness={0.8} />
+              </mesh>
+              {/* Thanh dốc sườn trái */}
+              <mesh
+                position={[-(buildingWidth / 4), (roofApex - wallHeight) / 2, 0]}
+                rotation={[0, 0, roofPitch]}
+              >
+                <boxGeometry args={[trussRafterLen, 0.2, 0.2]} />
+                <meshStandardMaterial color="#475569" roughness={0.4} metalness={0.8} />
+              </mesh>
+              {/* Thanh dốc sườn phải */}
+              <mesh
+                position={[buildingWidth / 4, (roofApex - wallHeight) / 2, 0]}
+                rotation={[0, 0, -roofPitch]}
+              >
+                <boxGeometry args={[trussRafterLen, 0.2, 0.2]} />
+                <meshStandardMaterial color="#475569" roughness={0.4} metalness={0.8} />
+              </mesh>
+              {/* Các thanh chống đứng giàn kèo */}
+              {[-14, -10, -6, -2, 2, 6, 10, 14].map((wx, wIdx) => {
+                const hAtX = (1 - Math.abs(wx) / (buildingWidth / 2)) * (roofApex - wallHeight)
+                if (hAtX < 0.4) return null
+                return (
+                  <mesh key={`strut-${wIdx}`} position={[wx, hAtX / 2, 0]}>
+                    <boxGeometry args={[0.12, hAtX, 0.12]} />
+                    <meshStandardMaterial color="#475569" roughness={0.4} metalness={0.8} />
+                  </mesh>
+                )
+              })}
+            </group>
+          ))}
+
+          {/* Ống thông gió HVAC xoắn tròn mạ kẽm chạy dọc trần */}
+          <mesh
+            position={[-11, wallHeight - 0.6, 0]}
+            rotation={[Math.PI / 2, 0, 0]}
+          >
+            <cylinderGeometry args={[0.35, 0.35, buildingLength - 4, 16]} />
+            <meshStandardMaterial color="#94a3b8" roughness={0.25} metalness={0.75} />
+          </mesh>
+          <mesh
+            position={[11, wallHeight - 0.6, 0]}
+            rotation={[Math.PI / 2, 0, 0]}
+          >
+            <cylinderGeometry args={[0.35, 0.35, buildingLength - 4, 16]} />
+            <meshStandardMaterial color="#94a3b8" roughness={0.25} metalness={0.75} />
+          </mesh>
+
+          {/* Đường ống PCCC màu đỏ chạy dọc trần */}
+          {[-5, 0, 5].map((px, pIdx) => (
+            <mesh
+              key={`pipe-${pIdx}`}
+              position={[px, wallHeight - 0.4, 0]}
+              rotation={[Math.PI / 2, 0, 0]}
+            >
+              <cylinderGeometry args={[0.08, 0.08, buildingLength - 2, 12]} />
+              <meshStandardMaterial color="#dc2626" roughness={0.35} metalness={0.5} />
+            </mesh>
+          ))}
+        </group>
+      )}
     </group>
   )
 }
 
-function WarehouseWallMaterial() {
-  return (
-    <meshStandardMaterial
-      color="#71808a"
-      transparent
-      opacity={0.42}
-      depthWrite={false}
-      roughness={0.82}
-      metalness={0.05}
-      side={DoubleSide}
-    />
-  )
-}
-
 /**
- * Điều khiển Camera thông minh: Tự động Zoom To bao quát toàn bộ cụm Kệ thực tế
+ * Điều khiển Camera thông minh: Góc nhìn rộng rãi, thoáng đạt chuẩn nhà kho công nghiệp
  */
 function WarehouseCameraController({
   focusedRack,
@@ -333,40 +800,58 @@ function WarehouseCameraController({
   layoutLength,
   worldWidth,
   worldDepth,
+  buildingWidth = 38,
+  buildingLength = 46,
+  wallHeight = 11,
 }) {
   const { camera } = useThree()
   const controlsRef = useRef(null)
 
   useEffect(() => {
-    let targetX
-    let targetY
-    let targetZ
-    let cameraX
-    let cameraY
-    let cameraZ
+    let targetX = 0
+    let targetY = 4.5
+    let targetZ = 0
+    let cameraX = 28
+    let cameraY = 20
+    let cameraZ = 36
 
     if (cameraPreset === 'TOP_DOWN') {
-      targetX = racksBounds.centerX
+      targetX = 0
       targetY = 0
-      targetZ = racksBounds.centerZ
-      cameraX = racksBounds.centerX + 0.001
-      cameraY = Math.max(racksBounds.span * 1.6, 22)
-      cameraZ = racksBounds.centerZ
+      targetZ = 0
+      cameraX = 0.001
+      cameraY = Math.max(buildingLength * 0.92, 42)
+      cameraZ = 0
     } else if (cameraPreset === 'FRONT') {
+      targetX = 0
+      targetY = wallHeight * 0.45
+      targetZ = 0
+      cameraX = 0
+      cameraY = wallHeight * 0.58
+      cameraZ = buildingLength / 2 + 20
+    } else if (cameraPreset === 'INSIDE') {
+      // Góc nhìn người thực tế đứng bên trong nhà kho (Human Eye-Level Walkthrough ~1.75m)
+      const eyeHeight = 1.75
+      const standZ = Math.min(
+        Math.max(racksBounds.centerZ + racksBounds.sizeZ / 2 + 3.6, 6.0),
+        buildingLength / 2 - 2.5
+      )
+      const standX = racksBounds.centerX
+
       targetX = racksBounds.centerX
-      targetY = racksBounds.centerY
+      targetY = 2.0
       targetZ = racksBounds.centerZ
-      cameraX = racksBounds.centerX
-      cameraY = Math.max(racksBounds.maxH * 0.55, 2.2)
-      cameraZ = racksBounds.centerZ + Math.max(racksBounds.span * 1.3, 16)
+
+      cameraX = standX
+      cameraY = eyeHeight
+      cameraZ = standZ
     } else if (cameraPreset === 'CLOSE_UP') {
-      const dist = Math.max(racksBounds.span * 0.55, 3.2)
       targetX = racksBounds.centerX
-      targetY = racksBounds.centerY
+      targetY = Math.max(racksBounds.centerY, 2.5)
       targetZ = racksBounds.centerZ
-      cameraX = racksBounds.centerX + 8 * (dist / 6)
-      cameraY = Math.max(racksBounds.maxH * 0.65, 2.2) + 1.2
-      cameraZ = racksBounds.centerZ + 9 * (dist / 6)
+      cameraX = racksBounds.centerX + 7.5
+      cameraY = Math.max(racksBounds.maxH * 0.65, 3.2)
+      cameraZ = racksBounds.centerZ + 9.5
     } else if (focusedRack) {
       const rotation = normalizeRotation(focusedRack.rotation)
       const quarterTurn = isQuarterTurn(rotation)
@@ -398,16 +883,14 @@ function WarehouseCameraController({
       cameraY = Math.max(rackHeight * 0.65, 2.6) + distance * 0.15
       cameraZ = rackCenterZ + frontDirectionZ * distance
     } else {
-      // Isometric overview: frame the complete warehouse footprint, including
-      // the complete warehouse footprint, not only the rack cluster.
-      const span = Math.max(racksBounds.span, 6)
-      const distance = Math.max(span * 0.95, 14)
-      targetX = racksBounds.centerX
-      targetY = Math.max(racksBounds.centerY, 1.8)
-      targetZ = racksBounds.centerZ
-      cameraX = racksBounds.centerX + distance
-      cameraY = targetY + distance * 1.35
-      cameraZ = racksBounds.centerZ + distance
+      // DEFAULT: Toàn cảnh bên ngoài nhà kho góc nghiêng ~24° chuẩn my-react-app
+      targetX = 0
+      targetY = Math.max(wallHeight * 0.38, 4.2)
+      targetZ = 2
+      const camScale = Math.max(buildingWidth / 38, buildingLength / 46, 1)
+      cameraX = 28 * camScale
+      cameraY = 20 * camScale
+      cameraZ = 36 * camScale
     }
 
     camera.position.set(cameraX, cameraY, cameraZ)
@@ -425,6 +908,9 @@ function WarehouseCameraController({
     layoutWidth,
     worldDepth,
     worldWidth,
+    buildingWidth,
+    buildingLength,
+    wallHeight,
   ])
 
   return (
@@ -433,10 +919,10 @@ function WarehouseCameraController({
       makeDefault
       enableDamping
       dampingFactor={0.05}
-      target={[racksBounds.centerX, 2.5, racksBounds.centerZ]}
-      maxPolarAngle={Math.PI / 2 - 0.04}
-      minDistance={2}
-      maxDistance={75}
+      target={[0, 4.5, 0]}
+      maxPolarAngle={Math.PI / 2 - 0.02}
+      minDistance={1.5}
+      maxDistance={115}
     />
   )
 }
@@ -1108,6 +1594,14 @@ export default function WarehouseLayoutPreview3D({
 }) {
   const [cameraPreset, setCameraPreset] = useState('DEFAULT')
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [roofMode, setRoofMode] = useState('xray')
+
+  useEffect(() => {
+    if (selection?.type === 'rack' || selection?.type === 'bin') {
+      setIsSidebarOpen(true)
+    }
+  }, [selection])
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -1231,25 +1725,30 @@ export default function WarehouseLayoutPreview3D({
     )
   }, [racks, layout?.width, layout?.length, worldWidth, worldDepth])
 
-  const warehouseWallHeight = useMemo(() => {
-    const layoutReferenceHeight = getWorldHeight(layout?.height, layout?.width, layout?.length)
-    const referenceHeight = Math.max(layoutReferenceHeight, racksBounds.maxH, 2.4)
-
-    // Tường chỉ là mốc trực quan, không cần cao ngang hoặc cao hơn Rack.
-    return clamp(referenceHeight * 0.38, 1.2, 2.4)
-  }, [layout?.height, layout?.length, layout?.width, racksBounds.maxH])
+  const buildingWidth = useMemo(
+    () => Math.max(worldWidth + 22, 38),
+    [worldWidth]
+  )
+  const buildingLength = useMemo(
+    () => Math.max(worldDepth + 24, 46),
+    [worldDepth]
+  )
+  const buildingWallHeight = useMemo(
+    () => Math.max(racksBounds?.maxH ? racksBounds.maxH + 4.5 : 11.0, 11.0),
+    [racksBounds?.maxH]
+  )
 
   const sceneBounds = useMemo(
     () => ({
       centerX: 0,
-      centerY: Math.max(racksBounds.centerY, warehouseWallHeight * 0.45),
+      centerY: Math.max(racksBounds.centerY, 4.0),
       centerZ: 0,
-      sizeX: Math.max(racksBounds.sizeX, worldWidth * 0.86),
-      sizeZ: Math.max(racksBounds.sizeZ, worldDepth * 0.86),
-      maxH: Math.max(racksBounds.maxH, warehouseWallHeight),
-      span: Math.max(racksBounds.span, worldWidth, worldDepth),
+      sizeX: buildingWidth,
+      sizeZ: buildingLength,
+      maxH: buildingWallHeight,
+      span: Math.max(buildingWidth, buildingLength),
     }),
-    [racksBounds, warehouseWallHeight, worldDepth, worldWidth]
+    [buildingLength, buildingWallHeight, buildingWidth, racksBounds.centerY]
   )
 
   // Khởi tạo các textures chất lượng cao
@@ -1267,41 +1766,56 @@ export default function WarehouseLayoutPreview3D({
     <div
       className={
         isFullscreen
-          ? 'fixed inset-0 z-9999 h-screen w-screen overflow-hidden rounded-none bg-[#0b1f3a] font-sans select-none'
-          : 'relative h-full w-full overflow-hidden rounded-2xl bg-[#0b1f3a] font-sans select-none'
+          ? 'fixed inset-0 z-9999 h-screen w-screen overflow-hidden rounded-none bg-[#0f172a] font-sans select-none'
+          : 'relative h-full w-full overflow-hidden rounded-2xl bg-[#0f172a] font-sans select-none'
       }
     >
-      <div className={`absolute inset-0 ${isFullscreen ? 'lg:right-80' : ''}`}>
+      <div className={`absolute inset-0 transition-all duration-300 ${isFullscreen && isSidebarOpen ? 'lg:right-92' : ''}`}>
         <Canvas
           shadows
-          camera={{ position: [18, 18, 18], fov: 44 }}
+          camera={{ position: [28, 20, 36], fov: 46 }}
           className="h-full w-full"
           onPointerMissed={() => {
             onSelect({ type: 'layout' })
           }}
         >
-          <color attach="background" args={['#0b1f3a']} />
-          <fogExp2 attach="fog" args={['#0b1f3a', 0.0035]} />
+          <color attach="background" args={['#0f172a']} />
+          <fogExp2 attach="fog" args={['#0f172a', 0.005]} />
 
-          <ambientLight intensity={1.05} color="#dbe7ee" />
+          <ambientLight intensity={0.85} color="#94a3b8" />
           <directionalLight
             castShadow
-            position={[18, 28, 16]}
-            intensity={2.1}
-            color="#fff8e7"
+            position={[25, 38, 20]}
+            intensity={1.4}
+            color="#fffbeb"
             shadow-mapSize={[2048, 2048]}
-            shadow-bias={-0.0002}
+            shadow-bias={-0.0003}
           />
-          <directionalLight position={[-18, 16, -12]} intensity={0.7} color="#9edcff" />
+          <directionalLight position={[-25, 25, -25]} intensity={0.4} color="#60a5fa" />
 
-          <WarehouseFloor width={worldWidth} depth={worldDepth} floorTexture={floorTexture} />
-          <WarehouseWalls width={worldWidth} depth={worldDepth} height={warehouseWallHeight} />
+          <WarehouseFloor
+            width={worldWidth}
+            depth={worldDepth}
+            buildingWidth={buildingWidth}
+            buildingLength={buildingLength}
+            floorTexture={floorTexture}
+          />
+          <WarehouseBuildingArchitecture
+            width={worldWidth}
+            depth={worldDepth}
+            buildingWidth={buildingWidth}
+            buildingLength={buildingLength}
+            wallHeight={buildingWallHeight}
+            racksBounds={racksBounds}
+            roofMode={roofMode}
+            cameraPreset={cameraPreset}
+          />
           <ContactShadows
             position={[0, 0.02, 0]}
-            scale={[Math.max(worldWidth * 0.96, 1), Math.max(worldDepth * 0.96, 1)]}
-            opacity={0.28}
+            scale={[Math.max(worldWidth * 1.1, 14), Math.max(worldDepth * 1.1, 14)]}
+            opacity={0.32}
             blur={2.4}
-            far={3.5}
+            far={4.0}
             resolution={512}
           />
           {racks.map((rack) => (
@@ -1327,7 +1841,10 @@ export default function WarehouseLayoutPreview3D({
           <WarehouseCameraController
             focusedRack={focusedRack}
             cameraPreset={cameraPreset}
-            racksBounds={sceneBounds}
+            racksBounds={racksBounds}
+            buildingWidth={buildingWidth}
+            buildingLength={buildingLength}
+            wallHeight={buildingWallHeight}
             layoutWidth={numberOf(layout?.width, 1)}
             layoutLength={numberOf(layout?.length, 1)}
             worldWidth={worldWidth}
@@ -1341,6 +1858,7 @@ export default function WarehouseLayoutPreview3D({
       <div className="absolute top-3 left-3 z-20 flex items-center gap-1 rounded-xl border border-white/60 bg-white/85 p-1 shadow-lg backdrop-blur-md">
         {[
           ['DEFAULT', 'Toàn cảnh'],
+          ['INSIDE', '🚶 Nhìn bên trong'],
           ['CLOSE_UP', 'Cận cảnh'],
           ['TOP_DOWN', 'Mặt bằng'],
           ['FRONT', 'Trực diện'],
@@ -1350,7 +1868,7 @@ export default function WarehouseLayoutPreview3D({
             type="button"
             onClick={() => {
               setCameraPreset(preset)
-              if (preset === 'DEFAULT') onClearFocus()
+              if (preset === 'DEFAULT' || preset === 'INSIDE') onClearFocus()
             }}
             className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition ${
               cameraPreset === preset
@@ -1361,16 +1879,57 @@ export default function WarehouseLayoutPreview3D({
             {label}
           </button>
         ))}
+
+        <div className="mx-0.5 h-4 w-px bg-slate-300" />
+
+        {/* Nút bật tắt chế độ Mái kho (House Roof Modes) */}
+        <button
+          type="button"
+          onClick={() => {
+            setRoofMode((prev) => (prev === 'xray' ? 'solid' : prev === 'solid' ? 'hidden' : 'xray'))
+          }}
+          className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold transition ${
+            roofMode === 'solid'
+              ? 'bg-emerald-600 text-white shadow-[0_0_10px_rgba(16,185,129,0.35)]'
+              : roofMode === 'xray'
+                ? 'bg-sky-500/20 text-sky-700 border border-sky-400/40'
+                : 'text-slate-500 hover:bg-slate-100'
+          }`}
+          title="Chuyển đổi góc nhìn Mái kho: Mờ X-Ray / Đóng kín / Mở mái"
+        >
+          {roofMode === 'solid'
+            ? '🏠 Mái: Đóng kín'
+            : roofMode === 'xray'
+              ? '🔍 Mái: Mờ (X-Ray)'
+              : '🚫 Mái: Mở'}
+        </button>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setIsFullscreen((previous) => !previous)}
-        className={`absolute top-3 right-3 z-20 rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg backdrop-blur-md transition hover:bg-sky-600 hover:text-white ${isFullscreen ? 'lg:right-[21rem]' : ''}`}
-        title={isFullscreen ? 'Thu nhỏ (Esc)' : 'Mở toàn màn hình'}
+      <div
+        className={`absolute top-3 z-20 flex items-center gap-2 transition-all duration-300 ${
+          isFullscreen && isSidebarOpen ? 'right-3 lg:right-[24.5rem]' : 'right-3'
+        }`}
       >
-        {isFullscreen ? '✕ Thu nhỏ' : '⛶ Toàn màn hình'}
-      </button>
+        {isFullscreen && !isSidebarOpen && (
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg backdrop-blur-md transition hover:bg-sky-600 hover:text-white"
+            title="Mở bảng thông tin chi tiết"
+          >
+            📊 Thông tin kho
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setIsFullscreen((previous) => !previous)}
+          className="rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg backdrop-blur-md transition hover:bg-sky-600 hover:text-white"
+          title={isFullscreen ? 'Thu nhỏ (Esc)' : 'Mở toàn màn hình'}
+        >
+          {isFullscreen ? '✕ Thu nhỏ' : '⛶ Toàn màn hình'}
+        </button>
+      </div>
 
       <div className="absolute bottom-3 left-3 z-20 flex items-center gap-3 rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[10px] font-semibold text-slate-600 shadow-lg backdrop-blur-md">
         <span className="font-black tracking-wider text-slate-400 uppercase">Trạng thái</span>
@@ -1388,26 +1947,48 @@ export default function WarehouseLayoutPreview3D({
         </span>
       </div>
 
-      {isFullscreen && (
-        <aside className="absolute top-0 right-0 bottom-0 z-30 flex w-80 max-w-[calc(100%-1rem)] flex-col overflow-hidden rounded-l-2xl border-l border-white/10 bg-[#071629]/96 text-white shadow-2xl backdrop-blur-xl">
-          <div className="border-b border-white/10 px-4 py-4">
-            <p className="text-[9px] font-black tracking-[0.2em] text-sky-300 uppercase">
-              Warehouse intelligence
-            </p>
-            <h3 className="mt-1 text-base font-extrabold">{layout?.name || 'Sơ đồ kho'}</h3>
-            <p className="mt-1 text-[11px] text-slate-400">Thông tin Bin được chọn</p>
+      {isFullscreen && isSidebarOpen && (
+        <aside className="absolute top-0 right-0 bottom-0 z-30 flex w-92 max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-l-2xl border-l border-white/10 bg-[#071629]/96 text-white shadow-2xl backdrop-blur-xl transition-all duration-300">
+          <div className="flex items-start justify-between border-b border-white/10 px-5 py-4">
+            <div className="min-w-0 pr-2">
+              <p className="text-[9px] font-black tracking-[0.2em] text-sky-300 uppercase">
+                Warehouse intelligence
+              </p>
+              <h3 className="mt-1 truncate text-base font-extrabold text-white">
+                {layout?.name || 'Sơ đồ kho'}
+              </h3>
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                {selectedBinInfo
+                  ? 'Thông tin Bin được chọn'
+                  : selectedRackInfo
+                    ? 'Thông tin Rack được chọn'
+                    : 'Thông tin chi tiết'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+              title="Đóng bảng thông tin"
+              aria-label="Đóng bảng thông tin"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <section className="border-b border-white/10 px-4 py-3">
+
+          <section className="border-b border-white/10 px-5 py-3.5">
             <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-bold tracking-wider text-slate-400 uppercase">
                   {warehouseAreaLabel}
                 </p>
                 <p className="mt-1 text-2xl font-black text-emerald-300">
                   {formatMetric(warehouseAreaM2, 2)} m²
                 </p>
               </div>
-              <div className="text-right text-[10px] text-slate-400">
+              <div className="min-w-0 shrink-0 text-right text-[10px] text-slate-400">
                 <p>Kích thước mặt bằng</p>
                 <p className="mt-1 font-bold text-slate-200">
                   {formatMetric(layout?.width, 2)} × {formatMetric(layout?.length, 2)} m
@@ -1415,32 +1996,35 @@ export default function WarehouseLayoutPreview3D({
               </div>
             </div>
           </section>
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-4">
             {selectedBinInfo ? (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-3">
+                <div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-3.5">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-[10px] font-bold tracking-wider text-cyan-300 uppercase">
                         Selected Bin
                       </p>
-                      <h4 className="mt-1 text-2xl font-black">{selectedBinInfo.binCode}</h4>
-                      <p className="mt-1 text-xs text-slate-300">
+                      <h4 className="mt-1 truncate text-2xl font-black text-white">
+                        {selectedBinInfo.binCode}
+                      </h4>
+                      <p className="mt-1 truncate text-xs text-slate-300">
                         {selectedBinInfo.rackCode} · Tầng {selectedBinInfo.shelfLevel}
                       </p>
                     </div>
                     <span
-                      className={`rounded-full px-2 py-1 text-[9px] font-black ${selectedStatus.className}`}
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[9px] font-black ${selectedStatus.className}`}
                     >
                       {selectedStatus.label}
                     </span>
                   </div>
                 </div>
 
-                <section className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                  <div className="mb-2 flex justify-between text-[11px]">
+                <section className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5">
+                  <div className="mb-2 flex items-center justify-between text-[11px]">
                     <span className="text-slate-400">Tải trọng</span>
-                    <span className="font-bold text-emerald-300">
+                    <span className="shrink-0 font-bold text-emerald-300">
                       {formatMetric(selectedCurrentWeight, 2)} /{' '}
                       {selectedMaxWeight > 0 ? `${formatMetric(selectedMaxWeight, 2)} kg` : '—'}
                     </span>
@@ -1451,9 +2035,9 @@ export default function WarehouseLayoutPreview3D({
                       style={{ width: `${Math.round((selectedWeightRatio || 0) * 100)}%` }}
                     />
                   </div>
-                  <div className="mt-3 mb-2 flex justify-between text-[11px]">
+                  <div className="mt-3 mb-2 flex items-center justify-between text-[11px]">
                     <span className="text-slate-400">Thể tích</span>
-                    <span className="font-bold text-sky-300">
+                    <span className="shrink-0 font-bold text-sky-300">
                       {formatMetric(selectedCurrentVolume, 3)} /{' '}
                       {selectedMaxVolume > 0 ? `${formatMetric(selectedMaxVolume, 3)} m³` : '—'}
                     </span>
@@ -1466,18 +2050,20 @@ export default function WarehouseLayoutPreview3D({
                   </div>
                 </section>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] text-slate-500">Số lượng</p>
-                    <p className="mt-1 text-lg font-black">{formatMetric(selectedQuantity, 0)}</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <p className="text-[10px] text-slate-400">Số lượng</p>
+                    <p className="mt-1 text-lg font-black text-white">
+                      {formatMetric(selectedQuantity, 0)}
+                    </p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] text-slate-500">Kích thước</p>
-                    <p className="mt-1 text-sm font-black">
+                  <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <p className="text-[10px] text-slate-400">Kích thước</p>
+                    <p className="mt-1 truncate text-sm font-black text-white">
                       {formatMetric(selectedBinInfo.bin?.width, 2)} ×{' '}
                       {formatMetric(selectedBinInfo.bin?.length, 2)}
                     </p>
-                    <p className="text-[10px] text-slate-400">W × L m</p>
+                    <p className="mt-0.5 text-[10px] text-slate-400">W × L m</p>
                   </div>
                 </div>
 
@@ -1493,9 +2079,9 @@ export default function WarehouseLayoutPreview3D({
                       selectedStoredSkus.map((sku, index) => (
                         <div
                           key={sku.skuId || sku.skuCode || index}
-                          className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2"
+                          className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5"
                         >
-                          <span className="truncate pr-2 text-xs font-bold">
+                          <span className="truncate pr-2 text-xs font-bold text-slate-200">
                             {sku.skuCode || sku.skuName || 'SKU'}
                           </span>
                           <span className="shrink-0 rounded-lg bg-sky-500/15 px-2 py-1 text-xs font-black text-sky-300">
@@ -1513,39 +2099,41 @@ export default function WarehouseLayoutPreview3D({
               </div>
             ) : selectedRackInfo ? (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-sky-400/30 bg-sky-400/10 p-3">
+                <div className="rounded-2xl border border-sky-400/30 bg-sky-400/10 p-3.5">
                   <p className="text-[10px] font-bold tracking-wider text-sky-300 uppercase">
                     Selected Rack
                   </p>
-                  <h4 className="mt-1 text-2xl font-black">{selectedRackInfo.rackCode}</h4>
-                  <p className="mt-1 text-xs text-slate-300">
+                  <h4 className="mt-1 truncate text-2xl font-black text-white">
+                    {selectedRackInfo.rackCode}
+                  </h4>
+                  <p className="mt-1 truncate text-xs text-slate-300">
                     {selectedRackInfo.rack.name || 'Rack đang chọn'}
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] text-slate-500">Kích thước</p>
-                    <p className="mt-1 text-sm font-black">
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <p className="text-[10px] text-slate-400">Kích thước</p>
+                    <p className="mt-1 truncate text-sm font-black text-white">
                       {formatMetric(selectedRackInfo.rack.width, 2)} ×{' '}
                       {formatMetric(selectedRackInfo.rack.length, 2)} ×{' '}
                       {formatMetric(selectedRackInfo.rack.height, 2)}
                     </p>
-                    <p className="text-[10px] text-slate-400">W × L × H m</p>
+                    <p className="mt-0.5 text-[10px] text-slate-400">W × L × H m</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] text-slate-500">Tầng / Bin</p>
-                    <p className="mt-1 text-lg font-black">
+                  <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                    <p className="text-[10px] text-slate-400">Tầng / Bin</p>
+                    <p className="mt-1 text-lg font-black text-white">
                       {selectedRackInfo.shelfCount} / {selectedRackInfo.binCount}
                     </p>
-                    <p className="text-[10px] text-slate-400">đang cấu hình</p>
+                    <p className="mt-0.5 text-[10px] text-slate-400">đang cấu hình</p>
                   </div>
                 </div>
 
-                <section className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-[11px]">
+                <section className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-[11px]">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-slate-400">Tải trọng tối đa</span>
-                    <span className="font-bold text-emerald-300">
+                    <span className="shrink-0 font-bold text-emerald-300">
                       {selectedRackInfo.maxWeight > 0
                         ? `${formatMetric(selectedRackInfo.maxWeight, 2)} kg`
                         : 'Không giới hạn'}
@@ -1553,9 +2141,9 @@ export default function WarehouseLayoutPreview3D({
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <span className="text-slate-400">Thể tích tối đa</span>
-                    <span className="font-bold text-sky-300">
+                    <span className="shrink-0 font-bold text-sky-300">
                       {selectedRackInfo.maxVolume > 0
-                        ? `${formatMetric(selectedRackInfo.maxVolume, 2)} m³`
+                        ? `${formatMetric(selectedRackInfo.maxVolume, 3)} m³`
                         : 'Không giới hạn'}
                     </span>
                   </div>
@@ -1570,7 +2158,7 @@ export default function WarehouseLayoutPreview3D({
               </div>
             )}
           </div>
-          <div className="border-t border-white/10 px-4 py-3 text-[10px] text-slate-500">
+          <div className="border-t border-white/10 px-5 py-3 text-[10px] text-slate-500">
             StockSpace WMS · Đang đồng bộ
           </div>
         </aside>

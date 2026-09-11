@@ -7,9 +7,20 @@ import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import ContractViewerModal from '@/components/ContractViewerModal'
+import Modal from '@/components/organisms/Modal'
 import TableActionMenu from '@/components/TableActionMenu'
 import OwnerDataTable from '../components/OwnerDataTable'
-import { FileText, X, Edit2, Trash2, Send, Eye, Plus, RefreshCw } from 'lucide-react'
+import {
+  FileText,
+  X,
+  Edit2,
+  Trash2,
+  Send,
+  Eye,
+  Plus,
+  RefreshCw,
+  MessageSquareText,
+} from 'lucide-react'
 import contractApi from '@/services/contractApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import uploadApi from '@/services/uploadApi'
@@ -17,6 +28,7 @@ import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { validateDateRange } from '@/config/validation'
 import { formatVND } from '@/utils/currency'
+import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 
 const CONTRACT_STATUS_META = {
   DRAFT: { label: 'Draft', className: 'border-slate-200 bg-slate-100 text-slate-700' },
@@ -864,6 +876,7 @@ const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const OwnerContractsPage = () => {
+  const confirmDialog = useConfirmDialog()
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -884,6 +897,7 @@ const OwnerContractsPage = () => {
   // Viewer Modal
   const [viewerOpen, setViewerOpen] = useState(false)
   const [viewerImages, setViewerImages] = useState([])
+  const [rejectionReasonContract, setRejectionReasonContract] = useState(null)
 
   const fetchContracts = useCallback(async () => {
     try {
@@ -942,21 +956,49 @@ const OwnerContractsPage = () => {
 
   const handleDelete = async (contract) => {
     const isRenewalDraft = Boolean(contract?.renewedFromContractId)
-    const message = isRenewalDraft
-      ? 'Cancel this renewal draft? The current contract will remain unchanged.'
-      : 'Are you sure you want to delete this draft?'
-    if (!window.confirm(message)) return
+    const isRejected = contract?.status === 'REJECTED'
+    const confirmed = await confirmDialog({
+      title: isRejected
+        ? 'Delete rejected contract'
+        : isRenewalDraft
+          ? 'Cancel renewal draft'
+          : 'Delete contract draft',
+      message: isRejected
+        ? 'Remove this rejected contract from your contract list? This action cannot be undone.'
+        : isRenewalDraft
+          ? 'Cancel this renewal draft? The current contract will remain unchanged.'
+          : 'Delete this contract draft? This action cannot be undone.',
+      confirmText: isRejected
+        ? 'Delete contract'
+        : isRenewalDraft
+          ? 'Cancel renewal'
+          : 'Delete draft',
+      type: 'danger',
+    })
+    if (!confirmed) return
     try {
       await contractApi.deleteDraft(contract.id)
-      toast.success(isRenewalDraft ? 'Renewal draft cancelled' : 'Draft deleted')
+      toast.success(
+        isRejected
+          ? 'Rejected contract deleted'
+          : isRenewalDraft
+            ? 'Renewal draft cancelled'
+            : 'Draft deleted'
+      )
       fetchContracts()
     } catch (error) {
-      showApiErrorToast(error, 'Could not delete draft')
+      showApiErrorToast(error, 'Could not delete contract')
     }
   }
 
   const handleSubmit = async (id) => {
-    if (!window.confirm('Send this contract to the tenant for confirmation?')) return
+    const confirmed = await confirmDialog({
+      title: 'Send contract for review',
+      message: 'The tenant will receive this contract and can confirm, request changes, or reject it.',
+      confirmText: 'Send to tenant',
+      type: 'normal',
+    })
+    if (!confirmed) return
     try {
       await contractApi.submit(id)
       toast.success('Submitted to tenant')
@@ -976,6 +1018,10 @@ const OwnerContractsPage = () => {
     } catch {
       toast.error('No valid contract file.')
     }
+  }
+
+  const handleViewRejectionReason = (contract) => {
+    setRejectionReasonContract(contract)
   }
 
   const columns = [
@@ -1081,6 +1127,11 @@ const OwnerContractsPage = () => {
               icon: FileText,
               onClick: () => handleViewContract(row.paperContractFiles),
             },
+            row.status === 'REJECTED' && {
+              label: 'View Rejection Reason',
+              icon: MessageSquareText,
+              onClick: () => handleViewRejectionReason(row),
+            },
             (row.canEditContractLayout || row.canViewLayout) && {
               label: row.canEditContractLayout ? 'Configure Layout' : 'View Layout',
               icon: Eye,
@@ -1100,7 +1151,12 @@ const OwnerContractsPage = () => {
               onClick: () => handleSubmit(row.id),
             },
             row.canDelete && {
-              label: row.renewedFromContractId ? 'Cancel Renewal Draft' : 'Delete Draft',
+              label:
+                row.status === 'REJECTED'
+                  ? 'Delete Rejected Contract'
+                  : row.renewedFromContractId
+                    ? 'Cancel Renewal Draft'
+                    : 'Delete Draft',
               icon: Trash2,
               onClick: () => handleDelete(row),
               danger: true,
@@ -1201,6 +1257,39 @@ const OwnerContractsPage = () => {
         onClose={() => setViewerOpen(false)}
         images={viewerImages}
       />
+
+      <Modal
+        isOpen={Boolean(rejectionReasonContract)}
+        onClose={() => setRejectionReasonContract(null)}
+        title="Rejection reason"
+        className="max-w-md"
+      >
+        {rejectionReasonContract && (
+          <div className="space-y-5">
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+              <p className="text-xs font-bold tracking-wide text-rose-700 uppercase">
+                {rejectionReasonContract.warehouseName || 'Rental contract'}
+              </p>
+              <p className="mt-1 text-xs text-rose-800">
+                Tenant:{' '}
+                {rejectionReasonContract.tenantName || rejectionReasonContract.tenantEmail || '-'}
+              </p>
+              <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-rose-950">
+                {rejectionReasonContract.rejectionReason || 'No rejection reason was provided.'}
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setRejectionReasonContract(null)}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

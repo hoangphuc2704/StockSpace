@@ -58,17 +58,17 @@ const PublicHeader = () => {
   return (
     <>
       <header className="sticky top-0 z-50 border-b border-stone-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link to="/" className="flex items-center gap-3">
-            <img src={logoDaidien} alt="Logo" className="h-9 w-auto object-contain" />
-            <span className="text-xl font-black tracking-tight text-stone-900 uppercase">
+        <div className="mx-auto flex h-18 max-w-7xl items-center justify-between gap-4 px-4 sm:h-20 sm:px-6 lg:px-8">
+          <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2 sm:gap-3">
+            <img src={logoDaidien} alt="Logo" className="h-8 w-auto object-contain sm:h-9" />
+            <span className="hidden text-lg font-black tracking-tight text-stone-900 uppercase sm:inline sm:text-xl">
               <span className="text-[#0f084b]">Stock</span>{' '}
               <span className="text-[#FF5A1F]">Space</span>
             </span>
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden items-center gap-8 md:flex">
+          <nav className="hidden items-center gap-6 lg:flex xl:gap-8">
             {['Home', 'About', 'Contact'].map((item) => (
               <a
                 key={item}
@@ -89,7 +89,7 @@ const PublicHeader = () => {
             </Link>
           </nav>
 
-          <div className="mr-28 hidden items-center gap-4 md:flex">
+          <div className="hidden items-center gap-3 lg:flex xl:gap-4">
             {!isAuthenticated ? (
               <>
                 <button
@@ -172,7 +172,7 @@ const PublicHeader = () => {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="mr-0 p-2 text-stone-600 hover:text-[#FF5A1F] md:hidden"
+            className="shrink-0 p-2 text-stone-600 hover:text-[#FF5A1F] lg:hidden"
           >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -180,7 +180,7 @@ const PublicHeader = () => {
       </header>
 
       {isMenuOpen && (
-        <div className="border-b border-stone-200 bg-white px-4 py-4 shadow-sm md:hidden">
+        <div className="border-b border-stone-200 bg-white px-4 py-4 shadow-sm lg:hidden">
           <nav className="flex flex-col gap-1">
             {['Home', 'About', 'Contact'].map((item) => (
               <a
