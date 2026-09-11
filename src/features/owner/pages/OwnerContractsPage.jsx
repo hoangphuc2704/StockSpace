@@ -17,6 +17,7 @@ import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { validateDateRange } from '@/config/validation'
 import { formatVND } from '@/utils/currency'
+import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 
 const CONTRACT_STATUS_META = {
   DRAFT: { label: 'Draft', className: 'border-slate-200 bg-slate-100 text-slate-700' },
@@ -864,6 +865,7 @@ const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 const OwnerContractsPage = () => {
+  const confirmDialog = useConfirmDialog()
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -942,10 +944,15 @@ const OwnerContractsPage = () => {
 
   const handleDelete = async (contract) => {
     const isRenewalDraft = Boolean(contract?.renewedFromContractId)
-    const message = isRenewalDraft
-      ? 'Cancel this renewal draft? The current contract will remain unchanged.'
-      : 'Are you sure you want to delete this draft?'
-    if (!window.confirm(message)) return
+    const confirmed = await confirmDialog({
+      title: isRenewalDraft ? 'Cancel renewal draft' : 'Delete contract draft',
+      message: isRenewalDraft
+        ? 'Cancel this renewal draft? The current contract will remain unchanged.'
+        : 'Delete this contract draft? This action cannot be undone.',
+      confirmText: isRenewalDraft ? 'Cancel renewal' : 'Delete draft',
+      type: 'danger',
+    })
+    if (!confirmed) return
     try {
       await contractApi.deleteDraft(contract.id)
       toast.success(isRenewalDraft ? 'Renewal draft cancelled' : 'Draft deleted')
@@ -956,7 +963,13 @@ const OwnerContractsPage = () => {
   }
 
   const handleSubmit = async (id) => {
-    if (!window.confirm('Send this contract to the tenant for confirmation?')) return
+    const confirmed = await confirmDialog({
+      title: 'Send contract for review',
+      message: 'The tenant will receive this contract and can confirm, request changes, or reject it.',
+      confirmText: 'Send to tenant',
+      type: 'normal',
+    })
+    if (!confirmed) return
     try {
       await contractApi.submit(id)
       toast.success('Submitted to tenant')

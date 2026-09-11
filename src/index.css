@@ -11,9 +11,16 @@
 }
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   html,
   body,
   #root {
+    min-height: 100%;
     min-width: 0;
     max-width: 100%;
   }
@@ -27,12 +34,42 @@
   select,
   textarea {
     min-width: 0;
+    max-width: 100%;
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
   }
 }
 
 @layer utilities {
+  .flex-1 {
+    min-width: 0;
+  }
+
   .overflow-x-auto {
+    max-width: 100%;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
+  }
+}
+
+/* Dashboard pages use fixed headers. Keep their actions inside the viewport on tablets. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  header.fixed > :last-child {
+    margin-right: 1rem;
+  }
+}
+
+@media (max-width: 767px) {
+  header.fixed {
+    padding-inline: 0.75rem;
+  }
+
+  header.fixed > :first-child {
+    min-width: 0;
   }
 }

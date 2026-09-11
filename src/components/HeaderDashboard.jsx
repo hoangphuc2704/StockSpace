@@ -17,8 +17,8 @@ const Header = () => {
     : 'Owner'
 
   return (
-    <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4">
-      <div className="flex items-center gap-4">
+    <header className="fixed top-0 right-0 left-0 z-50 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-3 sm:px-4">
+      <div className="flex min-w-0 items-center gap-2 sm:gap-4">
         <button
           // ✅ Kích hoạt action toggle đóng/mở qua Redux phát ra từ Header cục bộ
           onClick={() => dispatch(toggleSidebar())}
@@ -37,16 +37,16 @@ const Header = () => {
           }}
           aria-label="Back to landing page"
         >
-          <div className="shrink-0 rounded-lg bg-white p-1.5">
-            <img src={logoDaidien} alt="Logo" className="h-10 w-16 object-contain" />
+          <div className="shrink-0 rounded-lg bg-white p-1 sm:p-1.5">
+            <img src={logoDaidien} alt="Logo" className="h-9 w-14 object-contain sm:h-10 sm:w-16" />
           </div>
-          <span className="font-display hidden text-xl font-bold tracking-tight text-slate-950 sm:inline-block">
+          <span className="font-display hidden min-w-0 truncate text-lg font-bold tracking-tight text-slate-950 md:inline-block lg:text-xl">
             StockSpace {displayRole}
           </span>
         </div>
       </div>
 
-      <div className="mr-0 flex items-center gap-2 sm:mr-4 md:mr-28">
+      <div className="ml-2 flex shrink-0 items-center gap-1 sm:ml-4 sm:gap-2">
         <NotificationDropdown />
       </div>
     </header>

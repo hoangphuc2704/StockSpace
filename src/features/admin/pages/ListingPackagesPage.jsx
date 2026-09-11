@@ -16,6 +16,7 @@ import Sidebar from '@/components/SideBar'
 import Button from '@/components/atoms/Button'
 import logoDaidien from '@/assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
+import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import listingApi from '@/services/listingApi'
 import { toggleSidebar, closeMobileSidebar } from '@/store/uiSlide'
 import { showApiErrorToast } from '@/config/apiError'
@@ -161,6 +162,7 @@ const PackageFormModal = ({ packageToEdit, onClose, onSaved }) => {
 }
 
 const ListingPackagesPage = () => {
+  const confirmDialog = useConfirmDialog()
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const [packages, setPackages] = useState([])
@@ -201,7 +203,13 @@ const ListingPackagesPage = () => {
   }
 
   const deletePackage = async (pkg) => {
-    if (!window.confirm(`Delete “${pkg.name}”?`)) return
+    const confirmed = await confirmDialog({
+      title: 'Delete listing package',
+      message: `Delete “${pkg.name}”? This action cannot be undone.`,
+      confirmText: 'Delete package',
+      type: 'danger',
+    })
+    if (!confirmed) return
     try {
       await listingApi.deleteAdminPackage(pkg.id)
       toast.success('Listing package deleted.')
@@ -227,7 +235,7 @@ const ListingPackagesPage = () => {
             StockSpace Admin
           </span>
         </div>
-        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
+        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-4">
           <NotificationDropdown />
         </div>
       </header>

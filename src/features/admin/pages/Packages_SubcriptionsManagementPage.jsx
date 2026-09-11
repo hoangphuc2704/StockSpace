@@ -334,7 +334,7 @@ const Packages_SubcriptionsManagementPage = () => {
             </span>
           </div>
         </div>
-        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-28">
+        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-4">
           <NotificationDropdown />
         </div>
       </header>
