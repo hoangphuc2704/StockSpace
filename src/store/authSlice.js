@@ -3,7 +3,128 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 // ✅ [HEAD] Dùng authApi service
 import { authApi } from '@/services/authApi'
 
+const AUTH_STATUS = {
+  CHECKING: 'checking',
+  AUTHENTICATED: 'authenticated',
+  GUEST: 'guest',
+}
+
+const clearStoredSession = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
+}
+
+const toUserData = (data) => ({
+  name: data.fullName,
+  fullName: data.fullName,
+  role: data.role,
+  userId: data.userId,
+  email: data.email,
+  phone: data.phone,
+  avatarUrl: data.avatarUrl,
+  provider: data.provider,
+  isActive: data.isActive,
+  createdAt: data.createdAt,
+  tenantId: data.tenantId || null,
+})
+
+const isAccessTokenExpired = (token) => {
+  try {
+    const parts = String(token || '').split('.')
+    if (parts.length !== 3) return true
+
+    const normalizedPayload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const paddedPayload = normalizedPayload.padEnd(
+      Math.ceil(normalizedPayload.length / 4) * 4,
+      '='
+    )
+    const payload = JSON.parse(window.atob(paddedPayload))
+    const expiresAt = Number(payload.exp) * 1000
+
+    return !Number.isFinite(expiresAt) || expiresAt <= Date.now() + 30_000
+  } catch {
+    return true
+  }
+}
+
+const refreshStoredAccessToken = async () => {
+  const response = await authApi.refresh({ skipErrorToast: true })
+  const authData = response?.data
+
+  if (!response?.success || !authData?.accessToken) {
+    const error = new Error(response?.message || 'Session refresh failed')
+    error.code = 'INVALID_AUTH_RESPONSE'
+    throw error
+  }
+
+  localStorage.setItem('token', authData.accessToken)
+  return authData.accessToken
+}
+
+const fetchCurrentUserSilently = async () => {
+  const response = await authApi.getMe({ skipErrorToast: true })
+
+  if (!response?.success || !response?.data) {
+    const error = new Error(response?.message || 'Failed to fetch user info')
+    error.code = 'INVALID_AUTH_RESPONSE'
+    throw error
+  }
+
+  const userData = toUserData(response.data)
+  localStorage.setItem('user', JSON.stringify(userData))
+  return userData
+}
+
 // ==================== Async Thunks ====================
+
+export const initializeAuthThunk = createAsyncThunk(
+  'auth/initialize',
+  async (_, { rejectWithValue }) => {
+    let currentToken = localStorage.getItem('token')
+
+    if (!currentToken) {
+      clearStoredSession()
+      return rejectWithValue({ clearSession: true })
+    }
+
+    try {
+      if (isAccessTokenExpired(currentToken)) {
+        currentToken = await refreshStoredAccessToken()
+      }
+
+      let userData
+      try {
+        userData = await fetchCurrentUserSilently()
+      } catch (error) {
+        // The current BE can report an invalid access token as 403. During
+        // bootstrap only, rotate the token once before treating it as denied.
+        if (error.response?.status !== 403) throw error
+        currentToken = await refreshStoredAccessToken()
+        userData = await fetchCurrentUserSilently()
+      }
+
+      return {
+        user: userData,
+        token: localStorage.getItem('token') || currentToken,
+      }
+    } catch (error) {
+      const status = error.response?.status
+      const clearSession =
+        status === 401 ||
+        status === 403 ||
+        error.code === 'INVALID_AUTH_RESPONSE' ||
+        isAccessTokenExpired(currentToken)
+
+      if (clearSession) clearStoredSession()
+
+      return rejectWithValue({
+        clearSession,
+        status,
+        message: error.response?.data?.message || error.message || 'Session initialization failed',
+      })
+    }
+  }
+)
 
 export const loginUser = createAsyncThunk(
   'auth/login',
@@ -24,7 +145,6 @@ export const loginUser = createAsyncThunk(
             tenantId: response.data.tenantId || null,
           })
         )
-        console.log('Login success:', response.data.accessToken)
         return response.data
       }
       return rejectWithValue(response.message || 'Login failed')
@@ -83,19 +203,7 @@ export const fetchCurrentUserThunk = createAsyncThunk(
     try {
       const response = await authApi.getMe()
       if (response.success && response.data) {
-        const userData = {
-          name: response.data.fullName,
-          fullName: response.data.fullName,
-          role: response.data.role,
-          userId: response.data.userId,
-          email: response.data.email,
-          phone: response.data.phone,
-          avatarUrl: response.data.avatarUrl,
-          provider: response.data.provider,
-          isActive: response.data.isActive,
-          createdAt: response.data.createdAt,
-          tenantId: response.data.tenantId || null,
-        }
+        const userData = toUserData(response.data)
         // Đồng bộ lại localStorage
         localStorage.setItem('user', JSON.stringify(userData))
         return userData
@@ -192,12 +300,24 @@ export const googleLoginThunk = createAsyncThunk(
 // ==================== Rehydrate from localStorage ====================
 const token = localStorage.getItem('token')
 const userStr = localStorage.getItem('user')
-const user = userStr ? JSON.parse(userStr) : null
+let user = null
+
+if (token && userStr) {
+  try {
+    user = JSON.parse(userStr)
+  } catch {
+    localStorage.removeItem('user')
+  }
+} else if (!token && userStr) {
+  localStorage.removeItem('user')
+}
 
 const initialState = {
   user: user,
   token: token,
-  isAuthenticated: !!token,
+  // A stored token is a session candidate, not proof of authentication.
+  isAuthenticated: false,
+  authStatus: token ? AUTH_STATUS.CHECKING : AUTH_STATUS.GUEST,
   isLoading: false,
   error: null,
   // Dùng cho forgot/reset password
@@ -214,8 +334,8 @@ const authSlice = createSlice({
       state.user = null
       state.token = null
       state.isAuthenticated = false
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      state.authStatus = AUTH_STATUS.GUEST
+      clearStoredSession()
 
       // ❌ [origin/owner] - Chỉ clear loading/error, không xóa localStorage
       // state.loading = false
@@ -226,6 +346,7 @@ const authSlice = createSlice({
     setUser: (state, action) => {
       state.user = action.payload
       state.isAuthenticated = true
+      state.authStatus = AUTH_STATUS.AUTHENTICATED
       // Cập nhật lại localStorage để đồng bộ
       localStorage.setItem('user', JSON.stringify(action.payload))
     },
@@ -254,6 +375,24 @@ const authSlice = createSlice({
   // ✅ [HEAD] extraReducers đầy đủ cho tất cả thunks
   extraReducers: (builder) => {
     builder
+      // ==================== Session Bootstrap ====================
+      .addCase(initializeAuthThunk.pending, (state) => {
+        state.authStatus = AUTH_STATUS.CHECKING
+        state.isAuthenticated = false
+      })
+      .addCase(initializeAuthThunk.fulfilled, (state, action) => {
+        state.user = action.payload.user
+        state.token = action.payload.token
+        state.isAuthenticated = true
+        state.authStatus = AUTH_STATUS.AUTHENTICATED
+      })
+      .addCase(initializeAuthThunk.rejected, (state, action) => {
+        state.user = null
+        state.isAuthenticated = false
+        state.authStatus = AUTH_STATUS.GUEST
+        state.token = action.payload?.clearSession ? null : localStorage.getItem('token')
+      })
+
       // ==================== Login ====================
       .addCase(loginUser.pending, (state) => {
         state.isLoading = true
@@ -262,6 +401,7 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.isLoading = false
         state.isAuthenticated = true
+        state.authStatus = AUTH_STATUS.AUTHENTICATED
         const { accessToken, role, fullName, userId, email, tenantId } = action.payload
         state.user = { name: fullName, role, userId, email, tenantId: tenantId || null }
         state.token = accessToken
@@ -289,12 +429,14 @@ const authSlice = createSlice({
         state.user = null
         state.token = null
         state.isAuthenticated = false
+        state.authStatus = AUTH_STATUS.GUEST
       })
       .addCase(logoutThunk.rejected, (state) => {
         // Vẫn clear state dù API fail
         state.user = null
         state.token = null
         state.isAuthenticated = false
+        state.authStatus = AUTH_STATUS.GUEST
       })
 
       // ==================== Logout All ====================
@@ -302,11 +444,13 @@ const authSlice = createSlice({
         state.user = null
         state.token = null
         state.isAuthenticated = false
+        state.authStatus = AUTH_STATUS.GUEST
       })
       .addCase(logoutAllThunk.rejected, (state) => {
         state.user = null
         state.token = null
         state.isAuthenticated = false
+        state.authStatus = AUTH_STATUS.GUEST
       })
 
       // ==================== Fetch Current User ====================
@@ -316,13 +460,16 @@ const authSlice = createSlice({
       .addCase(fetchCurrentUserThunk.fulfilled, (state, action) => {
         state.isLoading = false
         state.user = action.payload
+        state.token = localStorage.getItem('token')
         state.isAuthenticated = true
+        state.authStatus = AUTH_STATUS.AUTHENTICATED
       })
       .addCase(fetchCurrentUserThunk.rejected, (state) => {
         state.isLoading = false
         state.user = null
         state.token = null
         state.isAuthenticated = false
+        state.authStatus = AUTH_STATUS.GUEST
       })
 
       // ==================== Update Profile ====================
@@ -377,6 +524,7 @@ const authSlice = createSlice({
       .addCase(googleLoginThunk.fulfilled, (state, action) => {
         state.isLoading = false
         state.isAuthenticated = true
+        state.authStatus = AUTH_STATUS.AUTHENTICATED
         const { accessToken, role, fullName, userId, email, tenantId } = action.payload
         state.user = { name: fullName, role, userId, email, tenantId: tenantId || null }
         state.token = accessToken

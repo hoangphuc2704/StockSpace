@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import RoleGuard from './components/guards/RoleGuard'
 import PublicGuard from './components/guards/PublicGuard'
 import PublicPageLayout from './components/PublicPageLayout'
-import { fetchCurrentUserThunk, logout } from './store/authSlice'
+import { initializeAuthThunk } from './store/authSlice'
 
 // Lazy load components
 // const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
@@ -114,27 +114,15 @@ const OwnerLayoutSetupGuard = () => {
 
 const App = () => {
   const dispatch = useDispatch()
-  const [isInitializing, setIsInitializing] = useState(true)
+  const authStatus = useSelector((state) => state.auth.authStatus)
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      const token = localStorage.getItem('token')
-      if (token) {
-        try {
-          await dispatch(fetchCurrentUserThunk()).unwrap()
-        } catch (error) {
-          dispatch(logout())
-          // Token hết hạn hoặc không hợp lệ → fetchCurrentUserThunk đã clear state
-          console.warn('Auth init failed:', error)
-        }
-      }
-      setIsInitializing(false)
+    if (authStatus === 'checking') {
+      dispatch(initializeAuthThunk())
     }
+  }, [authStatus, dispatch])
 
-    initializeAuth()
-  }, [dispatch])
-
-  if (isInitializing) {
+  if (authStatus === 'checking') {
     return <div className="flex min-h-screen items-center justify-center">Loading...</div>
   }
 

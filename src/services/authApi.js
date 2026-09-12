@@ -19,16 +19,16 @@ export const authApi = {
     const response = await api.post('/auth/logout-all')
     return response.data
   },
-  getMe: async () => {
-    const response = await api.get('/auth/me')
+  getMe: async (config = {}) => {
+    const response = await api.get('/auth/me', config)
     return response.data
   },
   updateProfile: async (profileData) => {
     const response = await api.put('/auth/me', profileData)
     return response.data
   },
-  refresh: async () => {
-    const response = await api.post('/auth/refresh')
+  refresh: async (config = {}) => {
+    const response = await api.post('/auth/refresh', null, config)
     return response.data
   },
   forgotPassword: async (email) => {
