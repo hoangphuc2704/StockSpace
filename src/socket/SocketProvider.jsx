@@ -26,11 +26,12 @@ const buildWebSocketUrl = (socketEnv, apiEnv) => {
 
 export const SocketProvider = ({ children }) => {
   const [stompClient, setStompClient] = useState(null)
-  const { token, isAuthenticated } = useSelector((state) => state.auth)
+  const { token, user, isAuthenticated, authStatus } = useSelector((state) => state.auth)
+  const userId = user?.userId
 
   useEffect(() => {
     // 1. Check authentication
-    if (!isAuthenticated || !token) {
+    if (authStatus !== 'authenticated' || !isAuthenticated || !token || !userId) {
       return
     }
 
@@ -96,7 +97,7 @@ export const SocketProvider = ({ children }) => {
       client.deactivate()
       setStompClient(null)
     }
-  }, [isAuthenticated, token])
+  }, [authStatus, isAuthenticated, token, userId])
 
   return <SocketContext.Provider value={stompClient}>{children}</SocketContext.Provider>
 }

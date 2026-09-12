@@ -6,7 +6,7 @@ const PublicGuard = () => {
   const location = useLocation()
 
   // Keep the landing page unavailable to back-office roles.
-  if (location.pathname === '/') {
+  if (location.pathname === '/' && isAuthenticated) {
     if (user?.role === 'ROLE_ADMIN') return <Navigate to="/admin/dashboard" replace />
     if (user?.role === 'ROLE_OWNER') return <Navigate to="/owner/dashboard" replace />
     if (user?.role === 'ROLE_STAFF') return <Navigate to="/staff/dashboard" replace />
