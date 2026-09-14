@@ -7,7 +7,7 @@ import {
   SRGBColorSpace,
 } from 'three'
 
-/** Texture sàn bê tông trơn cho mặt bằng kho. */
+/** Texture sàn bê tông mài bóng công nghiệp cao cấp cho mặt bằng kho. */
 export function createWarehouseFloorTexture() {
   if (typeof document === 'undefined') return null
 
@@ -17,9 +17,189 @@ export function createWarehouseFloorTexture() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  // 1. Nền bê tông mài bóng công nghiệp xám sẫm cao cấp
-  ctx.fillStyle = '#665c50'
+  // 1. Nền bê tông mài bóng công nghiệp xám sẫm cao cấp (Polished Concrete)
+  ctx.fillStyle = '#1e2530'
   ctx.fillRect(0, 0, 2048, 2048)
+
+  // 2. Tạo đốm hạt bê tông (Concrete speckle noise)
+  const imgData = ctx.getImageData(0, 0, 2048, 2048)
+  const data = imgData.data
+  for (let i = 0; i < data.length; i += 4) {
+    const noise = (Math.random() - 0.5) * 12
+    data[i] = Math.min(255, Math.max(0, data[i] + noise))
+    data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise))
+    data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise))
+  }
+  ctx.putImageData(imgData, 0, 0)
+
+  // 3. Đường ron gạch sàn bê tông (Expansion joints)
+  const tileSize = 256
+  ctx.strokeStyle = '#141a24'
+  ctx.lineWidth = 3
+  for (let x = 0; x <= 2048; x += tileSize) {
+    ctx.beginPath()
+    ctx.moveTo(x, 0)
+    ctx.lineTo(x, 2048)
+    ctx.stroke()
+  }
+  for (let y = 0; y <= 2048; y += tileSize) {
+    ctx.beginPath()
+    ctx.moveTo(0, y)
+    ctx.lineTo(2048, y)
+    ctx.stroke()
+  }
+
+  // 4. Vạch kẻ an toàn màu vàng cho xe nâng & lối đi chính (Forklift Safety Lanes)
+  ctx.strokeStyle = '#f59e0b'
+  ctx.lineWidth = 10
+
+  // Khung viền hành lang an toàn quanh chu vi sàn
+  ctx.strokeRect(60, 60, 1928, 1928)
+
+  // Lối đi dọc chính giữa các dãy kệ (Storage Area)
+  const rackLanes = [380, 780, 1260, 1660]
+  rackLanes.forEach((x) => {
+    ctx.beginPath()
+    ctx.moveTo(x, 380)
+    ctx.lineTo(x, 1420)
+    ctx.stroke()
+  })
+
+  // Vạch giao lộ ngang (Cross aisles)
+  ctx.beginPath()
+  ctx.moveTo(100, 380)
+  ctx.lineTo(1948, 380)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.moveTo(100, 1420)
+  ctx.lineTo(1948, 1420)
+  ctx.stroke()
+
+  // 5. Hàm vẽ sọc cảnh báo vàng-đen (Hazard Stripes)
+  const drawHazardStripes = (x, y, w, h) => {
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(x, y, w, h)
+    ctx.clip()
+    ctx.fillStyle = '#0f172a'
+    ctx.fillRect(x, y, w, h)
+
+    ctx.fillStyle = '#f59e0b'
+    const stripeW = 24
+    for (let sx = -h; sx < w + h; sx += stripeW * 2) {
+      ctx.beginPath()
+      ctx.moveTo(x + sx, y)
+      ctx.lineTo(x + sx + stripeW, y)
+      ctx.lineTo(x + sx + stripeW - h, y + h)
+      ctx.lineTo(x + sx - h, y + h)
+      ctx.closePath()
+      ctx.fill()
+    }
+    ctx.restore()
+  }
+
+  // Vạch sọc cảnh báo ngã tư xe nâng
+  drawHazardStripes(120, 365, 1808, 30)
+  drawHazardStripes(120, 1405, 1808, 30)
+  drawHazardStripes(80, 1980, 1888, 30)
+
+  // --- 1. KHU VỰC NHẬP HÀNG (RECEIVING / INBOUND ZONE) ---
+  ctx.save()
+  ctx.strokeStyle = '#0284c7' // Xanh Inbound
+  ctx.lineWidth = 8
+  ctx.setLineDash([24, 12])
+  ctx.strokeRect(160, 1500, 800, 460)
+  ctx.setLineDash([])
+
+  // Nền phân khu nhẹ
+  ctx.fillStyle = 'rgba(2, 132, 199, 0.08)'
+  ctx.fillRect(160, 1500, 800, 460)
+
+  // Vạch đỗ pallet staging (Staging slots 3x2)
+  ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'
+  ctx.lineWidth = 4
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 3; col++) {
+      const sx = 200 + col * 240
+      const sy = 1540 + row * 190
+      ctx.strokeRect(sx, sy, 200, 160)
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.6)'
+      ctx.font = 'bold 20px monospace'
+      ctx.textAlign = 'center'
+      ctx.fillText(`IN-${row + 1}0${col + 1}`, sx + 100, sy + 88)
+    }
+  }
+
+  // Chữ phân khu Nhập hàng
+  ctx.fillStyle = '#38bdf8'
+  ctx.font = 'bold 34px "Segoe UI", Arial, sans-serif'
+  ctx.textAlign = 'left'
+  ctx.fillText('📥 RECEIVING & INBOUND STAGING • DOCK 01', 180, 1480)
+  ctx.restore()
+
+  // --- 2. KHU VỰC XUẤT HÀNG (SHIPPING / OUTBOUND ZONE) ---
+  ctx.save()
+  ctx.strokeStyle = '#ea580c' // Cam Outbound
+  ctx.lineWidth = 8
+  ctx.setLineDash([24, 12])
+  ctx.strokeRect(1080, 1500, 800, 460)
+  ctx.setLineDash([])
+
+  // Nền phân khu nhẹ
+  ctx.fillStyle = 'rgba(234, 88, 12, 0.08)'
+  ctx.fillRect(1080, 1500, 800, 460)
+
+  // Vạch đỗ pallet staging xuất hàng
+  ctx.strokeStyle = 'rgba(251, 146, 60, 0.4)'
+  ctx.lineWidth = 4
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 3; col++) {
+      const sx = 1120 + col * 240
+      const sy = 1540 + row * 190
+      ctx.strokeRect(sx, sy, 200, 160)
+      ctx.fillStyle = 'rgba(251, 146, 60, 0.6)'
+      ctx.font = 'bold 20px monospace'
+      ctx.textAlign = 'center'
+      ctx.fillText(`OUT-${row + 1}0${col + 1}`, sx + 100, sy + 88)
+    }
+  }
+
+  // Chữ phân khu Xuất hàng
+  ctx.fillStyle = '#fb923c'
+  ctx.font = 'bold 34px "Segoe UI", Arial, sans-serif'
+  ctx.textAlign = 'left'
+  ctx.fillText('📤 SHIPPING & DISPATCH STAGING • DOCK 02', 1100, 1480)
+  ctx.restore()
+
+  // --- 3. VẠCH ĐI BỘ CHO NHÂN VIÊN (PEDESTRIAN ZEBRA CROSSING) ---
+  const drawZebra = (x, y, w, h, isHoriz = true) => {
+    ctx.save()
+    ctx.fillStyle = '#f8fafc'
+    if (isHoriz) {
+      const barW = 32
+      for (let bx = x; bx < x + w; bx += barW * 2) {
+        ctx.fillRect(bx, y, barW, h)
+      }
+    } else {
+      const barH = 32
+      for (let by = y; by < y + h; by += barH * 2) {
+        ctx.fillRect(x, by, w, barH)
+      }
+    }
+    ctx.restore()
+  }
+
+  // Vạch sang đường cho người đi bộ
+  drawZebra(980, 1450, 100, 520, false)
+  drawZebra(100, 200, 1848, 50, true)
+
+  // Ký hiệu chữ an toàn trên sàn
+  ctx.fillStyle = '#fbbf24'
+  ctx.font = 'bold 30px "Segoe UI", Arial, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.fillText('⚠ FORKLIFT SPEED LIMIT: 5 KM/H • WEAR PPE AT ALL TIMES', 1024, 150)
+  ctx.fillText('KEEP EMERGENCY AISLE CLEAR AT ALL TIMES', 1024, 2010)
 
   const texture = new CanvasTexture(canvas)
   texture.wrapS = ClampToEdgeWrapping
@@ -520,4 +700,5 @@ export function createSafetySignTexture(type = 'EXIT') {
   texture.needsUpdate = true
   return texture
 }
+
 

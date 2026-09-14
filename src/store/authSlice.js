@@ -9,9 +9,17 @@ const AUTH_STATUS = {
   GUEST: 'guest',
 }
 
+const clearWmsImportSession = () => {
+  for (let index = sessionStorage.length - 1; index >= 0; index -= 1) {
+    const key = sessionStorage.key(index)
+    if (key?.startsWith('stockspace:wms-import:')) sessionStorage.removeItem(key)
+  }
+}
+
 const clearStoredSession = () => {
   localStorage.removeItem('token')
   localStorage.removeItem('user')
+  clearWmsImportSession()
 }
 
 const toUserData = (data) => ({
@@ -34,10 +42,7 @@ const isAccessTokenExpired = (token) => {
     if (parts.length !== 3) return true
 
     const normalizedPayload = parts[1].replace(/-/g, '+').replace(/_/g, '/')
-    const paddedPayload = normalizedPayload.padEnd(
-      Math.ceil(normalizedPayload.length / 4) * 4,
-      '='
-    )
+    const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=')
     const payload = JSON.parse(window.atob(paddedPayload))
     const expiresAt = Number(payload.exp) * 1000
 
@@ -183,6 +188,7 @@ export const logoutThunk = createAsyncThunk('auth/logoutThunk', async (_, { disp
   } finally {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    clearWmsImportSession()
   }
 })
 
@@ -194,6 +200,7 @@ export const logoutAllThunk = createAsyncThunk('auth/logoutAllThunk', async () =
   } finally {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    clearWmsImportSession()
   }
 })
 
