@@ -1904,8 +1904,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [])
 
   const startInteraction = (event, type, entity, mode, parentElement) => {
-    // 2D interactions must not change the 3D camera focus.
-    setFocusedRackKey(null)
     if (type === 'rack' && mode === 'move') didDragRef.current = false
     if (type === 'bin' && mode === 'resize') {
       event.preventDefault()
