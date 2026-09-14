@@ -7,11 +7,7 @@ import {
   SRGBColorSpace,
 } from 'three'
 
-/**
- * Texture sàn bê tông nhà kho công nghiệp mài bóng cao cấp
- * với các vạch kẻ phân làn xe nâng, phân khu Receiving & Shipping,
- * vạch cảnh báo an toàn hazard stripes và vạch đi bộ sang đường chuẩn theo my-react-app.
- */
+/** Texture sàn bê tông mài bóng công nghiệp cao cấp cho mặt bằng kho. */
 export function createWarehouseFloorTexture() {
   if (typeof document === 'undefined') return null
 
@@ -21,22 +17,22 @@ export function createWarehouseFloorTexture() {
   const ctx = canvas.getContext('2d')
   if (!ctx) return null
 
-  // 1. Nền bê tông mài bóng công nghiệp xám sẫm cao cấp
-  ctx.fillStyle = '#1e2430'
+  // 1. Nền bê tông mài bóng công nghiệp xám sẫm cao cấp (Polished Concrete)
+  ctx.fillStyle = '#1e2530'
   ctx.fillRect(0, 0, 2048, 2048)
 
-  // 2. Tạo đốm hạt bê tông mịn (concrete speckle noise)
+  // 2. Tạo đốm hạt bê tông (Concrete speckle noise)
   const imgData = ctx.getImageData(0, 0, 2048, 2048)
   const data = imgData.data
   for (let i = 0; i < data.length; i += 4) {
-    const noise = (Math.random() - 0.5) * 14
+    const noise = (Math.random() - 0.5) * 12
     data[i] = Math.min(255, Math.max(0, data[i] + noise))
     data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + noise))
     data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + noise))
   }
   ctx.putImageData(imgData, 0, 0)
 
-  // 3. Đường ron giãn nở sàn bê tông (Expansion joints / 256px grid)
+  // 3. Đường ron gạch sàn bê tông (Expansion joints)
   const tileSize = 256
   ctx.strokeStyle = '#141a24'
   ctx.lineWidth = 3
@@ -53,7 +49,34 @@ export function createWarehouseFloorTexture() {
     ctx.stroke()
   }
 
-  // Hàm vẽ dải sọc chéo cảnh báo an toàn xe nâng (Hazard stripes - Yellow & Black)
+  // 4. Vạch kẻ an toàn màu vàng cho xe nâng & lối đi chính (Forklift Safety Lanes)
+  ctx.strokeStyle = '#f59e0b'
+  ctx.lineWidth = 10
+
+  // Khung viền hành lang an toàn quanh chu vi sàn
+  ctx.strokeRect(60, 60, 1928, 1928)
+
+  // Lối đi dọc chính giữa các dãy kệ (Storage Area)
+  const rackLanes = [380, 780, 1260, 1660]
+  rackLanes.forEach((x) => {
+    ctx.beginPath()
+    ctx.moveTo(x, 380)
+    ctx.lineTo(x, 1420)
+    ctx.stroke()
+  })
+
+  // Vạch giao lộ ngang (Cross aisles)
+  ctx.beginPath()
+  ctx.moveTo(100, 380)
+  ctx.lineTo(1948, 380)
+  ctx.stroke()
+
+  ctx.beginPath()
+  ctx.moveTo(100, 1420)
+  ctx.lineTo(1948, 1420)
+  ctx.stroke()
+
+  // 5. Hàm vẽ sọc cảnh báo vàng-đen (Hazard Stripes)
   const drawHazardStripes = (x, y, w, h) => {
     ctx.save()
     ctx.beginPath()
@@ -76,36 +99,12 @@ export function createWarehouseFloorTexture() {
     ctx.restore()
   }
 
-  // 4. Vạch kẻ sơn vàng an toàn phân làn xe nâng (Forklift warning lanes)
-  ctx.strokeStyle = '#f59e0b'
-  ctx.lineWidth = 10
-
-  // Lối đi dọc chính giữa các dãy kệ (Storage Area Y = 380 đến 1420)
-  const rackLanes = [380, 780, 1260, 1660]
-  rackLanes.forEach((x) => {
-    ctx.beginPath()
-    ctx.moveTo(x, 380)
-    ctx.lineTo(x, 1420)
-    ctx.stroke()
-  })
-
-  // Vạch giao lộ ngang (Cross aisles)
-  ctx.beginPath()
-  ctx.moveTo(100, 380)
-  ctx.lineTo(1948, 380)
-  ctx.stroke()
-
-  ctx.beginPath()
-  ctx.moveTo(100, 1420)
-  ctx.lineTo(1948, 1420)
-  ctx.stroke()
-
   // Vạch sọc cảnh báo ngã tư xe nâng
   drawHazardStripes(120, 365, 1808, 30)
   drawHazardStripes(120, 1405, 1808, 30)
+  drawHazardStripes(80, 1980, 1888, 30)
 
-  // 5. KHU VỰC NHẬP HÀNG (RECEIVING / INBOUND ZONE - DOCK 01)
-  // Vị trí: Y = 1500 đến 1980, X = 160 đến 960
+  // --- 1. KHU VỰC NHẬP HÀNG (RECEIVING / INBOUND ZONE) ---
   ctx.save()
   ctx.strokeStyle = '#0284c7' // Xanh Inbound
   ctx.lineWidth = 8
@@ -134,13 +133,12 @@ export function createWarehouseFloorTexture() {
 
   // Chữ phân khu Nhập hàng
   ctx.fillStyle = '#38bdf8'
-  ctx.font = 'bold 36px "Segoe UI", Arial, sans-serif'
+  ctx.font = 'bold 34px "Segoe UI", Arial, sans-serif'
   ctx.textAlign = 'left'
   ctx.fillText('📥 RECEIVING & INBOUND STAGING • DOCK 01', 180, 1480)
   ctx.restore()
 
-  // 6. KHU VỰC XUẤT HÀNG (SHIPPING / OUTBOUND ZONE - DOCK 02)
-  // Vị trí: Y = 1500 đến 1980, X = 1080 đến 1880
+  // --- 2. KHU VỰC XUẤT HÀNG (SHIPPING / OUTBOUND ZONE) ---
   ctx.save()
   ctx.strokeStyle = '#ea580c' // Cam Outbound
   ctx.lineWidth = 8
@@ -169,12 +167,12 @@ export function createWarehouseFloorTexture() {
 
   // Chữ phân khu Xuất hàng
   ctx.fillStyle = '#fb923c'
-  ctx.font = 'bold 36px "Segoe UI", Arial, sans-serif'
+  ctx.font = 'bold 34px "Segoe UI", Arial, sans-serif'
   ctx.textAlign = 'left'
   ctx.fillText('📤 SHIPPING & DISPATCH STAGING • DOCK 02', 1100, 1480)
   ctx.restore()
 
-  // 7. VẠCH ĐI BỘ CHO NHÂN VIÊN (PEDESTRIAN ZEBRA CROSSING)
+  // --- 3. VẠCH ĐI BỘ CHO NHÂN VIÊN (PEDESTRIAN ZEBRA CROSSING) ---
   const drawZebra = (x, y, w, h, isHoriz = true) => {
     ctx.save()
     ctx.fillStyle = '#f8fafc'
@@ -192,14 +190,13 @@ export function createWarehouseFloorTexture() {
     ctx.restore()
   }
 
-  // Vạch sang đường cho người đi bộ lối cửa thoát hiểm giữa 2 dock
+  // Vạch sang đường cho người đi bộ
   drawZebra(980, 1450, 100, 520, false)
-  // Vạch sang đường ngang phía sau kho
   drawZebra(100, 200, 1848, 50, true)
 
-  // 8. Ký hiệu chữ an toàn trên sàn
+  // Ký hiệu chữ an toàn trên sàn
   ctx.fillStyle = '#fbbf24'
-  ctx.font = 'bold 32px "Segoe UI", Arial, sans-serif'
+  ctx.font = 'bold 30px "Segoe UI", Arial, sans-serif'
   ctx.textAlign = 'center'
   ctx.fillText('⚠ FORKLIFT SPEED LIMIT: 5 KM/H • WEAR PPE AT ALL TIMES', 1024, 150)
   ctx.fillText('KEEP EMERGENCY AISLE CLEAR AT ALL TIMES', 1024, 2010)
@@ -703,4 +700,5 @@ export function createSafetySignTexture(type = 'EXIT') {
   texture.needsUpdate = true
   return texture
 }
+
 

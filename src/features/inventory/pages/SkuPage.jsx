@@ -1,8 +1,19 @@
 import { useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
-import { Plus, Package, Edit, Trash2, Loader2, Eye, X, Tag, Ruler, Hash } from 'lucide-react'
-import TableActionMenu from '@/components/TableActionMenu'
-import DataTable from '@/components/organisms/DataTable'
+import {
+  Plus,
+  Package,
+  Edit,
+  Trash2,
+  Loader2,
+  Eye,
+  X,
+  Tag,
+  Ruler,
+  Hash,
+  Download,
+  Upload,
+} from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
@@ -15,6 +26,9 @@ import { toast } from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import { showApiErrorToast } from '@/config/apiError'
 import { required } from '@/config/validation'
+import WmsImportDialog from '@/features/inventory/components/WmsImportDialog'
+import dataContinuityApi from '@/services/wms/dataContinuityApi'
+import { WMS_IMPORT_TYPE } from '@/services/wms/wmsDataTypes'
 
 const LEGACY_SPECIFICATION_KEYS = new Set([
   'barcode',
@@ -33,7 +47,8 @@ const LEGACY_SPECIFICATION_KEYS = new Set([
 const removeLegacySpecifications = (specifications) =>
   Object.fromEntries(
     Object.entries(specifications || {}).filter(
-      ([key]) => !LEGACY_SPECIFICATION_KEYS.has(String(key).replace(/[A-Z]/g, (char) => char.toLowerCase()))
+      ([key]) =>
+        !LEGACY_SPECIFICATION_KEYS.has(String(key).replace(/[A-Z]/g, (char) => char.toLowerCase()))
     )
   )
 
@@ -48,7 +63,7 @@ const SkuPage = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchCategory, setSearchCategory] = useState('')
   const [searchUom, setSearchUom] = useState('')
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editingProductId, setEditingProductId] = useState(null)
@@ -64,6 +79,8 @@ const SkuPage = () => {
   const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+  const [isCatalogImportOpen, setIsCatalogImportOpen] = useState(false)
+  const [isExportingCatalog, setIsExportingCatalog] = useState(false)
 
   // Detail modal states
   const [isDetailOpen, setIsDetailOpen] = useState(false)
@@ -73,7 +90,21 @@ const SkuPage = () => {
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
+  const isTenant = user?.role === 'ROLE_TENANT'
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
+
+  const handleExportCatalog = async () => {
+    if (isExportingCatalog) return
+    try {
+      setIsExportingCatalog(true)
+      await dataContinuityApi.exportCatalog()
+      toast.success('Catalog workbook downloaded.')
+    } catch (error) {
+      showApiErrorToast(error, 'Could not export the catalog workbook.')
+    } finally {
+      setIsExportingCatalog(false)
+    }
+  }
 
   const fetchData = async () => {
     try {
@@ -266,9 +297,7 @@ const SkuPage = () => {
       Number(formUnitWeightKg) <= 0 ||
       Number(formUnitVolumeM3) <= 0
     ) {
-      toast.error(
-        'Enter all fields. Weight and volume must be greater than 0.'
-      )
+      toast.error('Enter all fields. Weight and volume must be greater than 0.')
       return
     }
     setIsSubmitting(true)
@@ -305,18 +334,18 @@ const SkuPage = () => {
     }
   }
 
-  const filteredProducts = products.filter(p => {
-    if (searchCategory && p.categoryId !== searchCategory) return false;
-    if (searchUom && p.uomId !== searchUom) return false;
+  const filteredProducts = products.filter((p) => {
+    if (searchCategory && p.categoryId !== searchCategory) return false
+    if (searchUom && p.uomId !== searchUom) return false
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
+      const q = searchQuery.toLowerCase()
       return (
         (p.name && p.name.toLowerCase().includes(q)) ||
         (p.skuCode && p.skuCode.toLowerCase().includes(q))
-      );
+      )
     }
-    return true;
-  });
+    return true
+  })
 
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-900">
@@ -346,7 +375,25 @@ const SkuPage = () => {
                   SKU Management
                 </h1>
               </div>
-              <div className="flex gap-2">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={handleExportCatalog}
+                  isLoading={isExportingCatalog}
+                  disabled={isExportingCatalog}
+                  className="w-full gap-2 sm:w-auto"
+                >
+                  <Download className="h-4 w-4" /> Export catalog
+                </Button>
+                {isTenant && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsCatalogImportOpen(true)}
+                    className="w-full gap-2 sm:w-auto"
+                  >
+                    <Upload className="h-4 w-4" /> Import catalog
+                  </Button>
+                )}
                 <Button onClick={handleOpenCreate} className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" /> Add SKU
                 </Button>
@@ -362,7 +409,7 @@ const SkuPage = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full border-blue-400 focus:border-blue-500 focus:ring-blue-500"
                 />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <select
                     className="w-full rounded-md border border-slate-200 p-2 text-sm text-slate-600 focus:border-blue-500 focus:ring-blue-500"
                     value={searchCategory}
@@ -370,7 +417,9 @@ const SkuPage = () => {
                   >
                     <option value="">Search by Category...</option>
                     {categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
                   <select
@@ -380,14 +429,24 @@ const SkuPage = () => {
                   >
                     <option value="">Search by UOM...</option>
                     {uoms.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div className="flex justify-center gap-3 pt-2">
-                  <Button className="bg-slate-500 hover:bg-slate-600 w-32">Search</Button>
-                  <Button variant="outline" className="w-32 bg-slate-50 text-slate-600 border-slate-200" onClick={() => { setSearchQuery(''); setSearchCategory(''); setSearchUom(''); }}>
-                    <div className="flex items-center gap-2 justify-center">
+                  <Button className="w-32 bg-slate-500 hover:bg-slate-600">Search</Button>
+                  <Button
+                    variant="outline"
+                    className="w-32 border-slate-200 bg-slate-50 text-slate-600"
+                    onClick={() => {
+                      setSearchQuery('')
+                      setSearchCategory('')
+                      setSearchUom('')
+                    }}
+                  >
+                    <div className="flex items-center justify-center gap-2">
                       <X className="h-4 w-4" /> Clear
                     </div>
                   </Button>
@@ -396,26 +455,31 @@ const SkuPage = () => {
             </div>
 
             {/* Table Area */}
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               {/* Summary Tabs */}
               <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 pt-3">
                 <button className="relative pb-3 text-sm font-semibold text-slate-700 transition-colors">
                   <div className="flex flex-col items-center gap-1">
                     <span>Products</span>
-                    <span className="bg-blue-100 text-blue-700 text-xs px-3 py-0.5 rounded-full">{filteredProducts.length}</span>
+                    <span className="rounded-full bg-blue-100 px-3 py-0.5 text-xs text-blue-700">
+                      {filteredProducts.length}
+                    </span>
                   </div>
                   <div className="absolute bottom-0 left-0 h-0.5 w-full bg-slate-400" />
                 </button>
               </div>
 
               {/* Table Controls */}
-              <div className="flex items-center gap-4 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600 border-b border-slate-200">
-                <button className="flex items-center justify-center p-1 border border-slate-300 rounded bg-white hover:bg-slate-50">
+              <div className="flex items-center gap-4 border-b border-slate-200 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600">
+                <button className="flex items-center justify-center rounded border border-slate-300 bg-white p-1 hover:bg-slate-50">
                   ⚙️ ▾
                 </button>
-                <span>Selected (0) | Showing (1 - {filteredProducts.length}) | Found ({filteredProducts.length}) | Total ({products.length})</span>
+                <span>
+                  Selected (0) | Showing (1 - {filteredProducts.length}) | Found (
+                  {filteredProducts.length}) | Total ({products.length})
+                </span>
                 <div className="flex-1" />
-                <button className="border border-slate-300 bg-white px-3 py-1 rounded hover:bg-slate-50">
+                <button className="rounded border border-slate-300 bg-white px-3 py-1 hover:bg-slate-50">
                   All Columns
                 </button>
               </div>
@@ -428,14 +492,16 @@ const SkuPage = () => {
                   </div>
                 ) : (
                   <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                    <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-700">
                       <tr>
-                        <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
-                        <th className="px-4 py-3 border-r border-slate-200">SKU</th>
-                        <th className="px-4 py-3 border-r border-slate-200">Code</th>
-                        <th className="px-4 py-3 border-r border-slate-200">Classification</th>
-                        <th className="px-4 py-3 border-r border-slate-200">Unit Wt (kg)</th>
-                        <th className="px-4 py-3 border-r border-slate-200">Unit Vol (m³)</th>
+                        <th className="w-10 px-4 py-3 text-center">
+                          <input type="checkbox" className="rounded border-slate-300" />
+                        </th>
+                        <th className="border-r border-slate-200 px-4 py-3">SKU</th>
+                        <th className="border-r border-slate-200 px-4 py-3">Code</th>
+                        <th className="border-r border-slate-200 px-4 py-3">Classification</th>
+                        <th className="border-r border-slate-200 px-4 py-3">Unit Wt (kg)</th>
+                        <th className="border-r border-slate-200 px-4 py-3">Unit Vol (m³)</th>
                         <th className="px-4 py-3 text-center">Actions</th>
                       </tr>
                     </thead>
@@ -446,41 +512,70 @@ const SkuPage = () => {
                             Không tìm thấy SKU nào.
                           </td>
                         </tr>
-                      ) : filteredProducts.map(p => {
-                        const canManageSku = Boolean(p.tenantId)
-                        return (
-                          <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
-                            <td className="px-4 py-3 border-r border-slate-100 text-slate-700 font-medium">
-                              <div className="flex items-center gap-2">
-                                {p.name}
-                                {canManageSku && <Edit className="h-3 w-3 text-slate-400 cursor-pointer hover:text-primary" onClick={() => handleOpenEdit(p)} />}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 border-r border-slate-100 text-slate-600">{p.skuCode}</td>
-                            <td className="px-4 py-3 border-r border-slate-100 text-slate-600">{p.categoryName}</td>
-                            <td className="px-4 py-3 border-r border-slate-100 text-slate-600">{p.unitWeightKg || '—'}</td>
-                            <td className="px-4 py-3 border-r border-slate-100 text-slate-600">{p.unitVolumeM3 || '—'}</td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex items-center justify-center gap-2">
-                                <button onClick={() => handleViewDetail(p.id)} className="text-slate-400 hover:text-blue-600" title="View details">
-                                  <Eye className="h-4 w-4" />
-                                </button>
-                                {canManageSku && (
-                                  <>
-                                    <button onClick={() => handleOpenEdit(p)} className="text-slate-400 hover:text-emerald-600" title="Edit">
-                                      <Edit className="h-4 w-4" />
-                                    </button>
-                                    <button onClick={() => handleDelete(p.id)} className="text-slate-400 hover:text-red-600" title="Delete">
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
+                      ) : (
+                        filteredProducts.map((p) => {
+                          const canManageSku = Boolean(p.tenantId)
+                          return (
+                            <tr key={p.id} className="transition-colors hover:bg-slate-50/80">
+                              <td className="border-r border-slate-100 px-4 py-3 text-center">
+                                <input type="checkbox" className="rounded border-slate-300" />
+                              </td>
+                              <td className="border-r border-slate-100 px-4 py-3 font-medium text-slate-700">
+                                <div className="flex items-center gap-2">
+                                  {p.name}
+                                  {canManageSku && (
+                                    <Edit
+                                      className="hover:text-primary h-3 w-3 cursor-pointer text-slate-400"
+                                      onClick={() => handleOpenEdit(p)}
+                                    />
+                                  )}
+                                </div>
+                              </td>
+                              <td className="border-r border-slate-100 px-4 py-3 text-slate-600">
+                                {p.skuCode}
+                              </td>
+                              <td className="border-r border-slate-100 px-4 py-3 text-slate-600">
+                                {p.categoryName}
+                              </td>
+                              <td className="border-r border-slate-100 px-4 py-3 text-slate-600">
+                                {p.unitWeightKg || '—'}
+                              </td>
+                              <td className="border-r border-slate-100 px-4 py-3 text-slate-600">
+                                {p.unitVolumeM3 || '—'}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button
+                                    onClick={() => handleViewDetail(p.id)}
+                                    className="text-slate-400 hover:text-blue-600"
+                                    title="View details"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </button>
+                                  {canManageSku && (
+                                    <>
+                                      <button
+                                        onClick={() => handleOpenEdit(p)}
+                                        className="text-slate-400 hover:text-emerald-600"
+                                        title="Edit"
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(p.id)}
+                                        className="text-slate-400 hover:text-red-600"
+                                        title="Delete"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      )}
                     </tbody>
                   </table>
                 )}
@@ -830,6 +925,26 @@ const SkuPage = () => {
           </main>
         </div>
       </div>
+
+      {isTenant && (
+        <WmsImportDialog
+          isOpen={isCatalogImportOpen}
+          onClose={() => setIsCatalogImportOpen(false)}
+          title="Import category & SKU catalog"
+          description="Upload the latest catalog workbook exported by StockSpace. Existing system rows remain read-only; supported category and SKU changes are validated by the backend."
+          importType={WMS_IMPORT_TYPE.SKU_CATALOG}
+          scopeKey={user?.tenantId || user?.userId || 'tenant'}
+          validateWorkbook={dataContinuityApi.validateCatalog}
+          applyWorkbook={dataContinuityApi.applyCatalog}
+          confirmation={{
+            title: 'Apply catalog changes',
+            message:
+              'Apply all valid Category and SKU changes in this workbook atomically. This operation does not support deleting data.',
+            confirmText: 'Apply catalog',
+          }}
+          onApplied={fetchData}
+        />
+      )}
     </div>
   )
 }

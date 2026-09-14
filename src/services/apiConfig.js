@@ -4,18 +4,12 @@ import { showApiErrorToast } from '@/config/apiError'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
   withCredentials: true, // Gửi cookie (refreshToken) kèm mọi request
 })
 
 // ==================== Refresh Axios Instance (tránh infinite loop) ====================
 const refreshApi = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
   withCredentials: true,
 })
 
@@ -32,6 +26,20 @@ const processQueue = (error, token = null) => {
     }
   })
   failedQueue = []
+}
+
+const hydrateBlobErrorPayload = async (error) => {
+  const payload = error?.response?.data
+  if (!(payload instanceof Blob)) return error
+
+  try {
+    const text = await payload.text()
+    if (!text.trim()) return error
+    error.response.data = JSON.parse(text)
+  } catch {
+    // Keep the original Blob when the response is not a JSON error envelope.
+  }
+  return error
 }
 
 // ==================== Request Interceptor ====================
@@ -52,13 +60,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    await hydrateBlobErrorPayload(error)
     const originalRequest = error.config
 
     // A 401 may be recovered by the refresh flow, so wait before notifying.
     // Individual requests can opt out when they intentionally render the
     // error inline (for example, the login and reset-password forms).
-    const shouldShowErrorToast =
-      !error.config?.skipErrorToast && error.response?.status !== 401
+    const shouldShowErrorToast = !error.config?.skipErrorToast && error.response?.status !== 401
 
     // Chỉ xử lý 401 và chưa retry
     if (error.response?.status === 401 && !originalRequest._retry) {

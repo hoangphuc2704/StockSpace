@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
-import { Plus, Trash2, LayoutGrid, Loader2 } from 'lucide-react'
-import TableActionMenu from '@/components/TableActionMenu'
-import DataTable from '@/components/organisms/DataTable'
+import { Plus, Trash2, LayoutGrid, Loader2, Download, Upload } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
@@ -15,6 +13,9 @@ import { toast } from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import { showApiErrorToast } from '@/config/apiError'
 import { required } from '@/config/validation'
+import WmsImportDialog from '@/features/inventory/components/WmsImportDialog'
+import dataContinuityApi from '@/services/wms/dataContinuityApi'
+import { WMS_IMPORT_TYPE } from '@/services/wms/wmsDataTypes'
 
 const CategoryPage = () => {
   const confirmDialog = useConfirmDialog()
@@ -24,11 +25,27 @@ const CategoryPage = () => {
   const [newCategoryName, setNewCategoryName] = useState('')
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isCatalogImportOpen, setIsCatalogImportOpen] = useState(false)
+  const [isExportingCatalog, setIsExportingCatalog] = useState(false)
 
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
+  const isTenant = user?.role === 'ROLE_TENANT'
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
+
+  const handleExportCatalog = async () => {
+    if (isExportingCatalog) return
+    try {
+      setIsExportingCatalog(true)
+      await dataContinuityApi.exportCatalog()
+      toast.success('Catalog workbook downloaded.')
+    } catch (error) {
+      showApiErrorToast(error, 'Could not export the catalog workbook.')
+    } finally {
+      setIsExportingCatalog(false)
+    }
+  }
 
   const fetchCategories = async () => {
     try {
@@ -88,12 +105,12 @@ const CategoryPage = () => {
     }
   }
 
-  const filteredCategories = categories.filter(c => {
+  const filteredCategories = categories.filter((c) => {
     if (searchQuery) {
-      return c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())
     }
-    return true;
-  });
+    return true
+  })
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -126,9 +143,29 @@ const CategoryPage = () => {
                   Organize and manage your product categories.
                 </p>
               </div>
-              <Button onClick={() => setIsCategoryModalOpen(true)} className="w-full sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" /> Add Category
-              </Button>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+                <Button
+                  variant="outline"
+                  onClick={handleExportCatalog}
+                  isLoading={isExportingCatalog}
+                  disabled={isExportingCatalog}
+                  className="w-full gap-2 sm:w-auto"
+                >
+                  <Download className="h-4 w-4" /> Export catalog
+                </Button>
+                {isTenant && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsCatalogImportOpen(true)}
+                    className="w-full gap-2 sm:w-auto"
+                  >
+                    <Upload className="h-4 w-4" /> Import catalog
+                  </Button>
+                )}
+                <Button onClick={() => setIsCategoryModalOpen(true)} className="w-full sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" /> Add Category
+                </Button>
+              </div>
             </div>
 
             {/* Top Search Area */}
@@ -141,9 +178,13 @@ const CategoryPage = () => {
                   className="w-full border-blue-400 focus:border-blue-500 focus:ring-blue-500"
                 />
                 <div className="flex justify-center gap-3 pt-2">
-                  <Button className="bg-slate-500 hover:bg-slate-600 w-32">Search</Button>
-                  <Button variant="outline" className="w-32 bg-slate-50 text-slate-600 border-slate-200" onClick={() => setSearchQuery('')}>
-                    <div className="flex items-center gap-2 justify-center">
+                  <Button className="w-32 bg-slate-500 hover:bg-slate-600">Search</Button>
+                  <Button
+                    variant="outline"
+                    className="w-32 border-slate-200 bg-slate-50 text-slate-600"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <div className="flex items-center justify-center gap-2">
                       <Trash2 className="h-4 w-4" /> Clear
                     </div>
                   </Button>
@@ -152,26 +193,31 @@ const CategoryPage = () => {
             </div>
 
             {/* Table Area */}
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               {/* Summary Tabs */}
               <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 pt-3">
                 <button className="relative pb-3 text-sm font-semibold text-slate-700 transition-colors">
                   <div className="flex flex-col items-center gap-1">
                     <span>Categories</span>
-                    <span className="bg-blue-100 text-blue-700 text-xs px-3 py-0.5 rounded-full">{filteredCategories.length}</span>
+                    <span className="rounded-full bg-blue-100 px-3 py-0.5 text-xs text-blue-700">
+                      {filteredCategories.length}
+                    </span>
                   </div>
                   <div className="absolute bottom-0 left-0 h-0.5 w-full bg-slate-400" />
                 </button>
               </div>
 
               {/* Table Controls */}
-              <div className="flex items-center gap-4 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600 border-b border-slate-200">
-                <button className="flex items-center justify-center p-1 border border-slate-300 rounded bg-white hover:bg-slate-50">
+              <div className="flex items-center gap-4 border-b border-slate-200 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600">
+                <button className="flex items-center justify-center rounded border border-slate-300 bg-white p-1 hover:bg-slate-50">
                   ⚙️ ▾
                 </button>
-                <span>Selected (0) | Showing (1 - {filteredCategories.length}) | Found ({filteredCategories.length}) | Total ({categories.length})</span>
+                <span>
+                  Selected (0) | Showing (1 - {filteredCategories.length}) | Found (
+                  {filteredCategories.length}) | Total ({categories.length})
+                </span>
                 <div className="flex-1" />
-                <button className="border border-slate-300 bg-white px-3 py-1 rounded hover:bg-slate-50">
+                <button className="rounded border border-slate-300 bg-white px-3 py-1 hover:bg-slate-50">
                   All Columns
                 </button>
               </div>
@@ -184,11 +230,15 @@ const CategoryPage = () => {
                   </div>
                 ) : (
                   <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                    <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-700">
                       <tr>
-                        <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
-                        <th className="px-4 py-3 border-r border-slate-200 w-full">Category Name</th>
-                        <th className="px-4 py-3 text-center w-24">Actions</th>
+                        <th className="w-10 px-4 py-3 text-center">
+                          <input type="checkbox" className="rounded border-slate-300" />
+                        </th>
+                        <th className="w-full border-r border-slate-200 px-4 py-3">
+                          Category Name
+                        </th>
+                        <th className="w-24 px-4 py-3 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -198,26 +248,34 @@ const CategoryPage = () => {
                             Không tìm thấy Category nào.
                           </td>
                         </tr>
-                      ) : filteredCategories.map(c => {
-                        const canManage = Boolean(c.tenantId)
-                        return (
-                          <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
-                            <td className="px-4 py-3 border-r border-slate-100 text-slate-700 font-medium">
-                              {c.name}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              {canManage ? (
-                                <button onClick={() => handleDeleteCategory(c.id)} className="text-slate-400 hover:text-red-600 transition-colors" title="Delete">
-                                  <Trash2 className="h-4 w-4 mx-auto" />
-                                </button>
-                              ) : (
-                                <span className="text-slate-400 text-xs italic">—</span>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
+                      ) : (
+                        filteredCategories.map((c) => {
+                          const canManage = Boolean(c.tenantId)
+                          return (
+                            <tr key={c.id} className="transition-colors hover:bg-slate-50/80">
+                              <td className="border-r border-slate-100 px-4 py-3 text-center">
+                                <input type="checkbox" className="rounded border-slate-300" />
+                              </td>
+                              <td className="border-r border-slate-100 px-4 py-3 font-medium text-slate-700">
+                                {c.name}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {canManage ? (
+                                  <button
+                                    onClick={() => handleDeleteCategory(c.id)}
+                                    className="text-slate-400 transition-colors hover:text-red-600"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="mx-auto h-4 w-4" />
+                                  </button>
+                                ) : (
+                                  <span className="text-xs text-slate-400 italic">—</span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })
+                      )}
                     </tbody>
                   </table>
                 )}
@@ -256,6 +314,26 @@ const CategoryPage = () => {
           </main>
         </div>
       </div>
+
+      {isTenant && (
+        <WmsImportDialog
+          isOpen={isCatalogImportOpen}
+          onClose={() => setIsCatalogImportOpen(false)}
+          title="Import category & SKU catalog"
+          description="The catalog workbook contains both CATEGORIES and SKUS. Upload only the latest workbook exported by StockSpace; the backend validates every row before Apply is enabled."
+          importType={WMS_IMPORT_TYPE.SKU_CATALOG}
+          scopeKey={user?.tenantId || user?.userId || 'tenant'}
+          validateWorkbook={dataContinuityApi.validateCatalog}
+          applyWorkbook={dataContinuityApi.applyCatalog}
+          confirmation={{
+            title: 'Apply catalog changes',
+            message:
+              'Apply all valid Category and SKU changes in this workbook atomically. This operation does not support deleting data.',
+            confirmText: 'Apply catalog',
+          }}
+          onApplied={fetchCategories}
+        />
+      )}
     </div>
   )
 }
