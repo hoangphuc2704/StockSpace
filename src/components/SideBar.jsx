@@ -49,8 +49,6 @@ const SIDEBAR_MENUS = {
     { text: 'System Policies', icon: HiOutlineDocumentText, path: '/admin/system-policies' },
     { text: 'System Config', icon: HiOutlineCog6Tooth, path: '/admin/system-config' },
     { text: 'Package Subcription', icon: HiOutlineCog6Tooth, path: '/admin/package-subcription' },
-    { text: 'WMS Inventory', icon: HiOutlineArchiveBox, path: '/admin/wms-inventory' },
-    { text: 'WMS Audits', icon: HiOutlineClipboardDocumentList, path: '/admin/wms-audits' },
   ],
   TENANT: [
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/tenant/dashboard' },
