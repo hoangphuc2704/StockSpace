@@ -53,78 +53,28 @@ export function createWarehouseFloorTexture() {
   ctx.strokeStyle = '#f59e0b'
   ctx.lineWidth = 10
 
-  // Khung viền hành lang an toàn quanh chu vi sàn
-  ctx.strokeRect(60, 60, 1928, 1928)
+  // Chỉ giữ hai cạnh dọc của khung sàn, không vẽ cạnh ngang.
+  ctx.beginPath()
+  ctx.moveTo(60, 60)
+  ctx.lineTo(60, 1988)
+  ctx.moveTo(1988, 60)
+  ctx.lineTo(1988, 1988)
+  ctx.stroke()
 
-  // Lối đi dọc chính giữa các dãy kệ và kéo dài suốt toàn bộ khoảng sân
+  // Line dọc phân làn chạy liên tục từ đầu đến cuối mặt sàn.
   const rackLanes = [380, 780, 1260, 1660]
   rackLanes.forEach((x) => {
     ctx.beginPath()
-    ctx.moveTo(x, 380)
-    ctx.lineTo(x, 1940)
+    ctx.moveTo(x, 60)
+    ctx.lineTo(x, 1988)
     ctx.stroke()
   })
 
-  // Vạch giao lộ ngang phía sau kệ
-  ctx.beginPath()
-  ctx.moveTo(100, 380)
-  ctx.lineTo(1948, 380)
-  ctx.stroke()
-
-  // 5. Hàm vẽ sọc cảnh báo vàng-đen (Hazard Stripes)
-  const drawHazardStripes = (x, y, w, h) => {
-    ctx.save()
-    ctx.beginPath()
-    ctx.rect(x, y, w, h)
-    ctx.clip()
-    ctx.fillStyle = '#0f172a'
-    ctx.fillRect(x, y, w, h)
-
-    ctx.fillStyle = '#f59e0b'
-    const stripeW = 24
-    for (let sx = -h; sx < w + h; sx += stripeW * 2) {
-      ctx.beginPath()
-      ctx.moveTo(x + sx, y)
-      ctx.lineTo(x + sx + stripeW, y)
-      ctx.lineTo(x + sx + stripeW - h, y + h)
-      ctx.lineTo(x + sx - h, y + h)
-      ctx.closePath()
-      ctx.fill()
-    }
-    ctx.restore()
-  }
-
-  // Vạch sọc cảnh báo ngã tư phía sau kệ và trước cửa ra vào kho
-  drawHazardStripes(120, 365, 1808, 30)
-  drawHazardStripes(80, 1980, 1888, 30)
-
-  // Vạch đi bộ cho nhân viên phía sau kệ (Pedestrian Zebra Crossing)
-  const drawZebra = (x, y, w, h, isHoriz = true) => {
-    ctx.save()
-    ctx.fillStyle = '#f8fafc'
-    if (isHoriz) {
-      const barW = 32
-      for (let bx = x; bx < x + w; bx += barW * 2) {
-        ctx.fillRect(bx, y, barW, h)
-      }
-    } else {
-      const barH = 32
-      for (let by = y; by < y + h; by += barH * 2) {
-        ctx.fillRect(x, by, w, barH)
-      }
-    }
-    ctx.restore()
-  }
-
-  // Vạch sang đường cho người đi bộ phía sau kệ
-  drawZebra(100, 200, 1848, 50, true)
-
   // Ký hiệu chữ an toàn trên sàn
-  ctx.fillStyle = '#fbbf24'
-  ctx.font = 'bold 30px "Segoe UI", Arial, sans-serif'
-  ctx.textAlign = 'center'
-  ctx.fillText('⚠ FORKLIFT SPEED LIMIT: 5 KM/H • WEAR PPE AT ALL TIMES', 1024, 150)
-  ctx.fillText('KEEP EMERGENCY AISLE CLEAR AT ALL TIMES', 1024, 2010)
+  // ctx.fillStyle = '#fbbf24'
+  // ctx.font = 'bold 30px "Segoe UI", Arial, sans-serif'
+  // ctx.textAlign = 'center'
+  // ctx.fillText('⚠ FORKLIFT SPEED LIMIT: 5 KM/H • WEAR PPE AT ALL TIMES', 1024, 150)
 
   const texture = new CanvasTexture(canvas)
   texture.wrapS = ClampToEdgeWrapping
@@ -625,5 +575,3 @@ export function createSafetySignTexture(type = 'EXIT') {
   texture.needsUpdate = true
   return texture
 }
-
-

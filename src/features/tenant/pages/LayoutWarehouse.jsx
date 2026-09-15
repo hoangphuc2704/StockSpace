@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import { useDispatch, useSelector } from 'react-redux'
 import {
   AlertCircle,
+  ChevronDown,
+  ChevronRight,
   Grid3X3,
   Loader2,
   Plus,
@@ -209,11 +211,17 @@ const normalizeAccessPoints = (points) => {
   const usedCells = new Set()
 
   return points.reduce((normalized, point) => {
-    const type = String(point?.type || '').trim().toUpperCase()
+    const type = String(point?.type || '')
+      .trim()
+      .toUpperCase()
     const row = integerOf(point?.row, -1)
     const column = integerOf(point?.column, -1)
     const key = `${row}:${column}`
-    const isOuterEdge = row === 0 || row === FOOTPRINT_GRID_SIZE - 1 || column === 0 || column === FOOTPRINT_GRID_SIZE - 1
+    const isOuterEdge =
+      row === 0 ||
+      row === FOOTPRINT_GRID_SIZE - 1 ||
+      column === 0 ||
+      column === FOOTPRINT_GRID_SIZE - 1
 
     if (!['ENTRY', 'EXIT'].includes(type) || !isOuterEdge || usedCells.has(key)) return normalized
     usedCells.add(key)
@@ -534,8 +542,7 @@ const fitBinsToRack = (rack, { arrange = false, arrangePositions = false } = {})
         ? column * geometry.frontSlot + (geometry.frontSlot - geometry.length) / 2
         : row * rackLength + (rackLength - geometry.length) / 2
       const height = getBinHeightForRack({ height: rackHeight, shelfCount: levels })
-      const shouldCalculateNewBinVolume =
-        bin.id == null && numberOf(bin.maxVolume, 0) <= 0
+      const shouldCalculateNewBinVolume = bin.id == null && numberOf(bin.maxVolume, 0) <= 0
       return {
         ...bin,
         shelfLevel,
@@ -826,10 +833,7 @@ function RackElevationView({
       binKey: bin.clientKey,
       sourceRackKey: rack.clientKey,
     })
-    event.dataTransfer.setData(
-      'application/json',
-      transferPayload
-    )
+    event.dataTransfer.setData('application/json', transferPayload)
     // Some browsers only expose text/plain during a native drag.
     event.dataTransfer.setData('text/plain', transferPayload)
   }
@@ -855,8 +859,7 @@ function RackElevationView({
     if (!rect?.width || !rect.height) return
     const relativeX = clamp((event.clientX - rect.left) / rect.width, 0, 1)
     const relativeY = clamp((event.clientY - rect.top) / rect.height, 0, 0.999999)
-    const shelfLevel =
-      levels > 0 ? clamp(levels - Math.floor(relativeY * levels), 1, levels) : 0
+    const shelfLevel = levels > 0 ? clamp(levels - Math.floor(relativeY * levels), 1, levels) : 0
     onDropBin(
       transfer.binKey,
       transfer.sourceRackKey,
@@ -1002,9 +1005,15 @@ function RackStatisticsTable({
   canEdit = false,
   onUpdateRackCapacity = () => {},
 }) {
+  const RACKS_PER_PAGE = 5
+  const [rackPage, setRackPage] = useState(0)
   const [draftValues, setDraftValues] = useState({})
   const racks = Array.isArray(layout?.racks) ? layout.racks : []
   const totalBins = racks.reduce((total, rack) => total + (rack.bins?.length || 0), 0)
+  const totalRackPages = Math.max(1, Math.ceil(racks.length / RACKS_PER_PAGE))
+  const currentRackPage = Math.min(rackPage, totalRackPages - 1)
+  const firstRackIndex = currentRackPage * RACKS_PER_PAGE
+  const visibleRacks = racks.slice(firstRackIndex, firstRackIndex + RACKS_PER_PAGE)
   const capacityByRackId = new Map(
     (Array.isArray(capacityMetrics?.racks) ? capacityMetrics.racks : [])
       .filter((metric) => metric?.rackId)
@@ -1076,7 +1085,7 @@ function RackStatisticsTable({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {racks.map((rack, index) => {
+              {visibleRacks.map((rack, index) => {
                 const footprint = getRackFootprint(rack)
                 const presetId = rack.rackPresetId || inferRackPreset(rack)
                 const preset = RACK_PRESETS.find((item) => item.id === presetId)
@@ -1091,7 +1100,9 @@ function RackStatisticsTable({
                     key={rack.clientKey || rack.id || `${rack.code}-${index}`}
                     className="text-slate-700 transition-colors duration-200 odd:bg-white even:bg-slate-50/70 hover:bg-orange-50/70"
                   >
-                    <td className="px-4 py-3 font-semibold text-slate-400">{index + 1}</td>
+                    <td className="px-4 py-3 font-semibold text-slate-400">
+                      {firstRackIndex + index + 1}
+                    </td>
                     <td className="px-4 py-3">
                       <p className="font-bold text-slate-900">
                         {rack.name || rack.code || `Rack ${index + 1}`}
@@ -1221,6 +1232,33 @@ function RackStatisticsTable({
           </table>
         </div>
       )}
+
+      {racks.length > RACKS_PER_PAGE && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
+          <span className="text-xs text-slate-500">
+            Trang {currentRackPage + 1} / {totalRackPages} · Hiển thị {firstRackIndex + 1}-
+            {Math.min(firstRackIndex + RACKS_PER_PAGE, racks.length)} / {racks.length} Rack
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={currentRackPage === 0}
+              onClick={() => setRackPage((current) => Math.max(current - 1, 0))}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Trước
+            </button>
+            <button
+              type="button"
+              disabled={currentRackPage >= totalRackPages - 1}
+              onClick={() => setRackPage((current) => Math.min(current + 1, totalRackPages - 1))}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Tiếp
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
@@ -1282,6 +1320,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [view, setView] = useState(
     stockOnly ? 'stock' : initialView === 'rack-section' ? 'rack-section' : '2d'
   )
+  const [expandedRackKeys, setExpandedRackKeys] = useState(() => new Set())
   const [focusedRackKey, setFocusedRackKey] = useState(null)
   const [blockedMode, setBlockedMode] = useState(false)
   const [blockedTool, setBlockedTool] = useState('lock')
@@ -1406,9 +1445,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   )
   const leasedLayoutAreaM2 = numberOf(layout?.width) * numberOf(layout?.length)
   const ownedWarehouseAreaM2 = numberOf(selectedWarehouse?.area, 0)
-  const previewAreaM2 = isOwner && ownedWarehouseAreaM2 > 0
-    ? ownedWarehouseAreaM2
-    : leasedLayoutAreaM2
+  const previewAreaM2 =
+    isOwner && ownedWarehouseAreaM2 > 0 ? ownedWarehouseAreaM2 : leasedLayoutAreaM2
   const previewAreaLabel = isOwner ? 'Diện tích toàn kho' : 'Diện tích đang thuê'
 
   useActiveWarehouseContext(selectedWarehouseId)
@@ -1554,7 +1592,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     })
 
     return binsById
-  }, [capacityMetrics, capacityWarehouseId, currentRole, isContractLayout, isOwner, selectedWarehouseId])
+  }, [
+    capacityMetrics,
+    capacityWarehouseId,
+    currentRole,
+    isContractLayout,
+    isOwner,
+    selectedWarehouseId,
+  ])
 
   useEffect(() => {
     let alive = true
@@ -1594,26 +1639,28 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             setRentedWarehouses(Array.isArray(payload) ? payload : (payload?.content ?? []))
           }
 
-          try {
-            const contractsResponse = await contractApi.getMyContracts({ page: 0, size: 100 })
-            const contractsPayload = apiData(contractsResponse)
-            const contractList = Array.isArray(contractsPayload)
-              ? contractsPayload
-              : (contractsPayload?.content ?? [])
-            const capabilities = contractList.reduce((result, contract) => {
-              const warehouseId = contract?.warehouseId
-              if (!warehouseId) return result
-              const key = String(warehouseId)
-              result[key] = {
-                canViewLayout: Boolean(result[key]?.canViewLayout || contract.canViewLayout),
-                canManageWms: Boolean(result[key]?.canManageWms || contract.canManageWms),
-              }
-              return result
-            }, {})
-            if (alive) setTenantCapabilities(capabilities)
-          } catch {
-            // The warehouse list remains usable in read-only mode if contract flags fail to load.
-            if (alive) setTenantCapabilities({})
+          if (currentRole === 'TENANT') {
+            try {
+              const contractsResponse = await contractApi.getMyContracts({ page: 0, size: 100 })
+              const contractsPayload = apiData(contractsResponse)
+              const contractList = Array.isArray(contractsPayload)
+                ? contractsPayload
+                : (contractsPayload?.content ?? [])
+              const capabilities = contractList.reduce((result, contract) => {
+                const warehouseId = contract?.warehouseId
+                if (!warehouseId) return result
+                const key = String(warehouseId)
+                result[key] = {
+                  canViewLayout: Boolean(result[key]?.canViewLayout || contract.canViewLayout),
+                  canManageWms: Boolean(result[key]?.canManageWms || contract.canManageWms),
+                }
+                return result
+              }, {})
+              if (alive) setTenantCapabilities(capabilities)
+            } catch {
+              // The warehouse list remains usable in read-only mode if contract flags fail to load.
+              if (alive) setTenantCapabilities({})
+            }
           }
         }
       } catch (requestError) {
@@ -1632,7 +1679,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     return () => {
       alive = false
     }
-  }, [isContractLayout, isOwner, rentalRefreshKey])
+  }, [currentRole, isContractLayout, isOwner, rentalRefreshKey])
 
   // Contract expiry/cancellation can remove the selected rented warehouse and
   // revoke its layout/stock access. Reload the warehouse options immediately
@@ -1928,6 +1975,23 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       event.stopPropagation()
       return
     }
+    if (type === 'bin' && mode === 'move') {
+      // Bin chỉ được chọn trên sơ đồ 2D; không cho kéo để tránh vô tình đổi vị trí.
+      event.preventDefault()
+      event.stopPropagation()
+      if (isReadOnly) {
+        updateSelection({ type, key: entity.clientKey }, event.ctrlKey || event.metaKey)
+        if (currentRole === 'STAFF') setView('stock')
+        return
+      }
+      if (blockedMode) return
+      updateSelection(
+        { type, key: entity.clientKey },
+        isMultiSelectMode || event.ctrlKey || event.metaKey
+      )
+      setBlockedMode(false)
+      return
+    }
     if (isReadOnly) {
       event.preventDefault()
       event.stopPropagation()
@@ -2117,35 +2181,38 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     updateSelection,
   ])
 
-  const openBinConfiguration = useCallback((rackOverride = null) => {
-    const targetRack = rackOverride || selectedRack
-    if (!canEditLayout || !targetRack) return
+  const openBinConfiguration = useCallback(
+    (rackOverride = null) => {
+      const targetRack = rackOverride || selectedRack
+      if (!canEditLayout || !targetRack) return
 
-    const levels = getRackLevelCount(targetRack)
-    if (levels < 1) {
-      setError('Rack chưa có số tầng từ BE nên chưa thể thêm Bin.')
-      return
-    }
-    const currentBinCount = Array.isArray(targetRack.bins) ? targetRack.bins.length : 0
-    const binLimit = getRackMaxBinCount(targetRack)
-    if (binLimit < 1) {
-      setError('Rack chưa có giới hạn số Bin từ BE nên chưa thể thêm Bin.')
-      return
-    }
-    if (currentBinCount >= binLimit) {
-      setError(`${targetRack.name || targetRack.code || 'Rack'} đã đủ ${binLimit} Bin.`)
-      return
-    }
+      const levels = getRackLevelCount(targetRack)
+      if (levels < 1) {
+        setError('Rack chưa có số tầng từ BE nên chưa thể thêm Bin.')
+        return
+      }
+      const currentBinCount = Array.isArray(targetRack.bins) ? targetRack.bins.length : 0
+      const binLimit = getRackMaxBinCount(targetRack)
+      if (binLimit < 1) {
+        setError('Rack chưa có giới hạn số Bin từ BE nên chưa thể thêm Bin.')
+        return
+      }
+      if (currentBinCount >= binLimit) {
+        setError(`${targetRack.name || targetRack.code || 'Rack'} đã đủ ${binLimit} Bin.`)
+        return
+      }
 
-    const nextBinGeometry = getAutomaticBinGeometry(targetRack, Math.max(currentBinCount + 1, 1))
-    setEditingBinKey(null)
-    setNewBinWidth(String(Number(nextBinGeometry.width.toFixed(6))))
-    setNewBinHeight(String(getBinHeightForRack(targetRack)))
-    setNewBinShelfLevel('1')
-    setNewBinQuantity(1)
-    setIsBinConfigOpen(true)
-    setError('')
-  }, [canEditLayout, selectedRack])
+      const nextBinGeometry = getAutomaticBinGeometry(targetRack, Math.max(currentBinCount + 1, 1))
+      setEditingBinKey(null)
+      setNewBinWidth(String(Number(nextBinGeometry.width.toFixed(6))))
+      setNewBinHeight(String(getBinHeightForRack(targetRack)))
+      setNewBinShelfLevel('1')
+      setNewBinQuantity(1)
+      setIsBinConfigOpen(true)
+      setError('')
+    },
+    [canEditLayout, selectedRack]
+  )
 
   const addBinToSelectedRack = useCallback(() => {
     if (!canEditLayout || !selectedRack) return
@@ -2289,9 +2356,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       }
       setEditingBinKey(targetBin.clientKey)
       setNewBinWidth(String(numberOf(targetBin.width, 0)))
-      setNewBinHeight(
-        String(numberOf(targetBin.height, 0) || getBinHeightForRack(targetRack))
-      )
+      setNewBinHeight(String(numberOf(targetBin.height, 0) || getBinHeightForRack(targetRack)))
       setNewBinShelfLevel(String(clamp(integerOf(targetBin.shelfLevel, 1), 1, levels)))
       setNewBinQuantity(1)
       setIsBinConfigOpen(true)
@@ -2654,11 +2719,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         ? Number(dropRatioX) * targetSectionWidth - targetSectionBin.width / 2
         : null
       const coordinateX = targetSectionBin.usesRackLengthAsSectionWidth
-        ? clamp(
-            numberOf(sourceBin.coordinateX),
-            0,
-            Math.max(targetFootprint.width - width, 0)
-          )
+        ? clamp(numberOf(sourceBin.coordinateX), 0, Math.max(targetFootprint.width - width, 0))
         : clamp(
             droppedSectionCoordinate == null
               ? numberOf(sourceBin.coordinateX)
@@ -2674,18 +2735,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             0,
             Math.max(targetFootprint.length - length, 0)
           )
-        : clamp(
-            numberOf(sourceBin.coordinateY),
-            0,
-            Math.max(targetFootprint.length - length, 0)
-          )
+        : clamp(numberOf(sourceBin.coordinateY), 0, Math.max(targetFootprint.length - length, 0))
       const canDropAtPosition = !targetBins.some(
         (bin) =>
           integerOf(bin?.shelfLevel, 0) === shelfLevel &&
-          rectanglesTooClose(
-            { coordinateX, coordinateY, width, length },
-            bin
-          )
+          rectanglesTooClose({ coordinateX, coordinateY, width, length }, bin)
       )
       if (!canDropAtPosition) {
         setError('Vị trí đang đè lên Bin khác. Hãy thả vào khoảng trống trong Rack.')
@@ -3173,7 +3227,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const toggleAccessPoint = (row, column) => {
     if (!canEditLayout || !accessPointMode) return
     const isOuterEdge =
-      row === 0 || row === FOOTPRINT_GRID_SIZE - 1 || column === 0 || column === FOOTPRINT_GRID_SIZE - 1
+      row === 0 ||
+      row === FOOTPRINT_GRID_SIZE - 1 ||
+      column === 0 ||
+      column === FOOTPRINT_GRID_SIZE - 1
     if (!isOuterEdge) {
       setError('Cửa ra vào chỉ được đặt ở ô ngoài cùng của layout.')
       return
@@ -3314,12 +3371,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             )
                           )}
                         </select>
-                    </label>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                      Kích thước giữ nguyên: Dài {numberOf(selectedEntity.length)}m × Rộng{' '}
-                      {numberOf(selectedEntity.width)}m × Cao{' '}
-                      {numberOf(selectedEntity.height)}m.
-                    </div>
+                      </label>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                        Kích thước giữ nguyên: Dài {numberOf(selectedEntity.length)}m × Rộng{' '}
+                        {numberOf(selectedEntity.width)}m × Cao {numberOf(selectedEntity.height)}m.
+                      </div>
                       <p className="text-[11px] text-slate-500">
                         FE chỉ tìm vị trí trống trong Rack đích. Nếu Bin đang có tồn kho, BE có thể
                         từ chối việc chuyển Rack.
@@ -3984,73 +4040,74 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               >
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="font-bold">Structure</h2>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-right text-xs text-slate-500">
                     {layout.racks.length} Rack · {binCount} Bin
                   </span>
                 </div>
                 {canEditLayout && (
                   <div className="mb-4 space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsRackConfigOpen(true)}
-                      className={`${primaryButtonClass} inline-flex w-full items-center justify-center`}
-                    >
-                      <Plus className="mr-1.5 h-4 w-4" />
-                      Cấu hình / Thêm Rack
-                    </button>
-                    {selectedRack && (
-                      <div className="grid grid-cols-2 gap-2">
                         <button
                           type="button"
-                          onClick={() => {
-                            setView('rack-section')
-                            openBinConfiguration()
-                          }}
-                          className="inline-flex items-center justify-center rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 transition hover:bg-orange-100"
+                          onClick={() => setIsRackConfigOpen(true)}
+                          className={`${primaryButtonClass} inline-flex w-full items-center justify-center`}
                         >
-                          <Plus className="mr-1 h-3.5 w-3.5" />
-                          Thêm Bin
+                          <Plus className="mr-1.5 h-4 w-4" />
+                          Cấu hình / Thêm Rack
                         </button>
-                        {selection.type === 'bin' && (
+                        {selectedRack && (
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setView('rack-section')
+                                openBinConfiguration()
+                              }}
+                              className="inline-flex items-center justify-center rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 transition hover:bg-orange-100"
+                            >
+                              <Plus className="mr-1 h-3.5 w-3.5" />
+                              Thêm Bin
+                            </button>
+                            {selection.type === 'bin' && (
+                              <button
+                                type="button"
+                                onClick={openMoveBinConfiguration}
+                                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+                              >
+                                Chuyển Rack
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
                           <button
                             type="button"
-                            onClick={openMoveBinConfiguration}
-                            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+                            onClick={() => setIsMultiSelectMode((current) => !current)}
+                            className={`rounded-full border px-3 py-2 text-xs font-semibold transition-all duration-200 ${isMultiSelectMode ? 'border-orange-500 bg-orange-500 text-white shadow-sm' : 'border-slate-200 text-slate-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700'}`}
                           >
-                            Chuyển Rack
+                            {isMultiSelectMode ? 'Multi-select: On' : 'Multi-select'}
                           </button>
-                        )}
+                          <button
+                            type="button"
+                            onClick={removeSelected}
+                            disabled={!selectedItems.length}
+                            className="inline-flex items-center justify-center gap-1 rounded-full border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition-all duration-200 enabled:hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete {selectedItems.length ? `(${selectedItems.length})` : ''}
+                          </button>
+                        </div>
+                        <p className="text-[11px] leading-4 text-slate-500">
+                          Ctrl/Cmd + click để chọn nhiều. Ctrl/Cmd + C để copy, Ctrl/Cmd + V để dán,
+                          Delete để xóa lựa chọn.
+                        </p>
                       </div>
                     )}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsMultiSelectMode((current) => !current)}
-                        className={`rounded-full border px-3 py-2 text-xs font-semibold transition-all duration-200 ${isMultiSelectMode ? 'border-orange-500 bg-orange-500 text-white shadow-sm' : 'border-slate-200 text-slate-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700'}`}
-                      >
-                        {isMultiSelectMode ? 'Multi-select: On' : 'Multi-select'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={removeSelected}
-                        disabled={!selectedItems.length}
-                        className="inline-flex items-center justify-center gap-1 rounded-full border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 transition-all duration-200 enabled:hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete {selectedItems.length ? `(${selectedItems.length})` : ''}
-                      </button>
-                    </div>
-                    <p className="text-[11px] leading-4 text-slate-500">
-                      Ctrl/Cmd + click để chọn nhiều. Ctrl/Cmd + C để copy, Ctrl/Cmd + V để dán,
-                      Delete để xóa lựa chọn.
-                    </p>
-                  </div>
-                )}
-                <div className="max-h-130 space-y-2 overflow-auto">
-                  {(Array.isArray(layout?.racks) ? layout.racks : []).map((rack) => {
-                    const rackBins = Array.isArray(rack?.bins) ? rack.bins : []
-                    return (
-                      <div key={rack.clientKey} className="rounded-xl border border-slate-200 p-2">
+                    <div className="max-h-130 space-y-2 overflow-auto">
+                      {(Array.isArray(layout?.racks) ? layout.racks : []).map((rack) => {
+                        const rackBins = Array.isArray(rack?.bins) ? rack.bins : []
+                        const isRackExpanded = expandedRackKeys.has(rack.clientKey)
+                        return (
+                          <div key={rack.clientKey} className="rounded-xl border border-slate-200 p-2">
                         <button
                           type="button"
                           onClick={(event) => {
@@ -4059,15 +4116,28 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                               { type: 'rack', key: rack.clientKey },
                               isMultiSelectMode || event.ctrlKey || event.metaKey
                             )
+                            setExpandedRackKeys((current) => {
+                              const next = new Set(current)
+                              if (next.has(rack.clientKey)) next.delete(rack.clientKey)
+                              else next.add(rack.clientKey)
+                              return next
+                            })
                             setBlockedMode(false)
-                            if (!isMultiSelectMode && !event.ctrlKey && !event.metaKey) {
-                              setView('rack-section')
-                            }
                           }}
+                          aria-expanded={isRackExpanded}
+                          title={isRackExpanded ? 'Thu gọn danh sách Bin' : 'Mở danh sách Bin'}
                           className={`w-full rounded-xl px-2 py-2 text-left text-sm font-semibold transition-colors duration-200 ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'bg-orange-50 text-orange-700' : 'hover:bg-slate-50'}`}
                         >
                           <span className="flex items-center justify-between gap-2">
-                            <span className="truncate">{rack.name || rack.code}</span>
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              {rackBins.length > 0 &&
+                                (isRackExpanded ? (
+                                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                ) : (
+                                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                ))}
+                              <span className="truncate">{rack.name || rack.code}</span>
+                            </span>
                             <span className="shrink-0 text-xs font-normal text-slate-400">
                               {rackBins.length} Bin
                             </span>
@@ -4079,7 +4149,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             </span>
                           )}
                         </button>
-                        <div className="ml-3 space-y-1 border-l border-slate-200 pl-2">
+                        {isRackExpanded && (
+                          <div className="ml-3 space-y-1 border-l border-slate-200 pl-2">
                           {rackBins.map((bin) => (
                             <button
                               key={bin.clientKey}
@@ -4091,9 +4162,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                   isMultiSelectMode || event.ctrlKey || event.metaKey
                                 )
                                 setBlockedMode(false)
-                                if (!isMultiSelectMode && !event.ctrlKey && !event.metaKey) {
-                                  setView('rack-section')
-                                }
                               }}
                               className={`block w-full rounded-lg px-2 py-1.5 text-left text-xs transition-colors duration-200 ${selectedItemSet.has(`bin:${bin.clientKey}`) ? 'bg-[#f7ead7] font-semibold text-[#8a5a2b]' : 'text-slate-600 hover:bg-slate-50'}`}
                             >
@@ -4113,11 +4181,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                               )}
                             </button>
                           ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                          </div>
+                        )}
+                          </div>
+                        )
+                      })}
+                    </div>
               </aside>
 
               <section className={`${softCardClass} min-w-0 p-3 sm:p-4`}>
@@ -4166,7 +4235,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         }}
                         className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${!blockedMode ? 'bg-orange-500 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-orange-50 hover:text-orange-700'}`}
                       >
-                        Adjust Rack / Bin
+                        Adjust Rack
                       </button>
                       <button
                         type="button"
@@ -4184,22 +4253,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           </span>
                         )}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleAccessPointMode('ENTRY')}
-                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${accessPointMode === 'ENTRY' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}`}
-                        title="Chọn một ô ở biên ngoài để đặt cửa vào"
-                      >
-                        ↓ Cửa vào
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => toggleAccessPointMode('EXIT')}
-                        className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${accessPointMode === 'EXIT' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'}`}
-                        title="Chọn một ô ở biên ngoài để đặt cửa ra"
-                      >
-                        ↑ Cửa ra
-                      </button>
+
                       {blockedMode && (
                         <>
                           <button
@@ -4245,8 +4299,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       {accessPointMode === 'ENTRY' ? '↓' : '↑'}
                     </span>
                     <span>
-                      Chọn ô ở biên ngoài layout để đặt {accessPointMode === 'ENTRY' ? 'cửa vào' : 'cửa ra'}. Bấm lại
-                      vào mũi tên đã đặt để xóa.
+                      Chọn ô ở biên ngoài layout để đặt{' '}
+                      {accessPointMode === 'ENTRY' ? 'cửa vào' : 'cửa ra'}. Bấm lại vào mũi tên đã
+                      đặt để xóa.
                     </span>
                   </div>
                 )}
@@ -4399,34 +4454,34 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     </div>
                     <div className="max-h-[calc(100vh-15rem)] overflow-y-auto pr-1">
                       <div className="grid min-w-0 gap-4 md:grid-cols-2">
-                      {layout.racks.map((rack) => (
-                        <RackElevationView
-                          key={rack.clientKey}
-                          rack={rack}
-                          canEdit={canEditLayout}
-                          selectedBinKey={selection.type === 'bin' ? selection.key : null}
-                          onAddBin={() => {
-                            setFocusedRackKey(null)
-                            updateSelection({ type: 'rack', key: rack.clientKey }, false, true)
-                            openBinConfiguration(rack)
-                          }}
-                          onSelectBin={(binKey) => {
-                            setFocusedRackKey(null)
-                            updateSelection({ type: 'bin', key: binKey }, false, true)
-                            setBlockedMode(false)
-                          }}
-                          onEditBin={(binKey) => {
-                            setFocusedRackKey(null)
-                            setBlockedMode(false)
-                            openBinEditConfiguration(binKey)
-                          }}
-                          onMoveBin={(...args) => {
-                            setFocusedRackKey(null)
-                            moveEntityFromPreview(...args)
-                          }}
-                          onDropBin={moveBinFromSectionToRack}
-                        />
-                      ))}
+                        {layout.racks.map((rack) => (
+                          <RackElevationView
+                            key={rack.clientKey}
+                            rack={rack}
+                            canEdit={canEditLayout}
+                            selectedBinKey={selection.type === 'bin' ? selection.key : null}
+                            onAddBin={() => {
+                              setFocusedRackKey(null)
+                              updateSelection({ type: 'rack', key: rack.clientKey }, false, true)
+                              openBinConfiguration(rack)
+                            }}
+                            onSelectBin={(binKey) => {
+                              setFocusedRackKey(null)
+                              updateSelection({ type: 'bin', key: binKey }, false, true)
+                              setBlockedMode(false)
+                            }}
+                            onEditBin={(binKey) => {
+                              setFocusedRackKey(null)
+                              setBlockedMode(false)
+                              openBinEditConfiguration(binKey)
+                            }}
+                            onMoveBin={(...args) => {
+                              setFocusedRackKey(null)
+                              moveEntityFromPreview(...args)
+                            }}
+                            onDropBin={moveBinFromSectionToRack}
+                          />
+                        ))}
                       </div>
                     </div>
                   </div>
