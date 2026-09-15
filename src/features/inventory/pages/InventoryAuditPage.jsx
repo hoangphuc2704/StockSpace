@@ -17,24 +17,49 @@ import { useDispatch, useSelector } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import { showApiErrorToast } from '@/config/apiError'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const STATUS_CONFIG = {
   EDIT_REQUESTED: {
-    label: 'Yêu cầu mở lại',
+    label: { vi: 'Yêu cầu mở lại', en: 'Edit requested' },
     className: 'border-purple-200 bg-purple-50 text-purple-800',
   },
-  REOPENED: { label: 'Đã mở lại', className: 'border-indigo-200 bg-indigo-50 text-indigo-800' },
-  PENDING: { label: 'Kế hoạch cũ', className: 'border-slate-200 bg-slate-100 text-slate-700' },
-  DRAFT: { label: 'Bản nháp', className: 'border-slate-200 bg-slate-100 text-slate-700' },
-  IN_PROGRESS: { label: 'Đang kiểm đếm', className: 'border-blue-200 bg-blue-50 text-blue-800' },
-  SUBMITTED: { label: 'Chờ duyệt', className: 'border-amber-200 bg-amber-50 text-amber-800' },
+  REOPENED: {
+    label: { vi: 'Đã mở lại', en: 'Reopened' },
+    className: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+  },
+  PENDING: {
+    label: { vi: 'Kế hoạch cũ', en: 'Legacy pending' },
+    className: 'border-slate-200 bg-slate-100 text-slate-700',
+  },
+  DRAFT: {
+    label: { vi: 'Bản nháp', en: 'Draft' },
+    className: 'border-slate-200 bg-slate-100 text-slate-700',
+  },
+  IN_PROGRESS: {
+    label: { vi: 'Đang kiểm đếm', en: 'In progress' },
+    className: 'border-blue-200 bg-blue-50 text-blue-800',
+  },
+  SUBMITTED: {
+    label: { vi: 'Chờ duyệt', en: 'Submitted' },
+    className: 'border-amber-200 bg-amber-50 text-amber-800',
+  },
   RECOUNT_REQUIRED: {
-    label: 'Cần kiểm lại',
+    label: { vi: 'Cần kiểm lại', en: 'Recount required' },
     className: 'border-orange-200 bg-orange-50 text-orange-800',
   },
-  APPROVED: { label: 'Đã duyệt', className: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  REJECTED: { label: 'Đã từ chối (cũ)', className: 'border-rose-200 bg-rose-50 text-rose-800' },
-  CANCELLED: { label: 'Đã hủy', className: 'border-slate-200 bg-slate-100 text-slate-700' },
+  APPROVED: {
+    label: { vi: 'Đã duyệt', en: 'Approved' },
+    className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  },
+  REJECTED: {
+    label: { vi: 'Đã từ chối (cũ)', en: 'Rejected (legacy)' },
+    className: 'border-rose-200 bg-rose-50 text-rose-800',
+  },
+  CANCELLED: {
+    label: { vi: 'Đã hủy', en: 'Cancelled' },
+    className: 'border-red-200 bg-red-50 text-red-800',
+  },
 }
 
 const SCOPE_LABELS = { WAREHOUSE: 'Toàn kho', RACK: 'Theo rack', BIN: 'Theo bin' }
@@ -44,6 +69,7 @@ const InventoryAuditPage = ({ currentRole }) => {
   const [searchParams] = useSearchParams()
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  const { language } = useLanguage()
 
   const [audits, setAudits] = useState([])
   const [loading, setLoading] = useState(false)
@@ -392,7 +418,7 @@ const InventoryAuditPage = ({ currentRole }) => {
                     ) : audits.length ? (
                       audits.map((audit) => {
                         const status = STATUS_CONFIG[audit.status] || {
-                          label: audit.status,
+                          label: { vi: audit.status, en: audit.status },
                           className: 'border-slate-200 bg-slate-100 text-slate-700',
                         }
                         return (
@@ -416,7 +442,7 @@ const InventoryAuditPage = ({ currentRole }) => {
                               <span
                                 className={`inline-flex rounded border px-2 py-1 text-[11px] font-semibold ${status.className}`}
                               >
-                                {status.label}
+                                {status.label[language] || status.label.en}
                               </span>
                             </td>
                             <td className="px-5 py-3.5 text-slate-600 tabular-nums">

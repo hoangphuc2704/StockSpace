@@ -23,6 +23,22 @@ import { positiveInteger, required } from '@/config/validation'
 
 const CAPACITY_EPSILON = 1e-9
 
+const compareReceiptsByDateDesc = (firstReceipt, secondReceipt) => {
+  const firstTime = Date.parse(firstReceipt?.createdAt || '')
+  const secondTime = Date.parse(secondReceipt?.createdAt || '')
+  const firstHasValidDate = Number.isFinite(firstTime)
+  const secondHasValidDate = Number.isFinite(secondTime)
+
+  if (!firstHasValidDate || !secondHasValidDate) {
+    if (firstHasValidDate === secondHasValidDate) {
+      return String(secondReceipt?.id || '').localeCompare(String(firstReceipt?.id || ''))
+    }
+    return firstHasValidDate ? -1 : 1
+  }
+
+  return secondTime - firstTime || String(secondReceipt?.id || '').localeCompare(String(firstReceipt?.id || ''))
+}
+
 const InboundPage = () => {
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
@@ -735,14 +751,16 @@ const InboundPage = () => {
   }
 
   const filteredReceipts = useMemo(() => {
-    return receipts.filter((r) => {
-      if (activeTab === 'ALL') return true
-      if (activeTab === 'PENDING' && r.status === 'PENDING') return true
-      if (activeTab === 'APPROVED' && r.status === 'APPROVED') return true
-      if (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') return true
-      if (activeTab === 'COMPLETED' && r.status === 'COMPLETED') return true
-      return false
-    })
+    return receipts
+      .filter((r) => {
+        if (activeTab === 'ALL') return true
+        if (activeTab === 'PENDING' && r.status === 'PENDING') return true
+        if (activeTab === 'APPROVED' && r.status === 'APPROVED') return true
+        if (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') return true
+        if (activeTab === 'COMPLETED' && r.status === 'COMPLETED') return true
+        return false
+      })
+      .sort(compareReceiptsByDateDesc)
   }, [receipts, activeTab])
 
 
