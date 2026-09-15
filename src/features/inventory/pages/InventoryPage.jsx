@@ -21,6 +21,7 @@ import Sidebar from '@/components/SideBar'
 import stockApi from '../../../services/wms/stockApi'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import layoutApi from '../../../services/layoutApi'
+import staffApi from '../../../services/staff/staffApi'
 import { showApiErrorToast } from '@/config/apiError'
 import Modal from '@/components/organisms/Modal'
 import DataTable from '@/components/organisms/DataTable'
@@ -50,6 +51,10 @@ const InventoryPage = () => {
 
   // Expanded SKU rows
   const [expandedSkus, setExpandedSkus] = useState(new Set())
+
+  // Rack folders are collapsed by default. Keep expanded rack ids so the
+  // same tree works for both Tenant and Staff views.
+  const [expandedRacks, setExpandedRacks] = useState(new Set())
 
   // Search filters
   const [locationSearch, setLocationSearch] = useState('')
@@ -87,8 +92,13 @@ const InventoryPage = () => {
     if (!selectedWarehouseId) return
     setIsLoading(true)
     try {
+      const layoutRequest =
+        currentRole === 'STAFF'
+          ? staffApi.getStaffLayout(selectedWarehouseId)
+          : layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
+
       const [layoutRes, stockRes] = await Promise.all([
-        layoutApi.getTenantWarehouseLayout(selectedWarehouseId),
+        layoutRequest,
         stockApi.getAllStock(selectedWarehouseId),
       ])
 
@@ -99,7 +109,7 @@ const InventoryPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [selectedWarehouseId])
+  }, [currentRole, selectedWarehouseId])
 
   useEffect(() => {
     // Load the server-backed warehouse list when the page scope changes.
@@ -165,6 +175,21 @@ const InventoryPage = () => {
       newExpanded.add(skuId)
     }
     setExpandedSkus(newExpanded)
+  }
+
+  const toggleRack = (rackId) => {
+    setExpandedRacks((current) => {
+      const next = new Set(current)
+      const normalizedRackId = String(rackId)
+
+      if (next.has(normalizedRackId)) {
+        next.delete(normalizedRackId)
+      } else {
+        next.add(normalizedRackId)
+      }
+
+      return next
+    })
   }
 
   const handleViewHistory = async (batchId) => {
@@ -334,34 +359,60 @@ const InventoryPage = () => {
                     </button>
 
                     {/* Racks */}
-                    {treeRacks.map((rack) => (
-                      <div key={rack.id} className="mt-1 pl-4">
-                        <button
-                          onClick={() => setSelectedLocation({ type: 'rack', id: rack.id })}
-                          className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${selectedLocation.type === 'rack' && selectedLocation.id === rack.id ? 'bg-emerald-50 font-medium text-emerald-700' : 'text-slate-600 hover:bg-slate-100'}`}
-                        >
-                          <LayoutGrid className="h-4 w-4 text-slate-400" />
-                          {rack.name || rack.code}
-                        </button>
+                    {treeRacks.map((rack) => {
+                      const isRackExpanded = expandedRacks.has(String(rack.id))
+                      const isRackSelected =
+                        selectedLocation.type === 'rack' && selectedLocation.id === rack.id
 
-                        {/* Bins */}
-                        {rack.bins?.map((bin) => (
-                          <div key={bin.id} className="relative mt-0.5 pl-6">
-                            {/* Tree line */}
-                            <div className="absolute top-0 left-3 h-full w-px bg-slate-200" />
-                            <div className="absolute top-1/2 left-3 h-px w-3 bg-slate-200" />
-
+                      return (
+                        <div key={rack.id} className="mt-1 pl-4">
+                          <div
+                            className={`flex items-center rounded-lg text-sm transition-colors ${isRackSelected ? 'bg-emerald-50 font-medium text-emerald-700' : 'text-slate-600 hover:bg-slate-100'}`}
+                          >
                             <button
-                              onClick={() => setSelectedLocation({ type: 'bin', id: bin.id })}
-                              className={`flex w-full items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors ${selectedLocation.type === 'bin' && selectedLocation.id === bin.id ? 'bg-emerald-50 font-medium text-emerald-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                              type="button"
+                              aria-label={`${isRackExpanded ? 'Thu gọn' : 'Mở rộng'} ${rack.name || rack.code}`}
+                              aria-expanded={isRackExpanded}
+                              onClick={() => toggleRack(rack.id)}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-white hover:text-emerald-600"
                             >
-                              <MapIcon className="h-3.5 w-3.5 text-slate-400" />
-                              {bin.name || bin.code}
+                              {isRackExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedLocation({ type: 'rack', id: rack.id })}
+                              className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1.5 text-left"
+                            >
+                              <LayoutGrid className="h-4 w-4 shrink-0 text-slate-400" />
+                              <span className="truncate">{rack.name || rack.code}</span>
                             </button>
                           </div>
-                        ))}
-                      </div>
-                    ))}
+
+                          {/* Bins */}
+                          {isRackExpanded &&
+                            rack.bins?.map((bin) => (
+                              <div key={bin.id} className="relative mt-0.5 pl-6">
+                                {/* Tree line */}
+                                <div className="absolute top-0 left-3 h-full w-px bg-slate-200" />
+                                <div className="absolute top-1/2 left-3 h-px w-3 bg-slate-200" />
+
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedLocation({ type: 'bin', id: bin.id })}
+                                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1 text-sm transition-colors ${selectedLocation.type === 'bin' && selectedLocation.id === bin.id ? 'bg-emerald-50 font-medium text-emerald-700' : 'text-slate-500 hover:bg-slate-100'}`}
+                                >
+                                  <MapIcon className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                  <span className="truncate">{bin.name || bin.code}</span>
+                                </button>
+                              </div>
+                            ))}
+                        </div>
+                      )
+                    })}
                   </>
                 )}
               </div>
@@ -486,11 +537,11 @@ const InventoryPage = () => {
                                     <div className="absolute top-0 -left-6 h-full w-px bg-slate-200" />
                                     <div className="absolute top-1/2 -left-6 h-px w-4 bg-slate-200" />
 
-                                    <div className="flex items-center gap-2">
+                                    {/* <div className="flex items-center gap-2">
                                       <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-xs text-slate-400">
                                         {batch.id.substring(0, 8).toUpperCase()}
                                       </span>
-                                    </div>
+                                    </div> */}
                                   </td>
                                   <td
                                     colSpan={2}
