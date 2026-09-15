@@ -19,7 +19,6 @@ import {
   createSafetySignTexture,
   createRollUpDoorTexture,
   createBuildingSignTexture,
-  createWoodPalletTexture,
 } from './warehouse3dTextures'
 
 const WORLD_SIZE = 22
@@ -331,8 +330,8 @@ function WarehouseBuildingArchitecture({
   const roofTexture = useMemo(() => createRoofCorrugatedTexture(), [])
   const fireSignTexture = useMemo(() => createSafetySignTexture('FIRE'), [])
   const ppeSignTexture = useMemo(() => createSafetySignTexture('PPE'), [])
-  const door1Texture = useMemo(() => createRollUpDoorTexture('BAY 01 • INBOUND DOCK'), [])
-  const door2Texture = useMemo(() => createRollUpDoorTexture('BAY 02 • OUTBOUND DOCK'), [])
+  const door1Texture = useMemo(() => createRollUpDoorTexture('BAY 01'), [])
+  const door2Texture = useMemo(() => createRollUpDoorTexture('BAY 02'), [])
   const buildingSignTexture = useMemo(() => createBuildingSignTexture(), [])
   const exitSignTexture = useMemo(() => createSafetySignTexture('EXIT'), [])
 
@@ -750,151 +749,12 @@ function WarehouseBuildingArchitecture({
         </group>
       )}
 
-      {/* 6. Dàn đèn High-Bay LED công nghiệp treo trần */}
-      <group raycast={() => null}>
-        {[
-          // Lối đi Dãy A
-          { x: -7.5, z: -10 },
-          { x: -7.5, z: -4 },
-          { x: -7.5, z: 2 },
-          // Lối đi Dãy B
-          { x: 0, z: -10 },
-          { x: 0, z: -4 },
-          { x: 0, z: 2 },
-          // Lối đi Dãy C
-          { x: 7.5, z: -10 },
-          { x: 7.5, z: -4 },
-          { x: 7.5, z: 2 },
-          // Sân phân khu Nhập & Xuất
-          { x: -8, z: 14 },
-          { x: -8, z: 18 },
-          { x: 8, z: 14 },
-          { x: 8, z: 18 },
-        ].map((lp, idx) => (
-          <group key={`highbay-${idx}`} position={[lp.x, wallHeight - 1.2, lp.z]}>
-            <mesh>
-              <cylinderGeometry args={[0.35, 0.55, 0.2, 16]} />
-              <meshStandardMaterial color="#334155" metalness={0.85} roughness={0.25} />
-            </mesh>
-            <mesh position={[0, -0.11, 0]}>
-              <cylinderGeometry args={[0.32, 0.32, 0.03, 16]} />
-              <meshBasicMaterial color="#ffffff" />
-            </mesh>
-            <mesh position={[0, 0.5, 0]}>
-              <cylinderGeometry args={[0.015, 0.015, 1.0, 6]} />
-              <meshStandardMaterial color="#475569" roughness={0.4} metalness={0.8} />
-            </mesh>
-            <pointLight
-              color="#fffbeb"
-              intensity={0.65}
-              distance={18}
-              decay={1.4}
-            />
-          </group>
-        ))}
-      </group>
+
     </group>
   )
 }
 
-// --- PALLET HÀNG STAGING TẬP KẾT Ở SÂN TRƯỚC (INBOUND & OUTBOUND) ---
-function LowPolyPalletWithBoxes({ position = [0, 0, 0], palletTexture, cardboardTexture, isWrapped = false }) {
-  return (
-    <group position={position}>
-      {/* Pallet gỗ */}
-      <mesh position={[0, 0.07, 0]} castShadow receiveShadow>
-        <boxGeometry args={[1.2, 0.14, 0.9]} />
-        <meshStandardMaterial map={palletTexture} roughness={0.75} metalness={0.05} />
-      </mesh>
-      {/* Thùng carton xếp chồng 2 tầng */}
-      {[-0.28, 0.28].map((bx) =>
-        [-0.2, 0.2].map((bz) => (
-          <group key={`box-${bx}-${bz}`}>
-            <mesh position={[bx, 0.42, bz]} castShadow receiveShadow>
-              <boxGeometry args={[0.55, 0.55, 0.42]} />
-              <meshStandardMaterial map={cardboardTexture} roughness={0.85} metalness={0.02} />
-            </mesh>
-            <mesh position={[bx, 0.97, bz]} castShadow receiveShadow>
-              <boxGeometry args={[0.55, 0.55, 0.42]} />
-              <meshStandardMaterial map={cardboardTexture} roughness={0.85} metalness={0.02} />
-            </mesh>
-          </group>
-        ))
-      )}
-      {/* Lớp màng co bọc hàng (Stretch film) cho hàng xuất */}
-      {isWrapped && (
-        <mesh position={[0, 0.7, 0]}>
-          <boxGeometry args={[1.15, 1.15, 0.88]} />
-          <meshStandardMaterial color="#ffffff" transparent opacity={0.25} roughness={0.1} />
-        </mesh>
-      )}
-    </group>
-  )
-}
 
-// --- XE NÂNG ĐIỆN CÔNG NGHIỆP MÔ PHỎNG (STYLIZED INDUSTRIAL FORKLIFT) ---
-function StylizedForklift({ position = [10.5, 0, 18.5], rotation = [0, -Math.PI / 4, 0] }) {
-  return (
-    <group position={position} rotation={rotation}>
-      {/* Thân xe (Chassis) - Màu vàng an toàn */}
-      <mesh position={[0, 0.5, 0]} castShadow>
-        <boxGeometry args={[1.4, 0.5, 2.2]} />
-        <meshStandardMaterial color="#f59e0b" metalness={0.5} roughness={0.35} />
-      </mesh>
-      {/* Đối trọng phía sau (Counterweight) */}
-      <mesh position={[0, 0.75, 0.7]} castShadow>
-        <boxGeometry args={[1.35, 0.65, 0.8]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.7} />
-      </mesh>
-      {/* Khung bảo vệ ca bin (Overhead Guard Roll Cage) */}
-      {[-0.55, 0.55].map((cx) =>
-        [-0.4, 0.4].map((cz) => (
-          <mesh key={`cage-post-${cx}-${cz}`} position={[cx, 1.45, cz]}>
-            <boxGeometry args={[0.08, 1.4, 0.08]} />
-            <meshStandardMaterial color="#1e293b" roughness={0.7} />
-          </mesh>
-        ))
-      )}
-      <mesh position={[0, 2.15, 0]}>
-        <boxGeometry args={[1.2, 0.06, 0.9]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.7} />
-      </mesh>
-      {/* Ghế lái */}
-      <mesh position={[0, 0.95, 0.1]}>
-        <boxGeometry args={[0.5, 0.4, 0.5]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.7} />
-      </mesh>
-      {/* Cột nâng phía trước (Mast) */}
-      {[-0.45, 0.45].map((mx) => (
-        <mesh key={`mast-${mx}`} position={[mx, 1.3, -1.15]}>
-          <boxGeometry args={[0.1, 2.4, 0.12]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.7} />
-        </mesh>
-      ))}
-      {/* Càng nâng (Forks) */}
-      {[-0.25, 0.25].map((fx) => (
-        <mesh key={`fork-${fx}`} position={[fx, 0.12, -1.75]}>
-          <boxGeometry args={[0.12, 0.04, 1.1]} />
-          <meshStandardMaterial color="#1e293b" roughness={0.7} />
-        </mesh>
-      ))}
-      {/* 4 Bánh xe cao su đặc */}
-      {[-0.7, 0.7].map((wx) =>
-        [-0.7, 0.7].map((wz) => (
-          <mesh key={`wheel-${wx}-${wz}`} position={[wx, 0.3, wz]} rotation={[0, 0, Math.PI / 2]}>
-            <cylinderGeometry args={[0.3, 0.3, 0.25, 16]} />
-            <meshStandardMaterial color="#0f172a" roughness={0.9} />
-          </mesh>
-        ))
-      )}
-      {/* Đèn chớp cảnh báo màu cam xoay trên nóc cabin */}
-      <mesh position={[0, 2.24, -0.3]}>
-        <cylinderGeometry args={[0.08, 0.08, 0.14, 12]} />
-        <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.8} />
-      </mesh>
-    </group>
-  )
-}
 
 /**
  * Điều khiển Camera thông minh: Góc nhìn rộng rãi, thoáng đạt chuẩn nhà kho công nghiệp
@@ -1870,15 +1730,13 @@ export default function WarehouseLayoutPreview3D({
   )
 
   // Khởi tạo các textures chất lượng cao
-  const palletTexture = useMemo(() => createWoodPalletTexture(), [])
   const cardboardTexture = useMemo(() => createCardboardTexture(), [])
 
   useEffect(() => {
     return () => {
-      palletTexture?.dispose()
       cardboardTexture?.dispose()
     }
-  }, [palletTexture, cardboardTexture])
+  }, [cardboardTexture])
 
   return (
     <div
@@ -1929,48 +1787,7 @@ export default function WarehouseLayoutPreview3D({
             cameraPreset={cameraPreset}
           />
 
-          {/* Sân vận hành tập kết hàng phía trước (Front Operational Staging Yard) */}
-          <group>
-            {/* Pallet hàng chờ phân loại ở Khu Nhập Hàng (Receiving Area - Left) */}
-            <LowPolyPalletWithBoxes
-              position={[-9.5, 0, 15.5]}
-              palletTexture={palletTexture}
-              cardboardTexture={cardboardTexture}
-            />
-            <LowPolyPalletWithBoxes
-              position={[-7.0, 0, 15.5]}
-              palletTexture={palletTexture}
-              cardboardTexture={cardboardTexture}
-            />
-            <LowPolyPalletWithBoxes
-              position={[-9.5, 0, 18.0]}
-              palletTexture={palletTexture}
-              cardboardTexture={cardboardTexture}
-            />
 
-            {/* Pallet hàng bọc màng co ở Khu Xuất Hàng (Shipping Area - Right) */}
-            <LowPolyPalletWithBoxes
-              position={[7.0, 0, 15.5]}
-              palletTexture={palletTexture}
-              cardboardTexture={cardboardTexture}
-              isWrapped
-            />
-            <LowPolyPalletWithBoxes
-              position={[9.5, 0, 15.5]}
-              palletTexture={palletTexture}
-              cardboardTexture={cardboardTexture}
-              isWrapped
-            />
-            <LowPolyPalletWithBoxes
-              position={[7.0, 0, 18.0]}
-              palletTexture={palletTexture}
-              cardboardTexture={cardboardTexture}
-              isWrapped
-            />
-
-            {/* Xe Nâng Điện Mô Phỏng (Stylized Industrial Forklift) */}
-            <StylizedForklift position={[10.5, 0, 18.5]} rotation={[0, -Math.PI / 4, 0]} />
-          </group>
 
           <ContactShadows
             position={[0, 0.02, 0]}

@@ -12,6 +12,7 @@ import Modal from '@/components/organisms/Modal'
 import receiptApi from '@/services/wms/receiptApi'
 import productApi from '../../../services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
+import staffApi from '@/services/staff/staffApi'
 import layoutApi from '@/services/layoutApi'
 import putawayApi from '@/services/wms/putawayApi'
 import { toast } from 'react-hot-toast'
@@ -327,9 +328,7 @@ const InboundPage = () => {
     try {
       const res =
         currentRole === 'STAFF'
-          ? await warehouseApi.getPublicWarehouseLayout(selectedWarehouseId, {
-            skipErrorToast: true,
-          })
+          ? await staffApi.getStaffLayout(selectedWarehouseId)
           : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
       setLayout(res.data?.data)
     } catch (error) {

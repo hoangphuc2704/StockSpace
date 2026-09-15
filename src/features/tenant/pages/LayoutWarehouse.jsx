@@ -21,8 +21,10 @@ import { closeMobileSidebar } from '@/store/uiSlide'
 import layoutApi from '@/services/layoutApi'
 import contractApi from '@/services/contractApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
+import staffApi from '@/services/staff/staffApi'
 import stockApi from '@/services/wms/stockApi'
 import { getEnglishApiMessage } from '@/utils/englishMessages'
+import { formatStockQuantity } from '@/utils/stockQuantity'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 import useEscapeKey from '@/hooks/useEscapeKey'
 
@@ -1302,6 +1304,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     content: [],
     totalElements: 0,
     totalQuantity: 0,
+    quantityMasked: false,
     error: '',
   })
 
@@ -1534,6 +1537,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     if (
       isOwner ||
       isContractLayout ||
+      currentRole === 'STAFF' ||
       String(capacityWarehouseId) !== String(selectedWarehouseId)
     ) {
       return {}
@@ -1550,7 +1554,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     })
 
     return binsById
-  }, [capacityMetrics, capacityWarehouseId, isContractLayout, isOwner, selectedWarehouseId])
+  }, [capacityMetrics, capacityWarehouseId, currentRole, isContractLayout, isOwner, selectedWarehouseId])
 
   useEffect(() => {
     let alive = true
@@ -1691,7 +1695,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         response = isOwner
           ? await warehouseApi.getOwnerWarehouseLayout(selectedWarehouseId)
           : currentRole === 'STAFF'
-            ? await warehouseApi.getPublicWarehouseLayout(selectedWarehouseId)
+            ? await staffApi.getStaffLayout(selectedWarehouseId)
             : await layoutApi.getTenantWarehouseLayout(selectedWarehouseId)
       }
       const payload = apiData(response) || {}
@@ -1759,7 +1763,19 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [loadLayout])
 
   useEffect(() => {
-    if (isOwner || isContractLayout || !selectedWarehouseId) {
+    const handleInventoryRefresh = (event) => {
+      const warehouseId = event.detail?.warehouseId
+      if (!warehouseId || String(warehouseId) === String(selectedWarehouseId)) {
+        setStockRefreshKey((current) => current + 1)
+      }
+    }
+
+    window.addEventListener('stockspace:inventory-refresh', handleInventoryRefresh)
+    return () => window.removeEventListener('stockspace:inventory-refresh', handleInventoryRefresh)
+  }, [selectedWarehouseId])
+
+  useEffect(() => {
+    if (isOwner || isContractLayout || currentRole === 'STAFF' || !selectedWarehouseId) {
       return undefined
     }
 
@@ -1784,7 +1800,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     return () => {
       alive = false
     }
-  }, [isContractLayout, isOwner, selectedWarehouseId, stockRefreshKey])
+  }, [currentRole, isContractLayout, isOwner, selectedWarehouseId, stockRefreshKey])
 
   useEffect(() => {
     const shouldLoadBinStock = view === 'stock' || currentRole === 'STAFF'
@@ -1801,6 +1817,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           content: result.content,
           totalElements: result.totalElements,
           totalQuantity: result.totalQuantity,
+          quantityMasked: result.quantityMasked === true,
           error: '',
         })
       })
@@ -1812,6 +1829,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           content: [],
           totalElements: 0,
           totalQuantity: 0,
+          quantityMasked: false,
           error:
             requestError.response?.status === 403
               ? 'This rental contract has expired or your access to this warehouse was revoked.'
@@ -3954,7 +3972,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             {view !== 'stock' && (
               <RackStatisticsTable
                 layout={layout}
-                capacityMetrics={capacityMetrics}
+                capacityMetrics={currentRole === 'STAFF' ? null : capacityMetrics}
                 canEdit={canEditLayout}
                 onUpdateRackCapacity={updateRackCapacity}
               />
@@ -4310,7 +4328,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="rounded-full bg-orange-100 px-4 py-2 text-sm font-bold text-orange-800">
-                              Total: {binStockState.totalQuantity.toLocaleString()}
+                              Total:{' '}
+                              {formatStockQuantity(
+                                binStockState.totalQuantity,
+                                binStockState.quantityMasked
+                              )}
                             </div>
                             <button
                               type="button"
@@ -4357,7 +4379,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                       {batch.uomSymbol || batch.uomName || '—'}
                                     </td>
                                     <td className="px-4 py-3 text-right text-base font-bold text-slate-900">
-                                      {(Number(batch.quantity) || 0).toLocaleString()}
+                                      {formatStockQuantity(batch.quantity, batch.quantityMasked)}
                                     </td>
                                   </tr>
                                 ))}
@@ -4447,7 +4469,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             </h3>
                           </div>
                           <span className="rounded-full bg-orange-100 px-3 py-1.5 text-sm font-bold text-orange-800">
-                            Total: {binStockState.totalQuantity.toLocaleString()}
+                            Total:{' '}
+                            {formatStockQuantity(
+                              binStockState.totalQuantity,
+                              binStockState.quantityMasked
+                            )}
                           </span>
                         </div>
                         {binStockState.binId !== selectedBinId ||
@@ -4479,7 +4505,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                   </span>
                                 </span>
                                 <strong className="text-slate-900">
-                                  {(Number(batch.quantity) || 0).toLocaleString()}
+                                  {formatStockQuantity(batch.quantity, batch.quantityMasked)}
                                 </strong>
                               </div>
                             ))}

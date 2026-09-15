@@ -126,6 +126,22 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     if (id) fetchAuditDetail()
   }, [fetchAuditDetail, id])
 
+  const notifyInventoryRefresh = () => {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(
+      new CustomEvent('stockspace:inventory-refresh', {
+        detail: { warehouseId: audit?.warehouseId },
+      })
+    )
+  }
+
+  useEffect(() => {
+    if (!audit?.warehouseId) return
+    notifyInventoryRefresh()
+    // Audit status changes are the source of truth for stock masking/unmasking.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audit?.status, audit?.warehouseId])
+
   const currentUserId = currentUser?.userId || currentUser?.id
   const canOperateAsStaff =
     currentRole !== 'STAFF' ||

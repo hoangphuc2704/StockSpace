@@ -30,6 +30,7 @@ import Button from '@/components/atoms/Button'
 import WmsImportDialog from '@/features/inventory/components/WmsImportDialog'
 import dataContinuityApi from '@/services/wms/dataContinuityApi'
 import { WMS_IMPORT_TYPE } from '@/services/wms/wmsDataTypes'
+import { formatStockQuantity, sumStockQuantity } from '@/utils/stockQuantity'
 import { toast } from 'react-hot-toast'
 
 const InventoryPage = () => {
@@ -89,7 +90,12 @@ const InventoryPage = () => {
   }, [searchParams])
 
   const fetchData = useCallback(async () => {
-    if (!selectedWarehouseId) return
+    if (!selectedWarehouseId) {
+      setLayout(null)
+      setAllStock([])
+      setIsLoading(false)
+      return
+    }
     setIsLoading(true)
     try {
       const layoutRequest =
@@ -105,6 +111,8 @@ const InventoryPage = () => {
       setLayout(layoutRes.data?.data || null)
       setAllStock(Array.isArray(stockRes) ? stockRes : stockRes.data?.data?.content || [])
     } catch (error) {
+      setLayout(null)
+      setAllStock([])
       showApiErrorToast(error, 'Lỗi tải dữ liệu tồn kho.')
     } finally {
       setIsLoading(false)
@@ -124,11 +132,33 @@ const InventoryPage = () => {
   }, [fetchData])
 
   // Lọc và Nhóm dữ liệu
+  useEffect(() => {
+    const handleInventoryRefresh = (event) => {
+      const warehouseId = event.detail?.warehouseId
+      if (!warehouseId || String(warehouseId) === String(selectedWarehouseId)) {
+        fetchData()
+      }
+    }
+
+    window.addEventListener('stockspace:inventory-refresh', handleInventoryRefresh)
+    return () => window.removeEventListener('stockspace:inventory-refresh', handleInventoryRefresh)
+  }, [fetchData, selectedWarehouseId])
+
   const groupedStock = useMemo(() => {
+    const maskedSkuIds = new Set(
+      allStock
+        .filter((batch) => batch?.quantityMasked === true)
+        .map((batch) => String(batch.skuId))
+    )
     const filtered = allStock.filter((batch) => {
       // 1. Filter by location
-      if (selectedLocation.type === 'rack' && batch.rackId !== selectedLocation.id) return false
-      if (selectedLocation.type === 'bin' && batch.binId !== selectedLocation.id) return false
+      if (
+        selectedLocation.type === 'rack' &&
+        String(batch.rackId) !== String(selectedLocation.id)
+      )
+        return false
+      if (selectedLocation.type === 'bin' && String(batch.binId) !== String(selectedLocation.id))
+        return false
 
       // 2. Filter by product search
       if (productSearch) {
@@ -151,21 +181,42 @@ const InventoryPage = () => {
           skuCode: batch.skuCode,
           skuName: batch.skuName,
           uomName: batch.uomName,
-          totalQuantity: 0,
+          quantityMasked: false,
           rackNames: new Set(),
           binNames: new Set(),
           batches: [],
         }
       }
-      acc[batch.skuId].totalQuantity += batch.quantity
       if (batch.rackName) acc[batch.skuId].rackNames.add(batch.rackName)
       if (batch.binName) acc[batch.skuId].binNames.add(batch.binName)
       acc[batch.skuId].batches.push(batch)
       return acc
     }, {})
 
-    return Object.values(groups).sort((a, b) => a.skuCode.localeCompare(b.skuCode))
+    return Object.values(groups)
+      .map((group) => {
+        const quantityMasked =
+          maskedSkuIds.has(String(group.skuId)) ||
+          group.batches.some((batch) => batch?.quantityMasked === true)
+        return {
+          ...group,
+          quantityMasked,
+          totalQuantity: quantityMasked ? null : sumStockQuantity(group.batches, 'quantity'),
+          totalReservedQuantity: quantityMasked
+            ? null
+            : sumStockQuantity(group.batches, 'reservedQuantity'),
+          totalAvailableQuantity: quantityMasked
+            ? null
+            : sumStockQuantity(group.batches, 'availableQuantity'),
+        }
+      })
+      .sort((a, b) => String(a.skuCode || '').localeCompare(String(b.skuCode || '')))
   }, [allStock, selectedLocation, productSearch])
+
+  const hasMaskedQuantities = useMemo(
+    () => allStock.some((batch) => batch?.quantityMasked === true),
+    [allStock]
+  )
 
   const toggleExpand = (skuId) => {
     const newExpanded = new Set(expandedSkus)
@@ -207,6 +258,10 @@ const InventoryPage = () => {
 
   const handleDownloadWorkbook = async (type) => {
     if (!selectedWarehouseId || downloadingWorkbook) return
+    if (type === 'snapshot' && hasMaskedQuantities) {
+      toast.error('Không thể xuất snapshot khi đang kiểm kê mù.')
+      return
+    }
     try {
       setDownloadingWorkbook(type)
       if (type === 'snapshot') {
@@ -217,6 +272,13 @@ const InventoryPage = () => {
         toast.success('Offline movement template downloaded.')
       }
     } catch (error) {
+      const errorCode = error?.response?.data?.errorCode || error?.response?.data?.code
+      if (type === 'snapshot' && errorCode === 'AUDIT_MOVEMENT_LOCKED') {
+        toast.error(
+          'Kho đang được kiểm kê mù. Hãy chờ Staff hoàn tất kiểm kê trước khi xuất snapshot.'
+        )
+        return
+      }
       showApiErrorToast(
         error,
         type === 'snapshot'
@@ -296,7 +358,14 @@ const InventoryPage = () => {
                   variant="outline"
                   onClick={() => handleDownloadWorkbook('snapshot')}
                   isLoading={downloadingWorkbook === 'snapshot'}
-                  disabled={!selectedWarehouseId || Boolean(downloadingWorkbook)}
+                  disabled={
+                    !selectedWarehouseId || Boolean(downloadingWorkbook) || hasMaskedQuantities
+                  }
+                  title={
+                    hasMaskedQuantities
+                      ? 'Không thể xuất snapshot khi đang kiểm kê mù'
+                      : 'Export inventory snapshot'
+                  }
                   className="w-full gap-2 sm:w-auto"
                 >
                   <Download className="h-4 w-4" /> Export snapshot
@@ -324,6 +393,15 @@ const InventoryPage = () => {
               </div>
             </div>
           </div>
+
+          {hasMaskedQuantities && (
+            <div
+              role="status"
+              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            >
+              Kho đang được kiểm kê. Số lượng hệ thống trong phạm vi kiểm kê được ẩn cho đến khi Staff gửi kết quả.
+            </div>
+          )}
 
           {/* Split Pane Content */}
           <div className="flex flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -510,10 +588,20 @@ const InventoryPage = () => {
                               </td>
                               <td className="px-4 py-3 text-slate-500">{group.uomName}</td>
                               <td className="px-4 py-3 text-right font-bold text-emerald-600">
-                                {group.totalQuantity}
+                                {formatStockQuantity(group.totalQuantity, group.quantityMasked)}
                               </td>
                               <td className="px-4 py-3 text-right font-medium text-slate-700">
-                                {group.totalQuantity}
+                                <div>
+                                  {formatStockQuantity(
+                                    group.totalAvailableQuantity,
+                                    group.quantityMasked
+                                  )}
+                                </div>
+                                {!group.quantityMasked && (
+                                  <span className="text-xs font-normal text-slate-400">
+                                    Giữ: {formatStockQuantity(group.totalReservedQuantity, false)}
+                                  </span>
+                                )}
                               </td>
                               <td className="px-4 py-3 text-slate-600">{rackDisplay}</td>
                               <td className="px-4 py-3 text-slate-600">{binDisplay}</td>
@@ -555,10 +643,20 @@ const InventoryPage = () => {
                                     </span>
                                   </td>
                                   <td className="px-4 py-2.5 text-right font-medium text-slate-700">
-                                    {batch.quantity}
+                                    {formatStockQuantity(batch.quantity, batch.quantityMasked)}
                                   </td>
                                   <td className="px-4 py-2.5 text-right font-medium text-slate-700">
-                                    {batch.quantity}
+                                    <div>
+                                      {formatStockQuantity(
+                                        batch.availableQuantity,
+                                        batch.quantityMasked
+                                      )}
+                                    </div>
+                                    {!batch.quantityMasked && (
+                                      <span className="text-xs font-normal text-slate-400">
+                                        Giữ: {formatStockQuantity(batch.reservedQuantity, false)}
+                                      </span>
+                                    )}
                                   </td>
                                   <td className="px-4 py-2.5 text-sm">{batch.rackName || '—'}</td>
                                   <td className="px-4 py-2.5 text-sm">{batch.binName || '—'}</td>

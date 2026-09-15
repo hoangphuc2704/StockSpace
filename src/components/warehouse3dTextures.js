@@ -56,24 +56,19 @@ export function createWarehouseFloorTexture() {
   // Khung viền hành lang an toàn quanh chu vi sàn
   ctx.strokeRect(60, 60, 1928, 1928)
 
-  // Lối đi dọc chính giữa các dãy kệ (Storage Area)
+  // Lối đi dọc chính giữa các dãy kệ và kéo dài suốt toàn bộ khoảng sân
   const rackLanes = [380, 780, 1260, 1660]
   rackLanes.forEach((x) => {
     ctx.beginPath()
     ctx.moveTo(x, 380)
-    ctx.lineTo(x, 1420)
+    ctx.lineTo(x, 1940)
     ctx.stroke()
   })
 
-  // Vạch giao lộ ngang (Cross aisles)
+  // Vạch giao lộ ngang phía sau kệ
   ctx.beginPath()
   ctx.moveTo(100, 380)
   ctx.lineTo(1948, 380)
-  ctx.stroke()
-
-  ctx.beginPath()
-  ctx.moveTo(100, 1420)
-  ctx.lineTo(1948, 1420)
   ctx.stroke()
 
   // 5. Hàm vẽ sọc cảnh báo vàng-đen (Hazard Stripes)
@@ -99,80 +94,11 @@ export function createWarehouseFloorTexture() {
     ctx.restore()
   }
 
-  // Vạch sọc cảnh báo ngã tư xe nâng
+  // Vạch sọc cảnh báo ngã tư phía sau kệ và trước cửa ra vào kho
   drawHazardStripes(120, 365, 1808, 30)
-  drawHazardStripes(120, 1405, 1808, 30)
   drawHazardStripes(80, 1980, 1888, 30)
 
-  // --- 1. KHU VỰC NHẬP HÀNG (RECEIVING / INBOUND ZONE) ---
-  ctx.save()
-  ctx.strokeStyle = '#0284c7' // Xanh Inbound
-  ctx.lineWidth = 8
-  ctx.setLineDash([24, 12])
-  ctx.strokeRect(160, 1500, 800, 460)
-  ctx.setLineDash([])
-
-  // Nền phân khu nhẹ
-  ctx.fillStyle = 'rgba(2, 132, 199, 0.08)'
-  ctx.fillRect(160, 1500, 800, 460)
-
-  // Vạch đỗ pallet staging (Staging slots 3x2)
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)'
-  ctx.lineWidth = 4
-  for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 3; col++) {
-      const sx = 200 + col * 240
-      const sy = 1540 + row * 190
-      ctx.strokeRect(sx, sy, 200, 160)
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.6)'
-      ctx.font = 'bold 20px monospace'
-      ctx.textAlign = 'center'
-      ctx.fillText(`IN-${row + 1}0${col + 1}`, sx + 100, sy + 88)
-    }
-  }
-
-  // Chữ phân khu Nhập hàng
-  ctx.fillStyle = '#38bdf8'
-  ctx.font = 'bold 34px "Segoe UI", Arial, sans-serif'
-  ctx.textAlign = 'left'
-  ctx.fillText('📥 RECEIVING & INBOUND STAGING • DOCK 01', 180, 1480)
-  ctx.restore()
-
-  // --- 2. KHU VỰC XUẤT HÀNG (SHIPPING / OUTBOUND ZONE) ---
-  ctx.save()
-  ctx.strokeStyle = '#ea580c' // Cam Outbound
-  ctx.lineWidth = 8
-  ctx.setLineDash([24, 12])
-  ctx.strokeRect(1080, 1500, 800, 460)
-  ctx.setLineDash([])
-
-  // Nền phân khu nhẹ
-  ctx.fillStyle = 'rgba(234, 88, 12, 0.08)'
-  ctx.fillRect(1080, 1500, 800, 460)
-
-  // Vạch đỗ pallet staging xuất hàng
-  ctx.strokeStyle = 'rgba(251, 146, 60, 0.4)'
-  ctx.lineWidth = 4
-  for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 3; col++) {
-      const sx = 1120 + col * 240
-      const sy = 1540 + row * 190
-      ctx.strokeRect(sx, sy, 200, 160)
-      ctx.fillStyle = 'rgba(251, 146, 60, 0.6)'
-      ctx.font = 'bold 20px monospace'
-      ctx.textAlign = 'center'
-      ctx.fillText(`OUT-${row + 1}0${col + 1}`, sx + 100, sy + 88)
-    }
-  }
-
-  // Chữ phân khu Xuất hàng
-  ctx.fillStyle = '#fb923c'
-  ctx.font = 'bold 34px "Segoe UI", Arial, sans-serif'
-  ctx.textAlign = 'left'
-  ctx.fillText('📤 SHIPPING & DISPATCH STAGING • DOCK 02', 1100, 1480)
-  ctx.restore()
-
-  // --- 3. VẠCH ĐI BỘ CHO NHÂN VIÊN (PEDESTRIAN ZEBRA CROSSING) ---
+  // Vạch đi bộ cho nhân viên phía sau kệ (Pedestrian Zebra Crossing)
   const drawZebra = (x, y, w, h, isHoriz = true) => {
     ctx.save()
     ctx.fillStyle = '#f8fafc'
@@ -190,8 +116,7 @@ export function createWarehouseFloorTexture() {
     ctx.restore()
   }
 
-  // Vạch sang đường cho người đi bộ
-  drawZebra(980, 1450, 100, 520, false)
+  // Vạch sang đường cho người đi bộ phía sau kệ
   drawZebra(100, 200, 1848, 50, true)
 
   // Ký hiệu chữ an toàn trên sàn
@@ -509,7 +434,7 @@ export function createRoofCorrugatedTexture() {
 /**
  * Texture cửa cuốn công nghiệp cho xe nâng (Sectional Roll-up Door)
  */
-export function createRollUpDoorTexture(doorLabel = 'BAY 01 • INBOUND DOCK') {
+export function createRollUpDoorTexture(doorLabel = 'BAY 01') {
   if (typeof document === 'undefined') return null
 
   const canvas = document.createElement('canvas')

@@ -315,6 +315,23 @@ const WmsImportDialog = ({
         await onApplied?.({ job: latestJob })
         return
       }
+      if (latestJob?.status === WMS_IMPORT_STATUS.FAILED) {
+        setNotice({
+          type: 'error',
+          text:
+            latestJob.failureMessage ||
+            'The backend failed while applying this workbook. No data was changed.',
+        })
+        return
+      }
+      if (latestJob?.status === WMS_IMPORT_STATUS.VALIDATED) {
+        setNotice({
+          type: 'error',
+          text:
+            'Apply was not completed. The backend still reports this job as VALIDATED, so no successful Apply was confirmed. Check the backend log before retrying.',
+        })
+        return
+      }
     }
 
     setNotice({
