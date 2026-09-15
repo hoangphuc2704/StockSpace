@@ -40,10 +40,16 @@ const ERROR_GUIDANCE = {
     'The workbook schema, version, metadata, warehouse, or audit scope is unsupported. Download a fresh workbook.',
   WMS_IMPORT_LIMIT_EXCEEDED:
     'The workbook exceeds a backend limit (10 MiB, 10,000 rows, 1,000 movements, or a cell-size limit). Split it into smaller files.',
+  UOM_NOT_FOUND:
+    'A SKU references a unit of measure that is not active or visible for this tenant. Use a code from the latest UOM list or exported workbook, then validate a new workbook.',
+  UOM_NOT_VISIBLE:
+    'A SKU references a unit of measure that is not visible for this tenant. Use a code from the latest UOM list or exported workbook, then validate a new workbook.',
   WMS_IMPORT_JOB_NOT_FOUND:
     'This validation job no longer exists or is not accessible. Select the source workbook and validate again.',
   WMS_IMPORT_JOB_INVALID_STATUS:
     'The job status changed and no longer permits this action. Its latest status has been loaded.',
+  WMS_IMPORT_APPLY_IN_PROGRESS:
+    'Another Apply request is still processing this job. Its latest status has been loaded; wait before trying again.',
   WMS_IMPORT_ALREADY_APPLIED:
     'This job or identical workbook content was already applied. It will not be retried.',
   WMS_IMPORT_STALE:
@@ -68,6 +74,9 @@ const getErrorCode = (error) => {
   const code = error?.response?.data?.code || error?.response?.data?.errorCode
   if (code) return code
   if (error?.response?.status === 403) return 'FORBIDDEN'
+  // A bare 404 has no domain error code, so it is the import-job lookup
+  // response. Preserve explicit backend codes such as UOM_NOT_FOUND above.
+  if (error?.response?.status === 404) return 'WMS_IMPORT_JOB_NOT_FOUND'
   if (error?.response?.status === 413) return 'WMS_IMPORT_LIMIT_EXCEEDED'
   if (error?.response?.status === 415) return 'UNSUPPORTED_MEDIA_TYPE'
   if (error?.response?.status === 503) return 'SERVICE_UNAVAILABLE'
@@ -143,10 +152,15 @@ const WmsImportDialog = ({
   const [inputVersion, setInputVersion] = useState(0)
   const [applyLocked, setApplyLocked] = useState(false)
   const operationRef = useRef(false)
+  const jobRevisionRef = useRef(0)
   const previousStorageKeyRef = useRef(null)
   const storageKey = `stockspace:wms-import:${importType}:${scopeKey || 'global'}`
 
   const clearJob = useCallback(() => {
+    // Invalidate any in-flight restore/reload before clearing local state.
+    // Otherwise a late GET response could put an old job back after a new
+    // workbook has been selected.
+    jobRevisionRef.current += 1
     sessionStorage.removeItem(storageKey)
     setJob(null)
     setAppliedResult(null)
@@ -168,26 +182,46 @@ const WmsImportDialog = ({
   )
 
   const loadLatestJob = useCallback(
-    async (jobId, { quiet = false } = {}) => {
+    async (jobId, { quiet = false, requireValidated = false } = {}) => {
+      const requestRevision = jobRevisionRef.current
       try {
         if (!quiet) setBusy('loading')
         const nextJob = await dataContinuityApi.getImportJob(jobId)
+        if (requestRevision !== jobRevisionRef.current) return null
         if (!jobMatchesScope(nextJob)) {
           sessionStorage.removeItem(storageKey)
-          if (!quiet) {
+          setJob(null)
+          setAppliedResult(null)
+          setApplyLocked(false)
+          if (!quiet || requireValidated) {
             setNotice({ type: 'error', text: 'The saved import job does not match this screen.' })
           }
+          return null
+        }
+        if (requireValidated && nextJob.status !== WMS_IMPORT_STATUS.VALIDATED) {
+          sessionStorage.removeItem(storageKey)
+          setJob(null)
+          setAppliedResult(null)
+          setApplyLocked(false)
+          setNotice({
+            type: 'error',
+            text: 'The saved import job is no longer ready to apply. Validate the workbook again.',
+          })
           return null
         }
         setJob(nextJob)
         return nextJob
       } catch (error) {
+        if (requestRevision !== jobRevisionRef.current) return null
         const code = getErrorCode(error)
-        if (code === 'WMS_IMPORT_JOB_NOT_FOUND' || error?.response?.status === 404) {
+        const isNotFound = code === 'WMS_IMPORT_JOB_NOT_FOUND' || error?.response?.status === 404
+        if (isNotFound && requestRevision === jobRevisionRef.current) {
           sessionStorage.removeItem(storageKey)
           setJob(null)
+          setAppliedResult(null)
+          setApplyLocked(false)
         }
-        if (!quiet) {
+        if (!quiet || requireValidated) {
           setNotice({
             type: 'error',
             text: getImportErrorMessage(error, 'Could not reload the import job.'),
@@ -205,6 +239,7 @@ const WmsImportDialog = ({
     const previousKey = previousStorageKeyRef.current
     if (previousKey && previousKey !== storageKey) sessionStorage.removeItem(previousKey)
     previousStorageKeyRef.current = storageKey
+    jobRevisionRef.current += 1
 
     const savedJobId = sessionStorage.getItem(storageKey)
     let active = true
@@ -216,7 +251,7 @@ const WmsImportDialog = ({
       setNotice(null)
       setApplyLocked(false)
       setInputVersion((value) => value + 1)
-      if (savedJobId) loadLatestJob(savedJobId, { quiet: true })
+      if (savedJobId) loadLatestJob(savedJobId, { quiet: true, requireValidated: true })
     })
 
     return () => {
@@ -259,12 +294,22 @@ const WmsImportDialog = ({
 
   const handleValidate = async () => {
     if (!selectedFile || operationRef.current) return
+    const fileToValidate = selectedFile
+    // A validation response must always replace the previous job. Clearing
+    // before the request also prevents a failed validation from leaving an
+    // old job eligible for Apply.
+    clearJob()
+    const validationRevision = jobRevisionRef.current
     operationRef.current = true
     setBusy('validating')
     setNotice(null)
     setAppliedResult(null)
     try {
-      const nextJob = await validateWorkbook(selectedFile)
+      const nextJob = toJob(await validateWorkbook(fileToValidate))
+      if (validationRevision !== jobRevisionRef.current) return
+      if (!nextJob?.jobId) {
+        throw new Error('The backend did not return a validation job ID.')
+      }
       if (!jobMatchesScope(nextJob)) {
         throw new Error('The backend returned an import job for a different workflow or scope.')
       }
@@ -293,34 +338,85 @@ const WmsImportDialog = ({
   const handleApplyFailure = async (error) => {
     const code = getErrorCode(error)
     const status = error?.response?.status
+    const isNotFound = status === 404 || code === 'WMS_IMPORT_JOB_NOT_FOUND'
 
     if (code === 'WMS_IMPORT_STALE') {
       clearJob()
       setSelectedFile(null)
       setInputVersion((value) => value + 1)
       await onStale?.()
-    } else if (code === 'WMS_IMPORT_JOB_NOT_FOUND' || status === 404) {
+    } else if (isNotFound) {
+      // A 404 means the job can no longer be used. This includes explicit
+      // backend 404 domain codes: the user must create a fresh validation job.
       clearJob()
-    } else if (code === 'WMS_IMPORT_ALREADY_APPLIED') {
-      setApplyLocked(true)
-      sessionStorage.removeItem(storageKey)
-      await onApplied?.(null)
-    } else if (code === 'WMS_IMPORT_JOB_INVALID_STATUS' && job?.jobId) {
-      const latestJob = await loadLatestJob(job.jobId, { quiet: true })
-      if (latestJob?.status === WMS_IMPORT_STATUS.APPLIED) await onApplied?.({ job: latestJob })
+      setNotice({
+        type: 'error',
+        text: 'The validation job is no longer available (404). Select the workbook and validate it again.',
+      })
+      return
+    } else if (status === 409) {
+      // Conflicts can mean another tab is applying the job, or that the job
+      // has already moved out of VALIDATED. Reload once and never retry Apply
+      // blindly from the stale local state.
+      const latestJob = job?.jobId
+        ? await loadLatestJob(job.jobId, { quiet: true })
+        : null
+      if (!latestJob) {
+        setNotice({
+          type: 'error',
+          text: 'The latest import job could not be loaded. Select the workbook and validate it again.',
+        })
+        return
+      }
+      if (latestJob?.status === WMS_IMPORT_STATUS.APPLIED) {
+        setApplyLocked(true)
+        sessionStorage.removeItem(storageKey)
+        setNotice({
+          type: 'success',
+          text: 'The latest job status is APPLIED. No second Apply request was sent.',
+        })
+        await onApplied?.({ job: latestJob })
+        return
+      }
+      if (latestJob?.status === WMS_IMPORT_STATUS.FAILED) {
+        sessionStorage.removeItem(storageKey)
+        setNotice({
+          type: 'error',
+          text: latestJob.failureMessage || 'The backend recorded this job as FAILED. Validate a new workbook.',
+        })
+        return
+      }
+      if (latestJob?.status === WMS_IMPORT_STATUS.INVALID) {
+        sessionStorage.removeItem(storageKey)
+        setNotice({
+          type: 'error',
+          text: 'The latest job is INVALID. Correct the workbook and validate it as a new job.',
+        })
+        return
+      }
+      setNotice({
+        type: 'error',
+        text:
+          ERROR_GUIDANCE[code] ||
+          'The server returned a conflict. The latest job status was loaded; wait before trying again.',
+      })
+      return
     } else if (status >= 500 && job?.jobId) {
       const latestJob = await loadLatestJob(job.jobId, { quiet: true })
       if (latestJob?.status === WMS_IMPORT_STATUS.APPLIED) {
+        setApplyLocked(true)
+        sessionStorage.removeItem(storageKey)
         setNotice({ type: 'success', text: 'The server confirms that this job was applied.' })
         await onApplied?.({ job: latestJob })
         return
       }
       if (latestJob?.status === WMS_IMPORT_STATUS.FAILED) {
+        sessionStorage.removeItem(storageKey)
         setNotice({
           type: 'error',
           text:
             latestJob.failureMessage ||
-            'The backend failed while applying this workbook. No data was changed.',
+            'The backend failed while applying this workbook. Validate a new workbook before retrying.',
         })
         return
       }
@@ -359,17 +455,35 @@ const WmsImportDialog = ({
     if (!confirmed || operationRef.current) return
 
     operationRef.current = true
-    setBusy('applying')
     setNotice(null)
     try {
-      const result = await applyWorkbook(job.jobId)
+      // Reload immediately before Apply. The backend only accepts a job that
+      // still exists for this tenant and is still VALIDATED, so stale jobs
+      // restored from sessionStorage never reach the Apply endpoint.
+      const latestJob = await loadLatestJob(job.jobId)
+      if (!latestJob) return
+      if (latestJob.status !== WMS_IMPORT_STATUS.VALIDATED) {
+        // Keep the latest result visible, but never persist a job that cannot
+        // be applied. The next open must start with a new validation.
+        sessionStorage.removeItem(storageKey)
+        setNotice({
+          type: 'error',
+          text: 'This validation job is no longer ready to apply. Validate the workbook again.',
+        })
+        return
+      }
+
+      setBusy('applying')
+      const result = await applyWorkbook(latestJob.jobId)
       const appliedJob = toJob(result)
       if (!jobMatchesScope(appliedJob) || appliedJob.status !== WMS_IMPORT_STATUS.APPLIED) {
         throw new Error('The backend did not confirm an APPLIED import job.')
       }
       setJob(appliedJob)
       setAppliedResult(result)
-      sessionStorage.setItem(storageKey, appliedJob.jobId)
+      // APPLIED jobs are terminal; only a fresh VALIDATED job may be
+      // restored for a future Apply flow.
+      sessionStorage.removeItem(storageKey)
       setSelectedFile(null)
       setInputVersion((value) => value + 1)
       setNotice({ type: 'success', text: 'The workbook was applied successfully.' })
