@@ -56,7 +56,10 @@ const auditApi = {
   },
 
   addUnexpectedItem: (id, data) => {
-    return api.post(`/tenant/inventory/audits/${id}/unexpected-items`, data)
+    // This flow handles AUDIT_ITEM_DUPLICATE locally so it can focus the existing row.
+    return api.post(`/tenant/inventory/audits/${id}/unexpected-items`, data, {
+      skipErrorToast: true,
+    })
   },
 }
 
