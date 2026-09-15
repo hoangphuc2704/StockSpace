@@ -1,11 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import {
-  HiOutlineClipboardDocumentList,
-  HiOutlineEye,
-  HiOutlineXMark,
-  HiOutlineCalendar,
-  HiOutlineUser,
-} from 'react-icons/hi2'
+import { useState, useEffect } from 'react'
+import { HiOutlineEye, HiOutlineCalendar, HiOutlineUser } from 'react-icons/hi2'
 import { useSelector } from 'react-redux'
 import adminApi from '../../../services/admin/adminApi'
 import Modal from '../../../components/organisms/Modal'
@@ -15,6 +9,11 @@ import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import { showApiErrorToast } from '@/config/apiError'
 import { HiBars3 } from 'react-icons/hi2'
+
+const orderAuditItemsForDisplay = (items = []) => [
+  ...items.filter((item) => item.itemOrigin !== 'UNEXPECTED'),
+  ...items.filter((item) => item.itemOrigin === 'UNEXPECTED'),
+]
 
 const AdminAuditsPage = () => {
   const { isSidebarExpanded } = useSelector((state) => state.ui)
@@ -54,6 +53,7 @@ const AdminAuditsPage = () => {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAudits(page)
   }, [page])
 
@@ -134,7 +134,7 @@ const AdminAuditsPage = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto flex min-h-[calc(100vh-3.5rem)] h-auto w-full max-w-7xl flex-col space-y-6 p-4 sm:p-6 md:h-[calc(100vh-3.5rem)] md:p-8">
+          <main className="mx-auto flex h-auto min-h-[calc(100vh-3.5rem)] w-full max-w-7xl flex-col space-y-6 p-4 sm:p-6 md:h-[calc(100vh-3.5rem)] md:p-8">
             {/* Header */}
             <div className="flex shrink-0 flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
@@ -253,7 +253,7 @@ const AdminAuditsPage = () => {
                 className="w-[90vw] max-w-4xl"
               >
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-medium tracking-wider text-slate-500 uppercase">
                         Voucher Code
@@ -323,10 +323,35 @@ const AdminAuditsPage = () => {
                               </td>
                             </tr>
                           ) : (
-                            selectedAudit.items.map((item) => (
-                              <tr key={item.id} className="hover:bg-slate-50">
+                            orderAuditItemsForDisplay(selectedAudit.items).map((item) => (
+                              <tr
+                                key={item.id}
+                                className={
+                                  item.itemOrigin === 'UNEXPECTED'
+                                    ? 'bg-amber-50/70 hover:bg-amber-100/70'
+                                    : 'hover:bg-slate-50'
+                                }
+                              >
                                 <td className="px-4 py-3">
-                                  <div className="font-medium text-slate-900">{item.skuCode}</div>
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="font-medium text-slate-900">
+                                      {item.skuCode}
+                                    </span>
+                                    {(item.itemOrigin === 'UNEXPECTED' ||
+                                      item.itemOrigin === 'SNAPSHOT') && (
+                                      <span
+                                        className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${
+                                          item.itemOrigin === 'UNEXPECTED'
+                                            ? 'border-amber-300 bg-amber-100 text-amber-800'
+                                            : 'border-slate-200 bg-slate-100 text-slate-600'
+                                        }`}
+                                      >
+                                        {item.itemOrigin === 'UNEXPECTED'
+                                          ? 'Unexpected item'
+                                          : 'Snapshot'}
+                                      </span>
+                                    )}
+                                  </div>
                                   <div className="text-xs text-slate-500">{item.skuName}</div>
                                 </td>
                                 <td className="px-4 py-3">

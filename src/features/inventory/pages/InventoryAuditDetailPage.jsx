@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Ban,
@@ -52,6 +52,10 @@ const STATUS_CONFIG = {
 
 const SCOPE_LABELS = { WAREHOUSE: 'Toàn kho', RACK: 'Theo rack', BIN: 'Theo bin' }
 const COUNT_STATUS_LABELS = { UNCOUNTED: 'Chưa đếm', COUNTED: 'Đã đếm', SKIPPED: 'Bỏ qua' }
+const DUPLICATE_ITEM_MESSAGE =
+  'SKU này đã có tại vị trí. Hãy nhập tổng số thực tế cuối cùng trên dòng hiện có.'
+
+const sameId = (firstId, secondId) => String(firstId ?? '') === String(secondId ?? '')
 
 const InventoryAuditDetailPage = ({ currentRole }) => {
   const { id } = useParams()
@@ -89,6 +93,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
   const [layout, setLayout] = useState(null)
   const [isCountImportOpen, setIsCountImportOpen] = useState(false)
   const [isDownloadingCountSheet, setIsDownloadingCountSheet] = useState(false)
+  const [highlightedItemId, setHighlightedItemId] = useState(null)
+  const itemRowRefs = useRef(new Map())
+  const quantityInputRefs = useRef(new Map())
+  const focusItemTimerRef = useRef(null)
+  const clearHighlightTimerRef = useRef(null)
 
   useActiveWarehouseContext(audit?.warehouseId)
 
@@ -142,6 +151,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audit?.status, audit?.warehouseId])
 
+  useEffect(
+    () => () => {
+      window.clearTimeout(focusItemTimerRef.current)
+      window.clearTimeout(clearHighlightTimerRef.current)
+    },
+    []
+  )
+
   const currentUserId = currentUser?.userId || currentUser?.id
   const canOperateAsStaff =
     currentRole !== 'STAFF' ||
@@ -167,6 +184,28 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     items.length > 0
   const canRequestEdit = canOperateAsStaff && currentRole === 'STAFF' && isSubmitted
   const canApproveEdit = currentRole === 'TENANT' && isEditRequested
+  const displayItems = useMemo(
+    () => [
+      ...items.filter((item) => item.itemOrigin !== 'UNEXPECTED'),
+      ...items.filter((item) => item.itemOrigin === 'UNEXPECTED'),
+    ],
+    [items]
+  )
+
+  const focusExistingItem = useCallback((itemId) => {
+    const itemKey = String(itemId)
+    setIsUnexpectedModalOpen(false)
+    setHighlightedItemId(itemKey)
+    window.clearTimeout(focusItemTimerRef.current)
+    window.clearTimeout(clearHighlightTimerRef.current)
+    focusItemTimerRef.current = window.setTimeout(() => {
+      itemRowRefs.current.get(itemKey)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      quantityInputRefs.current.get(itemKey)?.focus({ preventScroll: true })
+    }, 150)
+    clearHighlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedItemId(null)
+    }, 2500)
+  }, [])
 
   const handleDownloadCountSheet = async () => {
     if (!id || !isCounting || isDownloadingCountSheet) return
@@ -382,16 +421,18 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
   }
 
   const handleOpenUnexpectedModal = async () => {
+    const scopeType = audit.scopeType || 'WAREHOUSE'
     setUnexpectedSkuId('')
-    setUnexpectedRackId('')
+    setUnexpectedRackId(scopeType === 'RACK' ? audit.scopeRackId || '' : '')
     setUnexpectedBinId('')
     setUnexpectedQuantity(1)
     setUnexpectedNote('')
+    setLayout(null)
     setIsUnexpectedModalOpen(true)
     try {
       setUnexpectedOptionsLoading(true)
       const requests = [productApi.getAllSKUs({ size: 100 })]
-      if (audit.scopeType === 'WAREHOUSE') {
+      if (scopeType === 'RACK' || scopeType === 'WAREHOUSE') {
         requests.push(
           currentRole === 'STAFF'
             ? staffApi.getStaffLayout(audit.warehouseId)
@@ -408,28 +449,71 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     }
   }
 
-  const unexpectedRacks = useMemo(
-    () => (Array.isArray(layout?.racks) ? layout.racks : []),
-    [layout]
-  )
+  const layoutRacks = Array.isArray(layout?.racks) ? layout.racks : []
+  const unexpectedRacks =
+    audit?.scopeType === 'RACK'
+      ? layoutRacks.filter((rack) => sameId(rack.id, audit.scopeRackId))
+      : layoutRacks
   const unexpectedRack = unexpectedRacks.find(
     (rack) => String(rack.id) === String(unexpectedRackId)
   )
   const unexpectedBins = Array.isArray(unexpectedRack?.bins) ? unexpectedRack.bins : []
+  const scopeType = audit?.scopeType || 'WAREHOUSE'
+  const hasUnexpectedLocationConfigurationError =
+    (!unexpectedOptionsLoading &&
+      scopeType === 'RACK' &&
+      (!audit?.scopeRackId || !unexpectedRack || unexpectedBins.length === 0)) ||
+    (scopeType === 'BIN' && !audit?.scopeBinId) ||
+    (!unexpectedOptionsLoading && scopeType === 'WAREHOUSE' && unexpectedRacks.length === 0) ||
+    (scopeType === 'WAREHOUSE' && Boolean(unexpectedRackId) && unexpectedBins.length === 0)
 
   const handleAddUnexpectedItem = async (event) => {
     event.preventDefault()
-    if (audit.scopeType === 'WAREHOUSE' && !unexpectedRackId) {
+    const quantity = Number(unexpectedQuantity)
+    if (!unexpectedSkuId) {
+      toast.error('Vui lòng chọn SKU.')
+      return
+    }
+    if (unexpectedQuantity === '' || !Number.isInteger(quantity) || quantity < 0) {
+      toast.error('Số lượng tìm thấy phải là số nguyên không âm.')
+      return
+    }
+    if (scopeType === 'BIN' && !audit.scopeBinId) {
+      toast.error('Dữ liệu phiếu thiếu Bin kiểm kê. Vui lòng tải lại hoặc liên hệ quản trị viên.')
+      return
+    }
+    if (scopeType === 'RACK' && !audit.scopeRackId) {
+      toast.error('Dữ liệu phiếu thiếu Rack kiểm kê. Vui lòng tải lại hoặc liên hệ quản trị viên.')
+      return
+    }
+    if (scopeType === 'RACK' && !unexpectedBinId) {
+      toast.error('Vui lòng chọn bin nơi phát hiện hàng.')
+      return
+    }
+    if (scopeType === 'WAREHOUSE' && !unexpectedRackId) {
       toast.error('Vui lòng chọn rack nơi phát hiện hàng.')
       return
     }
+    if (scopeType === 'WAREHOUSE' && !unexpectedBinId) {
+      toast.error('Vui lòng chọn bin nơi phát hiện hàng.')
+      return
+    }
+
+    const resolvedRackId = scopeType === 'BIN' ? audit.scopeRackId : unexpectedRackId
+    const resolvedBinId = scopeType === 'BIN' ? audit.scopeBinId : unexpectedBinId
+    const existingItem = items.find(
+      (item) =>
+        sameId(item.skuId, unexpectedSkuId) &&
+        sameId(item.rackId, resolvedRackId) &&
+        sameId(item.binId, resolvedBinId)
+    )
+
     try {
       setAddingUnexpected(true)
       const res = await auditApi.addUnexpectedItem(id, {
         skuId: unexpectedSkuId,
-        actualQuantity: Number(unexpectedQuantity),
-        ...(unexpectedRackId ? { rackId: unexpectedRackId } : {}),
-        ...(unexpectedBinId ? { binId: unexpectedBinId } : {}),
+        actualQuantity: quantity,
+        ...(scopeType !== 'BIN' ? { rackId: resolvedRackId, binId: resolvedBinId } : {}),
         note: unexpectedNote,
       })
       if (res.data?.success) {
@@ -438,6 +522,16 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         fetchAuditDetail()
       }
     } catch (error) {
+      const errorCode = error?.response?.data?.code || error?.response?.data?.errorCode
+      if (errorCode === 'AUDIT_ITEM_DUPLICATE') {
+        toast.error(DUPLICATE_ITEM_MESSAGE, { id: 'audit-item-duplicate' })
+        if (existingItem) {
+          focusExistingItem(existingItem.id)
+        } else {
+          setIsUnexpectedModalOpen(false)
+        }
+        return
+      }
       showApiErrorToast(error, 'Không thể thêm hàng phát sinh.')
     } finally {
       setAddingUnexpected(false)
@@ -600,7 +694,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {items.map((item) => {
+                    {displayItems.map((item) => {
                       const hasExpected =
                         Number.isFinite(Number(item.expectedQuantity)) &&
                         item.expectedQuantity !== null
@@ -609,12 +703,42 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                         hasExpected && hasActual
                           ? Number(item.actualQuantity) - Number(item.expectedQuantity)
                           : item.discrepancy
+                      const isUnexpected = item.itemOrigin === 'UNEXPECTED'
+                      const isSnapshot = item.itemOrigin === 'SNAPSHOT'
                       return (
-                        <tr key={item.id} className="align-top hover:bg-slate-50">
+                        <tr
+                          key={item.id}
+                          ref={(element) => {
+                            const itemKey = String(item.id)
+                            if (element) itemRowRefs.current.set(itemKey, element)
+                            else itemRowRefs.current.delete(itemKey)
+                          }}
+                          data-audit-item-id={item.id}
+                          className={`align-top transition-colors ${
+                            highlightedItemId === String(item.id)
+                              ? 'bg-amber-100 ring-2 ring-amber-400 ring-inset'
+                              : isUnexpected
+                                ? 'bg-amber-50/70 hover:bg-amber-100/70'
+                                : 'hover:bg-slate-50'
+                          }`}
+                        >
                           <td className="px-4 py-3">
-                            <p className="font-mono text-xs font-semibold text-slate-900">
-                              {item.skuCode || '-'}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <p className="font-mono text-xs font-semibold text-slate-900">
+                                {item.skuCode || '-'}
+                              </p>
+                              {(isUnexpected || isSnapshot) && (
+                                <span
+                                  className={`rounded-full border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase ${
+                                    isUnexpected
+                                      ? 'border-amber-300 bg-amber-100 text-amber-800'
+                                      : 'border-slate-200 bg-slate-100 text-slate-600'
+                                  }`}
+                                >
+                                  {isUnexpected ? 'Hàng phát sinh' : 'Theo sổ'}
+                                </span>
+                              )}
+                            </div>
                             <p className="mt-1 max-w-56 truncate text-xs text-slate-500">
                               {item.skuName || '-'}
                             </p>
@@ -632,6 +756,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                           <td className="px-4 py-3 text-right">
                             {isCounting ? (
                               <input
+                                ref={(element) => {
+                                  const itemKey = String(item.id)
+                                  if (element) quantityInputRefs.current.set(itemKey, element)
+                                  else quantityInputRefs.current.delete(itemKey)
+                                }}
                                 type="number"
                                 min="0"
                                 aria-label={`Số lượng thực tế ${item.skuCode || item.id}`}
@@ -982,7 +1111,52 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               ))}
             </select>
           </label>
-          {audit.scopeType === 'WAREHOUSE' && (
+          {scopeType === 'BIN' && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                Vị trí cố định
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-900">
+                {[audit.scopeRackName, audit.scopeBinName].filter(Boolean).join(' / ') ||
+                  'Chưa có thông tin vị trí'}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Hàng phát sinh sẽ được ghi nhận vào đúng Bin thuộc phạm vi phiếu.
+              </p>
+            </div>
+          )}
+          {scopeType === 'RACK' && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                  Rack cố định
+                </p>
+                <p className="mt-1 text-sm font-medium text-slate-900">
+                  {audit.scopeRackName || 'Chưa có thông tin Rack'}
+                </p>
+              </div>
+              <label className="block text-sm font-medium text-slate-700">
+                Bin <span className="text-red-600">*</span>
+                <select
+                  value={unexpectedBinId}
+                  onChange={(event) => setUnexpectedBinId(event.target.value)}
+                  disabled={unexpectedOptionsLoading || unexpectedBins.length === 0}
+                  required
+                  className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+                >
+                  <option value="">
+                    {unexpectedOptionsLoading ? 'Đang tải bin...' : 'Chọn bin'}
+                  </option>
+                  {unexpectedBins.map((bin) => (
+                    <option key={bin.id} value={bin.id}>
+                      {bin.name || bin.code || bin.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+          {scopeType === 'WAREHOUSE' && (
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-medium text-slate-700">
                 Rack <span className="text-red-600">*</span>
@@ -1004,14 +1178,15 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                 </select>
               </label>
               <label className="block text-sm font-medium text-slate-700">
-                Bin (không bắt buộc)
+                Bin <span className="text-red-600">*</span>
                 <select
                   value={unexpectedBinId}
                   onChange={(event) => setUnexpectedBinId(event.target.value)}
-                  disabled={!unexpectedRackId}
+                  disabled={!unexpectedRackId || unexpectedBins.length === 0}
+                  required
                   className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
                 >
-                  <option value="">Không chọn bin</option>
+                  <option value="">Chọn bin</option>
                   {unexpectedBins.map((bin) => (
                     <option key={bin.id} value={bin.id}>
                       {bin.name || bin.code || bin.id}
@@ -1019,6 +1194,15 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   ))}
                 </select>
               </label>
+            </div>
+          )}
+          {hasUnexpectedLocationConfigurationError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+            >
+              Cấu hình vị trí của phạm vi kiểm kê chưa hợp lệ hoặc chưa có Bin khả dụng. Vui lòng
+              kiểm tra lại layout kho.
             </div>
           )}
           <label className="block text-sm font-medium text-slate-700">
@@ -1038,7 +1222,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               rows={2}
               value={unexpectedNote}
               onChange={(event) => setUnexpectedNote(event.target.value)}
-              placeholder="Vị trí hoặc tình trạng phát hiện..."
+              placeholder="Tình trạng hoặc mô tả bổ sung..."
               className="mt-1.5 w-full rounded-md border border-slate-300 p-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
           </label>
@@ -1046,7 +1230,15 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             <Button type="button" variant="outline" onClick={() => setIsUnexpectedModalOpen(false)}>
               Đóng
             </Button>
-            <Button type="submit" isLoading={addingUnexpected}>
+            <Button
+              type="submit"
+              isLoading={addingUnexpected}
+              disabled={
+                addingUnexpected ||
+                unexpectedOptionsLoading ||
+                hasUnexpectedLocationConfigurationError
+              }
+            >
               Thêm sản phẩm
             </Button>
           </div>
