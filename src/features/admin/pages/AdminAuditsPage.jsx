@@ -8,6 +8,7 @@ import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import { showApiErrorToast } from '@/config/apiError'
+import { useLanguage } from '@/i18n/LanguageContext'
 import { HiBars3 } from 'react-icons/hi2'
 
 const orderAuditItemsForDisplay = (items = []) => [
@@ -16,6 +17,7 @@ const orderAuditItemsForDisplay = (items = []) => [
 ]
 
 const AdminAuditsPage = () => {
+  const { language } = useLanguage()
   const { isSidebarExpanded } = useSelector((state) => state.ui)
   const [audits, setAudits] = useState([])
   const [loading, setLoading] = useState(true)
@@ -74,34 +76,66 @@ const AdminAuditsPage = () => {
   }
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'PENDING':
-        return (
-          <span className="rounded-full border border-yellow-200 bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700">
-            Waiting for approval
-          </span>
-        )
-      case 'APPROVED':
-      case 'PASSED':
-        return (
-          <span className="rounded-full border border-green-200 bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
-            Approved
-          </span>
-        )
-      case 'REJECTED':
-      case 'FAILED':
-        return (
-          <span className="rounded-full border border-red-200 bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
-            Refuse
-          </span>
-        )
-      default:
-        return (
-          <span className="rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
-            {status}
-          </span>
-        )
+    const statusConfig = {
+      EDIT_REQUESTED: {
+        label: { vi: 'Yêu cầu mở lại', en: 'Edit requested' },
+        className: 'border-purple-200 bg-purple-50 text-purple-800',
+      },
+      REOPENED: {
+        label: { vi: 'Đã mở lại', en: 'Reopened' },
+        className: 'border-indigo-200 bg-indigo-50 text-indigo-800',
+      },
+      PENDING: {
+        label: { vi: 'Kế hoạch cũ', en: 'Legacy pending' },
+        className: 'border-slate-200 bg-slate-100 text-slate-700',
+      },
+      DRAFT: {
+        label: { vi: 'Bản nháp', en: 'Draft' },
+        className: 'border-slate-200 bg-slate-100 text-slate-700',
+      },
+      IN_PROGRESS: {
+        label: { vi: 'Đang kiểm đếm', en: 'In progress' },
+        className: 'border-blue-200 bg-blue-50 text-blue-800',
+      },
+      SUBMITTED: {
+        label: { vi: 'Chờ duyệt', en: 'Submitted' },
+        className: 'border-amber-200 bg-amber-50 text-amber-800',
+      },
+      RECOUNT_REQUIRED: {
+        label: { vi: 'Cần kiểm lại', en: 'Recount required' },
+        className: 'border-orange-200 bg-orange-50 text-orange-800',
+      },
+      APPROVED: {
+        label: { vi: 'Đã duyệt', en: 'Approved' },
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+      },
+      PASSED: {
+        label: { vi: 'Đã duyệt', en: 'Approved' },
+        className: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+      },
+      REJECTED: {
+        label: { vi: 'Đã từ chối', en: 'Rejected' },
+        className: 'border-rose-200 bg-rose-50 text-rose-800',
+      },
+      FAILED: {
+        label: { vi: 'Đã từ chối', en: 'Rejected' },
+        className: 'border-rose-200 bg-rose-50 text-rose-800',
+      },
+      CANCELLED: {
+        label: { vi: 'Đã hủy', en: 'Cancelled' },
+        className: 'border-red-200 bg-red-50 text-red-800',
+      },
     }
+    const config = statusConfig[status] || {
+      label: { vi: status || '—', en: status || '—' },
+      className: 'border-gray-200 bg-gray-100 text-gray-700',
+    }
+
+    return (
+      <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${config.className}`}>
+        {config.label[language] || config.label.en}
+      </span>
+    )
   }
 
   return (
