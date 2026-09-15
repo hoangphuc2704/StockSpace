@@ -1,4 +1,5 @@
 import api from '../apiConfig'
+import { sumStockQuantity } from '@/utils/stockQuantity'
 
 const fetchAllStock = async (warehouseId, size = 100) => {
   const getPage = (page) =>
@@ -44,7 +45,7 @@ const stockApi = {
    * BE chưa có endpoint lọc trực tiếp theo binId. Endpoint tồn kho theo kho trả
    * binId trong từng StockBatchResponse, vì vậy FE tải đủ các trang rồi lọc theo Bin.
    *
-   * @returns {Promise<{content: Array, totalElements: number, totalQuantity: number}>}
+   * @returns {Promise<{content: Array, totalElements: number, totalQuantity: number|null, quantityMasked: boolean}>}
    */
   getStockByBin: async (warehouseId, binId, { size = 100 } = {}) => {
     if (!warehouseId || !binId) {
@@ -58,7 +59,8 @@ const stockApi = {
     return {
       content,
       totalElements: content.length,
-      totalQuantity: content.reduce((total, batch) => total + (Number(batch.quantity) || 0), 0),
+      quantityMasked: content.some((batch) => batch?.quantityMasked === true),
+      totalQuantity: sumStockQuantity(content),
     }
   },
 

@@ -18,6 +18,8 @@ export const API_ERROR_MESSAGE_OVERRIDES = {
     'This job or identical workbook content was already applied and will not be retried.',
   WMS_IMPORT_STALE:
     'Warehouse, inventory, layout, or audit data changed. Download a fresh workbook and start again.',
+  AUDIT_MOVEMENT_LOCKED:
+    'Kho đang được kiểm kê mù. Hãy chờ Staff hoàn tất kiểm kê trước khi thay đổi hoặc xuất tồn kho.',
   // EMAIL_ALREADY_EXISTS: 'Email này đã được sử dụng.',
 }
 
