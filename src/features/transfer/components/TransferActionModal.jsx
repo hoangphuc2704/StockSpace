@@ -57,6 +57,12 @@ const returnableQuantity = (item) =>
       Number(item.returnedQuantity || 0)
   )
 
+const pickedQuantity = (allocation) => Number(allocation?.pickedQuantity || 0)
+const allocationRemainingQuantity = (allocation) =>
+  Math.max(0, Number(allocation?.remainingQuantity || 0))
+const itemRemainingToPick = (item) =>
+  Math.max(0, Number(item?.requestedQuantity || 0) - Number(item?.pickedQuantity || 0))
+
 const Field = ({ label, children, hint }) => (
   <div>
     <label className="mb-1.5 block text-sm font-semibold text-slate-700">{label}</label>
@@ -92,6 +98,27 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
       ),
     [items]
   )
+  const pickSummary = useMemo(() => {
+    if (mode !== 'pick') return null
+    const requested = items.reduce((sum, item) => sum + Number(item.requestedQuantity || 0), 0)
+    const picked = items.reduce((sum, item) => sum + Number(item.pickedQuantity || 0), 0)
+    const remaining = items.reduce((sum, item) => sum + itemRemainingToPick(item), 0)
+    const currentOperation = lines.reduce(
+      (sum, line) => sum + Math.max(0, Number(line.quantity || 0)),
+      0
+    )
+    return {
+      requested,
+      picked,
+      remaining,
+      currentOperation,
+      afterOperation: picked + currentOperation,
+      expectedStatus:
+        currentOperation > 0 && picked + currentOperation >= requested
+          ? 'READY_TO_DISPATCH'
+          : 'PICKING',
+    }
+  }, [items, lines, mode])
 
   useEffect(() => {
     if (!isOpen || !transfer || !mode) return
@@ -194,6 +221,12 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
     )
   }
 
+  const fillAllocationRemaining = (index) => {
+    const allocation = sourceAllocations[index]
+    if (!allocation) return
+    updateLine(index, 'quantity', String(allocationRemainingQuantity(allocation)))
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     let payload
@@ -207,10 +240,27 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
       if (!pickLines.length) return toast.error('Enter at least one picked quantity.')
       if (
         lines.some(
-          (line, index) => Number(line.quantity) > Number(sourceAllocations[index]?.quantity || 0)
+          (line, index) =>
+            Number(line.quantity) < 0 ||
+            !Number.isInteger(Number(line.quantity)) ||
+            Number(line.quantity) > allocationRemainingQuantity(sourceAllocations[index])
         )
       )
-        return toast.error('Picked quantity cannot exceed the source allocation.')
+        return toast.error('Picked quantity must be a whole number within the remaining allocation.')
+      const pickedByItem = new Map()
+      lines.forEach((line, index) => {
+        const quantity = Number(line.quantity || 0)
+        if (quantity <= 0) return
+        const itemId = sourceAllocations[index]?.item?.id
+        pickedByItem.set(itemId, (pickedByItem.get(itemId) || 0) + quantity)
+      })
+      for (const [itemId, quantity] of pickedByItem) {
+        const item = items.find((entry) => String(entry.id) === String(itemId))
+        if (quantity > itemRemainingToPick(item))
+          return toast.error(
+            `Picked quantity exceeds the remaining quantity for ${item?.skuCode || 'this SKU'}.`
+          )
+      }
       payload = { lines: pickLines }
     } else if (mode === 'retry') {
       if (!destinationWarehouseId || !reason.trim())
@@ -269,6 +319,10 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
       await onSuccess?.()
       onClose()
     } catch (error) {
+      if (error.response?.status === 409) {
+        await onSuccess?.()
+        onClose()
+      }
       showApiErrorToast(error, 'Could not update transfer.')
     } finally {
       setSubmitting(false)
@@ -313,10 +367,22 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
         <form onSubmit={handleSubmit} className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-5 p-5 sm:p-6">
             {mode === 'pick' && (
-              <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm leading-6 text-blue-900">
-                Confirm what the assigned source staff actually picked. Stock is deducted only when
-                the tenant approves dispatch.
-              </div>
+              <>
+                <div className="rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-sm leading-6 text-blue-900">
+                  Record the additional quantity picked in this operation. Stock is deducted only
+                  when the tenant approves dispatch.
+                </div>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <MiniStat label="Requested" value={pickSummary.requested} />
+                  <MiniStat label="Picked before" value={pickSummary.picked} tone="text-blue-700" />
+                  <MiniStat label="Remaining" value={pickSummary.remaining} tone="text-amber-700" />
+                  <MiniStat
+                    label="This operation"
+                    value={pickSummary.currentOperation}
+                    tone="text-emerald-700"
+                  />
+                </div>
+              </>
             )}
             {mode === 'retry' && (
               <div className="grid gap-4 sm:grid-cols-2">
@@ -382,7 +448,7 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                   sourceAllocations.map((allocation, index) => (
                     <div
                       key={allocation.id || index}
-                      className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[minmax(0,1fr)_120px] sm:items-center"
+                      className="grid gap-3 rounded-xl border border-slate-200 p-4 sm:grid-cols-[minmax(0,1fr)_120px_140px] sm:items-center"
                     >
                       <div>
                         <p className="text-sm font-semibold text-slate-900">
@@ -392,16 +458,31 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                         <p className="mt-1 text-xs text-slate-500">
                           {allocation.item.skuCode} · Reserved up to {allocation.quantity} units
                         </p>
+                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                          <span>Planned: <strong className="text-slate-700">{allocation.quantity}</strong></span>
+                          <span>Picked: <strong className="text-blue-700">{pickedQuantity(allocation)}</strong></span>
+                          <span>Remaining: <strong className="text-amber-700">{allocationRemainingQuantity(allocation)}</strong></span>
+                        </div>
                       </div>
                       <input
                         type="number"
                         min="0"
-                        max={allocation.quantity}
+                        max={allocationRemainingQuantity(allocation)}
+                        step="1"
                         value={lines[index]?.quantity || ''}
                         onChange={(e) => updateLine(index, 'quantity', e.target.value)}
-                        placeholder="Picked"
+                        placeholder="Add qty"
+                        disabled={allocationRemainingQuantity(allocation) === 0}
                         className={inputClass}
                       />
+                      <button
+                        type="button"
+                        onClick={() => fillAllocationRemaining(index)}
+                        disabled={submitting || allocationRemainingQuantity(allocation) === 0}
+                        className="rounded-lg border border-blue-200 px-2.5 py-2 text-[11px] font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Pick all remaining
+                      </button>
                     </div>
                   ))
                 ) : (
@@ -409,6 +490,24 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                     No source allocations are available to pick.
                   </p>
                 )}
+              </div>
+            )}
+            {mode === 'pick' && pickSummary && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-700">Picking preview</span>
+                  <span className="font-bold tabular-nums text-slate-950">
+                    {pickSummary.currentOperation} this operation · {pickSummary.afterOperation} total picked
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Expected status:{' '}
+                  <strong className="text-slate-700">
+                    {pickSummary.expectedStatus === 'READY_TO_DISPATCH'
+                      ? 'Ready to dispatch'
+                      : 'Picking'}
+                  </strong>
+                </p>
               </div>
             )}
             {mode === 'returnReceive' &&
@@ -537,7 +636,7 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {submitting ? 'Saving' : copy.action}
+              {submitting ? 'Saving' : mode === 'pick' ? 'Save picking' : copy.action}
             </button>
           </footer>
         </form>
@@ -545,5 +644,12 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
     </div>
   )
 }
+
+const MiniStat = ({ label, value, tone = 'text-slate-950' }) => (
+  <div className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-xs">
+    <p className="text-[10px] font-bold tracking-[0.1em] text-slate-500 uppercase">{label}</p>
+    <p className={`mt-1 text-xl font-bold tabular-nums ${tone}`}>{value}</p>
+  </div>
+)
 
 export default TransferActionModal

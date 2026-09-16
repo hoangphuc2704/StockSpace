@@ -129,6 +129,18 @@ const formatDate = (value) =>
     : '—'
 const totalRequested = (transfer) =>
   (transfer.items || []).reduce((sum, item) => sum + Number(item.requestedQuantity || 0), 0)
+const totalPicked = (transfer) =>
+  (transfer.items || []).reduce((sum, item) => sum + Number(item.pickedQuantity || 0), 0)
+const totalRemainingToPick = (transfer) =>
+  (transfer.items || []).reduce(
+    (sum, item) =>
+      sum +
+      Math.max(
+        0,
+        Number(item.requestedQuantity || 0) - Number(item.pickedQuantity || 0)
+      ),
+    0
+  )
 const totalOutstanding = (transfer) =>
   (transfer.items || []).reduce(
     (sum, item) =>
@@ -641,9 +653,17 @@ const TransferPage = ({ currentRole }) => {
         icon: PackageCheck,
         onClick: () => handleAllocate(transfer),
       }
-    if (['ALLOCATED', 'PICKING'].includes(transfer.status) && (tenant || (staff && isAssignedPicker)))
+    const remainingToPick = totalRemainingToPick(transfer)
+    if (
+      ['ALLOCATED', 'PICKING'].includes(transfer.status) &&
+      remainingToPick > 0 &&
+      (tenant || (staff && isAssignedPicker))
+    )
       return {
-        label: 'Confirm picking',
+        label:
+          transfer.status === 'PICKING'
+            ? `Continue picking · ${remainingToPick} remaining`
+            : 'Confirm picking',
         icon: PackageCheck,
         onClick: () => setAction({ mode: 'pick', transfer }),
       }
@@ -1199,6 +1219,13 @@ const TransferPage = ({ currentRole }) => {
                                   Outstanding: {totalOutstanding(transfer)}
                                 </span>
                               )}
+                              {['ALLOCATED', 'PICKING'].includes(transfer.status) &&
+                                totalRemainingToPick(transfer) > 0 && (
+                                  <span className="mt-2 block text-right text-[11px] text-indigo-700">
+                                    Picking: {totalPicked(transfer)}/{totalRequested(transfer)} · Remaining:{' '}
+                                    {totalRemainingToPick(transfer)}
+                                  </span>
+                                )}
                               {!primary && getRoleHint(transfer) && (
                                 <span className="mt-2 block max-w-[220px] text-right text-[11px] font-medium text-slate-500">
                                   {getRoleHint(transfer)}

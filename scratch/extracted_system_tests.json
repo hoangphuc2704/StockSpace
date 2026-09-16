@@ -1,0 +1,1921 @@
+{
+  "Authentication": [
+    [
+      2,
+      {
+        "A": "Feature",
+        "B": "Authentication",
+        "R": "Passed"
+      }
+    ],
+    [
+      3,
+      {
+        "A": "Test requirement",
+        "B": "Verify login, registration, password recovery, token refresh, and logout functionalities",
+        "R": "Failed"
+      }
+    ],
+    [
+      4,
+      {
+        "A": "Number of TCs",
+        "B": "8",
+        "R": "Pending"
+      }
+    ],
+    [
+      5,
+      {
+        "A": "Testing Round",
+        "B": "Passed",
+        "C": "Failed",
+        "D": "Pending",
+        "E": "N/A",
+        "R": "N/A"
+      }
+    ],
+    [
+      6,
+      {
+        "A": "Round 1",
+        "B": "8",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      7,
+      {
+        "A": "Round 2",
+        "B": "8",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      8,
+      {
+        "A": "Round 3",
+        "B": "0",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      10,
+      {
+        "A": "Test Case ID",
+        "B": "Test Case Description",
+        "C": "Test Case Procedure",
+        "D": "Expected Results",
+        "E": "Pre-conditions",
+        "F": "Round 1",
+        "G": "Test date",
+        "H": "Tester",
+        "I": "Round 2",
+        "J": "Test date",
+        "K": "Tester",
+        "L": "Round 3",
+        "M": "Test date",
+        "N": "Tester",
+        "O": "Note"
+      }
+    ],
+    [
+      11,
+      {
+        "A": "Login"
+      }
+    ],
+    [
+      12,
+      {
+        "A": "TC_LG_001",
+        "B": "Login with valid credentials",
+        "C": "1. Go to Login page.\n2. Enter a valid registered email.\n3. Enter the correct password.\n4. Click 'Login'.",
+        "D": "User is logged in successfully and redirected to Dashboard.",
+        "E": "User already has a valid account",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      13,
+      {
+        "A": "TC_LG_002",
+        "B": "Login with invalid password",
+        "C": "1. Go to Login page.\n2. Enter a valid registered email.\n3. Enter an incorrect password.\n4. Click 'Login'.",
+        "D": "Error message is shown: 'Invalid email or password'.",
+        "E": "User already has a valid account",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      14,
+      {
+        "A": "TC_LG_003",
+        "B": "Login with missing fields",
+        "C": "1. Go to Login page.\n2. Leave email and password blank.\n3. Click 'Login'.",
+        "D": "Error message is shown for required fields.",
+        "E": "None",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      15,
+      {
+        "A": "Register"
+      }
+    ],
+    [
+      16,
+      {
+        "A": "TC_RG_001",
+        "B": "Register with valid information",
+        "C": "1. Go to Register page.\n2. Enter valid Name, Email, Phone, Password.\n3. Select role (Owner or Tenant).\n4. Click 'Register'.",
+        "D": "Account is created successfully and user is logged in or asked to verify email.",
+        "E": "User does not have an account in the system",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      17,
+      {
+        "A": "TC_RG_002",
+        "B": "Register with existing email",
+        "C": "1. Go to Register page.\n2. Enter an email that is already registered.\n3. Fill other fields with valid data.\n4. Click 'Register'.",
+        "D": "Error message is shown: 'Email already registered'.",
+        "E": "User already has a valid account with the email",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      18,
+      {
+        "A": "TC_RG_003",
+        "B": "Register with invalid password format",
+        "C": "1. Go to Register page.\n2. Enter password '123' (too short).\n3. Fill other fields.\n4. Click 'Register'.",
+        "D": "Error message is shown regarding password length/format.",
+        "E": "None",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      19,
+      {
+        "A": "Forgot Password"
+      }
+    ],
+    [
+      20,
+      {
+        "A": "TC_FP_001",
+        "B": "Request reset link with valid email",
+        "C": "1. Go to Forgot Password page.\n2. Enter registered email.\n3. Click 'Submit'.",
+        "D": "Success message is shown and reset email is sent.",
+        "E": "User already has an account and a valid email",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      21,
+      {
+        "A": "TC_RP_001",
+        "B": "Request reset link with unregistered email",
+        "C": "1. Go to Forgot Password page.\n2. Enter an email not in the system.\n3. Click 'Submit'",
+        "D": "System shows a generic message for security but no email is sent, or shows 'Email not found'.",
+        "E": "None",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ]
+  ],
+  "Warehouse Management": [
+    [
+      2,
+      {
+        "A": "Feature",
+        "B": "Warehouse Management",
+        "R": "Passed"
+      }
+    ],
+    [
+      3,
+      {
+        "A": "Test requirement",
+        "B": "Verify warehouse creation, admin approval, layout 2D/3D builder, and public searching",
+        "R": "Failed"
+      }
+    ],
+    [
+      4,
+      {
+        "A": "Number of TCs",
+        "B": "11",
+        "R": "Pending"
+      }
+    ],
+    [
+      5,
+      {
+        "A": "Testing Round",
+        "B": "Passed",
+        "C": "Failed",
+        "D": "Pending",
+        "E": "N/A",
+        "R": "N/A"
+      }
+    ],
+    [
+      6,
+      {
+        "A": "Round 1",
+        "B": "11",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      7,
+      {
+        "A": "Round 2",
+        "B": "11",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      8,
+      {
+        "A": "Round 3",
+        "B": "0",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      10,
+      {
+        "A": "Test Case ID",
+        "B": "Test Case Description",
+        "C": "Test Case Procedure",
+        "D": "Expected Results",
+        "E": "Pre-conditions",
+        "F": "Round 1",
+        "G": "Test date",
+        "H": "Tester",
+        "I": "Round 2",
+        "J": "Test date",
+        "K": "Tester",
+        "L": "Round 3",
+        "M": "Test date",
+        "N": "Tester",
+        "O": "Note"
+      }
+    ],
+    [
+      11,
+      {
+        "A": "Create Warehouse (Owner)"
+      }
+    ],
+    [
+      12,
+      {
+        "A": "TC_WH_001",
+        "B": "Owner creates a new warehouse with valid info",
+        "C": "1. Log in as Owner.\n2. Navigate to 'Warehouse Management'.\n3. Click 'Add Warehouse'.\n4. Enter Name, Address, Capacity, Price.\n5. Click 'Submit'.",
+        "D": "Warehouse is created and status is PENDING_APPROVAL.",
+        "E": "User logged in as Owner",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      13,
+      {
+        "A": "TC_WH_002",
+        "B": "Create warehouse with missing name",
+        "C": "1. Log in as Owner.\n2. Navigate to 'Add Warehouse'.\n3. Leave Name and Price blank.\n4. Click 'Submit'.",
+        "D": "Validation error messages are shown for Name and Price.",
+        "E": "User logged in as Owner",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      14,
+      {
+        "A": "TC_WH_003",
+        "B": "Create warehouse with negative price",
+        "C": "1. Log in as Owner.\n2. Navigate to 'Add Warehouse'.\n3. Enter -100 in Price field.\n4. Click 'Submit'.",
+        "D": "Error message: Price must be positive.",
+        "E": "User logged in as Owner",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      15,
+      {
+        "A": "TC_WH_004",
+        "B": "Create warehouse with missing pricePerMonth",
+        "C": "1. Log in as Owner.\n2. Navigate to 'Add Warehouse'.\n3. Fill in all fields but leave the 'Price' (pricePerMonth) field blank.\n4. Click 'Submit'.",
+        "D": "Validation error message is shown: 'Giá thuê không được để trống' (Price cannot be empty).",
+        "E": "User logged in as Owner",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      16,
+      {
+        "A": "Verify/Reject Warehouse (Admin)"
+      }
+    ],
+    [
+      17,
+      {
+        "A": "TC_WH_005",
+        "B": "Admin approves (verifies) a pending warehouse",
+        "C": "1. Log in as Admin.\n2. Navigate to 'Warehouse Approval' or 'Pending Warehouses'.\n3. View details of a warehouse with status PENDING_APPROVAL.\n4. Click 'Approve' button.",
+        "D": "Success message 'Duyệt kho thành công' is shown.\nWarehouse status changes to AVAILABLE and isVerified becomes true.",
+        "E": "User is Admin, System has at least one pending warehouse",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      18,
+      {
+        "A": "TC_WH_006",
+        "B": "Admin approves warehouse with invalid ID",
+        "C": "1. Log in as Admin.\n2. Manually change the URL to access a warehouse detail page with an invalid or non-existent ID.\n3. Attempt to click 'Approve'.",
+        "D": "System shows a 'Type mismatch' or 'Not Found' error.\nAction is blocked.",
+        "E": "User is Admin ",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      19,
+      {
+        "A": "TC_WH_007",
+        "B": "Admin rejects pending warehouse",
+        "C": "1. Log in as Admin.\n2. Navigate to 'Warehouse Approval'.\n3. View details of a warehouse with status PENDING_APPROVAL.\n4. Click 'Reject' button and optionally enter a reason.",
+        "D": "Success message 'Từ chối duyệt kho thành công' is shown.\nWarehouse status changes to INACTIVE and isVerified remains false",
+        "E": "User is Admin, System has at least one pending warehouse",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      20,
+      {
+        "A": "Save Layout Bulk"
+      }
+    ],
+    [
+      21,
+      {
+        "A": "TC_WH_008",
+        "B": "Owner saves 2D/3D layout structure (Racks & Bins)",
+        "C": "1. Log in as Owner.\n2. Navigate to an existing warehouse details.\n3. Open the Layout Editor (2D/3D view).\n4. Set Layout width and length (e.g., 100x100).\n5. Add valid Racks and Bins within the layout boundaries.\n6. Click 'Save Layout'.",
+        "D": "Success message 'Lưu sơ đồ layout mặc định thành công' is shown.\nLayout structure is saved visually and in the database.",
+        "E": "User is Owner, Warehouse exists",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      22,
+      {
+        "A": "TC_WH_009",
+        "B": "Owner saves layout with racks exceeding boundaries",
+        "C": "1. Log in as Owner.\n2. Open the Layout Editor for a warehouse (e.g., 100x100 layout).\n3. Place a Rack at coordinate X=110, Y=10 (outside the 100x100 limit).\n4. Click 'Save Layout'.",
+        "D": "Error message is shown: 'Tọa độ/Kích thước Rack vượt quá biên giới hạn của Layout'.\nLayout is not saved.",
+        "E": "User is Owner, Warehouse exists",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      23,
+      {
+        "A": "Search Warehouses "
+      }
+    ],
+    [
+      24,
+      {
+        "A": "TC_WH_010",
+        "B": "Public user searches warehouses with matching keyword",
+        "C": "1. Go to the public Warehouse Search page.\n2. Enter a keyword that exists in the system (e.g., 'Quận 9').\n3. Enter a min price if needed.\n4. Click 'Search' icon.",
+        "D": "System returns a list of AVAILABLE warehouses matching the keyword 'Quận 9'.\nPagination details are shown correctly.",
+        "E": "System has at least one AVAILABLE warehouse named 'Kho Quận 9'",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      25,
+      {
+        "A": "TC_WH_011",
+        "B": "Public user searches with no matching results",
+        "C": "1. Go to the public Warehouse Search page.\n2. Enter a keyword that does not exist (e.g., 'Kho Hà Nội').\n3. Click 'Search' icon.",
+        "D": "System returns an empty list.\nMessage 'No results found' is displayed.",
+        "E": "System is working properly",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ]
+  ],
+  "Booking Management": [
+    [
+      2,
+      {
+        "A": "Feature",
+        "B": "Booking Management",
+        "R": "Passed"
+      }
+    ],
+    [
+      3,
+      {
+        "A": "Test requirement",
+        "B": "Verify Tenant creating booking (validation, insufficient balance, duplicate), Owner approving (generates contract), and Owner rejecting (validation, refund)",
+        "R": "Failed"
+      }
+    ],
+    [
+      4,
+      {
+        "A": "Number of TCs",
+        "B": "12",
+        "R": "Pending"
+      }
+    ],
+    [
+      5,
+      {
+        "A": "Testing Round",
+        "B": "Passed",
+        "C": "Failed",
+        "D": "Pending",
+        "E": "N/A",
+        "R": "N/A"
+      }
+    ],
+    [
+      6,
+      {
+        "A": "Round 1",
+        "B": "12",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      7,
+      {
+        "A": "Round 2",
+        "B": "12",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      8,
+      {
+        "A": "Round 3",
+        "B": "0",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      10,
+      {
+        "A": "Test Case ID",
+        "B": "Test Case Description",
+        "C": "Test Case Procedure",
+        "D": "Expected Results",
+        "E": "Pre-conditions",
+        "F": "Round 1",
+        "G": "Test date",
+        "H": "Tester",
+        "I": "Round 2",
+        "J": "Test date",
+        "K": "Tester",
+        "L": "Round 3",
+        "M": "Test date",
+        "N": "Tester",
+        "O": "Note"
+      }
+    ],
+    [
+      11,
+      {
+        "A": "Tenant Booking (Create)"
+      }
+    ],
+    [
+      12,
+      {
+        "A": "TC_BK_001",
+        "B": "Create booking with valid information ",
+        "C": "1. Log in as Tenant.\n2. Search and select an AVAILABLE warehouse.\n3. Click 'Book Now'.\n4. Enter deposit amount and confirm the booking.",
+        "D": "Booking is created successfully with PENDING status.\nDeposit amount is deducted from the Tenant's wallet.",
+        "E": "User is Tenant, Warehouse is AVAILABLE, Wallet balance >= Deposit",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      13,
+      {
+        "A": "TC_BK_002",
+        "B": "Create booking with missing warehouseId",
+        "C": "1. Log in as Tenant.\n2. Intercept or bypass the UI to submit a booking without selecting a warehouse.\n3. Submit the booking.",
+        "D": "Validation error message: 'ID Kho không được để trống'.\nBooking is not created.",
+        "E": "User is Tenant",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      14,
+      {
+        "A": "TC_BK_003",
+        "B": "Create booking with missing depositAmount",
+        "C": "1. Log in as Tenant.\n2. Select a warehouse to book.\n3. Leave the deposit amount field blank.\n4. Click 'Book Now' / 'Submit'.",
+        "D": "Validation error message: 'Số tiền đặt cọc không được để trống'.\nBooking is not created.",
+        "E": "User is Tenant",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      15,
+      {
+        "A": "TC_BK_004",
+        "B": " Create booking with invalid depositAmount (0 or negative)",
+        "C": "1. Log in as Tenant.\n2. Select a warehouse to book.\n3. Enter 0 or -100 in the deposit amount field.\n4. Click 'Book Now' / 'Submit'.",
+        "D": "Validation error message: 'Số tiền đặt cọc phải lớn hơn 0'.\nBooking is not created.",
+        "E": "User is Tenant",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      16,
+      {
+        "A": "TC_BK_005",
+        "B": "Create booking when warehouse is already booked by another tenant",
+        "C": "1. Log in as Tenant.\n2. Select a warehouse that has just been booked by another tenant (status is no longer AVAILABLE).\n3. Click 'Book Now'.",
+        "D": "Error message: 'Kho bãi đã được đặt chỗ hoặc đang trong quá trình thỏa thuận hợp đồng'.\nBooking is not created.",
+        "E": "User is Tenant, Warehouse is already booked",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      17,
+      {
+        "A": "TC_BK_006",
+        "B": "Create booking with insufficient wallet balance",
+        "C": "1. Log in as Tenant with insufficient balance in the wallet.\n2. Select a warehouse and attempt to book.\n3. Click 'Book Now'.",
+        "D": "Error message: 'Số dư ví không đủ để thực hiện giao dịch'.\nBooking is not created.",
+        "E": "User is Tenant, Wallet balance < Deposit amount",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      18,
+      {
+        "A": "Owner Booking (Approve)"
+      }
+    ],
+    [
+      19,
+      {
+        "A": "TC_BK_007",
+        "B": "Owner approves pending booking",
+        "C": "1. Log in as Owner.\n2. Navigate to 'Booking Requests'.\n3. Locate a booking with PENDING status.\n4. Click 'Approve' button.",
+        "D": "Success message: 'Chấp nhận yêu cầu thuê kho thành công'.\nBooking status changes to APPROVED.\nA Rental Contract is automatically generated.",
+        "E": "User is Owner, Booking status is PENDING",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      20,
+      {
+        "A": "TC_BK_008",
+        "B": "Owner approves an already processed booking",
+        "C": "1. Log in as Owner.\n2. Navigate to a booking that has already been APPROVED or REJECTED.\n3. Attempt to click 'Approve' again (e.g., via double-click or bypassing UI state).",
+        "D": "Error message: 'Yêu cầu thuê kho này đã được xử lý (Chấp nhận hoặc Từ chối)'.",
+        "E": "Booking status is already APPROVED or REJECTED",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      21,
+      {
+        "A": "TC_BK_009",
+        "B": "Unauthorized Owner attempts to approve",
+        "C": "1. Log in as an Owner of a DIFFERENT warehouse.\n2. Attempt to approve a booking request belonging to another owner's warehouse.",
+        "D": "Error message: 'Access is denied' or 'Forbidden'.\nAction is blocked.",
+        "E": "User is NOT the owner of the warehouse",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      22,
+      {
+        "A": "Owner Booking (Reject)"
+      }
+    ],
+    [
+      23,
+      {
+        "A": "TC_BK_009",
+        "B": "Owner rejects pending booking",
+        "C": "1. Log in as Owner.\n2. Navigate to 'Booking Requests'.\n3. Locate a booking with PENDING status.\n4. Click 'Reject' button.\n5. Enter a valid rejection reason (e.g., 'Kho vừa có người cọc trước').\n6. Submit.",
+        "D": "Success message: 'Từ chối yêu cầu thuê kho thành công'.\nBooking status changes to REJECTED with the rejection reason recorded.\nDeposit is refunded to Tenant.",
+        "E": "User is Owner, Booking status is PENDING",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      24,
+      {
+        "A": "TC_BK_010",
+        "B": "Owner rejects booking without providing reason",
+        "C": "1. Log in as Owner.\n2. Navigate to 'Booking Requests' and select a PENDING booking.\n3. Click 'Reject' button.\n4. Leave the rejection reason field empty and submit.",
+        "D": "Validation error message: 'Lý do từ chối không được để trống'.\nBooking remains PENDING.",
+        "E": "User is Owner, Booking status is PENDING",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      25,
+      {
+        "A": "TC_BK_011",
+        "B": "Owner rejects an already processed booking",
+        "C": "1. Log in as Owner.\n2. Navigate to a booking that has already been APPROVED or REJECTED.\n3. Attempt to click 'Reject' again.",
+        "D": "Error message: 'Yêu cầu thuê kho này đã được xử lý (Chấp nhận hoặc Từ chối)'.",
+        "E": "Booking status is already APPROVED or REJECTED",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ]
+  ],
+  "Subscription": [
+    [
+      2,
+      {
+        "A": "Feature",
+        "B": "Subscription Management",
+        "R": "Passed"
+      }
+    ],
+    [
+      3,
+      {
+        "A": "Test requirement",
+        "B": "Verify Tenant purchasing subscription packages, including validations, wallet checks, and upgrade/downgrade rules\n",
+        "R": "Failed"
+      }
+    ],
+    [
+      4,
+      {
+        "A": "Number of TCs",
+        "B": "6",
+        "R": "Pending"
+      }
+    ],
+    [
+      5,
+      {
+        "A": "Testing Round",
+        "B": "Passed",
+        "C": "Failed",
+        "D": "Pending",
+        "E": "N/A",
+        "R": "N/A"
+      }
+    ],
+    [
+      6,
+      {
+        "A": "Round 1",
+        "B": "6",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      7,
+      {
+        "A": "Round 2",
+        "B": "6",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      8,
+      {
+        "A": "Round 3",
+        "B": "0",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      10,
+      {
+        "A": "Test Case ID",
+        "B": "Test Case Description",
+        "C": "Test Case Procedure",
+        "D": "Expected Results",
+        "E": "Pre-conditions",
+        "F": "Round 1",
+        "G": "Test date",
+        "H": "Tester",
+        "I": "Round 2",
+        "J": "Test date",
+        "K": "Tester",
+        "L": "Round 3",
+        "M": "Test date",
+        "N": "Tester",
+        "O": "Note"
+      }
+    ],
+    [
+      11,
+      {
+        "A": "Purchase Subscription (Tenant)"
+      }
+    ],
+    [
+      12,
+      {
+        "A": "TC_SUB_001",
+        "B": "Tenant purchases a subscription package successfully",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Subscription Packages'.\n3. Select an active package.\n4. Click 'Purchase' or 'Buy'.\n5. Confirm the transaction.",
+        "D": "Success message is shown.\nPackage status changes to ACTIVE.\nPackage price is deducted from Tenant's wallet.",
+        "E": "User is Tenant, Package is ACTIVE, Wallet balance >= Package Price",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      13,
+      {
+        "A": "TC_SUB_002",
+        "B": "Purchase with missing packageId",
+        "C": "1. Log in as Tenant.\n2. Intercept the purchase request or use a broken UI state to send a purchase without selecting a package.\n3. Submit.",
+        "D": "Validation error message: 'ID gói dịch vụ không được để trống'.\nPurchase is blocked.",
+        "E": "User is Tenant",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      14,
+      {
+        "A": "TC_SUB_003",
+        "B": "Purchase with invalid packageId (Not Found)",
+        "C": "1. Log in as Tenant.\n2. Manually alter the URL or intercept the request to provide a non-existent package ID.\n3. Submit the purchase.",
+        "D": "Error message: 'Resource not found'.",
+        "E": "User is Tenant, packageId does not exist",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      15,
+      {
+        "A": "TC_SUB_004",
+        "B": "Purchase a package that is no longer active",
+        "C": "1. Log in as Tenant.\n2. Attempt to purchase a package that has been deactivated (e.g., using an old bookmarked link).\n3. Submit the purchase",
+        "D": "Error message: 'Gói dịch vụ này hiện đã ngừng cung cấp'.",
+        "E": "\nPackage status (isActive) = false",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      16,
+      {
+        "A": "TC_SUB_005",
+        "B": "Purchase with insufficient wallet balance",
+        "C": "1. Log in as Tenant with insufficient balance.\n2. Navigate to 'Subscription Packages'.\n3. Select a package priced higher than current balance.\n4. Click 'Purchase'.",
+        "D": "Error message: 'Số dư ví không đủ để thực hiện giao dịch'.\nPurchase is blocked.",
+        "E": "Tenant wallet balance < Package price",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      17,
+      {
+        "A": "TC_SUB_006",
+        "B": "Tenant attempts to downgrade package while current package is still active",
+        "C": "1. Log in as Tenant.\n2. Ensure an ACTIVE high-tier subscription is currently running.\n3. Navigate to 'Subscription Packages'.\n4. Select a lower-tier package and attempt to purchase.",
+        "D": "Error message: 'Không thể hạ xuống gói dịch vụ thấp hơn khi gói hiện tại vẫn đang còn hạn. Vui lòng hạ gói sau khi gói hiện tại kết thúc.'.",
+        "E": "Tenant has an ACTIVE package with higher priority/price than the requested package",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ]
+  ],
+  "Wallet & Payment": [
+    [
+      2,
+      {
+        "A": "Feature",
+        "B": "Wallet & Payment",
+        "R": "Passed"
+      }
+    ],
+    [
+      3,
+      {
+        "A": "Test requirement",
+        "B": "Verify Top Up (VNPay), User Requesting Withdraw, and Admin Approving Withdraw with valid and invalid inputs.\n",
+        "R": "Failed"
+      }
+    ],
+    [
+      4,
+      {
+        "A": "Number of TCs",
+        "B": "10",
+        "R": "Pending"
+      }
+    ],
+    [
+      5,
+      {
+        "A": "Testing Round",
+        "B": "Passed",
+        "C": "Failed",
+        "D": "Pending",
+        "E": "N/A",
+        "R": "N/A"
+      }
+    ],
+    [
+      6,
+      {
+        "A": "Round 1",
+        "B": "10",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      7,
+      {
+        "A": "Round 2",
+        "B": "10",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      8,
+      {
+        "A": "Round 3",
+        "B": "0",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      10,
+      {
+        "A": "Test Case ID",
+        "B": "Test Case Description",
+        "C": "Test Case Procedure",
+        "D": "Expected Results",
+        "E": "Pre-conditions",
+        "F": "Round 1",
+        "G": "Test date",
+        "H": "Tester",
+        "I": "Round 2",
+        "J": "Test date",
+        "K": "Tester",
+        "L": "Round 3",
+        "M": "Test date",
+        "N": "Tester",
+        "O": "Note"
+      }
+    ],
+    [
+      11,
+      {
+        "A": "Deposit via VNPay"
+      }
+    ],
+    [
+      12,
+      {
+        "A": "TC_WP_001",
+        "B": "Top up wallet balance with valid info",
+        "C": "1. Log in to the system.\n2. Navigate to 'Wallet' or 'Nạp tiền'.\n3. Enter a valid amount (e.g., 500,000 VND).\n4. Select payment method (VNPay).\n5. Click 'Submit' / 'Nạp tiền'.",
+        "D": "Success message: 'Tạo yêu cầu nạp tiền thành công. Vui lòng hoàn tất thanh toán qua link'.\nSystem redirects to VNPay payment gateway.",
+        "E": "User is logged in",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      13,
+      {
+        "A": "TC_WP_002",
+        "B": "Top up with missing amoun",
+        "C": "1. Log in to the system.\n2. Navigate to 'Wallet' -> 'Nạp tiền'.\n3. Leave the amount field empty.\n4. Click 'Submit'.",
+        "D": "Validation error message: 'Số tiền nạp không được để trống'.\nRequest is blocked.",
+        "E": "User is logged in",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      14,
+      {
+        "A": "TC_WP_003",
+        "B": " Top up with missing paymentMethod",
+        "C": "1. Log in to the system.\n2. Navigate to 'Wallet' -> 'Nạp tiền'.\n3. Enter a valid amount.\n4. Do not select any payment method or bypass UI validation to send without it.\n5. Click 'Submit'",
+        "D": "Validation error message: 'Phương thức thanh toán không được để trống'",
+        "E": "User is logged in",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      15,
+      {
+        "A": "Request Withdraw"
+      }
+    ],
+    [
+      16,
+      {
+        "A": "TC_WP_004",
+        "B": "Request to withdraw money with valid info",
+        "C": "1. Log in to the system.\n2. Navigate to 'Wallet' -> 'Rút tiền'.\n3. Enter valid bank details (Bank Name, Account Number, Account Name).\n4. Enter a valid amount (e.g., 1,000,000 VND).\n5. Click 'Submit'.",
+        "D": "Success message: 'Gửi yêu cầu rút tiền thành công. Số tiền đã được tạm giữ'.\nWithdraw request status is PENDING.\nAmount is frozen from the wallet balance.",
+        "E": "Wallet balance >= Withdraw amount",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      17,
+      {
+        "A": "TC_WP_005",
+        "B": "Request withdraw with missing fields",
+        "C": "1. Log in to the system.\n2. Navigate to 'Wallet' -> 'Rút tiền'.\n3. Leave bank details or amount field empty.\n4. Click 'Submit'.",
+        "D": "Validation error message is shown indicating which fields are missing.",
+        "E": "User is logged in",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      18,
+      {
+        "A": "TC_WP_006",
+        "B": " Request withdraw with insufficient wallet balance",
+        "C": "1. Log in to the system.\n2. Navigate to 'Wallet' -> 'Rút tiền'.\n3. Enter valid bank details.\n4. Enter an amount greater than the current wallet balance.\n5. Click 'Submit'.",
+        "D": "Error message: 'Số dư ví không đủ để thực hiện giao dịch'.\nWithdraw request is not created.",
+        "E": "User is logged in, Wallet balance < Withdraw amount",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      19,
+      {
+        "A": "Approve Withdraw (Admin)"
+      }
+    ],
+    [
+      20,
+      {
+        "A": "TC_WP_007",
+        "B": "Admin approves a pending withdraw request ",
+        "C": ". Log in as Admin.\n2. Navigate to 'Withdraw Requests'.\n3. Locate a request with PENDING status.\n4. Click 'Approve' and optionally enter Admin notes (e.g., 'Đã chuyển khoản thành công').\n5. Submit.",
+        "D": "Success message: 'Phê duyệt yêu cầu rút tiền thành công'.\nRequest status changes to APPROVED.\nFrozen amount is permanently deducted.",
+        "E": "User is Admin, Withdraw request is PENDING",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      21,
+      {
+        "A": "TC_WP_008",
+        "B": "Admin tries to approve an already processed request",
+        "C": "1. Log in as Admin.\n2. Navigate to a withdraw request that has already been APPROVED or REJECTED.\n3. Attempt to click 'Approve' again.",
+        "D": "Error message: 'Yêu cầu rút tiền này đã được xử lý'.",
+        "E": "User is Admin, Withdraw request is already APPROVED or REJECTED",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      22,
+      {
+        "A": "Reject Withdraw (Admin)"
+      }
+    ],
+    [
+      23,
+      {
+        "A": "TC_WP_009",
+        "B": " Admin rejects a pending withdraw request (Happy path)",
+        "C": "1. Log in as Admin.\n2. Navigate to 'Withdraw Requests'.\n3. Locate a request with PENDING status.\n4. Click 'Reject'.\n5. Enter rejection reason in Admin notes (e.g., 'Sai thông tin tài khoản').\n6. Submit.",
+        "D": "Success message: 'Từ chối yêu cầu rút tiền thành công'.\nRequest status changes to REJECTED.\nFrozen amount is refunded to the user's wallet.",
+        "E": "User is Admin, Withdraw request is PENDING",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      24,
+      {
+        "A": "TC_WP_010",
+        "B": " Admin tries to reject an already processed request",
+        "C": "1. Log in as Admin.\n2. Navigate to a withdraw request that has already been APPROVED or REJECTED.\n3. Attempt to click 'Reject' again.",
+        "D": "Error message: 'Yêu cầu rút tiền này đã được xử lý'.",
+        "E": "User is Admin, Withdraw request is already APPROVED or REJECTED",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ]
+  ],
+  "Inventory Management": [
+    [
+      2,
+      {
+        "A": "Feature",
+        "B": "Inventory Management",
+        "R": "Passed"
+      }
+    ],
+    [
+      3,
+      {
+        "A": "Test requirement",
+        "B": "Verify Tenant creating SKUs, Inbound/Outbound Receipts (and approval logic including capacity & stock checks), and Inventory Audits",
+        "R": "Failed"
+      }
+    ],
+    [
+      4,
+      {
+        "A": "Number of TCs",
+        "B": "18",
+        "R": "Pending"
+      }
+    ],
+    [
+      5,
+      {
+        "A": "Testing Round",
+        "B": "Passed",
+        "C": "Failed",
+        "D": "Pending",
+        "E": "N/A",
+        "R": "N/A"
+      }
+    ],
+    [
+      6,
+      {
+        "A": "Round 1",
+        "B": "18",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      7,
+      {
+        "A": "Round 2",
+        "B": "18",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      8,
+      {
+        "A": "Round 3",
+        "B": "0",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      10,
+      {
+        "A": "Test Case ID",
+        "B": "Test Case Description",
+        "C": "Test Case Procedure",
+        "D": "Expected Results",
+        "E": "Pre-conditions",
+        "F": "Round 1",
+        "G": "Test date",
+        "H": "Tester",
+        "I": "Round 2",
+        "J": "Test date",
+        "K": "Tester",
+        "L": "Round 3",
+        "M": "Test date",
+        "N": "Tester",
+        "O": "Note"
+      }
+    ],
+    [
+      11,
+      {
+        "A": "Create Product SKU"
+      }
+    ],
+    [
+      12,
+      {
+        "A": "TC_IM_001",
+        "B": "Tenant creates a new Product SKU with valid info (Happy Path)",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Product Catalog' / 'Danh mục sản phẩm'.\n3. Click 'Add SKU'.\n4. Enter valid Code, Name, Category, and attributes.\n5. Click 'Save'.",
+        "D": "Success message is shown.\nSKU is created and listed in the catalog.",
+        "E": "User is Tenant, Subscription is Active",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      13,
+      {
+        "A": "TC_IM_002",
+        "B": "Create SKU with duplicate skuCode",
+        "C": "1. Log in as Tenant.\n2. Click 'Add SKU'.\n3. Enter an SKU Code that already exists in the system.\n4. Fill in other fields.\n5. Click 'Save'.",
+        "D": "Error message: 'SKU Code already exists'.\nSKU is not created.",
+        "E": "User is Tenant, SKU Code exists",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      14,
+      {
+        "A": "TC_IM_003",
+        "B": "Create SKU with duplicate skuCode",
+        "C": "1. Log in as Tenant.\n2. Click 'Add SKU'.\n3. Leave the SKU Code or Name fields blank.\n4. Click 'Save'.",
+        "D": "Validation error messages are shown for required fields.\nSKU is not created.",
+        "E": "User is Tenant",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      15,
+      {
+        "A": "Create Inbound/Outbound Receipt"
+      }
+    ],
+    [
+      16,
+      {
+        "A": "TC_IM_004",
+        "B": "Create Inbound Receipt with valid info",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Inbound Receipts' -> 'Create'.\n3. Select a valid Warehouse.\n4. Add one or more valid SKUs with quantities.\n5. Submit.",
+        "D": "Success message is shown.\nInbound receipt is created with PENDING status.",
+        "E": "User is Tenant, Warehouse is assigned to user",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      17,
+      {
+        "A": "TC_IM_005",
+        "B": "Create Outbound Receipt with valid info",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Outbound Receipts' -> 'Create'.\n3. Select a valid Warehouse.\n4. Add valid SKUs with quantities less than or equal to current stock.\n5. Submit.",
+        "D": "Success message is shown.\nOutbound receipt is created with PENDING status.",
+        "E": "User is Tenant, Sufficient stock available",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      18,
+      {
+        "A": "TC_IM_006",
+        "B": " Create Receipt with missing/invalid items",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Inbound Receipts' -> 'Create'.\n3. Select a warehouse but do not add any SKUs to the list.\n4. Submit.",
+        "D": "Validation error message indicating SKUs/fields are required.\nReceipt is not created.",
+        "E": "User is Tenant ",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      19,
+      {
+        "A": "TC_IM_007",
+        "B": "Create Receipt with quantity < 1",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Inbound Receipts' -> 'Create'.\n3. Add an SKU and set its quantity to a negative number (e.g., -10).\n4. Submit.",
+        "D": "Validation error message: 'Quantity must be greater than 0'.\nReceipt is not created.",
+        "E": "User is Tenant ",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      20,
+      {
+        "A": "TC_IM_008",
+        "B": "Create Inbound Receipt exceeding bin capacity",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Outbound Receipts' -> 'Create'.\n3. Select an SKU and enter a quantity that exceeds the current available stock.\n4. Submit.",
+        "D": "Error message: Vượt quá sức chứa trọng lượng/thể tích tối đa của ô.' (Insufficient stock).\nReceipt is not created.",
+        "E": "Bin capacity is smaller than item total weight/volume",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      21,
+      {
+        "A": "TC_IM_009",
+        "B": " Create Outbound Receipt with insufficient stock",
+        "C": ". Log in as Tenant.\n2. Navigate to 'Outbound Receipts' -> 'Create'.\n3. Select an SKU and enter a quantity that exceeds the current available stock.\n4. Submit.",
+        "D": "Error message: 'Số lượng tồn kho không đủ' (Insufficient stock).\nReceipt is not created.",
+        "E": "Current stock < requested quantity",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      22,
+      {
+        "A": "Approve Receipt"
+      }
+    ],
+    [
+      23,
+      {
+        "A": "TC_IM_010",
+        "B": "Tenant approves Inbound Receipt ",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Inbound Receipts'.\n3. View a PENDING inbound receipt.\n4. Click 'Approve'.",
+        "D": "Receipt status changes to COMPLETED.\nStock levels for the included SKUs are increased accordingly.",
+        "E": "User is Tenant , Receipt is PENDING",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      24,
+      {
+        "A": "TC_IM_011",
+        "B": " Tenant approves Outbound Receipt",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Outbound Receipts'.\n3. View a PENDING outbound receipt.\n4. Click 'Approve'.",
+        "D": "Receipt status changes to COMPLETED.\nStock levels for the included SKUs are decreased accordingly.",
+        "E": "User is Tenant , Receipt is PENDING",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      25,
+      {
+        "A": "TC_IM_012",
+        "B": "Fail to approve an already approved receipt",
+        "C": "1. Log in as Tenant.\n2. Navigate to an already COMPLETED or REJECTED receipt.\n3. Attempt to click 'Approve' again (e.g., by double-clicking or bypassing UI).",
+        "D": "Error message indicating the receipt has already been processed.",
+        "E": "User is Tenant, Receipt is COMPLETED or REJECTED",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      26,
+      {
+        "A": "TC_IM_013",
+        "B": "Fail to approve receipt with unauthorized user",
+        "C": "1. Log in as a different Tenant or unauthorized user.\n2. Attempt to approve a receipt belonging to another tenant via direct URL or API.",
+        "D": "Error message: 'Access denied' or 'Forbidden'.",
+        "E": "User is not authorized for this receipt",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      27,
+      {
+        "A": "Inventory Audit"
+      }
+    ],
+    [
+      28,
+      {
+        "A": "TC_IM_014",
+        "B": "Create Inventory Audit",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Inventory Audit' -> 'Create'.\n3. Select a valid Warehouse.\n4. Input actual counted quantities for SKUs.\n5. Save/Create.",
+        "D": "Audit is created successfully with DRAFT/PENDING status.",
+        "E": "User is Tenant, Warehouse Contract is Active",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      29,
+      {
+        "A": "TC_IM_015",
+        "B": "Create Audit without warehouseId",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Inventory Audit' -> 'Create'.\n3. Do not select any warehouse.\n4. Submit.",
+        "D": "Validation error message: 'Warehouse ID is required'.\nAudit is not created.",
+        "E": "User is Tenant",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      30,
+      {
+        "A": "TC_IM_016",
+        "B": "Submit Audit Form",
+        "C": "1. Log in as Tenant.\n2. Navigate to a newly created Draft Audit.\n3. Review the actual quantities.\n4. Click 'Submit'",
+        "D": "Audit status changes to SUBMITTED.",
+        "E": "Audit is in DRAFT state",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      31,
+      {
+        "A": "TC_IM_017",
+        "B": "Approve Inventory Audit with discrepancy",
+        "C": "1. Log in as Tenant.\n2. View a SUBMITTED audit that has discrepancies (actual != expected).\n3. Click 'Approve'.",
+        "D": "Audit is APPROVED.\nSystem auto-generates adjustment receipts to correct the stock levels.",
+        "E": "Audit is SUBMITTED with discrepancy",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      32,
+      {
+        "A": "TC_IM_018",
+        "B": "Approve already completed Audit",
+        "C": "1. Log in as Tenant.\n2. View an already APPROVED audit.\n3. Attempt to click 'Approve' again.",
+        "D": "Error message indicating the audit has already been processed.",
+        "E": "Audit is APPROVED",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ]
+  ],
+  "Staff Management": [
+    [
+      2,
+      {
+        "A": "Feature",
+        "B": "Staff Management",
+        "R": "Passed"
+      }
+    ],
+    [
+      3,
+      {
+        "A": "Test requirement",
+        "B": "Verify Tenant can invite staff (checking quota and duplicate emails) and assign staff to specific rented warehouses.\n",
+        "R": "Failed"
+      }
+    ],
+    [
+      4,
+      {
+        "A": "Number of TCs",
+        "B": "9",
+        "R": "Pending"
+      }
+    ],
+    [
+      5,
+      {
+        "A": "Testing Round",
+        "B": "Passed",
+        "C": "Failed",
+        "D": "Pending",
+        "E": "N/A",
+        "R": "N/A"
+      }
+    ],
+    [
+      6,
+      {
+        "A": "Round 1",
+        "B": "9",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      7,
+      {
+        "A": "Round 2",
+        "B": "9",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      8,
+      {
+        "A": "Round 3",
+        "B": "0",
+        "C": "0",
+        "D": "0",
+        "E": "0"
+      }
+    ],
+    [
+      10,
+      {
+        "A": "Test Case ID",
+        "B": "Test Case Description",
+        "C": "Test Case Procedure",
+        "D": "Expected Results",
+        "E": "Pre-conditions",
+        "F": "Round 1",
+        "G": "Test date",
+        "H": "Tester",
+        "I": "Round 2",
+        "J": "Test date",
+        "K": "Tester",
+        "L": "Round 3",
+        "M": "Test date",
+        "N": "Tester",
+        "O": "Note"
+      }
+    ],
+    [
+      11,
+      {
+        "A": "Invite Tenant Staff"
+      }
+    ],
+    [
+      12,
+      {
+        "A": "TC_SM_001",
+        "B": "Invite a new staff member with valid info",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Staff Management'.\n3. Click 'Invite Staff'.\n4. Enter a valid Email, Name, and Phone number.\n5. Click 'Submit' / 'Send Invite'.",
+        "D": "Success message: 'Gửi lời mời nhân viên kho thành công'.\nAn invitation email is sent to the staff member.",
+        "E": "User is logged in",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      13,
+      {
+        "A": "TC_SM_002",
+        "B": " Invite with missing required fields",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Staff Management' -> 'Invite Staff'.\n3. Leave the Email field blank.\n4. Click 'Submit'.",
+        "D": "Validation error message: 'Email không được để trống'.\nInvitation is not sent.",
+        "E": "User is logged in",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      14,
+      {
+        "A": "TC_SM_003",
+        "B": "Invite with invalid email or phone format",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Invite Staff'.\n3. Enter an invalid email format (e.g., 'invalid email') and invalid phone (e.g., '123').\n4. Click 'Submit'.",
+        "D": "Validation error messages: 'Email không hợp lệ' or 'Số điện thoại không hợp lệ'.\nInvitation is not sent.",
+        "E": "User is Tenant",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      15,
+      {
+        "A": "TC_SM_004",
+        "B": "Invite staff when subscription quota is exceeded",
+        "C": "1. Log in as a Tenant whose active subscription has reached the maximum staff limit.\n2. Navigate to 'Invite Staff'.\n3. Enter valid staff information.\n4. Click 'Submit'.",
+        "D": "Error message: 'Số lượng nhân viên đã đạt giới hạn của gói dịch vụ'.\nInvitation is blocked.",
+        "E": "Tenant has reached maximum staff limit allowed by active package",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      16,
+      {
+        "A": "TC_SM_005",
+        "B": "Invite an email that is already pending invitation",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Invite Staff'.\n3. Enter an email that has already been invited but hasn't accepted yet.\n4. Click 'Submit'.",
+        "D": "Error message: 'Đã gửi lời mời đến email này và đang chờ xác nhận'.\nDuplicate invitation is not sent",
+        "E": "An active invitation for this email already exists",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      17,
+      {
+        "A": "TC_SM_006",
+        "B": "Invite an email belonging to another Tenant or Owner",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Invite Staff'.\n3. Enter an email that is already registered as a TENANT or OWNER in the system.\n4. Click 'Submit'.",
+        "D": "Error message: 'Không thể mời tài khoản Doanh nghiệp hoặc Chủ kho làm nhân viên'.\nInvitation is not sent.",
+        "E": "User is lThe email is registered as TENANT or OWNERogged in",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      18,
+      {
+        "A": "Assign Staff Warehouse"
+      }
+    ],
+    [
+      19,
+      {
+        "A": "TC_SM_007",
+        "B": "Assign staff to manage a warehouse",
+        "C": "1. Log in as Tenant.\n2. Navigate to 'Staff Management'.\n3. Select an active Staff member.\n4. Choose an active Warehouse Contract to assign them to.\n5. Enter custom title (e.g., 'Thủ kho Quận 9') and save.",
+        "D": "Success message is shown.\nStaff is successfully assigned and can now manage inventory for this warehouse.",
+        "E": "Staff belongs to Tenant, Tenant has an ACTIVE contract for this Warehouse",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      20,
+      {
+        "A": "TC_SM_008",
+        "B": "Assign staff to a warehouse they don't rent",
+        "C": "1. Log in as Tenant.\n2. Navigate to assign a staff member to a warehouse.\n3. Bypass UI or intercept request to assign the staff to a warehouse ID not rented by the tenant.\n4. Submit",
+        "D": "Error message: 'Kho không tồn tại hoặc tổ chức chưa thuê kho này'.\nAssignment fails.",
+        "E": "Tenant does NOT have an active contract for the warehouse",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ],
+    [
+      21,
+      {
+        "A": "TC_SM_009",
+        "B": "Assign staff with missing warehouseId",
+        "C": "1. Log in as Tenant.\n2. Navigate to assign a staff member.\n3. Do not select any warehouse.\n4. Submit.",
+        "D": "Validation error message: 'warehouseId không được để trống'.\nAssignment fails.",
+        "E": "User is Tenant",
+        "F": "Passed",
+        "G": "46245",
+        "H": "Phucnbh",
+        "I": "Passed",
+        "J": "46246",
+        "K": "Phucnbh"
+      }
+    ]
+  ]
+}
