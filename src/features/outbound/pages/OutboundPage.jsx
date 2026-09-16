@@ -1,11 +1,25 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { FormShell } from '@/form/FormControls'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
-import { AlertCircle, ArrowUpRight, CheckCircle2, Search, Minus, Plus, Loader2, Download, Eye, Map as MapIcon, MapPin } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowUpRight,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Minus,
+  Plus,
+  Loader2,
+  Download,
+  Eye,
+  Map as MapIcon,
+  MapPin,
+} from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
@@ -18,6 +32,8 @@ import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailMod
 import { showApiErrorToast } from '@/config/apiError'
 import { positiveInteger, required } from '@/config/validation'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
+
+const RECEIPT_PAGE_SIZE_OPTIONS = [10, 20, 50]
 
 const formatOutboundDate = (dateString) => {
   if (!dateString) return '—'
@@ -79,6 +95,11 @@ const OutboundPage = () => {
   const [receipts, setReceipts] = useState([])
   const [warehouses, setWarehouses] = useState([])
   const [skus, setSkus] = useState([])
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalElements, setTotalElements] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const receiptRequestIdRef = useRef(0)
 
   // Selection states
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
@@ -146,25 +167,52 @@ const OutboundPage = () => {
   }, [searchParams])
 
   const fetchReceipts = useCallback(async () => {
+    const requestId = receiptRequestIdRef.current + 1
+    receiptRequestIdRef.current = requestId
     setIsLoading(true)
     try {
       const res = await receiptApi.getReceipts(selectedWarehouseId, {
         type: 'OUTBOUND',
-        page: 0,
-        size: 20,
+        page,
+        size: pageSize,
+        sortBy: 'createdAt',
+        sortDir: 'desc',
       })
-      setReceipts(res.data?.data?.content || [])
+      if (requestId !== receiptRequestIdRef.current) return
+
+      const payload = res.data?.data || {}
+      const content = Array.isArray(payload) ? payload : payload.content || []
+      const responsePage = Number(payload.page ?? payload.pageNo ?? page)
+      const responseSize = Number(payload.size ?? payload.pageSize ?? pageSize)
+      const responseTotalElements = Number(payload.totalElements ?? content.length)
+      const calculatedTotalPages = responseSize > 0
+        ? Math.ceil(responseTotalElements / responseSize)
+        : 1
+      const responseTotalPages = Number(payload.totalPages ?? calculatedTotalPages)
+
+      setReceipts(content)
+      setTotalElements(Number.isFinite(responseTotalElements) ? responseTotalElements : 0)
+      setTotalPages(
+        Number.isFinite(responseTotalPages) ? Math.max(responseTotalPages, 1) : 1
+      )
+      if (Number.isInteger(responsePage) && responsePage >= 0 && responsePage !== page) {
+        setPage(responsePage)
+      }
     } catch (error) {
+      if (requestId !== receiptRequestIdRef.current) return
       console.error('Error fetching receipts:', error)
+      setReceipts([])
+      setTotalElements(0)
+      setTotalPages(1)
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
         // Only show if not already shown by initial data
       } else {
         showApiErrorToast(error, 'Could not load receipts.')
       }
     } finally {
-      setIsLoading(false)
+      if (requestId === receiptRequestIdRef.current) setIsLoading(false)
     }
-  }, [selectedWarehouseId])
+  }, [page, pageSize, selectedWarehouseId])
 
   useEffect(() => {
     // Load the initial warehouse and SKU data for this page.
@@ -530,7 +578,8 @@ const OutboundPage = () => {
       await receiptApi.createReceipt(payload)
       toast.success('Outbound receipt created.')
       setIsModalOpen(false)
-      fetchReceipts()
+      if (page === 0) await fetchReceipts()
+      else setPage(0)
 
       const emptyLine = createOutboundLine()
       setOutboundLines([emptyLine])
@@ -559,7 +608,7 @@ const OutboundPage = () => {
       setIsRejectModalOpen(false)
       setRejectReason('')
       setRejectingReceiptId(null)
-      fetchReceipts()
+      await fetchReceipts()
     } catch (error) {
       console.error('Error rejecting receipt:', error)
       showApiErrorToast(error, 'Could not reject receipt.')
@@ -572,7 +621,7 @@ const OutboundPage = () => {
     try {
       await receiptApi.approveReceipt(id)
       toast.success('Outbound receipt approved.')
-      fetchReceipts()
+      await fetchReceipts()
     } catch (error) {
       if (
         error.response?.data?.errorCode === 'OUTBOUND_PICK_LIST_STALE' ||
@@ -581,7 +630,7 @@ const OutboundPage = () => {
         try {
           await receiptApi.replanPickList(id)
           toast.success('Pick list replanned. Please review the new picking order.')
-          fetchReceipts()
+          await fetchReceipts()
           const res = await receiptApi.getReceiptDetail(id)
           setDetailReceipt(res?.data?.data ?? res?.data)
           setIsDetailModalOpen(true)
@@ -596,7 +645,7 @@ const OutboundPage = () => {
           } else {
             showApiErrorToast(replanError, 'Replan failed. Please try again.')
           }
-          fetchReceipts()
+          await fetchReceipts()
         }
       } else {
         console.error('Error approving receipt:', error)
@@ -632,6 +681,9 @@ const OutboundPage = () => {
       })
       .sort(compareReceiptsByDateDesc)
   }, [receipts, activeTab])
+
+  const firstReceiptNumber = totalElements === 0 ? 0 : page * pageSize + 1
+  const lastReceiptNumber = Math.min(totalElements, page * pageSize + receipts.length)
 
   const selectedSku = skus.find((sku) => String(sku.id) === String(formSkuId))
   const requestedQuantity = Number(formTotalQuantity) || 0
@@ -714,7 +766,18 @@ const OutboundPage = () => {
                   <select
                     className="rounded-md border border-slate-200 p-2 text-sm"
                     value={selectedWarehouseId}
-                    onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                    onChange={(event) => {
+                      const warehouseId = event.target.value
+                      setSelectedWarehouseId(warehouseId)
+                      setPage(0)
+                      if (!warehouseId) {
+                        receiptRequestIdRef.current += 1
+                        setReceipts([])
+                        setTotalElements(0)
+                        setTotalPages(1)
+                        setIsLoading(false)
+                      }
+                    }}
                   >
                     <option value="">-- Select Warehouse --</option>
                     {warehouses.map((wh) => (
@@ -746,7 +809,10 @@ const OutboundPage = () => {
                       ].map(tab => (
                         <button
                           key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
+                          onClick={() => {
+                            setActiveTab(tab.id)
+                            setPage(0)
+                          }}
                           className={`relative pb-3 text-sm font-medium transition-colors ${
                             activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-700'
                           }`}
@@ -919,6 +985,54 @@ const OutboundPage = () => {
                         </table>
                       )}
                     </div>
+                    <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                      <span className="text-slate-500">
+                        Showing {firstReceiptNumber}-{lastReceiptNumber} of {totalElements} receipts
+                      </span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="flex items-center gap-2 text-slate-500">
+                          Rows per page
+                          <select
+                            value={pageSize}
+                            disabled={isLoading}
+                            onChange={(event) => {
+                              setPageSize(Number(event.target.value))
+                              setPage(0)
+                            }}
+                            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:opacity-50"
+                          >
+                            {RECEIPT_PAGE_SIZE_OPTIONS.map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <span className="min-w-24 text-center text-slate-600">
+                          Page {page + 1} of {totalPages}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={page === 0 || isLoading}
+                            onClick={() => setPage((current) => Math.max(0, current - 1))}
+                            aria-label="Previous receipt page"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={page >= totalPages - 1 || isLoading}
+                            onClick={() => setPage((current) => current + 1)}
+                            aria-label="Next receipt page"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </footer>
                   </div>
                 </div>
               </div>
