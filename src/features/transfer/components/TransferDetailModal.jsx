@@ -555,14 +555,21 @@ const AllocationList = ({ title, allocations = [], source }) => (
             key={allocation.id || index}
             className="flex items-center justify-between gap-3 px-3 py-2 text-xs"
           >
-            <span className="min-w-0 truncate text-slate-600">
+            <div className="min-w-0">
+              <span className="block truncate text-slate-600">
               {source
                 ? `${allocation.sourceRackName || 'Rack'} / ${allocation.sourceBinName || 'Bin'}`
                 : `${allocation.destinationRackName || 'Rack'} / ${allocation.destinationBinName || 'Bin'}`}
               {!source && allocation.disposition && (
                 <em className="ml-1 text-slate-400 not-italic">· {allocation.disposition}</em>
               )}
-            </span>
+              </span>
+              {!source && allocation.note && (
+                <span className="mt-0.5 block truncate text-[11px] text-slate-500">
+                  Note: {allocation.note}
+                </span>
+              )}
+            </div>
             {source ? (
               <span className="shrink-0 text-right text-[10px] leading-4">
                 <strong className="block text-slate-950">Planned {allocation.quantity}</strong>
