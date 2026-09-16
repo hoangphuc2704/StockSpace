@@ -112,9 +112,12 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
           toast.error(`Quantity must be > 0 for product ${item.skuCode}`)
           return
         }
-        const locationKey = `${alloc.destinationRackId}:${alloc.destinationBinId}`
+        const disposition = alloc.disposition || 'GOOD'
+        const locationKey = `${alloc.destinationRackId}:${alloc.destinationBinId}:${disposition}`
         if (locations.has(locationKey)) {
-          toast.error(`Use each destination Rack/Bin only once for product ${item.skuCode}`)
+          toast.error(
+            `Use each destination Rack/Bin once per disposition for product ${item.skuCode}`
+          )
           return
         }
         locations.add(locationKey)
@@ -124,7 +127,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
           destinationRackId: alloc.destinationRackId,
           destinationBinId: alloc.destinationBinId,
           quantity: q,
-          disposition: alloc.disposition || 'GOOD',
+          disposition,
         })
       }
 
