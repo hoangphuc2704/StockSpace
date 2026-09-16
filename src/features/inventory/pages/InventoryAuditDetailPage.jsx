@@ -8,8 +8,6 @@ import {
   PlusCircle,
   RotateCcw,
   Save,
-  Download,
-  Upload,
 } from 'lucide-react'
 import { FormShell } from '@/form/FormControls'
 import Button from '@/components/atoms/Button'
@@ -27,9 +25,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import { showApiErrorToast } from '@/config/apiError'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
-import WmsImportDialog from '@/features/inventory/components/WmsImportDialog'
-import dataContinuityApi from '@/services/wms/dataContinuityApi'
-import { WMS_IMPORT_TYPE } from '@/services/wms/wmsDataTypes'
 import { useLanguage } from '@/i18n/LanguageContext'
 
 const STATUS_CONFIG = {
@@ -117,8 +112,6 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
   const [addingUnexpected, setAddingUnexpected] = useState(false)
   const [skuOptions, setSkuOptions] = useState([])
   const [layout, setLayout] = useState(null)
-  const [isCountImportOpen, setIsCountImportOpen] = useState(false)
-  const [isDownloadingCountSheet, setIsDownloadingCountSheet] = useState(false)
   const [highlightedItemId, setHighlightedItemId] = useState(null)
   const itemRowRefs = useRef(new Map())
   const quantityInputRefs = useRef(new Map())
@@ -232,19 +225,6 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setHighlightedItemId(null)
     }, 2500)
   }, [])
-
-  const handleDownloadCountSheet = async () => {
-    if (!id || !isCounting || isDownloadingCountSheet) return
-    try {
-      setIsDownloadingCountSheet(true)
-      await dataContinuityApi.downloadAuditCountSheet(id)
-      toast.success('Blind count workbook downloaded.')
-    } catch (error) {
-      showApiErrorToast(error, 'Could not download the audit count workbook.')
-    } finally {
-      setIsDownloadingCountSheet(false)
-    }
-  }
 
   const handleItemChange = (itemId, field, value) => {
     setItems((current) =>
@@ -851,28 +831,6 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   Phiếu này chưa được phân công cho bạn
                 </span>
               )}
-              {isCounting && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={handleDownloadCountSheet}
-                    isLoading={isDownloadingCountSheet}
-                    disabled={isDownloadingCountSheet}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download blind count
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsCountImportOpen(true)}
-                    className="flex items-center gap-2"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Import Excel results
-                  </Button>
-                </>
-              )}
               {canTenantCancel && (
                 <Button
                   variant="outline"
@@ -989,26 +947,6 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
           </main>
         </div>
       </div>
-
-      <WmsImportDialog
-        isOpen={isCountImportOpen}
-        onClose={() => setIsCountImportOpen(false)}
-        title="Import audit count results"
-        description="Upload the newest blind count workbook for this audit round. Apply stores counts and unexpected items only; it does not submit, approve, or change inventory."
-        importType={WMS_IMPORT_TYPE.AUDIT_RECONCILIATION}
-        scopeKey={id}
-        validateWorkbook={(file) => dataContinuityApi.validateAuditCount(id, file)}
-        applyWorkbook={dataContinuityApi.applyAuditCount}
-        allowApply={isCounting}
-        confirmation={{
-          title: 'Apply audit count results',
-          message:
-            'Save the count results from this workbook. Inventory will not change until the audit is submitted and then approved by an eligible tenant reviewer.',
-          confirmText: 'Apply count results',
-        }}
-        onApplied={fetchAuditDetail}
-        onStale={fetchAuditDetail}
-      />
 
       <Modal
         isOpen={isCancelModalOpen}
