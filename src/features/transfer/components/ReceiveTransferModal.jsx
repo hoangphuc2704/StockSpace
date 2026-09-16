@@ -371,7 +371,6 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
                               className="min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                             >
                               <option value="GOOD">Good</option>
-                              <option value="QUARANTINE">Quarantine</option>
                               <option value="REJECTED">Rejected</option>
                             </select>
 
