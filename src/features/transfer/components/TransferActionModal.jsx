@@ -607,14 +607,16 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                               className={selectClass}
                             >
                               <option value="GOOD">Good - add to source inventory</option>
-                              <option value="REJECTED">Rejected - do not add to inventory</option>
+                              <option value="REJECTED">
+                                Rejected - add to source inventory with a reason
+                              </option>
                             </select>
                           </div>
                         </div>
                         {line.disposition === 'REJECTED' && (
                           <div className="mt-3">
                             <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                              Rejection reason <span className="text-rose-600">*</span>
+                              Separate handling reason <span className="text-rose-600">*</span>
                             </label>
                             <textarea
                               required
@@ -622,7 +624,7 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                               rows={2}
                               value={line.note}
                               onChange={(event) => updateLine(index, 'note', event.target.value)}
-                              placeholder="Explain why the returned stock cannot be added to inventory"
+                              placeholder="Explain why the returned stock needs separate handling"
                               className={`${inputClass} resize-none py-2.5`}
                             />
                           </div>
@@ -674,8 +676,9 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
             {mode === 'returnReceive' && (
               <div className="flex gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
-                Partial return receipt is supported. The remaining returnable quantity stays open
-                for the next receipt.
+                Both Good and Rejected returned stock are added to source inventory. Rejected stock
+                requires a reason for separate handling. The remaining returnable quantity stays
+                open for the next receipt.
               </div>
             )}
           </div>
