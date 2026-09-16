@@ -372,11 +372,11 @@ const OutboundPage = () => {
 
   const handleExportSingleReceipt = (receipt) => {
     if (!receipt || !receipt.items) {
-      toast.error('Không có dữ liệu chi tiết để xuất.')
+      toast.error('No receipt details are available for export.')
       return
     }
     const csvRows = []
-    csvRows.push(['Mã Phiếu', 'Trạng thái', 'Ngày xuất hàng', 'Người phụ trách', 'Tên nơi nhận', 'Tên mặt hàng', 'Mã SKU', 'Số lượng'].join(','))
+    csvRows.push(['Receipt ID', 'Status', 'Outbound date', 'Responsible person', 'Receiver name', 'Item name', 'SKU', 'Quantity'].join(','))
     
     receipt.items.forEach(item => {
       csvRows.push([
@@ -400,7 +400,7 @@ const OutboundPage = () => {
     document.body.appendChild(link)
     link.click()
     link.remove()
-    toast.success('Đã xuất file chi tiết phiếu xuất.')
+    toast.success('Outbound receipt details exported.')
   }
 
   const handlePreview = async () => {
@@ -453,7 +453,7 @@ const OutboundPage = () => {
       for (const line of outboundLines) {
         const allocations = Array.isArray(line.allocations) ? line.allocations : []
         if (allocations.length === 0) {
-          toast.error('Chọn ít nhất một Rack/Bin cho mỗi SKU.')
+          toast.error('Select at least one rack/bin for each SKU.')
           return
         }
 
@@ -464,7 +464,7 @@ const OutboundPage = () => {
         )
         if (allocatedQuantity !== requestedQuantity) {
           toast.error(
-            `Tổng số lượng phân bổ cho SKU phải bằng ${requestedQuantity}.`
+            `The total allocation for this SKU must equal ${requestedQuantity}.`
           )
           return
         }
@@ -472,7 +472,7 @@ const OutboundPage = () => {
         const quantitiesByLocation = new Map()
         for (const allocation of allocations) {
           if (positiveInteger(Number(allocation.quantity)) !== '') {
-            toast.error('Số lượng tại mỗi Rack/Bin phải là số nguyên dương.')
+            toast.error('The quantity at each rack/bin must be a positive whole number.')
             return
           }
 
@@ -480,7 +480,7 @@ const OutboundPage = () => {
           try {
             location = JSON.parse(allocation.location)
           } catch {
-            toast.error('Vui lòng chọn Rack/Bin cho từng dòng phân bổ.')
+            toast.error('Select a rack/bin for every allocation line.')
             return
           }
 
@@ -495,7 +495,7 @@ const OutboundPage = () => {
         for (const { location, quantity } of quantitiesByLocation.values()) {
           if (quantity > Number(location.quantity)) {
             toast.error(
-              `Số lượng phân bổ tại ${location.rackName || 'Rack đã chọn'} vượt quá tồn kho.`
+              `The allocation at ${location.rackName || 'the selected rack'} exceeds available stock.`
             )
             return
           }
@@ -591,7 +591,7 @@ const OutboundPage = () => {
 
           if (replanErrorCode === 'OUTBOUND_PICK_LIST_STALE') {
             toast.error(
-              'Tồn kho hiện tại không đủ để xuất phiếu này. Vui lòng kiểm tra và điều chỉnh số lượng.'
+              'Current stock is insufficient for this receipt. Review and adjust the quantities.'
             )
           } else {
             showApiErrorToast(replanError, 'Replan failed. Please try again.')
@@ -1296,15 +1296,15 @@ const OutboundPage = () => {
                       </div>
 
                       {!previewData ? (
-                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                          Nhấn "Xem trước lộ trình" để hệ thống tính toán tuyến đường lấy hàng tối ưu.
+                          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                          Click "Preview route" to calculate the optimal picking route.
                         </div>
                       ) : (
                         <div className="space-y-4">
                           {!previewData.complete && (
                             <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                              <strong>Phát hiện thiếu hàng!</strong> Hệ thống đang thiếu{' '}
-                              {previewShortageQuantity} sản phẩm so với yêu cầu. Bạn không thể tạo phiếu xuất này.
+                              <strong>Stock shortage detected!</strong> The system is short{' '}
+                              {previewShortageQuantity} units compared with the requested quantity. This outbound receipt cannot be created.
                             </div>
                           )}
                           <div className="max-h-[280px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">

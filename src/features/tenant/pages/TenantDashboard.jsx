@@ -570,9 +570,9 @@ const TenantDashboard = () => {
                       ? 'Đang tải phạm vi dữ liệu'
                       : dashboardError
                         ? lastUpdated
-                          ? `${metrics.activeWarehouseCount.toLocaleString('vi-VN')} kho · dữ liệu chưa mới`
-                          : 'Chưa thể đồng bộ'
-                        : `${metrics.activeWarehouseCount.toLocaleString('vi-VN')} kho hoạt động`}
+                          ? `${metrics.activeWarehouseCount.toLocaleString('en-US')} warehouses · data may be stale`
+                          : 'Synchronization unavailable'
+                        : `${metrics.activeWarehouseCount.toLocaleString('en-US')} active warehouses`}
                   </span>
                 </div>
                 <h1
@@ -640,12 +640,12 @@ const TenantDashboard = () => {
                   />
                   <div>
                     <p className="text-sm font-semibold text-rose-900">
-                      Không thể đồng bộ số liệu tổng quan
+                      Could not synchronize dashboard data
                     </p>
                     <p className="mt-0.5 text-sm text-rose-700">
                       {lastUpdated
-                        ? 'Dữ liệu đang hiển thị có thể chưa phải phiên bản mới nhất.'
-                        : 'Vui lòng thử tải lại trước khi đưa ra quyết định vận hành.'}
+                        ? 'The displayed data may not be the latest version.'
+                        : 'Reload the dashboard before making operational decisions.'}
                     </p>
                   </div>
                 </div>
@@ -1069,10 +1069,10 @@ const TenantDashboard = () => {
                   <div className="flex items-center gap-2">
                     {activityError && (
                       <span
-                        title="Không thể tải chứng từ từ một hoặc nhiều kho"
+                        title="Could not load receipts from one or more warehouses"
                         className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800"
                       >
-                        Dữ liệu một phần
+                        Partial data
                       </span>
                     )}
                     <button
@@ -1194,27 +1194,27 @@ const TenantDashboard = () => {
                     <div className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
                       <AlertCircle className="h-7 w-7 text-slate-400" aria-hidden="true" />
                       <p className="mt-2 text-sm font-semibold text-slate-800">
-                        Chưa thể tải nhật ký chứng từ
+                        Could not load the receipt activity log
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Kiểm tra kết nối và thử đồng bộ lại dữ liệu.
+                        Check your connection and synchronize the data again.
                       </p>
                       <button
                         type="button"
                         onClick={() => fetchDashboardData(true)}
                         className="mt-3 min-h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                       >
-                        Thử lại
+                        Retry
                       </button>
                     </div>
                   ) : (
                     <div className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
                       <Package className="h-7 w-7 text-slate-400" aria-hidden="true" />
                       <p className="mt-2 text-sm font-semibold text-slate-800">
-                        Chưa ghi nhận chứng từ
+                        No receipts recorded
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Bắt đầu một nghiệp vụ nhập kho để tạo chứng từ đầu tiên.
+                        Start an inbound operation to create the first receipt.
                       </p>
                       <button
                         type="button"
@@ -1222,7 +1222,7 @@ const TenantDashboard = () => {
                         className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                       >
                         <ArrowDownToLine className="h-4 w-4 text-blue-700" aria-hidden="true" />
-                        <span>Mở nhập kho</span>
+                        <span>Open inbound</span>
                       </button>
                     </div>
                   )}
@@ -1248,7 +1248,7 @@ const TenantDashboard = () => {
                   <div className="flex flex-wrap items-center gap-2">
                     {notificationError && (
                       <span className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
-                        Chưa đầy đủ
+                        Incomplete
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600">
@@ -1291,7 +1291,7 @@ const TenantDashboard = () => {
                             />
                             <div className="min-w-0 flex-1">
                               <span className="sr-only">
-                                {isUnread ? 'Chưa đọc. ' : 'Đã đọc. '}
+                                {isUnread ? 'Unread. ' : 'Read. '}
                               </span>
                               <p
                                 className={`text-sm text-slate-900 ${isUnread ? 'font-semibold' : 'font-medium'}`}
@@ -1308,7 +1308,7 @@ const TenantDashboard = () => {
                               <p className="mt-1.5 text-xs text-slate-500 tabular-nums">
                                 {notification.createdAt
                                   ? `${moment(notification.createdAt).format('DD/MM · HH:mm')} · ${formatRelativeTime(notification.createdAt)}`
-                                  : 'Không có thông tin thời gian'}
+                                  : 'No time information'}
                               </p>
                             </div>
                           </li>
@@ -1319,10 +1319,10 @@ const TenantDashboard = () => {
                     <div className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
                       <AlertCircle className="h-7 w-7 text-slate-400" aria-hidden="true" />
                       <p className="mt-2 text-sm font-semibold text-slate-800">
-                        Chưa thể tải thông báo
+                        Could not load notifications
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Thử đồng bộ lại để xem cập nhật mới nhất.
+                        Synchronize again to view the latest updates.
                       </p>
                     </div>
                   ) : (

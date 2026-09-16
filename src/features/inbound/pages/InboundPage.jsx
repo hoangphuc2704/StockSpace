@@ -414,12 +414,12 @@ const InboundPage = () => {
 
   const handleExportSingleReceipt = (receipt) => {
     if (!receipt || !receipt.items) {
-      toast.error('Không có dữ liệu chi tiết để xuất.')
+      toast.error('No receipt details are available for export.')
       return
     }
     const csvRows = []
     // Headers
-    csvRows.push(['Mã Phiếu', 'Trạng thái', 'Ngày tạo', 'Tên mặt hàng', 'Mã SKU', 'Số lượng'].join(','))
+    csvRows.push(['Receipt ID', 'Status', 'Created date', 'Item name', 'SKU', 'Quantity'].join(','))
 
     receipt.items.forEach(item => {
       csvRows.push([
@@ -442,7 +442,7 @@ const InboundPage = () => {
     document.body.appendChild(link)
     link.click()
     link.remove()
-    toast.success('Đã xuất file chi tiết phiếu nhập.')
+    toast.success('Inbound receipt details exported.')
   }
 
   const handleCreateReceipt = async (e) => {

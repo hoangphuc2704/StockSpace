@@ -148,7 +148,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         )
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể tải chi tiết kiểm kê.')
+      showApiErrorToast(error, 'Could not load audit details.')
       handleBack()
     } finally {
       setLoading(false)
@@ -257,11 +257,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       (item) => item.actualQuantity !== '' && item.actualQuantity !== null
     )
     if (requireAll && completedItems.length !== items.length) {
-      toast.error('Vui lòng nhập số lượng thực tế cho tất cả sản phẩm.')
+      toast.error('Enter the actual quantity for every product.')
       return null
     }
     if (!completedItems.length && items.length) {
-      toast.error('Chưa có số lượng kiểm đếm nào để lưu.')
+      toast.error('There are no counted quantities to save.')
       return null
     }
     if (
@@ -270,7 +270,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         return !Number.isInteger(quantity) || quantity < 0
       })
     ) {
-      toast.error('Số lượng thực tế phải là số nguyên không âm.')
+      toast.error('Actual quantities must be non-negative whole numbers.')
       return null
     }
     return {
@@ -297,12 +297,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       const res = await auditApi.startAudit(id)
       if (res.data?.success) {
         toast.success(
-          audit.status === 'RECOUNT_REQUIRED' ? 'Đã bắt đầu vòng kiểm lại.' : 'Đã bắt đầu kiểm kê.'
+          audit.status === 'RECOUNT_REQUIRED'
+            ? 'The recount cycle has started.'
+            : 'The audit has started.'
         )
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể bắt đầu kiểm kê.')
+      showApiErrorToast(error, 'Could not start the audit.')
     } finally {
       setStarting(false)
     }
@@ -315,11 +317,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setSaving(true)
       const res = await auditApi.saveCounts(id, payload)
       if (res.data?.success) {
-        toast.success('Đã lưu kết quả kiểm đếm.')
+        toast.success('Count results saved.')
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể lưu kết quả kiểm đếm.')
+      showApiErrorToast(error, 'Could not save count results.')
     } finally {
       setSaving(false)
     }
@@ -331,11 +333,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setSaving(true)
       const res = await auditApi.saveNotes(id, buildNotesPayload())
       if (res.data?.success) {
-        toast.success('Đã lưu ghi chú kiểm kê.')
+        toast.success('Audit note saved.')
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể lưu ghi chú kiểm kê.')
+      showApiErrorToast(error, 'Could not save the audit note.')
     } finally {
       setSaving(false)
     }
@@ -349,11 +351,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       if (items.length) await auditApi.saveCounts(id, payload)
       const res = await auditApi.submitAudit(id)
       if (res.data?.success) {
-        toast.success('Đã nộp kết quả kiểm kê.')
+        toast.success('Audit results submitted.')
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể nộp kết quả kiểm kê.')
+      showApiErrorToast(error, 'Could not submit audit results.')
     } finally {
       setSubmitting(false)
     }
@@ -364,11 +366,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setApproving(true)
       const res = await auditApi.approveAudit(id)
       if (res.data?.success) {
-        toast.success('Đã duyệt và cập nhật tồn kho.')
+        toast.success('Audit approved and inventory updated.')
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể duyệt phiếu kiểm kê.')
+      showApiErrorToast(error, 'Could not approve the audit.')
     } finally {
       setApproving(false)
     }
@@ -381,13 +383,13 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       const reason = cancelReason.trim()
       const res = await auditApi.cancelAudit(id, reason ? { reason } : undefined)
       if (res.data?.success) {
-        toast.success('Đã hủy phiếu kiểm kê.')
+        toast.success('Audit canceled.')
         setIsCancelModalOpen(false)
         setCancelReason('')
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể hủy phiếu kiểm kê.')
+      showApiErrorToast(error, 'Could not cancel the audit.')
     } finally {
       setCancelling(false)
     }
@@ -399,13 +401,13 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setRecounting(true)
       const res = await auditApi.recountAudit(id, { reason: recountReason.trim() })
       if (res.data?.success) {
-        toast.success('Đã yêu cầu kiểm đếm lại.')
+        toast.success('Recount requested.')
         setIsRecountModalOpen(false)
         setRecountReason('')
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể yêu cầu kiểm đếm lại.')
+      showApiErrorToast(error, 'Could not request a recount.')
     } finally {
       setRecounting(false)
     }
@@ -419,13 +421,13 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setRequestingEdit(true)
       const res = await auditApi.requestEdit(id, { reason })
       if (res.data?.success) {
-        toast.success('Đã gửi yêu cầu mở lại phiếu.')
+        toast.success('Reopen request submitted.')
         setIsEditRequestModalOpen(false)
         setEditReason('')
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể gửi yêu cầu mở lại phiếu.')
+      showApiErrorToast(error, 'Could not submit the reopen request.')
     } finally {
       setRequestingEdit(false)
     }
@@ -436,11 +438,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setApprovingEdit(true)
       const res = await auditApi.approveEdit(id)
       if (res.data?.success) {
-        toast.success('Đã cho phép sửa lại số lượng.')
+        toast.success('Count editing has been reopened.')
         fetchAuditDetail()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể duyệt yêu cầu mở lại.')
+      showApiErrorToast(error, 'Could not approve the reopen request.')
     } finally {
       setApprovingEdit(false)
     }
@@ -469,7 +471,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       setSkuOptions(Array.isArray(products) ? products : [])
       setLayout(layoutResponse?.data?.data || null)
     } catch (error) {
-      showApiErrorToast(error, 'Không thể tải SKU hoặc vị trí kho.')
+      showApiErrorToast(error, 'Could not load SKUs or warehouse locations.')
     } finally {
       setUnexpectedOptionsLoading(false)
     }
@@ -497,31 +499,31 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
     event.preventDefault()
     const quantity = Number(unexpectedQuantity)
     if (!unexpectedSkuId) {
-      toast.error('Vui lòng chọn SKU.')
+      toast.error('Select an SKU.')
       return
     }
     if (unexpectedQuantity === '' || !Number.isInteger(quantity) || quantity < 0) {
-      toast.error('Số lượng tìm thấy phải là số nguyên không âm.')
+      toast.error('The found quantity must be a non-negative whole number.')
       return
     }
     if (scopeType === 'BIN' && !audit.scopeBinId) {
-      toast.error('Dữ liệu phiếu thiếu Bin kiểm kê. Vui lòng tải lại hoặc liên hệ quản trị viên.')
+      toast.error('The audit record is missing its audit bin. Reload the page or contact an administrator.')
       return
     }
     if (scopeType === 'RACK' && !audit.scopeRackId) {
-      toast.error('Dữ liệu phiếu thiếu Rack kiểm kê. Vui lòng tải lại hoặc liên hệ quản trị viên.')
+      toast.error('The audit record is missing its audit rack. Reload the page or contact an administrator.')
       return
     }
     if (scopeType === 'RACK' && !unexpectedBinId) {
-      toast.error('Vui lòng chọn bin nơi phát hiện hàng.')
+      toast.error('Select the bin where the stock was found.')
       return
     }
     if (scopeType === 'WAREHOUSE' && !unexpectedRackId) {
-      toast.error('Vui lòng chọn rack nơi phát hiện hàng.')
+      toast.error('Select the rack where the stock was found.')
       return
     }
     if (scopeType === 'WAREHOUSE' && !unexpectedBinId) {
-      toast.error('Vui lòng chọn bin nơi phát hiện hàng.')
+      toast.error('Select the bin where the stock was found.')
       return
     }
 
@@ -543,7 +545,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         note: unexpectedNote,
       })
       if (res.data?.success) {
-        toast.success('Đã thêm hàng phát sinh.')
+        toast.success('Found stock added.')
         setIsUnexpectedModalOpen(false)
         fetchAuditDetail()
       }
@@ -558,7 +560,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         }
         return
       }
-      showApiErrorToast(error, 'Không thể thêm hàng phát sinh.')
+      showApiErrorToast(error, 'Could not add found stock.')
     } finally {
       setAddingUnexpected(false)
     }
@@ -1227,8 +1229,8 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               role="alert"
               className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
             >
-              Cấu hình vị trí của phạm vi kiểm kê chưa hợp lệ hoặc chưa có Bin khả dụng. Vui lòng
-              kiểm tra lại layout kho.
+              The audit scope location configuration is invalid or no available bin was found.
+              Check the warehouse layout and try again.
             </div>
           )}
           <label className="block text-sm font-medium text-slate-700">

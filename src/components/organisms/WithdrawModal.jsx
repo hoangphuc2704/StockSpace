@@ -35,14 +35,14 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
     setError('')
 
     const amountNum = Number(formData.amount)
-    const amountError = positiveNumber(amountNum, 'Số tiền rút phải lớn hơn 0.')
+    const amountError = positiveNumber(amountNum, 'Withdrawal amount must be greater than 0.')
     if (amountError) {
       setError(amountError)
       return
     }
     if (amountNum > currentBalance) {
       setError(
-        `Số tiền rút không được vượt quá số dư khả dụng (${formatVND(currentBalance)}).`
+        `Withdrawal amount cannot exceed the available balance (${formatVND(currentBalance)}).`
       )
       return
     }
@@ -61,11 +61,11 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
         onClose()
       } else {
         const backendError = { response: { data: res?.data } }
-        setError(showApiErrorToast(backendError, 'Tạo yêu cầu rút tiền thất bại.'))
+        setError(showApiErrorToast(backendError, 'Withdrawal request failed.'))
       }
     } catch (err) {
       console.error('Error when withdrawing money:', err)
-      setError(showApiErrorToast(err, 'Đã xảy ra lỗi, vui lòng thử lại sau.'))
+      setError(showApiErrorToast(err, 'Something went wrong. Please try again later.'))
     } finally {
       setLoading(false)
     }
