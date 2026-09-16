@@ -79,6 +79,8 @@ const inputClass =
 const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [], onSuccess }) => {
   useEscapeKey(isOpen, onClose)
   const copy = modalCopy[mode]
+  const currentDestinationId =
+    transfer?.currentDestinationWarehouse?.id || transfer?.destinationWarehouse?.id
   const [submitting, setSubmitting] = useState(false)
   const [reason, setReason] = useState('')
   const [expectedArrivalAt, setExpectedArrivalAt] = useState('')
@@ -399,7 +401,9 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                     <option value="">Select destination</option>
                     {warehouses
                       .filter(
-                        (warehouse) => String(warehouse.id) !== String(transfer.sourceWarehouse?.id)
+                        (warehouse) =>
+                          String(warehouse.id) !== String(transfer.sourceWarehouse?.id) &&
+                          String(warehouse.id) !== String(currentDestinationId)
                       )
                       .map((warehouse) => (
                         <option key={warehouse.id} value={warehouse.id}>
