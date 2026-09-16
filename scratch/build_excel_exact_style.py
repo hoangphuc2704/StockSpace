@@ -37,9 +37,9 @@ master_functions = [
     {"no": 9, "name": "Verify/Reject Warehouse (Admin)", "sheet": "Warehouse Management",
      "desc": "Admin can approve/reject a pending warehouse listing after reviewing documents and layout.",
      "pre": "User is Admin, Warehouse status is PENDING_APPROVAL"},
-    {"no": 10, "name": "Save Layout Bulk", "sheet": "Warehouse Management",
-     "desc": "Verify Owner can save 2D/3D warehouse layout structure with zones, racks, shelves, and bins.",
-     "pre": "User is Owner, Warehouse exists"},
+    {"no": 10, "name": "Setup Warehouse Layout", "sheet": "Warehouse Management",
+     "desc": "Verify Owner configuring 2D/3D warehouse dimensions, zones, racks, and bins, and Tenant customizing operational layout.",
+     "pre": "User is Owner or Tenant with active lease"},
     {"no": 11, "name": "Search Warehouses", "sheet": "Warehouse Management",
      "desc": "Verify Public users can search warehouses with multi-criteria filters (location, price, area, type).",
      "pre": "System has AVAILABLE warehouses published"},
@@ -400,21 +400,42 @@ sheet_details = {
                 ]
             },
             {
-                "name": "Save Layout Bulk",
+                "name": "Setup Warehouse Layout",
                 "test_cases": [
                     {
                         "id": "TC_WH_008",
-                        "desc": "Owner saves 2D/3D layout structure",
-                        "proc": "1. Log in as Owner.\n2. Open 3D Layout Designer.\n3. Add zones and racks.\n4. Click 'Save Layout'.",
-                        "expected": "Success message 'Lưu sơ đồ layout mặc định thành công' is shown; layout persisted in DB.",
-                        "pre": "User is Owner, Warehouse exists"
+                        "desc": "Owner sets up warehouse layout with 2D grid editor and interactive 3D viewer",
+                        "proc": "1. Log in as Owner.\n2. Open warehouse draft or details > click 'Thiết lập sơ đồ kho' (Setup Layout).\n3. Set dimensions: Length 100m, Width 60m, Height 12m.\n4. Drag & drop Racks onto 2D grid from presets (Standard Rack 10x4m).\n5. Configure rack levels, bin compartments, max weight capacity (1000kg/bin), and max volume.\n6. Switch to 3D View mode (Three.js canvas) to inspect 360-degree spatial layout.\n7. Click 'Lưu sơ đồ layout'.",
+                        "expected": "Success message 'Lưu sơ đồ layout mặc định thành công' is shown; 2D layout and 3D spatial models are persisted to database; warehouse is ready for Admin approval.",
+                        "pre": "User is Owner, warehouse draft exists"
                     },
                     {
                         "id": "TC_WH_009",
-                        "desc": "Owner saves layout with coordinates exceeding boundaries",
-                        "proc": "1. Place rack outside warehouse dimensions.\n2. Click Save.",
-                        "expected": "Error message is shown: 'Tọa độ/Kích thước vượt quá phạm vi kho'.",
+                        "desc": "Owner saves layout with rack coordinates exceeding warehouse boundary",
+                        "proc": "1. Open 2D Layout Editor for a 60x100m warehouse.\n2. Place a Rack at coordinate X=62m, Y=20m (outside walls).\n3. Click 'Lưu sơ đồ layout'.",
+                        "expected": "System validation blocks saving and displays error: 'Tọa độ/Kích thước Rack vượt quá biên giới hạn của Layout' (RACK_OUT_OF_BOUNDS).",
                         "pre": "User is Owner, Warehouse exists"
+                    },
+                    {
+                        "id": "TC_WH_010",
+                        "desc": "Setup layout with duplicate rack/bin code or negative capacity specs",
+                        "proc": "1. In Layout Editor, create two racks with identical identifier code 'RACK-A01'.\n2. Set bin maxWeight = -500kg.\n3. Click 'Lưu sơ đồ layout'.",
+                        "expected": "Validation error is displayed: 'Mã định danh Rack/Bin không được trùng lặp và tải trọng phải là số dương'.",
+                        "pre": "User is Owner"
+                    },
+                    {
+                        "id": "TC_WH_011",
+                        "desc": "Tenant sets up and customizes layout for leased warehouse",
+                        "proc": "1. Log in as Tenant with active contract.\n2. Go to 'Sơ đồ kho' (/tenant/layoutwarehouses/{id}).\n3. System automatically clones Owner's default layout.\n4. Tenant customizes bin assignments for product categories and adjusts rack labels.\n5. Click 'Lưu layout tùy chỉnh'.",
+                        "expected": "Tenant custom layout is saved successfully (PUT /api/tenant/warehouses/{id}/layout); WMS bin mapping is activated without altering Owner's master template.",
+                        "pre": "User is Tenant, active lease contract exists"
+                    },
+                    {
+                        "id": "TC_WH_012",
+                        "desc": "Tenant attempts to delete or reduce bin that contains active stock inventory",
+                        "proc": "1. Open Tenant layout editor for warehouse currently storing stock.\n2. Select a bin that contains active SKU stock batches (StockBatch quantity > 0).\n3. Delete the bin or shrink its capacity below current inventory load.\n4. Click Save.",
+                        "expected": "System blocks operation with HTTP 400 Bad Request: 'Không thể xóa hoặc thay đổi vị trí ô lưu trữ (Bin) đang có hàng tồn kho'.",
+                        "pre": "Target bin has active stock batches in database"
                     }
                 ]
             },
@@ -422,14 +443,14 @@ sheet_details = {
                 "name": "Search Warehouses",
                 "test_cases": [
                     {
-                        "id": "TC_WH_010",
+                        "id": "TC_WH_013",
                         "desc": "Public user searches warehouses with matching criteria",
                         "proc": "1. Go to the public Warehouse Search page.\n2. Filter by location 'Hồ Chí Minh' and price.\n3. Click Search.",
                         "expected": "System returns a list of AVAILABLE published warehouses matching filter.",
                         "pre": "System has at least one matching warehouse"
                     },
                     {
-                        "id": "TC_WH_011",
+                        "id": "TC_WH_014",
                         "desc": "Public user searches with no matching results",
                         "proc": "1. Enter keyword 'NonExistentString999'.\n2. Click Search.",
                         "expected": "System returns an empty list and displays 'No warehouses found'.",
@@ -441,7 +462,7 @@ sheet_details = {
                 "name": "View Warehouse Details",
                 "test_cases": [
                     {
-                        "id": "TC_WH_012",
+                        "id": "TC_WH_015",
                         "desc": "View public warehouse detail with 3D scene",
                         "proc": "1. Click on warehouse card.\n2. Check specs and 3D layout canvas.",
                         "expected": "Full specs, certificates, and interactive 3D layout load correctly.",

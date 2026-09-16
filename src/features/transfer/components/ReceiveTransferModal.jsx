@@ -16,7 +16,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
   const [loadingLayout, setLoadingLayout] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
-  // Map of itemId -> [ { destinationRackId, destinationBinId, quantity } ]
+  // Map of itemId -> [ { destinationRackId, destinationBinId, quantity, disposition, note } ]
   const [allocations, setAllocations] = useState({})
 
   useEffect(() => {
@@ -52,7 +52,13 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
       )
       if (outstanding > 0)
         initialAllocations[item.id] = [
-          { destinationRackId: '', destinationBinId: '', quantity: '', disposition: 'GOOD' },
+          {
+            destinationRackId: '',
+            destinationBinId: '',
+            quantity: '',
+            disposition: 'GOOD',
+            note: '',
+          },
         ]
     })
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -66,7 +72,13 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
       ...prev,
       [itemId]: [
         ...(prev[itemId] || []),
-        { destinationRackId: '', destinationBinId: '', quantity: '', disposition: 'GOOD' },
+        {
+          destinationRackId: '',
+          destinationBinId: '',
+          quantity: '',
+          disposition: 'GOOD',
+          note: '',
+        },
       ],
     }))
   }
@@ -113,6 +125,11 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
           return
         }
         const disposition = alloc.disposition || 'GOOD'
+        const note = alloc.note?.trim() || null
+        if (disposition !== 'GOOD' && !note) {
+          toast.error(`Enter a reason for the non-good disposition of ${item.skuCode}`)
+          return
+        }
         const locationKey = `${alloc.destinationRackId}:${alloc.destinationBinId}:${disposition}`
         if (locations.has(locationKey)) {
           toast.error(
@@ -128,6 +145,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
           destinationBinId: alloc.destinationBinId,
           quantity: q,
           disposition,
+          note,
         })
       }
 
@@ -354,9 +372,27 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
                             >
                               <option value="GOOD">Good</option>
                               <option value="QUARANTINE">Quarantine</option>
-                              <option value="DAMAGED">Damaged</option>
                               <option value="REJECTED">Rejected</option>
                             </select>
+
+                            {alloc.disposition !== 'GOOD' && (
+                              <div className="sm:col-span-4">
+                                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                                  Lý do hàng không đạt <span className="text-rose-600">*</span>
+                                </label>
+                                <textarea
+                                  required
+                                  rows={2}
+                                  maxLength={1000}
+                                  value={alloc.note || ''}
+                                  onChange={(e) =>
+                                    handleAllocationChange(item.id, idx, 'note', e.target.value)
+                                  }
+                                  placeholder="Nhập lý do hàng không đạt"
+                                  className="min-h-10 w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
+                                />
+                              </div>
+                            )}
 
                             <button
                               type="button"
