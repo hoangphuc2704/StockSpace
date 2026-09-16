@@ -720,7 +720,11 @@ const TransferPage = ({ currentRole }) => {
         icon: Undo2,
         onClick: () => handleDispatchReturn(transfer),
       }
-    if (tenant && transfer.status === 'RETURN_IN_TRANSIT')
+    if (
+      tenant &&
+      ['RETURN_IN_TRANSIT', 'PARTIALLY_RETURNED'].includes(transfer.status) &&
+      totalReturnable(transfer) > 0
+    )
       return {
         label: 'Receive return',
         icon: Undo2,
@@ -848,9 +852,7 @@ const TransferPage = ({ currentRole }) => {
           }
         : null,
       currentRole === 'TENANT' &&
-      ['RECEIVE_REJECTED', 'SHORT_RECEIVED', 'PARTIALLY_RETURNED'].includes(
-        transfer.status
-      ) &&
+      ['RECEIVE_REJECTED', 'SHORT_RECEIVED'].includes(transfer.status) &&
       totalReturnable(transfer) > 0
         ? {
             label: 'Request return',
