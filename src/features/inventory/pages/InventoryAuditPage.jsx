@@ -79,6 +79,7 @@ const InventoryAuditPage = ({ currentRole }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [warehouses, setWarehouses] = useState([])
   const [staffOptions, setStaffOptions] = useState([])
+  const [staffLoading, setStaffLoading] = useState(false)
   const [scopeLayout, setScopeLayout] = useState(null)
   const [scopeLoading, setScopeLoading] = useState(false)
   const [formWarehouseId, setFormWarehouseId] = useState('')
@@ -160,6 +161,53 @@ const InventoryAuditPage = ({ currentRole }) => {
     }
   }
 
+  useEffect(() => {
+    if (currentRole !== 'TENANT' || !isCreateModalOpen || !formWarehouseId) return
+
+    let cancelled = false
+
+    const fetchAssignedStaff = async () => {
+      try {
+        setStaffLoading(true)
+        const response = await staffApi.listStaffs({
+          warehouseId: formWarehouseId,
+          active: true,
+          page: 0,
+          size: 100,
+          keyword: '',
+        })
+
+        if (cancelled) return
+
+        const staffList = response.data?.data?.content || response.data?.data || []
+        const activeStaff = staffList.filter((staff) => {
+          const isActive = staff.active ?? staff.isActive
+          return isActive !== false && staff.userId
+        })
+
+        setStaffOptions(activeStaff)
+        setFormAssignedToId((current) =>
+          current && activeStaff.some((staff) => String(staff.userId) === String(current))
+            ? current
+            : ''
+        )
+      } catch (error) {
+        if (cancelled) return
+        setStaffOptions([])
+        setFormAssignedToId('')
+        showApiErrorToast(error, 'Không thể tải danh sách nhân viên được phân công tại kho.')
+      } finally {
+        if (!cancelled) setStaffLoading(false)
+      }
+    }
+
+    fetchAssignedStaff()
+
+    return () => {
+      cancelled = true
+    }
+  }, [currentRole, formWarehouseId, isCreateModalOpen])
+
   const handleOpenCreateModal = async () => {
     const availableWarehouses = await fetchWarehouses()
     const initialWarehouseId = selectedWarehouseId || availableWarehouses[0]?.id || ''
@@ -169,28 +217,10 @@ const InventoryAuditPage = ({ currentRole }) => {
     setFormBinId('')
     setFormAssignedToId('')
     setFormNote('')
+    setStaffOptions([])
+    setStaffLoading(false)
     setIsCreateModalOpen(true)
     if (initialWarehouseId) loadCreateOptions(initialWarehouseId)
-
-    if (currentRole === 'TENANT') {
-      try {
-        const res = await staffApi.listStaffs({ page: 0, size: 100, keyword: '' })
-        const staffList = res.data?.data?.content || []
-
-        // The audit API expects User.id here, not TenantMember.id. Keeping only
-        // active records with a userId prevents an invalid membership UUID from
-        // being submitted as assignedToId.
-        setStaffOptions(
-          staffList.filter((staff) => {
-            const isActive = staff.active ?? staff.isActive
-            return isActive !== false && staff.userId
-          })
-        )
-      } catch (error) {
-        setStaffOptions([])
-        showApiErrorToast(error, 'Không thể tải danh sách nhân viên.')
-      }
-    }
   }
 
   const racks = useMemo(
@@ -208,6 +238,8 @@ const InventoryAuditPage = ({ currentRole }) => {
     setFormWarehouseId(warehouseId)
     setFormRackId('')
     setFormBinId('')
+    setFormAssignedToId('')
+    setStaffOptions([])
     loadCreateOptions(warehouseId)
   }
 
@@ -600,15 +632,31 @@ const InventoryAuditPage = ({ currentRole }) => {
               <select
                 value={formAssignedToId}
                 onChange={(event) => setFormAssignedToId(event.target.value)}
-                className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                disabled={staffLoading || !formWarehouseId || staffOptions.length === 0}
+                aria-describedby="audit-assignee-help"
+                className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100"
               >
-                <option value="">Chưa phân công</option>
+                <option value="">
+                  {staffLoading
+                    ? 'Đang tải nhân viên...'
+                    : !formWarehouseId
+                      ? 'Chọn kho trước'
+                      : 'Chưa phân công'}
+                </option>
                 {staffOptions.map((staff) => (
                   <option key={staff.userId} value={staff.userId}>
                     {staff.fullName || staff.email || staff.userId}
+                    {staff.fullName && staff.email ? ` — ${staff.email}` : ''}
                   </option>
                 ))}
               </select>
+              <span id="audit-assignee-help" className="mt-1.5 block text-xs font-normal text-slate-500">
+                {staffLoading
+                  ? 'Đang tải nhân viên active đã được phân công tại kho.'
+                  : formWarehouseId && staffOptions.length === 0
+                    ? 'Kho này chưa có nhân viên active được phân công.'
+                    : 'Chỉ hiển thị nhân viên active đã được phân công tại kho đã chọn.'}
+              </span>
             </label>
           )}
 
