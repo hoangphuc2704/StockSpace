@@ -1,0 +1,2286 @@
+[
+  {
+    "no": 1,
+    "name": "Login",
+    "sheet": "Authentication",
+    "desc": "Verify user authentication with valid/invalid email and password, check input validation, inactive account restrictions, and JWT token issuance.",
+    "pre": "User has a registered account in the system",
+    "fe": "LoginPage / AuthModal",
+    "be": "AuthController.login (AuthService.login)",
+    "test_cases": [
+      {
+        "id": "TC_AUTH_001",
+        "desc": "Login successfully with valid Owner account credentials",
+        "proc": "1. Go to Login page (/login) or click 'Đăng nhập'.\n2. Enter valid registered Owner email.\n3. Enter valid password.\n4. Click 'Đăng nhập'.",
+        "expected": "Authentication succeeds; JWT access token saved, HttpOnly refresh cookie set; user is redirected to Owner Dashboard (/owner/dashboard).",
+        "pre": "Owner account exists and is active (isActive = true)"
+      },
+      {
+        "id": "TC_AUTH_002",
+        "desc": "Login successfully with valid Tenant account credentials",
+        "proc": "1. Open Login modal.\n2. Enter valid registered Tenant email and password.\n3. Click 'Đăng nhập'.",
+        "expected": "Authentication succeeds; user redirected to Tenant Dashboard (/tenant/dashboard); tenant session initialized.",
+        "pre": "Tenant account exists and is active"
+      },
+      {
+        "id": "TC_AUTH_003",
+        "desc": "Login successfully with valid Staff account credentials",
+        "proc": "1. Open Login form.\n2. Enter valid Staff email and password.\n3. Click 'Đăng nhập'.",
+        "expected": "Authentication succeeds; user redirected to Staff Dashboard (/staff/dashboard) with warehouse operator permissions.",
+        "pre": "Staff account exists and accepted invitation"
+      },
+      {
+        "id": "TC_AUTH_004",
+        "desc": "Login successfully with valid Admin account credentials",
+        "proc": "1. Open Login form.\n2. Enter valid Admin credentials.\n3. Click 'Đăng nhập'.",
+        "expected": "Authentication succeeds; user redirected to Admin Dashboard (/admin/dashboard) with full administrative rights.",
+        "pre": "Admin account exists in system"
+      },
+      {
+        "id": "TC_AUTH_005",
+        "desc": "Login with incorrect password",
+        "proc": "1. Enter registered email.\n2. Enter wrong password.\n3. Click 'Đăng nhập'.",
+        "expected": "System returns HTTP 400/401 with error message: 'Sai email hoặc mật khẩu'. User remains on login screen.",
+        "pre": "Account exists in database"
+      },
+      {
+        "id": "TC_AUTH_006",
+        "desc": "Login with non-existent email",
+        "proc": "1. Enter unregistered email (e.g. unknown_user_999@example.com).\n2. Enter any password.\n3. Click 'Đăng nhập'.",
+        "expected": "System returns HTTP 400/401 with generic error: 'Sai email hoặc mật khẩu' (prevents account enumeration attacks).",
+        "pre": "Email is not registered in system"
+      },
+      {
+        "id": "TC_AUTH_007",
+        "desc": "Login with invalid email format",
+        "proc": "1. Enter email format 'user_email_without_at.com' or 'test@'.\n2. Enter password.\n3. Click 'Đăng nhập'.",
+        "expected": "Client-side validation error shown: 'Email không đúng định dạng'. Form submission is blocked.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_008",
+        "desc": "Login with empty email and password fields",
+        "proc": "1. Leave email and password blank.\n2. Click 'Đăng nhập'.",
+        "expected": "Validation errors displayed: 'Email không được để trống' and 'Mật khẩu không được để trống'.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_009",
+        "desc": "Login with locked / inactive account",
+        "proc": "1. Enter credentials of an account where isActive = false.\n2. Click 'Đăng nhập'.",
+        "expected": "Server rejects request with message: 'Tài khoản của bạn đã bị khóa hoặc chưa kích hoạt'. Access denied.",
+        "pre": "Account isActive is false"
+      },
+      {
+        "id": "TC_AUTH_010",
+        "desc": "Login with leading/trailing whitespaces in email input",
+        "proc": "1. Enter email '  valid_owner@example.com  ' with extra spaces.\n2. Enter correct password.\n3. Click 'Đăng nhập'.",
+        "expected": "System auto-trims whitespace, successfully authenticates and redirects to dashboard.",
+        "pre": "Valid account exists"
+      }
+    ]
+  },
+  {
+    "no": 2,
+    "name": "Register",
+    "sheet": "Authentication",
+    "desc": "Verify new account registration for Owner/Tenant roles, duplicate email check, password complexity validation, and account profile initialization.",
+    "pre": "User does not have an account in the system with the target email",
+    "fe": "RegisterPage / AuthModal",
+    "be": "AuthController.register (AuthService.register)",
+    "test_cases": [
+      {
+        "id": "TC_AUTH_011",
+        "desc": "Register new Owner account with valid details",
+        "proc": "1. Navigate to Register page (/register) or click 'Đăng ký'.\n2. Select role 'Chủ kho (Owner)'.\n3. Enter Full Name: 'Trần Văn Chủ Kho', Phone: '0912345678', Email: 'new_owner@example.com', Password: 'Password123@'.\n4. Click 'Đăng ký'.",
+        "expected": "Account created successfully in DB (HTTP 201 Created); welcome email dispatched via SMTP; user redirected to login with success toast.",
+        "pre": "Email is not registered in DB"
+      },
+      {
+        "id": "TC_AUTH_012",
+        "desc": "Register new Tenant account with valid details",
+        "proc": "1. Open Register modal.\n2. Select role 'Người thuê (Tenant)'.\n3. Fill valid Name, Phone, Email, and Password.\n4. Click 'Đăng ký'.",
+        "expected": "Tenant account created in DB; welcome notification triggered; user can log in with new credentials immediately.",
+        "pre": "Email is not registered in DB"
+      },
+      {
+        "id": "TC_AUTH_013",
+        "desc": "Register with email that already exists in database",
+        "proc": "1. Enter an email that is already registered.\n2. Fill all other fields with valid data.\n3. Click 'Đăng ký'.",
+        "expected": "System returns HTTP 400 Bad Request with error: 'Email này đã được đăng ký trong hệ thống'.",
+        "pre": "Email already exists in system"
+      },
+      {
+        "id": "TC_AUTH_014",
+        "desc": "Register with password shorter than 6 characters",
+        "proc": "1. Enter password '12345' (5 characters).\n2. Fill other fields.\n3. Click 'Đăng ký'.",
+        "expected": "Validation error shown: 'Mật khẩu phải có tối thiểu 6 ký tự'. Form submission blocked.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_015",
+        "desc": "Register with invalid Vietnamese phone number format",
+        "proc": "1. Enter phone number '12345' or 'abcdef' or '012345678901'.\n2. Click 'Đăng ký'.",
+        "expected": "Validation error shown: 'Số điện thoại không hợp lệ (phải bắt đầu bằng 0 và có 10 chữ số)'.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_016",
+        "desc": "Register with password confirmation mismatch",
+        "proc": "1. Enter Password: 'Password123@'.\n2. Enter Confirm Password: 'Password456@'.\n3. Click 'Đăng ký'.",
+        "expected": "Client validation error shown: 'Mật khẩu xác nhận không khớp'. Form submission blocked.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_017",
+        "desc": "Register with all required fields left blank",
+        "proc": "1. Open Register form.\n2. Leave Name, Phone, Email, Password empty.\n3. Click 'Đăng ký'.",
+        "expected": "All mandatory field errors displayed: 'Họ và tên không được để trống', 'Email không được để trống', 'Mật khẩu không được để trống'.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_018",
+        "desc": "Register attempting unauthorized role injection (ROLE_ADMIN)",
+        "proc": "1. Intercept registration API request.\n2. Modify role payload parameter from 'TENANT' to 'ADMIN'.\n3. Send request to /api/auth/register.",
+        "expected": "Server DTO validation rejects with HTTP 400 Bad Request: only OWNER and TENANT roles are allowed for public registration.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_019",
+        "desc": "Register with special characters or XSS script in Full Name",
+        "proc": "1. Enter Full Name: '<script>alert(\"xss\")</script> Nguyễn Văn A'.\n2. Submit registration.",
+        "expected": "Server/Client sanitizes input safely; user created with escaped name string, preventing script execution.",
+        "pre": "Email is not registered"
+      }
+    ]
+  },
+  {
+    "no": 3,
+    "name": "Google OAuth Login",
+    "sheet": "Authentication",
+    "desc": "Verify authenticating or onboarding via Google OAuth2 with server-side authorization code exchange.",
+    "pre": "User has an active Google account",
+    "fe": "GoogleLoginButton (AuthModal)",
+    "be": "AuthController.googleLogin (AuthService.loginWithGoogle)",
+    "test_cases": [
+      {
+        "id": "TC_AUTH_020",
+        "desc": "Sign in with Google account (First-time user onboarding)",
+        "proc": "1. Click 'Đăng nhập bằng Google' button.\n2. Select Google account and authorize permissions.\n3. Google returns authorization code to frontend callback.\n4. FE calls /api/auth/google with code and role.",
+        "expected": "Backend verifies token with Google OAuth API; creates new user in DB with provider GOOGLE; issues JWT tokens and redirects to dashboard.",
+        "pre": "Google account not previously registered in StockSpace"
+      },
+      {
+        "id": "TC_AUTH_021",
+        "desc": "Sign in with Google account (Returning existing user)",
+        "proc": "1. Click 'Đăng nhập bằng Google'.\n2. Authorize with previously registered Google account.",
+        "expected": "System matches existing user record; issues JWT access/refresh tokens; redirects to role dashboard without duplicate account creation.",
+        "pre": "User has existing account with provider GOOGLE"
+      },
+      {
+        "id": "TC_AUTH_022",
+        "desc": "Google OAuth popup cancelled by user",
+        "proc": "1. Click 'Đăng nhập bằng Google'.\n2. Close or dismiss the Google OAuth consent popup window.",
+        "expected": "Popup closes gracefully; login modal remains active; no uncaught exceptions in console; user can choose alternate login method.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_023",
+        "desc": "Google OAuth with invalid or expired authorization code",
+        "proc": "1. Send manipulated or expired authorization code to /api/auth/google.",
+        "expected": "Server rejects with HTTP 400 Bad Request: 'Mã xác thực Google không hợp lệ hoặc đã hết hạn'.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_024",
+        "desc": "Google OAuth when corresponding local account is locked",
+        "proc": "1. User previously registered via Google, but account isActive was set to false by Admin.\n2. User attempts Google sign in.",
+        "expected": "System returns HTTP 403 Forbidden: 'Tài khoản của bạn đã bị khóa hoặc chưa kích hoạt'.",
+        "pre": "Account exists with isActive = false"
+      }
+    ]
+  },
+  {
+    "no": 4,
+    "name": "Forget Password",
+    "sheet": "Authentication",
+    "desc": "Verify requesting password reset link via email, generating secure reset token and sending SMTP email.",
+    "pre": "User has an account with a registered email",
+    "fe": "ForgotPasswordPage (/forgot-password)",
+    "be": "AuthController.forgotPassword (AuthService.forgotPassword)",
+    "test_cases": [
+      {
+        "id": "TC_AUTH_025",
+        "desc": "Request password reset with valid registered email",
+        "proc": "1. Navigate to /forgot-password.\n2. Enter registered email address.\n3. Click 'Gửi yêu cầu'.",
+        "expected": "System returns HTTP 200 OK; generates secure 48h reset token; dispatches reset email via SMTP; displays success message.",
+        "pre": "User account exists with verified email"
+      },
+      {
+        "id": "TC_AUTH_026",
+        "desc": "Request password reset with unregistered email",
+        "proc": "1. Open /forgot-password.\n2. Enter non-existent email address (e.g. not_found_99@gmail.com).\n3. Click 'Gửi yêu cầu'.",
+        "expected": "System displays safe generic message: 'Nếu email tồn tại trong hệ thống, chúng tôi đã gửi đường dẫn...'; no email dispatched; prevents account probing.",
+        "pre": "Email does not exist in DB"
+      },
+      {
+        "id": "TC_AUTH_027",
+        "desc": "Request password reset with invalid email format",
+        "proc": "1. Enter 'invalid-email-string' in email field.\n2. Click 'Gửi yêu cầu'.",
+        "expected": "Validation error shown: 'Email không đúng định dạng'. Request blocked.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_028",
+        "desc": "Request password reset with empty email field",
+        "proc": "1. Leave email field empty.\n2. Click 'Gửi yêu cầu'.",
+        "expected": "Validation error shown: 'Vui lòng nhập địa chỉ email'.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_029",
+        "desc": "Spam multiple consecutive reset password requests",
+        "proc": "1. Enter valid email.\n2. Click 'Gửi yêu cầu' repeatedly 5 times in 10 seconds.",
+        "expected": "System handles rate limiting / updates token safely; only the most recently generated reset token remains valid.",
+        "pre": "User account exists"
+      }
+    ]
+  },
+  {
+    "no": 5,
+    "name": "Reset Password",
+    "sheet": "Authentication",
+    "desc": "Verify updating account password using token from reset email, validating token validity and expiry window.",
+    "pre": "User holds a valid non-expired password reset token",
+    "fe": "ResetPasswordPage (/reset-password)",
+    "be": "AuthController.resetPassword (AuthService.resetPassword)",
+    "test_cases": [
+      {
+        "id": "TC_AUTH_030",
+        "desc": "Reset password successfully with valid token and strong new password",
+        "proc": "1. Open link /reset-password?token={valid_token}.\n2. Enter new password: 'NewSecurePassword123@'.\n3. Enter confirm password: 'NewSecurePassword123@'.\n4. Click 'Đặt lại mật khẩu'.",
+        "expected": "Password updated in DB with BCrypt hash; old password invalidated; reset token revoked; user redirected to login with success notification.",
+        "pre": "Reset token is valid and within 48h expiration window"
+      },
+      {
+        "id": "TC_AUTH_031",
+        "desc": "Reset password with expired token (> 48 hours)",
+        "proc": "1. Access reset URL with a token created more than 48 hours ago.\n2. Enter valid new password.\n3. Click 'Đặt lại mật khẩu'.",
+        "expected": "System displays error: 'Đường dẫn đặt lại mật khẩu đã hết hạn hoặc không hợp lệ. Vui lòng yêu cầu lại'. Password unchanged.",
+        "pre": "Reset token is expired"
+      },
+      {
+        "id": "TC_AUTH_032",
+        "desc": "Reset password with invalid or tampered token string",
+        "proc": "1. Access /reset-password?token=invalid_fake_token_123.\n2. Enter new password and submit.",
+        "expected": "System returns HTTP 400 Bad Request with error: 'Mã token không hợp lệ'.",
+        "pre": "None"
+      },
+      {
+        "id": "TC_AUTH_033",
+        "desc": "Reset password with new password shorter than 6 characters",
+        "proc": "1. Access valid reset URL.\n2. Enter password '123' (3 chars).\n3. Submit form.",
+        "expected": "Validation error: 'Mật khẩu phải có tối thiểu 6 ký tự'. Form submission blocked.",
+        "pre": "Valid token provided"
+      },
+      {
+        "id": "TC_AUTH_034",
+        "desc": "Reset password with mismatched password confirmation",
+        "proc": "1. Enter New Password: 'PasswordA@123'.\n2. Enter Confirm Password: 'PasswordB@456'.\n3. Submit form.",
+        "expected": "Validation error: 'Mật khẩu xác nhận không khớp'. Form submission blocked.",
+        "pre": "Valid token provided"
+      },
+      {
+        "id": "TC_AUTH_035",
+        "desc": "Attempt to reuse an already-used reset token",
+        "proc": "1. Successfully reset password using token once.\n2. Try to reuse the exact same token URL again to change password a second time.",
+        "expected": "Server rejects request: token is already marked as consumed/invalid. Password cannot be reset again with same token.",
+        "pre": "Token was already used"
+      }
+    ]
+  },
+  {
+    "no": 6,
+    "name": "View and Update Profile",
+    "sheet": "Authentication",
+    "desc": "Verify retrieving current logged-in user details and updating full name, phone number, and avatar URL.",
+    "pre": "User is authenticated with valid JWT token",
+    "fe": "Profile (/profile)",
+    "be": "AuthController.getCurrentUser, updateCurrentUser (ProfileService.updateProfile)",
+    "test_cases": [
+      {
+        "id": "TC_AUTH_036",
+        "desc": "View authenticated user profile details",
+        "proc": "1. Log in to system.\n2. Navigate to Profile page (/profile).\n3. Inspect displayed fields.",
+        "expected": "System calls GET /api/auth/me; displays Full Name, Email, Phone, Role badge, Provider (LOCAL/GOOGLE), and Avatar.",
+        "pre": "User is logged in"
+      },
+      {
+        "id": "TC_AUTH_037",
+        "desc": "Update profile details with valid new information",
+        "proc": "1. Open Profile page.\n2. Change Full Name to 'Nguyễn Văn Đạt'.\n3. Change Phone to '0987654321'.\n4. Change Avatar URL to valid image link.\n5. Click 'Lưu thay đổi'.",
+        "expected": "System calls PUT /api/auth/me; DB record updated; success toast: 'Cập nhật thông tin thành công'; UI header updates new avatar/name.",
+        "pre": "User is logged in"
+      },
+      {
+        "id": "TC_AUTH_038",
+        "desc": "Update profile with invalid phone number format",
+        "proc": "1. Enter phone number '123' or 'abcd' or special chars.\n2. Click 'Lưu thay đổi'.",
+        "expected": "Validation error shown: 'Số điện thoại không hợp lệ'. API call blocked.",
+        "pre": "User is logged in"
+      },
+      {
+        "id": "TC_AUTH_039",
+        "desc": "Update profile with empty Full Name",
+        "proc": "1. Clear the Full Name field.\n2. Click 'Lưu thay đổi'.",
+        "expected": "Validation error shown: 'Họ và tên không được để trống'. Form submission blocked.",
+        "pre": "User is logged in"
+      },
+      {
+        "id": "TC_AUTH_040",
+        "desc": "Attempt to modify non-editable fields (Email, Role, Balance)",
+        "proc": "1. Inspect profile form.\n2. Verify Email and Role fields are disabled / read-only.\n3. Intercept PUT /api/auth/me and inject modified 'email' or 'role' in JSON.",
+        "expected": "Backend DTO ignores injected email/role; only allowed profile fields (fullName, phone, avatarUrl) are updated.",
+        "pre": "User is logged in"
+      },
+      {
+        "id": "TC_AUTH_041",
+        "desc": "Access profile page when unauthenticated (Expired or missing JWT)",
+        "proc": "1. Clear auth cookies/token.\n2. Directly navigate to URL /profile.",
+        "expected": "RoleGuard intercepts request; redirects user to Login page or displays Unauthorized error.",
+        "pre": "User is not authenticated"
+      }
+    ]
+  },
+  {
+    "no": 7,
+    "name": "Create Warehouse",
+    "sheet": "Warehouse Management",
+    "desc": "Verify warehouse listing creation by Owner with complete details (specifications, dimensions, storage type, rental rates, policies, and photos).",
+    "pre": "User logged in with Owner role",
+    "fe": "PostWarehouse (/owner/postwarehouse)",
+    "be": "OwnerWarehouseController.createWarehouse (WarehouseService.createWarehouse)",
+    "test_cases": [
+      {
+        "id": "TC_WH_001",
+        "desc": "Owner creates a new warehouse with valid info",
+        "proc": "1. Log in as Owner.\n2. Navigate to 'Đăng kho' (/owner/postwarehouse).\n3. Enter Warehouse Name: 'Kho Tiêu Chuẩn Sài Gòn 1', Address: 'Khu công nghiệp Tân Bình, TP.HCM', Category: 'Kho tổng hợp'.\n4. Enter dimensions: Width 30m, Length 50m, Height 8m, Price: 45,000,000 VND/tháng.\n5. Upload warehouse certificates and photos.\n6. Click 'Đăng kho'.",
+        "expected": "Warehouse is created successfully; status is PENDING_APPROVAL; system prompts Owner to configure default 2D/3D layout.",
+        "pre": "User logged in as Owner"
+      },
+      {
+        "id": "TC_WH_002",
+        "desc": "Create warehouse with missing name",
+        "proc": "1. Log in as Owner.\n2. Open Post Warehouse form.\n3. Fill all fields but leave Warehouse Name empty.\n4. Click 'Đăng kho'.",
+        "expected": "Validation error message shown: 'Tên kho không được để trống'. Form submission blocked.",
+        "pre": "User logged in as Owner"
+      },
+      {
+        "id": "TC_WH_003",
+        "desc": "Create warehouse with negative price",
+        "proc": "1. Enter Price: -5,000,000.\n2. Fill other valid fields.\n3. Click 'Đăng kho'.",
+        "expected": "Validation error message shown: 'Giá thuê phải lớn hơn 0' (Price must be positive).",
+        "pre": "User logged in as Owner"
+      },
+      {
+        "id": "TC_WH_004",
+        "desc": "Create warehouse with missing pricePerMonth",
+        "proc": "1. Log in as Owner.\n2. Leave 'Giá thuê theo tháng' field blank.\n3. Click 'Đăng kho'.",
+        "expected": "Validation error message shown: 'Giá thuê không được để trống' (Price cannot be empty).",
+        "pre": "User logged in as Owner"
+      },
+      {
+        "id": "TC_WH_005",
+        "desc": "Create warehouse with invalid dimensions (Width <= 0 or Length <= 0)",
+        "proc": "1. Enter Width: 0, Length: -10, Height: 6.\n2. Click 'Đăng kho'.",
+        "expected": "Validation error shown: 'Kích thước chiều rộng và chiều dài phải lớn hơn 0'.",
+        "pre": "User logged in as Owner"
+      }
+    ]
+  },
+  {
+    "no": 8,
+    "name": "Update Warehouse Information",
+    "sheet": "Warehouse Management",
+    "desc": "Verify Owner modifying warehouse amenities, description, and contact info while preserving verified status.",
+    "pre": "User is Owner of the warehouse",
+    "fe": "ListWarehouse (/owner/warehouses)",
+    "be": "OwnerWarehouseController.updateWarehouse (WarehouseService.updateWarehouse)",
+    "test_cases": [
+      {
+        "id": "TC_WH_006",
+        "desc": "Owner updates warehouse description and amenities",
+        "proc": "1. Go to Owner Warehouse list (/owner/listwarehouse).\n2. Click 'Chỉnh sửa' on a warehouse.\n3. Update description and toggle CCTV/Forklift amenities.\n4. Click 'Lưu thay đổi'.",
+        "expected": "Warehouse info updated successfully in database; changes immediately visible on warehouse detail page.",
+        "pre": "Warehouse belongs to authenticated Owner"
+      },
+      {
+        "id": "TC_WH_007",
+        "desc": "Attempt to update a warehouse owned by another owner",
+        "proc": "1. Owner A captures warehouseId belonging to Owner B.\n2. Owner A sends PUT /api/owner/warehouses/{id} with modified payload.",
+        "expected": "Server rejects with HTTP 403 Forbidden: 'Bạn không có quyền chỉnh sửa kho hàng này' (WAREHOUSE_NOT_OWNED).",
+        "pre": "Warehouse is owned by a different user"
+      },
+      {
+        "id": "TC_WH_008",
+        "desc": "Update warehouse with empty address",
+        "proc": "1. Clear the warehouse address field.\n2. Click 'Lưu thay đổi'.",
+        "expected": "Validation error: 'Địa chỉ kho không được để trống'. Update rejected.",
+        "pre": "Owner owns warehouse"
+      }
+    ]
+  },
+  {
+    "no": 9,
+    "name": "Search Warehouses",
+    "sheet": "Warehouse Management",
+    "desc": "Verify public warehouse search with multi-criteria filters (province, price range, area, storage type, keyword).",
+    "pre": "System contains active, published warehouses",
+    "fe": "WarehouseListingPage (/warehouses)",
+    "be": "PublicWarehouseController.searchWarehouses",
+    "test_cases": [
+      {
+        "id": "TC_WH_009",
+        "desc": "Public user searches warehouses with matching filter",
+        "proc": "1. Go to public Warehouse Marketplace (/warehouses).\n2. Enter keyword 'Kho tiêu chuẩn'.\n3. Select Province 'Hồ Chí Minh' and Price range '30 - 60 triệu'.\n4. Apply filter.",
+        "expected": "System returns list of AVAILABLE published warehouses matching criteria with accurate pagination.",
+        "pre": "System has at least one published warehouse matching criteria"
+      },
+      {
+        "id": "TC_WH_010",
+        "desc": "Public user searches with no matching results",
+        "proc": "1. Enter keyword 'NonExistentWarehouseString999'.\n2. Select Province 'Cà Mau'.\n3. Apply filter.",
+        "expected": "System returns empty list and displays friendly message: 'Không tìm thấy kho hàng phù hợp với bộ lọc'.",
+        "pre": "No matching warehouses in database"
+      },
+      {
+        "id": "TC_WH_011",
+        "desc": "Filter warehouses by storage category type",
+        "proc": "1. Select Category: 'Kho lạnh (Cold Storage)'.\n2. Apply filter.",
+        "expected": "Only warehouses classified under cold storage category are returned.",
+        "pre": "Cold storage warehouses exist in system"
+      },
+      {
+        "id": "TC_WH_012",
+        "desc": "Sort warehouses by Price Low to High and Area High to Low",
+        "proc": "1. Open /warehouses.\n2. Select Sort by: 'Giá tăng dần'.\n3. Change to 'Diện tích giảm dần'.",
+        "expected": "Warehouse cards reorder smoothly matching the selected sorting criteria.",
+        "pre": "Warehouses exist"
+      }
+    ]
+  },
+  {
+    "no": 10,
+    "name": "View Warehouse Details",
+    "sheet": "Warehouse Management",
+    "desc": "Verify public visitors viewing full warehouse specifications, inspection rating scores, owner info, and 3D layout tour.",
+    "pre": "Target warehouse exists and is published",
+    "fe": "WarehouseDetailPage (/warehouse/:id)",
+    "be": "PublicWarehouseController.getWarehouseById",
+    "test_cases": [
+      {
+        "id": "TC_WH_013",
+        "desc": "View public warehouse detail page with 3D scene",
+        "proc": "1. Click on warehouse card from listing.\n2. Inspect specs (Dimensions, Total area, Clear height, Floor load).\n3. Inspect fire safety certificate, inspection badge, and 3D layout viewer.",
+        "expected": "Full warehouse specs load; Three.js 3D layout renders interactive zones and racks; Owner contact card displayed.",
+        "pre": "Warehouse is published and verified"
+      },
+      {
+        "id": "TC_WH_014",
+        "desc": "View non-existent warehouse detail page (Invalid UUID)",
+        "proc": "1. Navigate directly to /warehouse/00000000-0000-0000-0000-000000000000.",
+        "expected": "System shows 404 Not Found error: 'Kho hàng không tồn tại hoặc đã ngừng hoạt động'; user offered button to return to listing.",
+        "pre": "Warehouse ID not in DB"
+      },
+      {
+        "id": "TC_WH_015",
+        "desc": "Public user views an unverified / draft warehouse detail",
+        "proc": "1. Attempt to view URL of a warehouse in DRAFT or REJECTED status as a public guest.",
+        "expected": "System restricts access: only published, verified warehouses are publicly viewable.",
+        "pre": "Target warehouse is not verified"
+      }
+    ]
+  },
+  {
+    "no": 11,
+    "name": "Verify/Reject Warehouse (Admin)",
+    "sheet": "Warehouse Management",
+    "desc": "Verify Admin approving or rejecting a submitted warehouse listing after reviewing documents and layout.",
+    "pre": "User is Admin, target warehouse is in PENDING_APPROVAL status",
+    "fe": "WarehouseApprovalPage (/admin/warehouseapprovals)",
+    "be": "AdminWarehouseController.approveWarehouse, rejectWarehouse",
+    "test_cases": [
+      {
+        "id": "TC_WH_016",
+        "desc": "Admin approves (verifies) a pending warehouse",
+        "proc": "1. Log in as Admin.\n2. Navigate to Warehouse Approvals (/admin/listings).\n3. Open pending warehouse listing.\n4. Review legal documents and specifications.\n5. Click 'Phê duyệt'.",
+        "expected": "Success message 'Duyệt kho thành công' is shown; warehouse status changes to VERIFIED; Owner receives approval notification.",
+        "pre": "User is Admin, warehouse status is PENDING_APPROVAL"
+      },
+      {
+        "id": "TC_WH_017",
+        "desc": "Admin approves warehouse with invalid or non-existent ID",
+        "proc": "1. Manually trigger approval API with non-existent warehouseId.\n2. Submit request.",
+        "expected": "System returns HTTP 404 Not Found: 'Kho hàng không tồn tại'. Action blocked.",
+        "pre": "User is Admin"
+      },
+      {
+        "id": "TC_WH_018",
+        "desc": "Admin rejects pending warehouse with reason",
+        "proc": "1. In pending approval list, click 'Từ chối'.\n2. Enter rejection reason: 'Hồ sơ PCCC chưa đủ dấu thẩm duyệt của cơ quan chức năng'.\n3. Confirm rejection.",
+        "expected": "Success message 'Từ chối duyệt kho thành công' is shown; warehouse status changes to REJECTED; reason recorded in audit log and sent to Owner.",
+        "pre": "User is Admin, warehouse status is PENDING_APPROVAL"
+      },
+      {
+        "id": "TC_WH_019",
+        "desc": "Admin rejects warehouse without entering rejection reason",
+        "proc": "1. Click 'Từ chối'.\n2. Leave reason box blank.\n3. Click confirm.",
+        "expected": "Validation error: 'Vui lòng nhập lý do từ chối để thông báo cho chủ kho'. Action blocked.",
+        "pre": "User is Admin"
+      }
+    ]
+  },
+  {
+    "no": 12,
+    "name": "Save Owner Warehouse Layout",
+    "sheet": "Layout Management",
+    "desc": "Verify Owner designing and bulk saving default 2D/3D layout structure (zones, racks, shelves, and storage bins).",
+    "pre": "User is Owner of warehouse, warehouse exists",
+    "fe": "LayoutWarehouse (/owner/layoutwarehouses)",
+    "be": "OwnerLayoutController.saveLayout (WarehouseLayoutService.saveLayoutBulk)",
+    "test_cases": [
+      {
+        "id": "TC_LY_001",
+        "desc": "Owner saves default 2D/3D layout structure with zones, racks, and bins",
+        "proc": "1. Log in as Owner.\n2. Open 3D Layout Designer for warehouse.\n3. Add Zone A (General Storage), 4 Racks, and 16 Bins.\n4. Configure dimensions and load capacities.\n5. Click 'Lưu sơ đồ kho'.",
+        "expected": "Success message 'Lưu sơ đồ kho thành công' is shown; layout hierarchy saved in DB; total volume synchronized.",
+        "pre": "User is Owner, warehouse exists in system"
+      },
+      {
+        "id": "TC_LY_002",
+        "desc": "Owner saves layout with coordinates exceeding warehouse physical boundary",
+        "proc": "1. In 3D designer, place a rack at X=45m when warehouse width is only 30m.\n2. Click 'Lưu sơ đồ kho'.",
+        "expected": "System rejects with validation error: 'Tọa độ/Kích thước giá kệ vượt quá kích thước vật lý của kho'.",
+        "pre": "User is Owner"
+      },
+      {
+        "id": "TC_LY_003",
+        "desc": "Owner saves layout with overlapping racks",
+        "proc": "1. Place Rack 2 directly overlapping Rack 1 on same coordinates.\n2. Click Save.",
+        "expected": "3D visual alert indicates collision/overlap; validation blocks saving until racks are separated.",
+        "pre": "User is Owner"
+      }
+    ]
+  },
+  {
+    "no": 13,
+    "name": "Get Owner Warehouse Layout",
+    "sheet": "Layout Management",
+    "desc": "Verify retrieving default 2D/3D layout tree structure configured by warehouse owner.",
+    "pre": "User is Owner of warehouse",
+    "fe": "LayoutWarehouse (/owner/layoutwarehouses)",
+    "be": "OwnerLayoutController.getLayout (WarehouseLayoutService.getLayoutTree)",
+    "test_cases": [
+      {
+        "id": "TC_LY_004",
+        "desc": "Owner loads default warehouse layout tree",
+        "proc": "1. Open Layout Warehouse page for owned warehouse.\n2. Observe 3D canvas and zone tree hierarchy.",
+        "expected": "System returns WarehouseLayoutResponse; 3D viewport renders all zones, racks, shelves, and bins accurately.",
+        "pre": "Warehouse has saved layout"
+      },
+      {
+        "id": "TC_LY_005",
+        "desc": "Owner loads layout for warehouse without prior layout",
+        "proc": "1. Open Layout page for newly created warehouse.\n2. System detects empty layout.",
+        "expected": "3D canvas displays empty floor with perimeter grid; prompts user to generate initial layout or place zones.",
+        "pre": "Warehouse has no saved layout"
+      }
+    ]
+  },
+  {
+    "no": 14,
+    "name": "Save Tenant Snapshot Layout",
+    "sheet": "Layout Management",
+    "desc": "Verify Tenant customizing their operational rack and bin layout clone for rented warehouse.",
+    "pre": "User is Tenant with active contract for target warehouse",
+    "fe": "LayoutWarehouse (/tenant/layoutwarehouses)",
+    "be": "TenantLayoutController.saveLayout (WarehouseLayoutService.saveLayoutBulk)",
+    "test_cases": [
+      {
+        "id": "TC_LY_006",
+        "desc": "Tenant saves customized snapshot layout clone",
+        "proc": "1. Log in as Tenant.\n2. Navigate to /tenant/layoutwarehouses.\n3. Customize bin codes and zone labels for operations.\n4. Click 'Lưu sơ đồ thuê'.",
+        "expected": "Tenant snapshot layout saved; changes isolated to tenant's contract without modifying Owner's master template.",
+        "pre": "Active lease contract exists for warehouse"
+      },
+      {
+        "id": "TC_LY_007",
+        "desc": "Tenant attempts to save layout when contract is not ACTIVE",
+        "proc": "1. Attempt to save layout modifications for a contract in DRAFT or EXPIRED status.",
+        "expected": "Server rejects with HTTP 400 Bad Request: 'Hợp đồng chưa được kích hoạt hoặc đã hết hạn'.",
+        "pre": "Contract is not active"
+      }
+    ]
+  },
+  {
+    "no": 15,
+    "name": "Get Tenant / Staff Layout",
+    "sheet": "Layout Management",
+    "desc": "Verify Tenant and assigned Staff loading tenant-specific 2D/3D warehouse layout snapshot.",
+    "pre": "User is Tenant or assigned Staff with active contract",
+    "fe": "LayoutWarehouse (/tenant/layoutwarehouses)",
+    "be": "TenantLayoutController.getLayout, StaffWarehouseLayoutController.getLayout",
+    "test_cases": [
+      {
+        "id": "TC_LY_008",
+        "desc": "Assigned Staff loads warehouse operational layout",
+        "proc": "1. Log in as Staff.\n2. Open /staff/layoutwarehouses.\n3. Select assigned warehouse.",
+        "expected": "Staff loads tenant operational layout clone; bins color-coded by stock occupancy; read-only mode enforced.",
+        "pre": "Staff has active warehouse assignment"
+      },
+      {
+        "id": "TC_LY_009",
+        "desc": "Unassigned Staff attempts to view warehouse layout",
+        "proc": "1. Staff attempts to access layout of warehouseId they are not assigned to.",
+        "expected": "System returns HTTP 403 Forbidden: 'Bạn không có quyền truy cập sơ đồ kho hàng này'.",
+        "pre": "Staff is not assigned to target warehouse"
+      }
+    ]
+  },
+  {
+    "no": 16,
+    "name": "View Storage Load & Capacity",
+    "sheet": "Layout Management",
+    "desc": "Verify calculating and visualizing physical load capacity, occupied volume, and remaining weight per storage bin.",
+    "pre": "Target warehouse has active layout with configured rack dimensions",
+    "fe": "LayoutWarehouse / InventoryOverview",
+    "be": "WarehouseCapacityController.getCapacityOverview",
+    "test_cases": [
+      {
+        "id": "TC_LY_010",
+        "desc": "View real-time storage load metrics per bin",
+        "proc": "1. In 3D layout or Inventory overview, click on Bin A-01-02.\n2. Inspect capacity panel.",
+        "expected": "Displays Max Weight (kg), Current Weight, Max Volume (m3), Occupied Volume, and percentage bar (e.g. 75% full).",
+        "pre": "Stock batches present in bin"
+      },
+      {
+        "id": "TC_LY_011",
+        "desc": "Capacity visualization color change on bin overflow/near full",
+        "proc": "1. Put stock in bin reaching >= 90% volume capacity.\n2. View 3D layout scene.",
+        "expected": "Bin mesh color changes from Green (Available) to Red/Orange (Near Full) to alert warehouse manager.",
+        "pre": "Bin capacity >= 90%"
+      }
+    ]
+  },
+  {
+    "no": 17,
+    "name": "Create Rental Contract Draft",
+    "sheet": "Rental Contracts",
+    "desc": "Verify Owner creating a direct rental contract draft for a tenant, specifying lease dates, area, deposit, and rental rate.",
+    "pre": "User is Owner of warehouse, tenant email exists in system",
+    "fe": "OwnerContractsPage (/owner/contracts)",
+    "be": "OwnerContractController.create (ContractService.createOwnerDraft)",
+    "test_cases": [
+      {
+        "id": "TC_CTR_001",
+        "desc": "Owner creates rental contract draft with valid parameters",
+        "proc": "1. Log in as Owner.\n2. Go to Owner Contracts > 'Tạo hợp đồng mới'.\n3. Select Warehouse, enter Tenant Email: 'tenant@example.com'.\n4. Set Start Date: 01/10/2026, End Date: 01/10/2027, Monthly Rent: 40,000,000 VND, Deposit: 80,000,000 VND.\n5. Click 'Tạo bản thảo'.",
+        "expected": "Contract created in DRAFT status (HTTP 201 Created); appears in Owner contract table; ready for layout review and paper file upload.",
+        "pre": "Owner owns warehouse, Tenant email exists in DB"
+      },
+      {
+        "id": "TC_CTR_002",
+        "desc": "Create contract draft with non-existent tenant email",
+        "proc": "1. Enter non-existent tenant email: 'unknown_tenant_999@test.com'.\n2. Submit contract creation.",
+        "expected": "System returns HTTP 404 Not Found: 'Không tìm thấy tài khoản Tenant tương ứng với email này' (TENANT_NOT_FOUND).",
+        "pre": "User is Owner"
+      },
+      {
+        "id": "TC_CTR_003",
+        "desc": "Create contract draft with End Date before Start Date",
+        "proc": "1. Set Start Date: 01/10/2026, End Date: 01/05/2026.\n2. Submit contract creation.",
+        "expected": "Validation error: 'Ngày kết thúc hợp đồng phải sau ngày bắt đầu'. Action blocked.",
+        "pre": "User is Owner"
+      },
+      {
+        "id": "TC_CTR_004",
+        "desc": "Create contract draft overlapping existing active lease on same space",
+        "proc": "1. Create contract draft on warehouse area that is already actively rented by another tenant for the same period.\n2. Submit creation.",
+        "expected": "System rejects with HTTP 409 Conflict: 'Diện tích kho hoặc khoảng thời gian thuê bị trùng lặp' (CONTRACT_DATE_OVERLAP).",
+        "pre": "Overlapping active contract exists"
+      }
+    ]
+  },
+  {
+    "no": 18,
+    "name": "Update Rental Contract Draft",
+    "sheet": "Rental Contracts",
+    "desc": "Verify Owner updating pricing, dates, leased dimensions, and terms of an unsubmitted contract draft.",
+    "pre": "User is Owner, target contract is in DRAFT or CHANGES_REQUESTED status",
+    "fe": "OwnerContractsPage (/owner/contracts)",
+    "be": "OwnerContractController.update (ContractService.updateOwnerDraft)",
+    "test_cases": [
+      {
+        "id": "TC_CTR_005",
+        "desc": "Owner updates contract draft terms and rent rate",
+        "proc": "1. In Owner Contracts, click 'Chỉnh sửa' on a DRAFT contract.\n2. Update Monthly Rent to 42,000,000 VND and add special term clause.\n3. Click 'Lưu thay đổi'.",
+        "expected": "Contract draft updated successfully in DB; updated values displayed in details view.",
+        "pre": "Contract is in DRAFT or CHANGES_REQUESTED status"
+      },
+      {
+        "id": "TC_CTR_006",
+        "desc": "Attempt to update an already ACTIVE or CONFIRMED contract",
+        "proc": "1. Attempt to call PUT /api/owner/contracts/{contractId} on an ACTIVE contract.",
+        "expected": "Server rejects with HTTP 400 Bad Request: 'Chỉ có thể chỉnh sửa hợp đồng ở trạng thái DRAFT hoặc CHANGES_REQUESTED'.",
+        "pre": "Contract status is ACTIVE"
+      }
+    ]
+  },
+  {
+    "no": 19,
+    "name": "Submit Rental Contract Draft",
+    "sheet": "Rental Contracts",
+    "desc": "Verify Owner uploading signed paper contract agreement files and submitting contract to Tenant for confirmation.",
+    "pre": "User is Owner, contract is in DRAFT status, paper agreement uploaded",
+    "fe": "OwnerContractsPage (/owner/contracts)",
+    "be": "OwnerContractController.submit (ContractService.submitOwnerContract)",
+    "test_cases": [
+      {
+        "id": "TC_CTR_007",
+        "desc": "Owner submits contract with valid paper agreement attachment",
+        "proc": "1. Upload scanned contract PDF (hop_dong_thue_kho.pdf).\n2. Click 'Gửi hợp đồng cho Tenant'.\n3. Confirm submission.",
+        "expected": "Contract status transitions to PENDING_TENANT_CONFIRM; notification dispatched to Tenant via email/in-app.",
+        "pre": "Paper contract agreement attached"
+      },
+      {
+        "id": "TC_CTR_008",
+        "desc": "Submit contract draft without uploading paper agreement file",
+        "proc": "1. In draft contract without uploaded files, click 'Gửi hợp đồng cho Tenant'.",
+        "expected": "System returns HTTP 400 Bad Request: 'Cần đính kèm tệp hợp đồng giấy trước khi gửi' (PAPER_CONTRACT_REQUIRED).",
+        "pre": "No paper file attached"
+      }
+    ]
+  },
+  {
+    "no": 20,
+    "name": "Tenant Confirm Rental Contract",
+    "sheet": "Rental Contracts",
+    "desc": "Verify Tenant reviewing contract details and paper agreement, confirming acceptance, and activating contract.",
+    "pre": "User is Tenant, contract status is PENDING_TENANT_CONFIRM",
+    "fe": "TenantContractsPage (/tenant/contracts)",
+    "be": "TenantContractController.confirmContract (ContractService.confirmDirectContract)",
+    "test_cases": [
+      {
+        "id": "TC_CTR_009",
+        "desc": "Tenant confirms submitted rental contract",
+        "proc": "1. Log in as Tenant.\n2. Open Contracts page (/tenant/contracts).\n3. View contract details and inspect PDF attachment.\n4. Click 'Xác nhận hợp đồng'.",
+        "expected": "Contract status updates to ACTIVE; warehouse leased status active; tenant operational layout snapshot created; notification sent to Owner.",
+        "pre": "Contract status is PENDING_TENANT_CONFIRM"
+      },
+      {
+        "id": "TC_CTR_010",
+        "desc": "Unauthorized user attempts to confirm tenant contract",
+        "proc": "1. User C (not the designated tenant) sends confirmation request to /api/tenant/contracts/{id}/confirm.",
+        "expected": "Server rejects with HTTP 403 Forbidden: 'Bạn không phải là người thuê của hợp đồng này'.",
+        "pre": "Caller is not contract's tenant"
+      }
+    ]
+  },
+  {
+    "no": 21,
+    "name": "Tenant Request Contract Changes",
+    "sheet": "Rental Contracts",
+    "desc": "Verify Tenant requesting modifications to specific clauses with feedback note sent back to Owner.",
+    "pre": "User is Tenant, contract status is PENDING_TENANT_CONFIRM",
+    "fe": "TenantContractsPage (/tenant/contracts)",
+    "be": "TenantContractController.requestChanges (ContractService.requestDirectContractChanges)",
+    "test_cases": [
+      {
+        "id": "TC_CTR_011",
+        "desc": "Tenant requests contract clause change with feedback note",
+        "proc": "1. In contract detail, click 'Yêu cầu chỉnh sửa'.\n2. Enter reason: 'Đề nghị điều chỉnh ngày bắt đầu hợp đồng sang đầu tháng 11/2026'.\n3. Click 'Gửi yêu cầu'.",
+        "expected": "Contract status changes to CHANGES_REQUESTED; feedback note saved; Owner notified to update draft.",
+        "pre": "Contract is in PENDING_TENANT_CONFIRM"
+      },
+      {
+        "id": "TC_CTR_012",
+        "desc": "Tenant requests changes without entering explanation note",
+        "proc": "1. Click 'Yêu cầu chỉnh sửa'.\n2. Leave reason note blank.\n3. Click Submit.",
+        "expected": "Validation error: 'Vui lòng nhập lý do/yêu cầu cần chỉnh sửa'. Submission blocked.",
+        "pre": "Contract is in PENDING_TENANT_CONFIRM"
+      }
+    ]
+  },
+  {
+    "no": 22,
+    "name": "Tenant Reject Rental Contract",
+    "sheet": "Rental Contracts",
+    "desc": "Verify Tenant rejecting contract proposal with a mandatory explanation reason.",
+    "pre": "User is Tenant, contract status is PENDING_TENANT_CONFIRM",
+    "fe": "TenantContractsPage (/tenant/contracts)",
+    "be": "TenantContractController.rejectContract (ContractService.rejectDirectContract)",
+    "test_cases": [
+      {
+        "id": "TC_CTR_013",
+        "desc": "Tenant rejects contract proposal with mandatory reason",
+        "proc": "1. In contract detail, click 'Từ chối hợp đồng'.\n2. Enter rejection reason: 'Đã tìm được mặt bằng khác phù hợp hơn'.\n3. Confirm rejection.",
+        "expected": "Contract status updates to REJECTED; warehouse reservation released; Owner notified.",
+        "pre": "Contract is in PENDING_TENANT_CONFIRM"
+      }
+    ]
+  },
+  {
+    "no": 23,
+    "name": "Delete Rental Contract Draft",
+    "sheet": "Rental Contracts",
+    "desc": "Verify Owner deleting an unsubmitted contract draft.",
+    "pre": "User is Owner, contract is in DRAFT status",
+    "fe": "OwnerContractsPage (/owner/contracts)",
+    "be": "OwnerContractController.deleteDraft (ContractService.deleteOwnerDraft)",
+    "test_cases": [
+      {
+        "id": "TC_CTR_014",
+        "desc": "Owner deletes unsubmitted contract draft",
+        "proc": "1. On a DRAFT contract, click 'Hủy / Xóa bản thảo'.\n2. Confirm deletion popup.",
+        "expected": "Contract draft deleted from database (HTTP 200 OK); table row removed.",
+        "pre": "Contract is in DRAFT status"
+      }
+    ]
+  },
+  {
+    "no": 24,
+    "name": "Create Contract Renewal Draft",
+    "sheet": "Rental Contracts",
+    "desc": "Verify Owner generating contract renewal draft from an active contract within the eligible renewal window.",
+    "pre": "User is Owner, target contract is ACTIVE and eligible for renewal",
+    "fe": "OwnerContractsPage (/owner/contracts)",
+    "be": "OwnerContractController.createRenewalDraft (ContractService.createRenewalDraft)",
+    "test_cases": [
+      {
+        "id": "TC_CTR_015",
+        "desc": "Owner creates renewal draft for expiring active contract",
+        "proc": "1. Find ACTIVE contract near expiration.\n2. Click 'Tạo gia hạn'.\n3. Set new renewal duration (12 months).\n4. Submit renewal draft.",
+        "expected": "Renewal draft created in DRAFT status; source contract ID referenced; existing layout clone linked.",
+        "pre": "Contract is ACTIVE and within renewal window"
+      },
+      {
+        "id": "TC_CTR_016",
+        "desc": "Attempt to create renewal draft when renewal is already in progress",
+        "proc": "1. Attempt to create second renewal draft on contract that already has pending renewal.",
+        "expected": "System returns HTTP 409 Conflict: 'Hợp đồng này đã có yêu cầu gia hạn đang được xử lý' (CONTRACT_RENEWAL_ALREADY_EXISTS).",
+        "pre": "Renewal draft already exists"
+      }
+    ]
+  },
+  {
+    "no": 25,
+    "name": "Get List Rental Contracts",
+    "sheet": "Rental Contracts",
+    "desc": "Verify retrieving paginated list of rental contracts with status filters (DRAFT, PENDING, ACTIVE, EXPIRED).",
+    "pre": "User is authenticated Owner or Tenant",
+    "fe": "OwnerContractsPage / TenantContractsPage",
+    "be": "ContractController.getMyContracts",
+    "test_cases": [
+      {
+        "id": "TC_CTR_017",
+        "desc": "Load user contracts list with pagination and status filter",
+        "proc": "1. Open Contracts page.\n2. Filter by status 'ACTIVE'.\n3. Switch pagination page 1 to 2.",
+        "expected": "System returns paginated contracts matching filter for authenticated caller.",
+        "pre": "Authenticated Owner or Tenant"
+      }
+    ]
+  },
+  {
+    "no": 26,
+    "name": "Request Warehouse Inspection",
+    "sheet": "Inspection Management",
+    "desc": "Verify Owner requesting quality inspection for warehouse verification badge before marketplace publishing.",
+    "pre": "User is Owner of warehouse",
+    "fe": "OwnerWarehouseDetail (/owner/warehouses/:id)",
+    "be": "OwnerInspectionController.requestInspection",
+    "test_cases": [
+      {
+        "id": "TC_INSP_001",
+        "desc": "Owner submits inspection appointment request",
+        "proc": "1. Log in as Owner.\n2. Navigate to warehouse details.\n3. Click 'Yêu cầu kiểm định'.\n4. Select preferred inspection date and contact phone.\n5. Click 'Gửi yêu cầu'.",
+        "expected": "Inspection request created in PENDING assignment status (HTTP 201 Created); Admin notified to assign inspector.",
+        "pre": "Warehouse is owned by caller and status is DRAFT or VERIFIED"
+      },
+      {
+        "id": "TC_INSP_002",
+        "desc": "Request inspection when an inspection is already in progress",
+        "proc": "1. Owner attempts to request second inspection while previous inspection is still ASSIGNED or IN_PROGRESS.",
+        "expected": "System rejects with HTTP 400 Bad Request: 'Kho hàng đang có yêu cầu kiểm định đang được xử lý'.",
+        "pre": "Active inspection exists for warehouse"
+      }
+    ]
+  },
+  {
+    "no": 27,
+    "name": "Admin Assign Inspection Task",
+    "sheet": "Inspection Management",
+    "desc": "Verify Admin assigning pending inspection appointment to a qualified staff inspector.",
+    "pre": "User is Admin, inspection is in PENDING status",
+    "fe": "InspectionsManagementPage (/admin/inspections)",
+    "be": "AdminInspectionController.assignInspector",
+    "test_cases": [
+      {
+        "id": "TC_INSP_003",
+        "desc": "Admin assigns inspector to pending warehouse inspection",
+        "proc": "1. Log in as Admin.\n2. Open /admin/inspections.\n3. Select pending inspection appointment.\n4. Select qualified Inspector from dropdown list.\n5. Confirm assignment.",
+        "expected": "Inspection status changes to ASSIGNED; appointment schedule locked; notification sent to Inspector.",
+        "pre": "Inspection is in PENDING status"
+      },
+      {
+        "id": "TC_INSP_004",
+        "desc": "Admin assigns inactive or non-inspector user",
+        "proc": "1. Send assignment request with an account not having ROLE_INSPECTOR.",
+        "expected": "Server rejects with HTTP 400 Bad Request: 'Người dùng được chỉ định không có vai trò Kiểm định viên'.",
+        "pre": "User is Admin"
+      }
+    ]
+  },
+  {
+    "no": 28,
+    "name": "Inspector View Assigned Tasks",
+    "sheet": "Inspection Management",
+    "desc": "Verify Inspector viewing list of assigned warehouse inspection appointments with schedule and address.",
+    "pre": "User logged in with Inspector role",
+    "fe": "InspectorInspectionsPage (/inspector/inspections)",
+    "be": "InspectorController.getMyInspections",
+    "test_cases": [
+      {
+        "id": "TC_INSP_005",
+        "desc": "Inspector loads assigned inspections calendar/list",
+        "proc": "1. Log in as Inspector.\n2. Navigate to /inspector/inspections.\n3. Inspect appointment cards.",
+        "expected": "Displays all inspection appointments assigned to calling inspector with warehouse address, owner contact, and date.",
+        "pre": "Inspector has assigned appointments"
+      },
+      {
+        "id": "TC_INSP_006",
+        "desc": "Non-inspector user attempts to access /inspector/inspections",
+        "proc": "1. Log in as Owner or Tenant.\n2. Navigate directly to URL /inspector/inspections.",
+        "expected": "RoleGuard blocks navigation; user redirected to /unauthorized or dashboard.",
+        "pre": "User is not Inspector"
+      }
+    ]
+  },
+  {
+    "no": 29,
+    "name": "Submit Inspection Report",
+    "sheet": "Inspection Management",
+    "desc": "Verify Inspector submitting evaluation: fire safety, structure, rating score, and verification decision.",
+    "pre": "User is assigned Inspector, inspection is ASSIGNED",
+    "fe": "InspectorInspectionsPage (/inspector/inspections)",
+    "be": "InspectorController.submitReport (InspectionService.submitReport)",
+    "test_cases": [
+      {
+        "id": "TC_INSP_007",
+        "desc": "Inspector submits evaluation report passing warehouse inspection",
+        "proc": "1. Open assigned inspection detail.\n2. Complete safety checklist (PCCC score: 95/100, Structure: 90/100, Hygiene: 95/100).\n3. Overall score: 93/100 (>= 80 threshold).\n4. Set decision: VERIFIED.\n5. Upload on-site inspection photos and submit.",
+        "expected": "Inspection status changes to COMPLETED; warehouse verification score set to 93; Verified Badge granted.",
+        "pre": "Inspection is ASSIGNED to calling inspector"
+      },
+      {
+        "id": "TC_INSP_008",
+        "desc": "Inspector submits evaluation report failing warehouse inspection",
+        "proc": "1. Score safety criteria below 50 due to lacking fire exits.\n2. Set decision: REJECTED.\n3. Enter notes explaining issues and submit.",
+        "expected": "Inspection status changes to COMPLETED; warehouse isVerified remains false; Owner notified of required rectifications.",
+        "pre": "Inspection is ASSIGNED"
+      }
+    ]
+  },
+  {
+    "no": 30,
+    "name": "Purchase / Upgrade Subscription",
+    "sheet": "Subscription",
+    "desc": "Verify Tenant purchasing or upgrading WMS service tier, deducting wallet balance, updating staff quota, and blocking downgrade.",
+    "pre": "User is Tenant, wallet balance >= package price",
+    "fe": "SubscriptionPage (/tenant/subscription)",
+    "be": "TenantSubscriptionController.purchasePackage (SubscriptionService.purchasePackage)",
+    "test_cases": [
+      {
+        "id": "TC_SUB_001",
+        "desc": "Tenant purchases WMS subscription package successfully",
+        "proc": "1. Log in as Tenant with 10,000,000 VND wallet balance.\n2. Go to /tenant/subscription.\n3. Select 'Gói Doanh Nghiệp' (5,000,000 VND, 10 nhân viên, 30 ngày).\n4. Click 'Mua gói ngay'.\n5. Confirm payment.",
+        "expected": "Wallet balance deducted 5,000,000 VND; subscription created with ACTIVE status; staff quota updated to 10; expiry date set to +30 days.",
+        "pre": "User is Tenant, wallet balance sufficient"
+      },
+      {
+        "id": "TC_SUB_002",
+        "desc": "Purchase subscription with insufficient wallet balance",
+        "proc": "1. Tenant has 200,000 VND balance.\n2. Attempts to purchase package costing 2,000,000 VND.",
+        "expected": "System displays error: 'Số dư ví không đủ để thanh toán gói dịch vụ. Vui lòng nạp thêm tiền' (INSUFFICIENT_BALANCE).",
+        "pre": "Wallet balance < package price"
+      },
+      {
+        "id": "TC_SUB_003",
+        "desc": "Tenant upgrades subscription to higher tier",
+        "proc": "1. Tenant has active Standard package.\n2. Selects Enterprise package.\n3. Confirms upgrade.",
+        "expected": "System prorates or upgrades immediately; max staff limit increased to 20; subscription tier updated.",
+        "pre": "Active lower-tier subscription exists"
+      },
+      {
+        "id": "TC_SUB_004",
+        "desc": "Tenant attempts to downgrade package while current package is active",
+        "proc": "1. Tenant holds active Enterprise package (holding 8 active staff).\n2. Attempts to purchase Starter package (max 2 staff).",
+        "expected": "System rejects downgrade: 'Không thể hạ xuống gói dịch vụ thấp hơn khi gói hiện tại vẫn đang còn hạn' (DOWNGRADE_NOT_ALLOWED).",
+        "pre": "Active higher-tier package"
+      }
+    ]
+  },
+  {
+    "no": 31,
+    "name": "Get Active Subscription Status",
+    "sheet": "Subscription",
+    "desc": "Verify checking active WMS subscription status, quota limits, current staff count, and expiration date.",
+    "pre": "User is Tenant or assigned Staff",
+    "fe": "SubscriptionPage (/tenant/subscription)",
+    "be": "TenantSubscriptionController.getMyActiveSubscription",
+    "test_cases": [
+      {
+        "id": "TC_SUB_005",
+        "desc": "Retrieve active subscription details and staff quota usage",
+        "proc": "1. Open /tenant/subscription or Tenant Dashboard.\n2. Inspect subscription widget.",
+        "expected": "Displays package tier name, start date, expiration date, active staff count vs max allowed quota (e.g. 5/10 staff).",
+        "pre": "Active subscription exists"
+      },
+      {
+        "id": "TC_SUB_006",
+        "desc": "Retrieve subscription status when user has never subscribed",
+        "proc": "1. New tenant opens subscription page.",
+        "expected": "System indicates 'Chưa đăng ký gói dịch vụ WMS'; offers package options list for purchase.",
+        "pre": "No prior subscription"
+      }
+    ]
+  },
+  {
+    "no": 32,
+    "name": "Admin Manage Service Packages",
+    "sheet": "Subscription",
+    "desc": "Verify Admin creating, updating, pricing, and toggling active status of WMS service tiers.",
+    "pre": "User logged in with Admin role",
+    "fe": "Packages_SubcriptionsManagementPage (/admin/packages)",
+    "be": "AdminPackageController.createPackage, updatePackage",
+    "test_cases": [
+      {
+        "id": "TC_SUB_007",
+        "desc": "Admin creates new WMS service package tier",
+        "proc": "1. Log in as Admin.\n2. Go to Packages Management (/admin/package-subcription).\n3. Click 'Thêm gói mới'.\n4. Enter Name: 'Gói Chuyên Nghiệp Pro', Price: 3,500,000 VND, Max Staff: 8, Duration: 30 days.\n5. Click 'Lưu'.",
+        "expected": "Package created in DB; immediately visible on public and tenant package selection screens.",
+        "pre": "User is Admin"
+      },
+      {
+        "id": "TC_SUB_008",
+        "desc": "Admin deactivates package tier",
+        "proc": "1. In Admin Packages, toggle isActive to false on a package.",
+        "expected": "Package marked inactive; hidden from new purchases; existing subscribed users retain service until expiration.",
+        "pre": "User is Admin"
+      }
+    ]
+  },
+  {
+    "no": 33,
+    "name": "Purchase Listing Publication",
+    "sheet": "Listing Publication",
+    "desc": "Verify Owner purchasing listing advertisement package to publish warehouse publicly on marketplace for 30/60/90 days.",
+    "pre": "User is Owner, warehouse is VERIFIED, wallet balance sufficient",
+    "fe": "ListWarehouse (/owner/warehouses)",
+    "be": "OwnerListingPublicationController.purchase (ListingOrderService.purchasePublication)",
+    "test_cases": [
+      {
+        "id": "TC_PUB_001",
+        "desc": "Owner purchases 30-day publication package for verified warehouse",
+        "proc": "1. Log in as Owner.\n2. Open Warehouse list (/owner/listwarehouse).\n3. Click 'Đăng tin hiển thị' on verified warehouse.\n4. Select 'Gói 30 ngày' (1,000,000 VND).\n5. Confirm payment.",
+        "expected": "Wallet deducted 1,000,000 VND; ListingOrder created with status PAID; warehouse visibleUntil extended by 30 days; warehouse appears on marketplace.",
+        "pre": "Warehouse is VERIFIED, wallet balance >= 1,000,000 VND"
+      },
+      {
+        "id": "TC_PUB_002",
+        "desc": "Attempt to purchase publication for unverified or rejected warehouse",
+        "proc": "1. Attempt to purchase publication for a warehouse in DRAFT or REJECTED status.",
+        "expected": "System blocks purchase: 'Chỉ có kho hàng đã được phê duyệt và kiểm định (VERIFIED) mới có thể mua gói đăng tin'.",
+        "pre": "Warehouse is not VERIFIED"
+      }
+    ]
+  },
+  {
+    "no": 34,
+    "name": "View Publication Purchase History",
+    "sheet": "Listing Publication",
+    "desc": "Verify Owner viewing publication order history, active visibility periods, and transaction receipts.",
+    "pre": "User is Owner of warehouse",
+    "fe": "ListWarehouse (/owner/warehouses)",
+    "be": "OwnerListingPublicationController.getHistory",
+    "test_cases": [
+      {
+        "id": "TC_PUB_003",
+        "desc": "Owner views warehouse publication timeline and receipt history",
+        "proc": "1. Open Publication History tab on warehouse.\n2. Inspect past orders.",
+        "expected": "Displays list of publication orders, purchased package name, start/end visibility dates, and price paid.",
+        "pre": "Owner owns warehouse"
+      }
+    ]
+  },
+  {
+    "no": 35,
+    "name": "Cancel / Stop Active Publication",
+    "sheet": "Listing Publication",
+    "desc": "Verify Owner cancelling scheduled publication with refund, or stopping active publication early.",
+    "pre": "User is Owner, order is SCHEDULED or ACTIVE",
+    "fe": "ListWarehouse (/owner/warehouses)",
+    "be": "OwnerListingPublicationController.cancelScheduledPublication, stopActivePublication",
+    "test_cases": [
+      {
+        "id": "TC_PUB_004",
+        "desc": "Owner cancels a future SCHEDULED publication order",
+        "proc": "1. In publication list, locate order with status SCHEDULED (not yet started).\n2. Click 'Hủy lịch đăng tin'.\n3. Confirm cancellation.",
+        "expected": "Order status updated to CANCELLED; 100% publication fee refunded back to Owner wallet.",
+        "pre": "Order status is SCHEDULED"
+      },
+      {
+        "id": "TC_PUB_005",
+        "desc": "Owner stops an ongoing ACTIVE publication early",
+        "proc": "1. Click 'Ngừng hiển thị tin' on an ACTIVE publication.\n2. Confirm stop.",
+        "expected": "Warehouse hidden from public marketplace; order marked COMPLETED_EARLY.",
+        "pre": "Order is ACTIVE"
+      }
+    ]
+  },
+  {
+    "no": 36,
+    "name": "Deposit via VNPay",
+    "sheet": "Wallet & Payment",
+    "desc": "Verify wallet balance top-up: generating VNPay payment URL, simulating payment gateway redirect, and processing IPN callback.",
+    "pre": "User has active account in system",
+    "fe": "WalletTenant (/tenant/wallet)",
+    "be": "WalletController.topUp (WalletService.createTopUpRequest), VnPayCallbackController",
+    "test_cases": [
+      {
+        "id": "TC_WAL_001",
+        "desc": "Create top-up request with valid amount and generate VNPay payment URL",
+        "proc": "1. Log in to system.\n2. Open Wallet page (/tenant/wallet hoặc /owner/dashboard).\n3. Click 'Nạp tiền vào ví'.\n4. Enter Amount: 2,000,000 VND.\n5. Click 'Thanh toán qua VNPay'.",
+        "expected": "System generates unique paymentCode; creates transaction with status PENDING; returns VNPay payment gateway redirect URL; browser redirects to VNPay.",
+        "pre": "User is authenticated, Amount >= 10,000 VND"
+      },
+      {
+        "id": "TC_WAL_002",
+        "desc": "VNPay IPN callback processes successful payment",
+        "proc": "1. User completes payment on VNPay sandbox (vnp_ResponseCode = '00').\n2. VNPay sends server-to-server IPN callback to /api/auth/vnpay/callback.",
+        "expected": "Server verifies cryptographic checksum (vnp_SecureHash); updates Transaction to SUCCESS; credits 2,000,000 VND to User Wallet balance; returns RspCode '00'.",
+        "pre": "Pending top-up transaction exists"
+      },
+      {
+        "id": "TC_WAL_003",
+        "desc": "VNPay payment cancelled or failed by user",
+        "proc": "1. On VNPay checkout screen, user clicks 'Hủy giao dịch' (vnp_ResponseCode = '24').\n2. Callback received.",
+        "expected": "Transaction status updated to FAILED; wallet balance unchanged; user redirected to /wallet/callback with friendly failure notice.",
+        "pre": "Pending transaction exists"
+      },
+      {
+        "id": "TC_WAL_004",
+        "desc": "Create top-up with amount less than minimum threshold",
+        "proc": "1. Enter Amount: 5,000 VND (less than 10,000 VND min).\n2. Click Submit.",
+        "expected": "Validation error: 'Số tiền nạp tối thiểu là 10,000 VNĐ'. Request blocked.",
+        "pre": "None"
+      }
+    ]
+  },
+  {
+    "no": 37,
+    "name": "View Wallet Balance & Transactions",
+    "sheet": "Wallet & Payment",
+    "desc": "Verify displaying current available wallet balance, transaction ledger, and filtering by transaction type.",
+    "pre": "User is authenticated",
+    "fe": "WalletTenant / WalletAdmin",
+    "be": "WalletController.getWalletInfo, getMyTransactions",
+    "test_cases": [
+      {
+        "id": "TC_WAL_005",
+        "desc": "View wallet balance and recent transaction history",
+        "proc": "1. Navigate to Wallet page.\n2. Observe available balance, pending withdrawals, and transactions list.",
+        "expected": "Displays current balance (e.g. 15,500,000 VND); transaction history lists date, payment code, type (TOP_UP, SUBSCRIPTION, WITHDRAWAL), and status.",
+        "pre": "User has wallet"
+      },
+      {
+        "id": "TC_WAL_006",
+        "desc": "Filter wallet transactions by transaction type and date range",
+        "proc": "1. On transactions table, select filter Type: 'Nạp tiền (TOP_UP)'.\n2. Select date from 01/08/2026 to 31/08/2026.",
+        "expected": "Table displays only matching TOP_UP transactions within selected period.",
+        "pre": "Transactions exist"
+      }
+    ]
+  },
+  {
+    "no": 38,
+    "name": "Request Withdraw",
+    "sheet": "Wallet & Payment",
+    "desc": "Verify withdrawal request submission: validating bank account, freezing wallet balance, and creating pending payout ticket.",
+    "pre": "User has sufficient balance (Balance >= Withdraw amount)",
+    "fe": "WalletTenant / WithdrawsHistory",
+    "be": "WalletController.withdraw (WithdrawService.submitWithdrawRequest)",
+    "test_cases": [
+      {
+        "id": "TC_WAL_007",
+        "desc": "Submit withdrawal request with valid bank details",
+        "proc": "1. In Wallet, click 'Yêu cầu rút tiền'.\n2. Enter Amount: 5,000,000 VND.\n3. Enter Bank: 'Vietcombank', Account Number: '0123456789', Account Holder: 'NGUYEN VAN A'.\n4. Submit request.",
+        "expected": "WithdrawRequest created with status PENDING; 5,000,000 VND frozen/deducted from available balance; appears in withdrawal history.",
+        "pre": "Available balance >= 5,000,000 VND"
+      },
+      {
+        "id": "TC_WAL_008",
+        "desc": "Request withdrawal exceeding available wallet balance",
+        "proc": "1. Available balance is 1,000,000 VND.\n2. User requests withdrawal of 3,000,000 VND.",
+        "expected": "System rejects with HTTP 400 Bad Request: 'Số dư khả dụng không đủ để thực hiện yêu cầu rút tiền' (INSUFFICIENT_BALANCE).",
+        "pre": "Balance < requested amount"
+      },
+      {
+        "id": "TC_WAL_009",
+        "desc": "Submit withdrawal with invalid bank account number",
+        "proc": "1. Enter Account Number: 'abc@!#'.\n2. Submit request.",
+        "expected": "Validation error: 'Số tài khoản ngân hàng không hợp lệ (chỉ chứa chữ số)'. Request blocked.",
+        "pre": "None"
+      }
+    ]
+  },
+  {
+    "no": 39,
+    "name": "Approve Withdraw (Admin)",
+    "sheet": "Wallet & Payment",
+    "desc": "Verify Admin inspecting and approving user withdrawal request, logging bank transfer reference.",
+    "pre": "User is Admin, withdrawal request is in PENDING status",
+    "fe": "AdminWithdrawalsPage (/admin/withdrawals)",
+    "be": "AdminWithdrawController.approveWithdraw (WithdrawService.approveWithdraw)",
+    "test_cases": [
+      {
+        "id": "TC_WAL_010",
+        "desc": "Admin approves pending withdrawal request",
+        "proc": "1. Log in as Admin.\n2. Open Withdrawals Management (/admin/withdrawals).\n3. Find pending withdrawal request.\n4. Enter bank reference code: 'FT2608123456' and notes: 'Đã chuyển khoản thành công'.\n5. Click 'Phê duyệt'.",
+        "expected": "Withdrawal status updates to APPROVED; transaction status set to SUCCESS; notification dispatched to user.",
+        "pre": "Withdrawal request is in PENDING status"
+      }
+    ]
+  },
+  {
+    "no": 40,
+    "name": "Reject Withdraw (Admin)",
+    "sheet": "Wallet & Payment",
+    "desc": "Verify Admin rejecting withdrawal request with explanation, automatically refunding frozen funds to user wallet.",
+    "pre": "User is Admin, withdrawal request is in PENDING status",
+    "fe": "AdminWithdrawalsPage (/admin/withdrawals)",
+    "be": "AdminWithdrawController.rejectWithdraw (WithdrawService.rejectWithdraw)",
+    "test_cases": [
+      {
+        "id": "TC_WAL_011",
+        "desc": "Admin rejects withdrawal request and automatically refunds frozen funds",
+        "proc": "1. In pending withdrawals, click 'Từ chối'.\n2. Enter rejection reason: 'Tên chủ tài khoản không khớp với tên đăng ký tài khoản'.\n3. Confirm rejection.",
+        "expected": "Withdrawal status updates to REJECTED; frozen funds immediately refunded back to user wallet; user notified.",
+        "pre": "Withdrawal request is in PENDING status"
+      },
+      {
+        "id": "TC_WAL_012",
+        "desc": "Admin rejects withdrawal without entering rejection explanation",
+        "proc": "1. Click 'Từ chối'.\n2. Leave explanation note empty.\n3. Click confirm.",
+        "expected": "Validation error: 'Vui lòng cung cấp lý do từ chối yêu cầu rút tiền'. Action blocked.",
+        "pre": "User is Admin"
+      }
+    ]
+  },
+  {
+    "no": 41,
+    "name": "Create Product Category",
+    "sheet": "Product Catalog",
+    "desc": "Verify Tenant creating a product category to classify SKUs, with optional default attribute templates.",
+    "pre": "User is Tenant, active WMS subscription exists",
+    "fe": "CategoryPage (/tenant/products/categories)",
+    "be": "TenantProductController.createCategory (ProductCategoryService.createCategory)",
+    "test_cases": [
+      {
+        "id": "TC_CAT_001",
+        "desc": "Tenant creates new product category with valid name",
+        "proc": "1. Go to Category Page (/tenant/categories).\n2. Click 'Thêm danh mục'.\n3. Enter Name: 'Hàng tiêu dùng nhanh (FMCG)', Code: 'CAT-FMCG-01'.\n4. Click 'Lưu'.",
+        "expected": "Category created in DB (HTTP 200 OK); appears in categories table and SKU category dropdown.",
+        "pre": "Tenant has active subscription"
+      },
+      {
+        "id": "TC_CAT_002",
+        "desc": "Create category with duplicate category code or name",
+        "proc": "1. Enter existing category code.\n2. Click Save.",
+        "expected": "System returns HTTP 400 Bad Request: 'Mã hoặc tên danh mục đã tồn tại trong tổ chức'.",
+        "pre": "Category code already exists"
+      }
+    ]
+  },
+  {
+    "no": 42,
+    "name": "Delete Product Category",
+    "sheet": "Product Catalog",
+    "desc": "Verify Tenant soft-deleting category, ensuring deletion is blocked if active SKUs are currently assigned to it.",
+    "pre": "User is Tenant, category exists, no active SKUs linked",
+    "fe": "CategoryPage (/tenant/products/categories)",
+    "be": "TenantProductController.deleteCategory (ProductCategoryService.deleteCategory)",
+    "test_cases": [
+      {
+        "id": "TC_CAT_003",
+        "desc": "Delete empty category containing no SKUs",
+        "proc": "1. Click Delete on category with 0 linked SKUs.\n2. Confirm deletion.",
+        "expected": "Category soft-deleted (isDeleted = true); hidden from category list.",
+        "pre": "Category has 0 SKUs"
+      },
+      {
+        "id": "TC_CAT_004",
+        "desc": "Attempt to delete category currently linked to active SKUs",
+        "proc": "1. Click Delete on category holding 5 active SKUs.\n2. Confirm deletion.",
+        "expected": "System rejects with HTTP 400 Bad Request: 'Không thể xóa danh mục đang có sản phẩm (SKU) liên kết' (PRODUCT_CATEGORY_IN_USE).",
+        "pre": "Category has linked SKUs"
+      }
+    ]
+  },
+  {
+    "no": 43,
+    "name": "Get Product Categories List",
+    "sheet": "Product Catalog",
+    "desc": "Verify retrieving list of tenant categories and system default categories.",
+    "pre": "User is Tenant or assigned Staff",
+    "fe": "CategoryPage (/tenant/products/categories)",
+    "be": "TenantProductController.getMyCategories",
+    "test_cases": [
+      {
+        "id": "TC_CAT_005",
+        "desc": "Retrieve complete categories list for tenant organization",
+        "proc": "1. Open Category page.\n2. View category grid.",
+        "expected": "Displays list of categories with SKU count badges, created date, and action buttons.",
+        "pre": "Authenticated Tenant or Staff"
+      }
+    ]
+  },
+  {
+    "no": 44,
+    "name": "Create Product SKU",
+    "sheet": "Product Catalog",
+    "desc": "Verify Tenant creating SKU master data with skuCode, name, UOM, weight (kg), and volume (m3).",
+    "pre": "User is Tenant, active WMS subscription exists",
+    "fe": "SkuPage (/tenant/products/sku)",
+    "be": "TenantProductController.createSku (ProductSkuService.createSku)",
+    "test_cases": [
+      {
+        "id": "TC_SKU_001",
+        "desc": "Create SKU master record with valid physical attributes",
+        "proc": "1. Go to SKU Management (/tenant/skus).\n2. Click 'Tạo SKU mới'.\n3. Enter SKU Code: 'SKU-COCA-330', Name: 'Coca Cola Lon 330ml', UOM: 'Thùng (Carton)'.\n4. Weight: 8.5 kg, Volume: 0.015 m3, Category: 'FMCG'.\n5. Save SKU.",
+        "expected": "SKU created in DB; physical properties registered; barcode auto-generated; ready for inbound receipt.",
+        "pre": "Tenant has active subscription"
+      },
+      {
+        "id": "TC_SKU_002",
+        "desc": "Create SKU with duplicate SKU Code",
+        "proc": "1. Enter existing skuCode 'SKU-COCA-330'.\n2. Submit creation.",
+        "expected": "System throws HTTP 400 Bad Request: 'Mã SKU này đã tồn tại trong tổ chức' (SKU_CODE_DUPLICATE).",
+        "pre": "SKU code exists"
+      },
+      {
+        "id": "TC_SKU_003",
+        "desc": "Create SKU with negative or zero weight/volume",
+        "proc": "1. Enter Weight: -2 kg or 0 kg.\n2. Submit SKU.",
+        "expected": "Validation error: 'Trọng lượng và thể tích của SKU phải lớn hơn 0'.",
+        "pre": "None"
+      }
+    ]
+  },
+  {
+    "no": 45,
+    "name": "Update Product SKU",
+    "sheet": "Product Catalog",
+    "desc": "Verify updating SKU attributes; blocking physical weight/volume changes once stock batches exist in warehouse.",
+    "pre": "User is Tenant, target SKU exists",
+    "fe": "SkuPage (/tenant/products/sku)",
+    "be": "TenantProductController.updateSku (ProductSkuService.updateSku)",
+    "test_cases": [
+      {
+        "id": "TC_SKU_004",
+        "desc": "Update SKU name, description, and barcode",
+        "proc": "1. Click Edit on SKU.\n2. Update Name and description notes.\n3. Save changes.",
+        "expected": "SKU metadata updated successfully in DB.",
+        "pre": "Target SKU exists"
+      },
+      {
+        "id": "TC_SKU_005",
+        "desc": "Attempt to change weight/volume after inventory stock has been recorded",
+        "proc": "1. Select SKU that already has active stock batches in warehouse bins.\n2. Modify unitWeightKg from 8.5 to 12.0.\n3. Save changes.",
+        "expected": "System rejects with HTTP 400: 'Không thể thay đổi trọng lượng/thể tích của SKU sau khi đã phát sinh tồn kho' (SKU_DIMENSIONS_LOCKED).",
+        "pre": "Stock batch exists for target SKU"
+      }
+    ]
+  },
+  {
+    "no": 46,
+    "name": "Delete Product SKU",
+    "sheet": "Product Catalog",
+    "desc": "Verify soft-deleting SKU; ensuring deletion is blocked if any inventory stock batches currently exist.",
+    "pre": "User is Tenant, SKU exists, no linked stock batches",
+    "fe": "SkuPage (/tenant/products/sku)",
+    "be": "TenantProductController.deleteSku (ProductSkuService.deleteSku)",
+    "test_cases": [
+      {
+        "id": "TC_SKU_006",
+        "desc": "Delete unused SKU with zero stock history",
+        "proc": "1. Click Delete on SKU with 0 inventory batches.\n2. Confirm deletion popup.",
+        "expected": "SKU soft-deleted; removed from active SKU picker.",
+        "pre": "SKU has zero stock records"
+      },
+      {
+        "id": "TC_SKU_007",
+        "desc": "Attempt to delete SKU with recorded stock in warehouse",
+        "proc": "1. Click Delete on SKU having existing stock batches.\n2. Confirm deletion.",
+        "expected": "System rejects with HTTP 400: 'Không thể xóa SKU đang có tồn kho trong hệ thống' (SKU_IN_USE).",
+        "pre": "SKU has active or historic stock batches"
+      }
+    ]
+  },
+  {
+    "no": 47,
+    "name": "Get Product SKUs List with Filters",
+    "sheet": "Product Catalog",
+    "desc": "Verify paginated SKU list retrieval supporting keyword search, category filter, and sorting.",
+    "pre": "User is Tenant or assigned Staff",
+    "fe": "SkuPage (/tenant/products/sku)",
+    "be": "TenantProductController.getMySKUs",
+    "test_cases": [
+      {
+        "id": "TC_SKU_008",
+        "desc": "Search and filter SKU catalog by keyword and category",
+        "proc": "1. In /tenant/skus, type 'Coca' in search box.\n2. Select category 'FMCG'.\n3. Apply filter.",
+        "expected": "Table displays matching SKUs with code, name, UOM, weight, volume, and pagination.",
+        "pre": "SKUs exist"
+      }
+    ]
+  },
+  {
+    "no": 48,
+    "name": "Get Units of Measure (UOM) List",
+    "sheet": "Product Catalog",
+    "desc": "Verify retrieving standard Units of Measure (kg, carton, pallet, piece, bag, box).",
+    "pre": "User is authenticated Tenant or Staff",
+    "fe": "SkuPage (/tenant/products/sku)",
+    "be": "TenantProductController.getUoms",
+    "test_cases": [
+      {
+        "id": "TC_SKU_009",
+        "desc": "Load active UOM options in dropdown",
+        "proc": "1. Open SKU create modal.\n2. Open UOM selector dropdown.",
+        "expected": "Displays standard units: Cái (Piece), Thùng (Carton), Pallet, Hộp (Box), Bao (Bag), Kg.",
+        "pre": "UOM dictionary configured"
+      }
+    ]
+  },
+  {
+    "no": 49,
+    "name": "Get Inventory Stock by Warehouse",
+    "sheet": "Stock Management",
+    "desc": "Verify retrieving all stock batches stored across warehouse bins with pagination and SKU filter.",
+    "pre": "User is Tenant or assigned Staff, active lease contract exists",
+    "fe": "InventoryPage (/tenant/inventory)",
+    "be": "StockBatchController.getStockByWarehouse (StockBatchService.getStockByWarehouse)",
+    "test_cases": [
+      {
+        "id": "TC_STK_001",
+        "desc": "Retrieve stock batches stored across warehouse bins",
+        "proc": "1. Open Inventory page (/tenant/inventory).\n2. Select leased warehouse.\n3. View batches table.",
+        "expected": "Displays stock batches with Batch Code, SKU Name, Bin Location, Quantity, Expiry Date, and Status (AVAILABLE/RESERVED).",
+        "pre": "Active lease contract, stock exists"
+      },
+      {
+        "id": "TC_STK_002",
+        "desc": "Filter inventory batches by expiring soon (< 30 days)",
+        "proc": "1. Click filter 'Sắp hết hạn'.\n2. Apply filter.",
+        "expected": "Only batches with expiry date within next 30 days are displayed with warning tags.",
+        "pre": "Expiring batches exist"
+      }
+    ]
+  },
+  {
+    "no": 50,
+    "name": "Get Warehouse Stock Product Overview",
+    "sheet": "Stock Management",
+    "desc": "Verify aggregate product-level overview showing total quantity, reserved quantity, and available quantity per SKU.",
+    "pre": "User is Tenant or assigned Staff",
+    "fe": "InventoryPage (/tenant/inventory)",
+    "be": "StockBatchController.getStockOverviewByWarehouse",
+    "test_cases": [
+      {
+        "id": "TC_STK_003",
+        "desc": "View aggregate SKU stock overview",
+        "proc": "1. On Inventory page, toggle to 'Tổng quan theo SKU'.\n2. Inspect SKU totals.",
+        "expected": "Displays SKU Code, Total Stock, Reserved Quantity (for pending outbounds), and Available Quantity for dispatch.",
+        "pre": "Stock batches exist"
+      }
+    ]
+  },
+  {
+    "no": 51,
+    "name": "Get Stock Summary by SKU",
+    "sheet": "Stock Management",
+    "desc": "Verify aggregating detailed stock positions across all rack bins for a specific product SKU.",
+    "pre": "User is Tenant or assigned Staff, target SKU exists",
+    "fe": "InventoryPage (/tenant/inventory)",
+    "be": "StockBatchController.getStockBySku (StockBatchService.getStockSummaryBySku)",
+    "test_cases": [
+      {
+        "id": "TC_STK_004",
+        "desc": "Inspect multi-bin breakdown for single SKU",
+        "proc": "1. Click on SKU row in overview.\n2. Open bin distribution drawer.",
+        "expected": "Lists all rack bins where this SKU is currently stored, with batch numbers and quantities per bin.",
+        "pre": "SKU stored in multiple bins"
+      }
+    ]
+  },
+  {
+    "no": 52,
+    "name": "Get Stock Batch Transaction History",
+    "sheet": "Stock Management",
+    "desc": "Verify viewing quantity fluctuation timeline for a specific stock batch (inbound, outbound, transfers, audit adjustments).",
+    "pre": "User is Tenant or assigned Staff, target batch exists",
+    "fe": "InventoryPage (/tenant/inventory)",
+    "be": "StockBatchController.getBatchHistory",
+    "test_cases": [
+      {
+        "id": "TC_STK_005",
+        "desc": "View audit timeline of stock batch movements",
+        "proc": "1. Click 'Lịch sử' on a stock batch.\n2. Inspect movement log.",
+        "expected": "Displays chronological ledger: Inbound (+100) -> Internal Transfer (Bin A to B) -> Outbound (-30) -> Current balance (70).",
+        "pre": "Batch has transaction history"
+      }
+    ]
+  },
+  {
+    "no": 53,
+    "name": "Get Inbound Putaway Suggestions",
+    "sheet": "Stock Management",
+    "desc": "Verify intelligent algorithm recommending optimal shelf/bin storage locations based on SKU dimensions and available bin volume.",
+    "pre": "User is Tenant or assigned Staff, target warehouse has configured layout",
+    "fe": "InboundPage (/tenant/inbound)",
+    "be": "PutawaySuggestionController.getPutawaySuggestions",
+    "test_cases": [
+      {
+        "id": "TC_STK_006",
+        "desc": "Algorithm suggests optimal empty/compatible bins for inbound items",
+        "proc": "1. In Inbound receipt creation, enter 50 boxes of SKU-COCA.\n2. Click 'Gợi ý vị trí xếp hàng (Putaway)'.",
+        "expected": "System algorithm calculates required volume (0.75m3) and recommends nearest available bins with sufficient capacity (e.g. Bin A-01-01).",
+        "pre": "Warehouse has active layout with available bins"
+      },
+      {
+        "id": "TC_STK_007",
+        "desc": "Putaway suggestion when warehouse is 100% full",
+        "proc": "1. Request putaway suggestions on a warehouse with no remaining volume capacity.",
+        "expected": "System returns notice: 'Kho hàng đã đạt giới hạn dung tích lưu trữ; không tìm thấy vị trí bin trống phù hợp'.",
+        "pre": "Warehouse capacity full"
+      }
+    ]
+  },
+  {
+    "no": 54,
+    "name": "Get Outbound FIFO Picking Suggestions",
+    "sheet": "Stock Management",
+    "desc": "Verify intelligent algorithm suggesting oldest inventory batches (First-In, First-Out) for outbound picking.",
+    "pre": "User is Tenant or assigned Staff, warehouse has available stock",
+    "fe": "OutboundPage (/tenant/outbound)",
+    "be": "OutboundPickingSuggestionController.getPickingSuggestions",
+    "test_cases": [
+      {
+        "id": "TC_STK_008",
+        "desc": "Algorithm allocates oldest batches based on FIFO rules",
+        "proc": "1. In Outbound receipt creation, request dispatch of 80 units of SKU-A.\n2. Batch 1 (created 01/08/2026, 50 units) and Batch 2 (created 15/08/2026, 50 units) exist.\n3. Request FIFO picking suggestions.",
+        "expected": "Algorithm allocates all 50 units from oldest Batch 1, and 30 units from Batch 2 (strictly adhering to FIFO).",
+        "pre": "Multiple batches of SKU exist"
+      },
+      {
+        "id": "TC_STK_009",
+        "desc": "Picking suggestion when requested quantity exceeds available stock",
+        "proc": "1. Request dispatch of 500 units when total available stock is only 100 units.",
+        "expected": "System indicates stock deficit: 'Số lượng tồn khả dụng không đủ (Thiếu 400 đơn vị)'.",
+        "pre": "Available stock < requested quantity"
+      }
+    ]
+  },
+  {
+    "no": 55,
+    "name": "Create Inbound Receipt",
+    "sheet": "Inventory Receipts",
+    "desc": "Verify Tenant/Staff creating inbound stock receipt (specifying supplier, arrival date, product SKUs, batch quantities, and assigned storage bin coordinates).",
+    "pre": "User is Tenant or assigned Staff, Tenant has active warehouse lease contract",
+    "fe": "InboundPage (/tenant/inbound)",
+    "be": "InventoryReceiptController.createInboundReceipt",
+    "test_cases": [
+      {
+        "id": "TC_RCP_001",
+        "desc": "Tenant/Staff creates inbound receipt with valid items and destination bins",
+        "proc": "1. Go to /tenant/inbound > 'Tạo phiếu nhập kho'.\n2. Enter Supplier: 'Công ty TNHH Nước Giải Khát ABC', Expected Date: 20/09/2026.\n3. Add Line 1: SKU 'SKU-COCA-330', Quantity: 100, Expiry Date: 20/09/2027, Destination Bin: 'A-01-01'.\n4. Submit receipt.",
+        "expected": "Receipt created in PENDING status (HTTP 201 Created); receiptCode (e.g. INB-202609-001) generated; bins reserved.",
+        "pre": "User is Tenant or Staff with lease contract"
+      },
+      {
+        "id": "TC_RCP_002",
+        "desc": "Create inbound receipt assigned to a bin exceeding weight/volume capacity",
+        "proc": "1. Put 10,000 kg into a bin with max capacity 500 kg.\n2. Submit receipt.",
+        "expected": "Validation error: 'Trọng lượng hoặc thể tích hàng nhập vượt quá sức chứa tối đa của bin A-01-01'.",
+        "pre": "Bin has configured capacity limit"
+      }
+    ]
+  },
+  {
+    "no": 56,
+    "name": "Approve Inbound Receipt",
+    "sheet": "Inventory Receipts",
+    "desc": "Verify approving inbound receipt: validating storage bin weight and volume physical capacity, increasing stock batch quantities, and recording transaction ledger.",
+    "pre": "Receipt status is PENDING, assigned bins have sufficient remaining capacity",
+    "fe": "InboundPage (/tenant/inbound)",
+    "be": "InventoryReceiptController.approveInboundReceipt",
+    "test_cases": [
+      {
+        "id": "TC_RCP_003",
+        "desc": "Approve pending inbound receipt and record stock into warehouse bins",
+        "proc": "1. Open pending inbound receipt.\n2. Verify delivered physical count matches invoice.\n3. Click 'Duyệt nhập kho'.",
+        "expected": "Receipt status updates to APPROVED; stock batches created in DB with status AVAILABLE; transaction ledger updated.",
+        "pre": "Receipt is in PENDING status"
+      }
+    ]
+  },
+  {
+    "no": 57,
+    "name": "Create Outbound Receipt",
+    "sheet": "Inventory Receipts",
+    "desc": "Verify Tenant/Staff creating outbound dispatch receipt (specifying recipient, delivery date, item quantities, and FIFO batch allocation).",
+    "pre": "User is Tenant or assigned Staff, sufficient available stock exists in warehouse",
+    "fe": "OutboundPage (/tenant/outbound)",
+    "be": "InventoryReceiptController.createOutboundReceipt",
+    "test_cases": [
+      {
+        "id": "TC_RCP_004",
+        "desc": "Create outbound receipt with FIFO batch allocation",
+        "proc": "1. Go to /tenant/outbound > 'Tạo phiếu xuất kho'.\n2. Enter Recipient: 'Đại lý Miền Nam', Delivery Date: 22/09/2026.\n3. Select SKU and quantity 50.\n4. System allocates FIFO batch.\n5. Click 'Tạo phiếu'.",
+        "expected": "Outbound receipt created with status PENDING; 50 units in batch marked as RESERVED; cannot be picked by other receipts.",
+        "pre": "Available stock >= 50 units"
+      },
+      {
+        "id": "TC_RCP_005",
+        "desc": "Create outbound receipt exceeding available warehouse stock",
+        "proc": "1. Available stock is 20 units.\n2. Request outbound dispatch of 50 units.",
+        "expected": "System rejects with HTTP 400 Bad Request: 'Số lượng yêu cầu vượt quá tồn kho khả dụng' (INSUFFICIENT_STOCK).",
+        "pre": "Stock < requested quantity"
+      }
+    ]
+  },
+  {
+    "no": 58,
+    "name": "Approve Outbound Receipt",
+    "sheet": "Inventory Receipts",
+    "desc": "Verify approving outbound receipt: picking inventory, deducting stock batch quantities, updating inventory ledger, and releasing reserved quantity.",
+    "pre": "Receipt status is PENDING, stock batch available quantity >= requested dispatch quantity",
+    "fe": "OutboundPage (/tenant/outbound)",
+    "be": "InventoryReceiptController.approveOutboundReceipt",
+    "test_cases": [
+      {
+        "id": "TC_RCP_006",
+        "desc": "Approve outbound receipt, deduct stock batches, and dispatch goods",
+        "proc": "1. Open pending outbound receipt.\n2. Confirm picking list complete.\n3. Click 'Xác nhận xuất kho'.",
+        "expected": "Receipt status updates to APPROVED; batch quantity deducted; reserved quantity cleared; outbound ledger recorded.",
+        "pre": "Receipt is in PENDING status"
+      }
+    ]
+  },
+  {
+    "no": 59,
+    "name": "Reject Goods Receipt",
+    "sheet": "Inventory Receipts",
+    "desc": "Verify rejecting inbound or outbound receipt with mandatory cancellation reason, releasing any reserved stock.",
+    "pre": "User is Tenant, target receipt status is PENDING",
+    "fe": "InboundPage / OutboundPage",
+    "be": "InventoryReceiptController.rejectReceipt",
+    "test_cases": [
+      {
+        "id": "TC_RCP_007",
+        "desc": "Reject pending receipt with cancellation explanation",
+        "proc": "1. Click 'Từ chối / Hủy phiếu' on pending receipt.\n2. Enter reason: 'Hàng bị hư hại trong quá trình vận chuyển'.\n3. Confirm rejection.",
+        "expected": "Receipt status updates to REJECTED; any reserved stock batches released immediately back to available pool.",
+        "pre": "Receipt is in PENDING status"
+      }
+    ]
+  },
+  {
+    "no": 60,
+    "name": "Replan Outbound FIFO Picking List",
+    "sheet": "Inventory Receipts",
+    "desc": "Verify re-allocating FIFO picking batches for an existing pending outbound receipt if stock positions shifted.",
+    "pre": "User is Tenant or assigned Staff, outbound receipt status is PENDING",
+    "fe": "OutboundPage (/tenant/outbound)",
+    "be": "InventoryReceiptController.replanOutboundPicking",
+    "test_cases": [
+      {
+        "id": "TC_RCP_008",
+        "desc": "Replan FIFO picking batches after inventory movement",
+        "proc": "1. On a pending outbound receipt, click 'Tái phân bổ FIFO'.\n2. System recalculates oldest batches.",
+        "expected": "Reserved quantities re-assigned to newest eligible FIFO batches; picking list updated.",
+        "pre": "Outbound receipt is PENDING"
+      }
+    ]
+  },
+  {
+    "no": 61,
+    "name": "Create Stock Transfer Ticket",
+    "sheet": "Stock Transfer",
+    "desc": "Verify creating internal stock relocation ticket between different bins, shelves, or zones within the warehouse.",
+    "pre": "User is Tenant or assigned Staff, source batch has sufficient quantity",
+    "fe": "TransferPage (/tenant/transfers)",
+    "be": "StockTransferController.createTransferTicket",
+    "test_cases": [
+      {
+        "id": "TC_TRF_001",
+        "desc": "Create internal stock relocation ticket from Bin A to Bin B",
+        "proc": "1. Open /tenant/transfers > 'Tạo phiếu điều chuyển'.\n2. Select Source Batch in Bin A-01-01, Quantity: 20.\n3. Select Destination Bin: B-02-04.\n4. Submit ticket.",
+        "expected": "Transfer ticket created in PENDING status; 20 units in source batch marked as RESERVED_FOR_TRANSFER.",
+        "pre": "Source batch has >= 20 available units"
+      },
+      {
+        "id": "TC_TRF_002",
+        "desc": "Create transfer ticket with destination bin same as source bin",
+        "proc": "1. Select Destination Bin identical to Source Bin.\n2. Submit ticket.",
+        "expected": "Validation error: 'Vị trí bin đích phải khác với vị trí bin nguồn'.",
+        "pre": "None"
+      }
+    ]
+  },
+  {
+    "no": 62,
+    "name": "Approve Stock Transfer Ticket",
+    "sheet": "Stock Transfer",
+    "desc": "Verify executing stock transfer: validating destination bin capacity, moving batch quantity, and writing relocation audit ledger.",
+    "pre": "Transfer ticket status is PENDING, destination bin has capacity",
+    "fe": "TransferPage (/tenant/transfers)",
+    "be": "StockTransferController.approveTransferTicket",
+    "test_cases": [
+      {
+        "id": "TC_TRF_003",
+        "desc": "Approve transfer ticket and relocate physical stock to destination bin",
+        "proc": "1. Open pending transfer ticket.\n2. Click 'Xác nhận điều chuyển'.",
+        "expected": "Transfer ticket status updates to APPROVED; quantity deducted from Source Bin; quantity added to Destination Bin; ledger recorded.",
+        "pre": "Transfer ticket is PENDING, destination bin has capacity"
+      }
+    ]
+  },
+  {
+    "no": 63,
+    "name": "Reject Stock Transfer Ticket",
+    "sheet": "Stock Transfer",
+    "desc": "Verify rejecting or cancelling an internal transfer proposal and unlocking reserved batch quantities.",
+    "pre": "Transfer ticket status is PENDING",
+    "fe": "TransferPage (/tenant/transfers)",
+    "be": "StockTransferController.rejectTransferTicket",
+    "test_cases": [
+      {
+        "id": "TC_TRF_004",
+        "desc": "Reject transfer ticket and unlock reserved batch quantities",
+        "proc": "1. Click 'Hủy phiếu điều chuyển'.\n2. Enter reason: 'Khu vực kệ B đang bảo trì'.\n3. Confirm rejection.",
+        "expected": "Transfer status updates to REJECTED; reserved quantity in source batch released back to AVAILABLE.",
+        "pre": "Transfer ticket is PENDING"
+      }
+    ]
+  },
+  {
+    "no": 64,
+    "name": "Create Inventory Audit Plan",
+    "sheet": "Inventory Audit",
+    "desc": "Verify Tenant scheduling periodic warehouse stocktake: setting audit scope, assigning counter staff, and preparing ticket.",
+    "pre": "User is Tenant, active lease contract exists, no conflicting active audit",
+    "fe": "InventoryAuditPage (/tenant/inventory-audits)",
+    "be": "InventoryAuditController.createAuditTicket",
+    "test_cases": [
+      {
+        "id": "TC_AUD_001",
+        "desc": "Tenant schedules inventory audit and assigns counting staff",
+        "proc": "1. Go to /tenant/inventory-audits > 'Tạo đợt kiểm kê'.\n2. Select Warehouse, Audit Title: 'Kiểm kê định kỳ Q3/2026'.\n3. Select assigned Counter Staff: 'Nguyễn Văn Thủ Kho'.\n4. Save draft audit.",
+        "expected": "Audit ticket created in DRAFT status (HTTP 201 Created); counter staff assigned.",
+        "pre": "No active IN_PROGRESS audit on warehouse"
+      }
+    ]
+  },
+  {
+    "no": 65,
+    "name": "Start Audit and Snapshot Stock",
+    "sheet": "Inventory Audit",
+    "desc": "Verify starting audit ticket, locking warehouse stock movements, and capturing system book inventory snapshot.",
+    "pre": "Audit status is DRAFT",
+    "fe": "InventoryAuditPage (/tenant/inventory-audits)",
+    "be": "InventoryAuditController.startAudit",
+    "test_cases": [
+      {
+        "id": "TC_AUD_002",
+        "desc": "Start audit, freeze warehouse stock movements, and capture book snapshot",
+        "proc": "1. Click 'Bắt đầu kiểm kê'.\n2. Confirm start dialog.",
+        "expected": "Audit status transitions to IN_PROGRESS; system captures frozen snapshot of all batch balances; warehouse movement lock activated.",
+        "pre": "Audit ticket is in DRAFT status"
+      }
+    ]
+  },
+  {
+    "no": 66,
+    "name": "Save Physical Count Results (Blind Count)",
+    "sheet": "Inventory Audit",
+    "desc": "Verify counter staff recording counted physical quantities for each rack/bin location (blind count hides book quantity).",
+    "pre": "Audit status is IN_PROGRESS, user is assigned counter",
+    "fe": "InventoryAuditDetailPage",
+    "be": "InventoryAuditController.saveCountResults",
+    "test_cases": [
+      {
+        "id": "TC_AUD_003",
+        "desc": "Staff records counted physical quantity (Blind Count)",
+        "proc": "1. Log in as assigned counter staff.\n2. Open audit detail.\n3. Input counted quantity for Bin A-01-01: '98'.\n4. Notice system book quantity is hidden.\n5. Click 'Lưu kết quả đếm'.",
+        "expected": "Physical count saved in DB; counter cannot see system expected quantity, ensuring unbiased audit.",
+        "pre": "User is assigned counter staff"
+      }
+    ]
+  },
+  {
+    "no": 67,
+    "name": "Submit Inventory Audit",
+    "sheet": "Inventory Audit",
+    "desc": "Verify counter staff submitting finalized count results, revealing book quantities and discrepancy variances for management review.",
+    "pre": "Audit status is IN_PROGRESS, all items have recorded count",
+    "fe": "InventoryAuditDetailPage",
+    "be": "InventoryAuditController.submitAudit",
+    "test_cases": [
+      {
+        "id": "TC_AUD_004",
+        "desc": "Submit audit results and reveal variance discrepancies",
+        "proc": "1. Complete count for all audit line items.\n2. Click 'Gửi kết quả kiểm kê'.",
+        "expected": "Audit status updates to SUBMITTED; system unmasks book quantities; computes variances (e.g. Discrepancy: -2 units); ready for manager approval.",
+        "pre": "All audit items counted"
+      }
+    ]
+  },
+  {
+    "no": 68,
+    "name": "Approve Inventory Audit",
+    "sheet": "Inventory Audit",
+    "desc": "Verify manager reviewing physical count vs snapshot, auto-generating adjustment receipts, updating stock, and releasing lock.",
+    "pre": "Audit status is SUBMITTED, physical counts completed, approver is not the assigned counter",
+    "fe": "InventoryAuditDetailPage",
+    "be": "InventoryAuditController.approveAudit",
+    "test_cases": [
+      {
+        "id": "TC_AUD_005",
+        "desc": "Manager approves audit, synchronizes stock variances, and unlocks warehouse",
+        "proc": "1. Log in as Tenant manager (different user from counter).\n2. Review discrepancy report.\n3. Click 'Duyệt điều chỉnh tồn kho'.",
+        "expected": "Audit status updates to APPROVED; system auto-generates stock adjustment transaction (-2 units); warehouse movement lock released.",
+        "pre": "Audit status is SUBMITTED, approver != counter staff"
+      },
+      {
+        "id": "TC_AUD_006",
+        "desc": "Assigned counter attempts to approve their own submitted audit",
+        "proc": "1. Same staff user who counted submits approval request.",
+        "expected": "System rejects with HTTP 403: 'Người trực tiếp kiểm đếm không được phép tự phê duyệt kết quả kiểm kê' (Four-eyes principle).",
+        "pre": "Approver is same as counter"
+      }
+    ]
+  },
+  {
+    "no": 69,
+    "name": "Cancel Inventory Audit Ticket",
+    "sheet": "Inventory Audit",
+    "desc": "Verify cancelling an audit ticket in DRAFT or IN_PROGRESS state and releasing warehouse movement lock.",
+    "pre": "User is Tenant, audit status is DRAFT or IN_PROGRESS",
+    "fe": "InventoryAuditDetailPage",
+    "be": "InventoryAuditController.cancelAuditTicket",
+    "test_cases": [
+      {
+        "id": "TC_AUD_007",
+        "desc": "Cancel in-progress audit and release warehouse freeze lock",
+        "proc": "1. Click 'Hủy đợt kiểm kê'.\n2. Confirm cancellation dialog.",
+        "expected": "Audit status updates to CANCELLED; warehouse stock freeze lock immediately lifted.",
+        "pre": "Audit status is DRAFT or IN_PROGRESS"
+      }
+    ]
+  },
+  {
+    "no": 70,
+    "name": "Invite Tenant Staff",
+    "sheet": "Staff Management",
+    "desc": "Verify Tenant inviting staff via email: checking organization staff quota limit, validating unique email, and generating secure 48h token.",
+    "pre": "User is Tenant, active staff count + pending invites < package maxStaff quota",
+    "fe": "TenantStaffManagementPage (/tenant/staff)",
+    "be": "TenantStaffController.inviteStaff",
+    "test_cases": [
+      {
+        "id": "TC_STF_001",
+        "desc": "Tenant invites new staff member via email",
+        "proc": "1. Go to /tenant/staff > 'Mời nhân viên'.\n2. Enter Email: 'new_warehouse_staff@example.com', Full Name: 'Lê Văn Kho'.\n3. Click 'Gửi lời mời'.",
+        "expected": "System generates 48h invitation token; sends invitation email with activation link; staff added to pending invites table.",
+        "pre": "Staff quota not exceeded"
+      },
+      {
+        "id": "TC_STF_002",
+        "desc": "Invite staff when organization staff quota limit is reached",
+        "proc": "1. Package allows 5 staff; organization currently has 5 active staff.\n2. Attempt to invite 6th staff.",
+        "expected": "System rejects with HTTP 400: 'Số lượng nhân viên đã đạt giới hạn tối đa của gói dịch vụ. Vui lòng nâng cấp gói' (STAFF_LIMIT_REACHED).",
+        "pre": "Staff count >= maxStaff quota"
+      }
+    ]
+  },
+  {
+    "no": 71,
+    "name": "Accept Staff Invitation",
+    "sheet": "Staff Management",
+    "desc": "Verify invited staff clicking email activation link, setting up account password, and joining tenant organization.",
+    "pre": "Staff holds a valid, unexpired 48h invitation token",
+    "fe": "StaffAcceptInvitationPage (/staff/accept)",
+    "be": "AuthController.acceptStaffInvitation",
+    "test_cases": [
+      {
+        "id": "TC_STF_003",
+        "desc": "Staff sets password and joins tenant organization",
+        "proc": "1. Open activation link /staff/accept?token={valid_token}.\n2. System previews invitation details.\n3. Enter password: 'StaffPassword123@'.\n4. Click 'Xác nhận tham gia'.",
+        "expected": "Account created with ROLE_STAFF; tenantId linked; joins organization; redirected to Login.",
+        "pre": "Invitation token is valid"
+      }
+    ]
+  },
+  {
+    "no": 72,
+    "name": "Get Tenant Staff Members List",
+    "sheet": "Staff Management",
+    "desc": "Verify retrieving list of all active and pending staff members in tenant organization with warehouse filter.",
+    "pre": "User is Tenant",
+    "fe": "TenantStaffManagementPage (/tenant/staff)",
+    "be": "TenantStaffController.listStaffs",
+    "test_cases": [
+      {
+        "id": "TC_STF_004",
+        "desc": "Retrieve staff directory with status and warehouse assignment tags",
+        "proc": "1. Open /tenant/staff.\n2. Inspect staff table.",
+        "expected": "Displays all staff profiles, join dates, active/pending status, and assigned warehouses.",
+        "pre": "User is Tenant"
+      }
+    ]
+  },
+  {
+    "no": 73,
+    "name": "Delete Tenant Staff",
+    "sheet": "Staff Management",
+    "desc": "Verify soft-deleting staff member, revoking organization access, and automatically terminating all active warehouse assignments.",
+    "pre": "User is Tenant, target staff member exists in organization",
+    "fe": "TenantStaffManagementPage (/tenant/staff)",
+    "be": "TenantStaffController.removeStaff",
+    "test_cases": [
+      {
+        "id": "TC_STF_005",
+        "desc": "Tenant removes staff member and revokes warehouse access",
+        "proc": "1. Click 'Xóa nhân viên' on staff row.\n2. Confirm removal.",
+        "expected": "Staff deactivated; deletedAt set; all active warehouse assignments revoked; staff can no longer log in to WMS.",
+        "pre": "Staff exists in tenant org"
+      }
+    ]
+  },
+  {
+    "no": 74,
+    "name": "Assign Staff Warehouse",
+    "sheet": "Staff Management",
+    "desc": "Verify Tenant assigning an active staff member to a specific leased warehouse, configuring WMS operational roles and custom job titles.",
+    "pre": "Staff member is active in Tenant org, Tenant has an active lease contract for target warehouse",
+    "fe": "TenantStaffManagementPage (/tenant/staff)",
+    "be": "TenantStaffController.assignWarehouse",
+    "test_cases": [
+      {
+        "id": "TC_STF_006",
+        "desc": "Assign staff to manage specific leased warehouse",
+        "proc": "1. In staff row, click 'Phân công kho'.\n2. Select Warehouse, Job Title: 'Thủ kho chính', Notes: 'Phụ trách xuất nhập'.\n3. Save assignment.",
+        "expected": "Assignment created; staff granted WMS operational access to that warehouse.",
+        "pre": "Staff active, warehouse leased by tenant"
+      },
+      {
+        "id": "TC_STF_007",
+        "desc": "Assign staff to a warehouse tenant does not lease",
+        "proc": "1. Send assignment request for unleased warehouseId.",
+        "expected": "System rejects with HTTP 403 Forbidden: 'Tổ chức của bạn không có hợp đồng thuê hoạt động cho kho hàng này'.",
+        "pre": "Tenant does not rent warehouse"
+      }
+    ]
+  },
+  {
+    "no": 75,
+    "name": "Revoke Staff Warehouse Assignment",
+    "sheet": "Staff Management",
+    "desc": "Verify Tenant unassigning a staff member from a specific warehouse and revoking operational privileges.",
+    "pre": "User is Tenant, target assignment exists and is active",
+    "fe": "TenantStaffManagementPage (/tenant/staff)",
+    "be": "TenantStaffController.revokeWarehouseAssignment",
+    "test_cases": [
+      {
+        "id": "TC_STF_008",
+        "desc": "Revoke warehouse assignment from staff member",
+        "proc": "1. Click 'Thu hồi phân công' on an active assignment.\n2. Confirm revocation.",
+        "expected": "Assignment status marked REVOKED; staff operational access to that warehouse terminated immediately.",
+        "pre": "Assignment is ACTIVE"
+      }
+    ]
+  },
+  {
+    "no": 76,
+    "name": "Staff View Tasks and Work History",
+    "sheet": "Staff Management",
+    "desc": "Verify staff members checking their assigned WMS operational tasks (receipts, audits) and career tenure history.",
+    "pre": "User logged in with Staff role",
+    "fe": "StaffTasksPage / StaffCareerHistoryPage",
+    "be": "StaffSelfController.getMyTasks, StaffSelfController.getCareerHistory",
+    "test_cases": [
+      {
+        "id": "TC_STF_009",
+        "desc": "Staff checks daily assigned tasks and career history",
+        "proc": "1. Log in as Staff.\n2. Open /staff/tasks.\n3. Open /staff/career-history.",
+        "expected": "Tasks page lists pending inbound/outbound receipts to process; career history shows tenure and past warehouse assignments.",
+        "pre": "User logged in as Staff"
+      }
+    ]
+  },
+  {
+    "no": 77,
+    "name": "Export WMS Product Catalog",
+    "sheet": "Data Exchange",
+    "desc": "Verify exporting all product categories, UOMs, and SKU master data into a structured Excel workbook (.xlsx).",
+    "pre": "User is Tenant or assigned Staff, active subscription exists",
+    "fe": "SkuPage (/tenant/products/sku)",
+    "be": "CatalogExportController.exportCatalog",
+    "test_cases": [
+      {
+        "id": "TC_DX_001",
+        "desc": "Export product catalog to Excel workbook",
+        "proc": "1. On SKU page, click 'Xuất Excel Catalog'.\n2. Download file.",
+        "expected": "Downloads .xlsx file containing sheets for Categories, SKUs, and UOM reference with complete attribute columns.",
+        "pre": "Active subscription"
+      }
+    ]
+  },
+  {
+    "no": 78,
+    "name": "Import WMS Product Catalog",
+    "sheet": "Data Exchange",
+    "desc": "Verify bulk importing categories and SKUs from Excel (.xlsx) with dry-run validation error report and apply modes.",
+    "pre": "User is Tenant, valid Excel file format provided",
+    "fe": "SkuPage (/tenant/products/sku)",
+    "be": "CatalogImportController.importCatalog",
+    "test_cases": [
+      {
+        "id": "TC_DX_002",
+        "desc": "Import catalog with dry-run validation report",
+        "proc": "1. Click 'Nhập Excel Catalog'.\n2. Select file stockspace-catalog.xlsx.\n3. Choose mode 'Kiểm tra trước (Dry-run)'.\n4. Review report (0 errors).\n5. Click 'Áp dụng nhập dữ liệu'.",
+        "expected": "New categories and SKUs imported into DB; duplicates handled according to selected mode.",
+        "pre": "Valid Excel template provided"
+      },
+      {
+        "id": "TC_DX_003",
+        "desc": "Import catalog with invalid negative weights in Excel rows",
+        "proc": "1. Upload Excel with negative unit weight.\n2. Run validation.",
+        "expected": "Error report lists row numbers and specific validation error: 'Trọng lượng phải lớn hơn 0'. Import blocked.",
+        "pre": "Excel file contains invalid data"
+      }
+    ]
+  },
+  {
+    "no": 79,
+    "name": "Export Inventory Stock Snapshot",
+    "sheet": "Data Exchange",
+    "desc": "Verify exporting entire warehouse stock positions, batch expiry dates, and bin allocations into Excel (.xlsx).",
+    "pre": "User is Tenant or assigned Staff, active contract exists",
+    "fe": "InventoryPage (/tenant/inventory)",
+    "be": "InventorySnapshotExportController.exportSnapshot",
+    "test_cases": [
+      {
+        "id": "TC_DX_004",
+        "desc": "Export warehouse stock snapshot to Excel",
+        "proc": "1. On Inventory page, click 'Xuất báo cáo tồn kho Excel'.",
+        "expected": "Downloads formatted .xlsx workbook listing all batches, SKUs, bin coordinates, quantities, and expiry dates.",
+        "pre": "Active contract on warehouse"
+      }
+    ]
+  },
+  {
+    "no": 80,
+    "name": "Import Offline Stock Movements",
+    "sheet": "Data Exchange",
+    "desc": "Verify bulk importing offline warehouse stock inbound/outbound movements from Excel workbook with batch balance validation.",
+    "pre": "User is Tenant or assigned Staff, valid workbook structure",
+    "fe": "InventoryPage (/tenant/inventory)",
+    "be": "OfflineMovementWorkbookController.importOfflineMovements",
+    "test_cases": [
+      {
+        "id": "TC_DX_005",
+        "desc": "Import offline stock movements recorded during network outage",
+        "proc": "1. Upload offline movements Excel workbook.\n2. System checks sequence.\n3. Reconciles batch balances.",
+        "expected": "Stock batch balances updated in DB to match offline records; audit trails recorded.",
+        "pre": "Valid offline movement workbook"
+      }
+    ]
+  },
+  {
+    "no": 81,
+    "name": "Export Audit Physical Count Sheet",
+    "sheet": "Data Exchange",
+    "desc": "Verify exporting blank physical counting sheet (SKU list, rack/bin locations) for offline warehouse stocktaking clipboard.",
+    "pre": "Audit ticket is created in DRAFT / IN_PROGRESS status",
+    "fe": "InventoryAuditDetailPage",
+    "be": "AuditCountSheetExportController.exportCountSheet",
+    "test_cases": [
+      {
+        "id": "TC_DX_006",
+        "desc": "Export blank physical count sheet for stocktake clipboard",
+        "proc": "1. Open scheduled audit ticket.\n2. Click 'Xuất phiếu kiểm đếm Excel'.",
+        "expected": "Downloads formatted printable sheet with SKU codes, names, bin locations, and blank count columns for counters.",
+        "pre": "Audit ticket exists"
+      }
+    ]
+  },
+  {
+    "no": 82,
+    "name": "Chat with StockSpace AI Assistant",
+    "sheet": "AI Chatbot",
+    "desc": "Verify interactive AI chatbot answering warehouse inquiries, rental pricing, policy guidance, and WMS navigation help.",
+    "pre": "Internet access, AI OpenAI / Gemini API service active",
+    "fe": "AIChatWidget (Floating Widget)",
+    "be": "GuestChatController.chat, UserChatController.chat",
+    "test_cases": [
+      {
+        "id": "TC_BOT_001",
+        "desc": "Public visitor asks AI assistant for warehouse recommendations",
+        "proc": "1. Click AI Chat widget at bottom right.\n2. Type: 'Tôi muốn tìm kho lạnh tại Quận 7 giá dưới 40 triệu'.\n3. Press Enter.",
+        "expected": "AI Assistant responds with matching warehouse recommendations, specifications, direct links, and pricing advice.",
+        "pre": "Chatbot online"
+      },
+      {
+        "id": "TC_BOT_002",
+        "desc": "Tenant asks AI assistant for WMS operational help",
+        "proc": "1. Log in as Tenant.\n2. In chat widget, ask: 'Làm thế nào để tạo phiếu xuất kho theo nguyên tắc FIFO?'.",
+        "expected": "AI assistant provides accurate, step-by-step guidance on creating outbound receipts and picking suggestions in StockSpace.",
+        "pre": "Tenant logged in"
+      }
+    ]
+  },
+  {
+    "no": 83,
+    "name": "Manage Notifications",
+    "sheet": "Notifications",
+    "desc": "Verify receiving real-time notifications for contract updates, receipts, and audits, marking as read.",
+    "pre": "User is authenticated",
+    "fe": "NotificationBell (Header Component)",
+    "be": "NotificationController.getMyNotifications, markAsRead",
+    "test_cases": [
+      {
+        "id": "TC_NOTIF_001",
+        "desc": "User receives in-app notification when contract status updates",
+        "proc": "1. Owner submits contract to Tenant.\n2. Tenant logs in and checks notification bell.",
+        "expected": "Notification badge shows unread count (+1); dropdown shows: 'Bạn có một hợp đồng thuê mới cần xác nhận'.",
+        "pre": "User is authenticated"
+      },
+      {
+        "id": "TC_NOTIF_002",
+        "desc": "Mark notification as read",
+        "proc": "1. Click on unread notification item.\n2. System marks notification as read.",
+        "expected": "Unread counter decrements; notification card background switches to read style; navigates to relevant detail page.",
+        "pre": "Unread notification exists"
+      }
+    ]
+  },
+  {
+    "no": 84,
+    "name": "Admin Manage User Accounts",
+    "sheet": "System Administration",
+    "desc": "Verify Admin viewing users list, filtering by role (Owner, Tenant, Staff, Inspector), locking/unlocking accounts.",
+    "pre": "User logged in with Admin role",
+    "fe": "UserManagementPage (/admin/users)",
+    "be": "AdminUserController.getUsers, toggleUserStatus",
+    "test_cases": [
+      {
+        "id": "TC_ADM_001",
+        "desc": "Admin locks a violating user account",
+        "proc": "1. Go to User Management (/admin/users).\n2. Search user by email.\n3. Click 'Khóa tài khoản'.\n4. Confirm lock.",
+        "expected": "User isActive set to false; user immediately restricted from authenticating or accessing APIs.",
+        "pre": "User logged in as Admin"
+      },
+      {
+        "id": "TC_ADM_002",
+        "desc": "Admin unlocks a previously locked user account",
+        "proc": "1. Find locked user account.\n2. Click 'Mở khóa tài khoản'.\n3. Confirm unlock.",
+        "expected": "User isActive restored to true; user can log in normally.",
+        "pre": "User account is locked"
+      }
+    ]
+  },
+  {
+    "no": 85,
+    "name": "Admin Manage System Roles and Permissions",
+    "sheet": "System Administration",
+    "desc": "Verify Admin configuring RBAC role permissions, viewing permission matrix, and updating role grants.",
+    "pre": "User logged in with Admin role",
+    "fe": "PermissionManagementPage (/admin/permissions)",
+    "be": "AdminRoleController, AdminPermissionController",
+    "test_cases": [
+      {
+        "id": "TC_ADM_003",
+        "desc": "Admin updates RBAC permission grants for a system role",
+        "proc": "1. Open /admin/permissions.\n2. Select role ROLE_STAFF.\n3. Toggle permission 'INVENTORY_AUDIT_COUNT'.\n4. Save changes.",
+        "expected": "Security authority matrix updated in DB and Spring Security context; enforced on subsequent API requests.",
+        "pre": "User logged in as Admin"
+      }
+    ]
+  },
+  {
+    "no": 86,
+    "name": "Admin Manage Warehouse Types",
+    "sheet": "System Administration",
+    "desc": "Verify Admin creating and editing warehouse category types (Cold Storage, Bonded, General, Hazardous).",
+    "pre": "User logged in with Admin role",
+    "fe": "WarehousesTypePage (/admin/warehouse-types)",
+    "be": "AdminWarehouseTypeController.createType, updateType",
+    "test_cases": [
+      {
+        "id": "TC_ADM_004",
+        "desc": "Admin creates a new warehouse category type",
+        "proc": "1. Open /admin/warehouse-types.\n2. Click 'Thêm loại kho'.\n3. Enter Name: 'Kho ngoại quan (Bonded Warehouse)', Code: 'BONDED'.\n4. Save.",
+        "expected": "New category type created; immediately available in Owner warehouse posting dropdown and public search filters.",
+        "pre": "User logged in as Admin"
+      }
+    ]
+  },
+  {
+    "no": 87,
+    "name": "Admin Manage System Policies and Configurations",
+    "sheet": "System Administration",
+    "desc": "Verify Admin updating platform policies (terms of service, cancellation policies, deposit rates, Commission percentage).",
+    "pre": "User logged in with Admin role",
+    "fe": "SystemPolicyPage (/admin/system-policies)",
+    "be": "AdminSystemPolicyController, AdminSystemConfigController",
+    "test_cases": [
+      {
+        "id": "TC_ADM_005",
+        "desc": "Admin updates platform policy and terms of service",
+        "proc": "1. Open /admin/system-policies.\n2. Update deposit commission percentage and terms text.\n3. Save changes.",
+        "expected": "Updated policy published and active across platform; version timestamp bumped.",
+        "pre": "User logged in as Admin"
+      }
+    ]
+  },
+  {
+    "no": 88,
+    "name": "Admin View Operational Analytics",
+    "sheet": "System Administration",
+    "desc": "Verify Admin viewing platform KPI analytics: total revenue, active contracts, warehouse occupancy rate, and user growth.",
+    "pre": "User logged in with Admin role",
+    "fe": "AnalyticsPage (/admin/analytics)",
+    "be": "AdminStatsController.getOverviewStats, OwnerStatsController, TenantDashboardController",
+    "test_cases": [
+      {
+        "id": "TC_ADM_006",
+        "desc": "Admin views platform operational KPI analytics and revenue charts",
+        "proc": "1. Open Admin Analytics (/admin/analytics).\n2. View Total Platform Revenue, Active Leases, Total Leased Area, and User Growth chart.",
+        "expected": "Analytics charts load with accurate real-time aggregates from DB.",
+        "pre": "User logged in as Admin"
+      }
+    ]
+  }
+]

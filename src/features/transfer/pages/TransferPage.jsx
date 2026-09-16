@@ -129,6 +129,18 @@ const formatDate = (value) =>
     : '—'
 const totalRequested = (transfer) =>
   (transfer.items || []).reduce((sum, item) => sum + Number(item.requestedQuantity || 0), 0)
+const totalPicked = (transfer) =>
+  (transfer.items || []).reduce((sum, item) => sum + Number(item.pickedQuantity || 0), 0)
+const totalRemainingToPick = (transfer) =>
+  (transfer.items || []).reduce(
+    (sum, item) =>
+      sum +
+      Math.max(
+        0,
+        Number(item.requestedQuantity || 0) - Number(item.pickedQuantity || 0)
+      ),
+    0
+  )
 const totalOutstanding = (transfer) =>
   (transfer.items || []).reduce(
     (sum, item) =>
@@ -282,8 +294,14 @@ const DecisionReasonModal = ({
     rejectReceipt: [
       'Reject destination receipt',
       'Reject receipt',
-      'Record why the shipment cannot be accepted at the destination.',
+      'Record why the destination cannot accept this shipment. This rejects receipt; it does not cancel the dispatch.',
       'rose',
+    ],
+    recall: [
+      'Recall transfer to source',
+      'Recall to source',
+      'Record why the shipment must be recalled while it is still in transit.',
+      'orange',
     ],
     closeShort: [
       'Close short receipt',
@@ -300,6 +318,7 @@ const DecisionReasonModal = ({
   }[decision.type]
   const transfer = decision.transfer
   const isDanger = copy[3] === 'rose'
+  const hasSourceStockWarning = ['rejectReceipt', 'recall'].includes(decision.type)
   return (
     <div className="fixed inset-0 z-[1003] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm">
       <section
@@ -336,6 +355,13 @@ const DecisionReasonModal = ({
             >
               {copy[2]}
             </div>
+            {hasSourceStockWarning && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+                <strong>Inventory warning:</strong> source stock was deducted when dispatch was
+                approved. This action does not add it back automatically. Only receiving the
+                returned shipment at the source warehouse restores source inventory.
+              </div>
+            )}
             <div>
               <label
                 htmlFor="transfer-decision-reason"
@@ -612,11 +638,16 @@ const TransferPage = ({ currentRole }) => {
         await transferApi.closeShort(id, reason, createTransferIdempotencyKey())
       if (decision.type === 'requestReturn')
         await transferApi.requestReturn(id, reason, createTransferIdempotencyKey())
+      if (decision.type === 'recall')
+        await transferApi.recallTransfer(id, reason, createTransferIdempotencyKey())
       toast.success('Transfer decision saved.')
       closeDecision(true)
       await refreshAfterMutation()
     } catch (error) {
-      if (error.response?.status === 409) await refreshAfterMutation()
+      if (error.response?.status === 409) {
+        await refreshAfterMutation()
+        closeDecision(true)
+      }
       showApiErrorToast(error, 'Could not save transfer decision.')
     } finally {
       setDecisionSubmitting(false)
@@ -641,9 +672,17 @@ const TransferPage = ({ currentRole }) => {
         icon: PackageCheck,
         onClick: () => handleAllocate(transfer),
       }
-    if (['ALLOCATED', 'PICKING'].includes(transfer.status) && (tenant || (staff && isAssignedPicker)))
+    const remainingToPick = totalRemainingToPick(transfer)
+    if (
+      ['ALLOCATED', 'PICKING'].includes(transfer.status) &&
+      remainingToPick > 0 &&
+      (tenant || (staff && isAssignedPicker))
+    )
       return {
-        label: 'Confirm picking',
+        label:
+          transfer.status === 'PICKING'
+            ? `Continue picking · ${remainingToPick} remaining`
+            : 'Confirm picking',
         icon: PackageCheck,
         onClick: () => setAction({ mode: 'pick', transfer }),
       }
@@ -711,15 +750,23 @@ const TransferPage = ({ currentRole }) => {
     }
     if (transfer.status === 'READY_TO_DISPATCH') return 'Waiting for tenant approval'
     if (['IN_TRANSIT', 'OVERDUE'].includes(transfer.status)) {
-      if (!transfer.destinationStaff?.id) return 'Waiting for tenant to assign destination staff'
-      if (String(transfer.destinationStaff.id) !== String(currentUserId))
-        return 'Assigned to another destination staff'
-      return 'Ready to confirm arrival'
+      const isAssignedSourceStaff =
+        transfer.sourceStaff?.id && String(transfer.sourceStaff.id) === String(currentUserId)
+      const isAssignedDestinationStaff =
+        transfer.destinationStaff?.id &&
+        String(transfer.destinationStaff.id) === String(currentUserId)
+      if (isAssignedSourceStaff) return 'Ready to recall transfer to source'
+      if (isAssignedDestinationStaff) return 'Ready to confirm arrival or reject receipt'
+      if (!transfer.sourceStaff?.id && !transfer.destinationStaff?.id)
+        return 'Waiting for tenant to assign transfer staff'
+      return 'Assigned to another transfer staff'
     }
     if (['ARRIVED_AT_DESTINATION', 'RECEIVING', 'PARTIALLY_RECEIVED'].includes(transfer.status)) {
       if (!transfer.destinationStaff?.id) return 'Waiting for tenant to assign destination staff'
       if (String(transfer.destinationStaff.id) !== String(currentUserId))
         return 'Assigned to another destination staff'
+      if (['ARRIVED_AT_DESTINATION', 'RECEIVING'].includes(transfer.status))
+        return 'Ready to record receipt or reject receipt'
       return 'Ready to record receipt'
     }
     if (['RETRY_REQUESTED', 'RETURN_REQUESTED', 'RECONCILING'].includes(transfer.status))
@@ -729,8 +776,29 @@ const TransferPage = ({ currentRole }) => {
     return ''
   }
 
-  const getSecondaryActions = (transfer) =>
-    [
+  const getSecondaryActions = (transfer) => {
+    const tenant = currentRole === 'TENANT'
+    const staff = currentRole === 'STAFF'
+    const isAssignedSourceStaff =
+      staff &&
+      Boolean(transfer.sourceStaff?.id) &&
+      String(transfer.sourceStaff.id) === String(currentUserId)
+    const isAssignedDestinationStaff =
+      staff &&
+      Boolean(transfer.destinationStaff?.id) &&
+      String(transfer.destinationStaff.id) === String(currentUserId)
+    const hasReceivedQuantity = transfer.items?.some(
+      (item) => Number(item.receivedQuantity || 0) > 0
+    )
+    const canRejectReceipt =
+      ['IN_TRANSIT', 'OVERDUE', 'ARRIVED_AT_DESTINATION', 'RECEIVING'].includes(transfer.status) &&
+      !hasReceivedQuantity &&
+      (tenant || isAssignedDestinationStaff)
+    const canRecall =
+      ['IN_TRANSIT', 'OVERDUE'].includes(transfer.status) &&
+      (tenant || isAssignedSourceStaff)
+
+    return [
       { label: 'View details & timeline', icon: Eye, onClick: () => setDetailId(transfer.id) },
       currentRole === 'TENANT' &&
       [
@@ -753,17 +821,23 @@ const TransferPage = ({ currentRole }) => {
             onClick: () => setAction({ mode: 'assignDestinationStaff', transfer }),
           }
         : null,
-      currentRole === 'TENANT' && ['IN_TRANSIT', 'OVERDUE'].includes(transfer.status)
+      tenant && ['IN_TRANSIT', 'OVERDUE'].includes(transfer.status)
         ? { label: 'Mark arrived', icon: PackageCheck, onClick: () => handleArrive(transfer) }
         : null,
-      currentRole === 'TENANT' &&
-      ['IN_TRANSIT', 'OVERDUE', 'ARRIVED_AT_DESTINATION', 'RECEIVING'].includes(transfer.status) &&
-      !transfer.items?.some((item) => Number(item.receivedQuantity) > 0)
+      canRejectReceipt
         ? {
-            label: 'Reject receipt',
+            label: 'Reject destination receipt',
             icon: X,
             danger: true,
             onClick: () => openDecision(transfer, 'rejectReceipt'),
+          }
+        : null,
+      canRecall
+        ? {
+            label: 'Recall transfer to source',
+            icon: Undo2,
+            danger: true,
+            onClick: () => openDecision(transfer, 'recall'),
           }
         : null,
       currentRole === 'TENANT' && transfer.status === 'PARTIALLY_RECEIVED'
@@ -810,6 +884,7 @@ const TransferPage = ({ currentRole }) => {
           }
         : null,
     ].filter(Boolean)
+  }
 
   const clearFilters = () => {
     setSelectedWarehouseId('')
@@ -1199,6 +1274,13 @@ const TransferPage = ({ currentRole }) => {
                                   Outstanding: {totalOutstanding(transfer)}
                                 </span>
                               )}
+                              {['ALLOCATED', 'PICKING'].includes(transfer.status) &&
+                                totalRemainingToPick(transfer) > 0 && (
+                                  <span className="mt-2 block text-right text-[11px] text-indigo-700">
+                                    Picking: {totalPicked(transfer)}/{totalRequested(transfer)} · Remaining:{' '}
+                                    {totalRemainingToPick(transfer)}
+                                  </span>
+                                )}
                               {!primary && getRoleHint(transfer) && (
                                 <span className="mt-2 block max-w-[220px] text-right text-[11px] font-medium text-slate-500">
                                   {getRoleHint(transfer)}
