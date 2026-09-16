@@ -2,9 +2,12 @@ import api from '../apiConfig'
 
 const receiptApi = {
   // Lấy danh sách phiếu nhập/xuất kho (có phân trang)
-  getReceipts: (warehouseId, { type, page, size } = {}) => {
+  getReceipts: (
+    warehouseId,
+    { type, page, size, sortBy = 'createdAt', sortDir = 'desc' } = {}
+  ) => {
     return api.get('/tenant/inventory/receipts', {
-      params: { warehouseId, type, page, size }
+      params: { warehouseId, type, page, size, sortBy, sortDir }
     })
   },
 

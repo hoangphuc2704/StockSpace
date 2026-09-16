@@ -378,6 +378,8 @@ const InboundPage = () => {
         type: 'INBOUND',
         page,
         size: pageSize,
+        sortBy: 'createdAt',
+        sortDir: 'desc',
       })
       if (requestId !== receiptRequestIdRef.current) return
 
