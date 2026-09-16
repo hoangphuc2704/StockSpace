@@ -63,6 +63,11 @@ const outstanding = (item) =>
       counter(item, 'receivedQuantity') -
       counter(item, 'returnedQuantity')
   )
+const remainingToPick = (item) =>
+  Math.max(
+    0,
+    counter(item, 'requestedQuantity') - counter(item, 'pickedQuantity')
+  )
 
 const Stat = ({ label, value, tone = 'text-slate-950', hint }) => (
   <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-xs">
@@ -115,12 +120,21 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
     (result, item) => ({
       requested: result.requested + counter(item, 'requestedQuantity'),
       picked: result.picked + counter(item, 'pickedQuantity'),
+      remainingToPick: result.remainingToPick + remainingToPick(item),
       shipped: result.shipped + counter(item, 'shippedQuantity'),
       received: result.received + counter(item, 'receivedQuantity'),
       returned: result.returned + counter(item, 'returnedQuantity'),
       outstanding: result.outstanding + outstanding(item),
     }),
-    { requested: 0, picked: 0, shipped: 0, received: 0, returned: 0, outstanding: 0 }
+    {
+      requested: 0,
+      picked: 0,
+      remainingToPick: 0,
+      shipped: 0,
+      received: 0,
+      returned: 0,
+      outstanding: 0,
+    }
   )
   const receivedPercent = totals.requested
     ? Math.min(100, Math.round((totals.received / totals.requested) * 100))
@@ -271,7 +285,7 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
                 <Stat
                   label="Requested"
                   value={totals.requested}
@@ -281,6 +295,12 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
                   label="Picked"
                   value={totals.picked}
                   hint="Source scan"
+                />
+                <Stat
+                  label="To pick"
+                  value={totals.remainingToPick}
+                  hint="Still at source"
+                  tone="text-amber-700"
                 />
                 <Stat
                   label="Shipped"
@@ -331,8 +351,10 @@ const TransferDetailModal = ({ isOpen, onClose, transferId }) => {
                             {item.skuCode || item.skuId}
                           </p>
                         </div>
-                        <div className="grid grid-cols-4 gap-2 text-right text-xs sm:min-w-80">
+                        <div className="grid grid-cols-3 gap-2 text-right text-xs sm:grid-cols-6 sm:min-w-[31rem]">
                           <MiniMetric label="Requested" value={item.requestedQuantity} />
+                          <MiniMetric label="Picked" value={item.pickedQuantity || 0} tone="text-blue-700" />
+                          <MiniMetric label="To pick" value={remainingToPick(item)} tone="text-amber-700" />
                           <MiniMetric label="Shipped" value={item.shippedQuantity || 0} tone="text-blue-700" />
                           <MiniMetric label="Received" value={item.receivedQuantity || 0} tone="text-emerald-700" />
                           <MiniMetric label="Open" value={outstanding(item)} tone="text-amber-700" />
@@ -541,7 +563,19 @@ const AllocationList = ({ title, allocations = [], source }) => (
                 <em className="ml-1 text-slate-400 not-italic">· {allocation.disposition}</em>
               )}
             </span>
-            <strong className="shrink-0 text-slate-950">{allocation.quantity}</strong>
+            {source ? (
+              <span className="shrink-0 text-right text-[10px] leading-4">
+                <strong className="block text-slate-950">Planned {allocation.quantity}</strong>
+                <span className="block text-blue-700">
+                  Picked {allocation.pickedQuantity || 0}
+                </span>
+                <span className="block text-amber-700">
+                  Remaining {allocation.remainingQuantity || 0}
+                </span>
+              </span>
+            ) : (
+              <strong className="shrink-0 text-slate-950">{allocation.quantity}</strong>
+            )}
           </div>
         ))}
       </div>

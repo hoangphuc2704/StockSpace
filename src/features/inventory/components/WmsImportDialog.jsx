@@ -338,7 +338,10 @@ const WmsImportDialog = ({
   const handleApplyFailure = async (error) => {
     const code = getErrorCode(error)
     const status = error?.response?.status
-    const isNotFound = status === 404 || code === 'WMS_IMPORT_JOB_NOT_FOUND'
+    // A domain error such as UOM_NOT_FOUND can also use HTTP 404 during Apply.
+    // Only treat an explicit job-not-found code (or an otherwise empty 404)
+    // as an unavailable validation job.
+    const isNotFound = code === 'WMS_IMPORT_JOB_NOT_FOUND' || (!code && status === 404)
 
     if (code === 'WMS_IMPORT_STALE') {
       clearJob()
@@ -401,6 +404,29 @@ const WmsImportDialog = ({
           'The server returned a conflict. The latest job status was loaded; wait before trying again.',
       })
       return
+    } else if (status >= 400 && status < 500 && job?.jobId) {
+      // Catalog Apply can fail with a domain 404 (for example UOM_NOT_FOUND).
+      // The backend records the job as FAILED in a separate transaction, so
+      // reload the job before showing the error or allowing another Apply.
+      const latestJob = await loadLatestJob(job.jobId, { quiet: true })
+      if (latestJob?.status === WMS_IMPORT_STATUS.APPLIED) {
+        setApplyLocked(true)
+        sessionStorage.removeItem(storageKey)
+        setNotice({ type: 'success', text: 'The server confirms that this job was applied.' })
+        await onApplied?.({ job: latestJob })
+        return
+      }
+      if (latestJob?.status === WMS_IMPORT_STATUS.FAILED) {
+        setApplyLocked(true)
+        sessionStorage.removeItem(storageKey)
+        setNotice({
+          type: 'error',
+          text:
+            latestJob.failureMessage ||
+            getImportErrorMessage(error, 'The backend failed while applying this workbook.'),
+        })
+        return
+      }
     } else if (status >= 500 && job?.jobId) {
       const latestJob = await loadLatestJob(job.jobId, { quiet: true })
       if (latestJob?.status === WMS_IMPORT_STATUS.APPLIED) {
