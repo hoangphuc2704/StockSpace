@@ -848,7 +848,7 @@ const TransferPage = ({ currentRole }) => {
           }
         : null,
       currentRole === 'TENANT' &&
-      ['RECEIVE_REJECTED', 'SHORT_RECEIVED', 'RECONCILING', 'PARTIALLY_RETURNED'].includes(
+      ['RECEIVE_REJECTED', 'SHORT_RECEIVED', 'PARTIALLY_RETURNED'].includes(
         transfer.status
       ) &&
       totalReturnable(transfer) > 0
