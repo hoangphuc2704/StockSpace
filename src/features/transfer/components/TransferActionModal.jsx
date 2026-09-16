@@ -336,8 +336,16 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
         await transferApi.retryTransfer(transfer.id, payload, createTransferIdempotencyKey())
       if (mode === 'assignDestinationStaff')
         await transferApi.assignDestinationStaff(transfer.id, payload, createTransferIdempotencyKey())
-      if (mode === 'returnReceive')
+      if (mode === 'returnReceive') {
         await transferApi.receiveReturn(transfer.id, payload, createTransferIdempotencyKey())
+        if (typeof window !== 'undefined' && transfer.sourceWarehouse?.id) {
+          window.dispatchEvent(
+            new CustomEvent('stockspace:inventory-refresh', {
+              detail: { warehouseId: transfer.sourceWarehouse.id },
+            })
+          )
+        }
+      }
       if (mode === 'reconcile')
         await transferApi.reconcileTransfer(transfer.id, payload, createTransferIdempotencyKey())
       toast.success('Transfer updated successfully.')
