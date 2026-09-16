@@ -24,9 +24,9 @@ const modalCopy = {
     icon: PackageCheck,
   },
   retry: {
-    title: 'Create a retry attempt',
-    eyebrow: 'Forward movement',
-    action: 'Request retry',
+    title: 'Retry this transfer',
+    eyebrow: 'Transfer recovery',
+    action: 'Create retry',
     icon: RotateCcw,
   },
   assignDestinationStaff: {

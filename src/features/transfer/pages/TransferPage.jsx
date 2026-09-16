@@ -736,12 +736,6 @@ const TransferPage = ({ currentRole }) => {
         icon: CheckCircle2,
         onClick: () => setAction({ mode: 'reconcile', transfer }),
       }
-    if (tenant && ['RECEIVE_REJECTED', 'SHORT_RECEIVED'].includes(transfer.status))
-      return {
-        label: 'Create retry',
-        icon: RotateCcw,
-        onClick: () => setAction({ mode: 'retry', transfer }),
-      }
     return null
   }
 
@@ -863,7 +857,7 @@ const TransferPage = ({ currentRole }) => {
         : null,
       currentRole === 'TENANT' && ['RECEIVE_REJECTED', 'SHORT_RECEIVED'].includes(transfer.status)
         ? {
-            label: 'Create retry',
+            label: 'Retry transfer',
             icon: RotateCcw,
             onClick: () => setAction({ mode: 'retry', transfer }),
           }
