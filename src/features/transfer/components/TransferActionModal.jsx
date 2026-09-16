@@ -148,6 +148,8 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
             quantity: '',
             sourceRackId: '',
             sourceBinId: '',
+            disposition: 'GOOD',
+            note: '',
           }))
       )
     } else {
@@ -218,7 +220,12 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
     setLines((current) =>
       current.map((line, lineIndex) => {
         if (lineIndex !== index) return line
-        return { ...line, [field]: value, ...(field.endsWith('RackId') ? { sourceBinId: '' } : {}) }
+        return {
+          ...line,
+          [field]: value,
+          ...(field.endsWith('RackId') ? { sourceBinId: '' } : {}),
+          ...(field === 'disposition' && value === 'GOOD' ? { note: '' } : {}),
+        }
       })
     )
   }
@@ -292,10 +299,26 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
         )
       )
         return toast.error('Returned quantity exceeds the returnable quantity.')
+      if (
+        returnLines.some(
+          (line) => (line.disposition || 'GOOD') === 'REJECTED' && !line.note?.trim()
+        )
+      )
+        return toast.error('Enter a reason for every rejected returned line.')
       payload = {
         reason: reason.trim() || 'Returned stock received at source warehouse.',
         allowPartial: true,
-        lines: returnLines.map((line) => ({ ...line, quantity: Number(line.quantity) })),
+        lines: returnLines.map((line) => {
+          const disposition = line.disposition || 'GOOD'
+          return {
+            itemId: line.itemId,
+            quantity: Number(line.quantity),
+            sourceRackId: line.sourceRackId,
+            sourceBinId: line.sourceBinId,
+            disposition,
+            note: disposition === 'REJECTED' ? line.note.trim() : null,
+          }
+        }),
       }
     } else {
       if (!lines.length) return toast.error('Choose a reconciliation resolution.')
@@ -572,7 +595,38 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                               </option>
                             ))}
                           </select>
+                          <div className="sm:col-span-2">
+                            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                              Returned stock condition
+                            </label>
+                            <select
+                              value={line.disposition || 'GOOD'}
+                              onChange={(event) =>
+                                updateLine(index, 'disposition', event.target.value)
+                              }
+                              className={selectClass}
+                            >
+                              <option value="GOOD">Good - add to source inventory</option>
+                              <option value="REJECTED">Rejected - do not add to inventory</option>
+                            </select>
+                          </div>
                         </div>
+                        {line.disposition === 'REJECTED' && (
+                          <div className="mt-3">
+                            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                              Rejection reason <span className="text-rose-600">*</span>
+                            </label>
+                            <textarea
+                              required
+                              maxLength={1000}
+                              rows={2}
+                              value={line.note}
+                              onChange={(event) => updateLine(index, 'note', event.target.value)}
+                              placeholder="Explain why the returned stock cannot be added to inventory"
+                              className={`${inputClass} resize-none py-2.5`}
+                            />
+                          </div>
+                        )}
                       </div>
                     )
                   })}
