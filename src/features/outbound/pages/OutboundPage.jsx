@@ -47,6 +47,19 @@ const compareReceiptsByDateDesc = (firstReceipt, secondReceipt) => {
   return secondTime - firstTime || String(secondReceipt?.id || '').localeCompare(String(firstReceipt?.id || ''))
 }
 
+const parseOutboundLocation = (locationValue) => {
+  try {
+    return locationValue ? JSON.parse(locationValue) : null
+  } catch {
+    return null
+  }
+}
+
+const getOutboundAllocationCapacity = (allocations = []) => allocations.reduce((total, allocation) => {
+  const location = parseOutboundLocation(allocation.location)
+  return total + (Number(location?.quantity) || 0)
+}, 0)
+
 const OutboundPage = () => {
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
@@ -75,14 +88,19 @@ const OutboundPage = () => {
   const [isExporting, setIsExporting] = useState(false)
   const [activeTab, setActiveTab] = useState('ALL')
 
-  // Form states. The receipt API accepts an items[] collection, so each
-  // product/quantity pair is kept as an independent line.
+  // Form states. Manual outbound lines can be split across multiple Rack/Bin
+  // allocations; each allocation becomes one item in the API payload.
   const [outboundMethod, setOutboundMethod] = useState('AUTO') // 'AUTO' | 'MANUAL'
+  const createOutboundAllocation = () => ({
+    id: `allocation-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    location: '',
+    quantity: 1,
+  })
   const createOutboundLine = () => ({
     id: `outbound-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     skuId: '',
     quantity: 1,
-    location: '',
+    allocations: [createOutboundAllocation()],
   })
   const [outboundLines, setOutboundLines] = useState(() => [createOutboundLine()])
   const [activeOutboundLineId, setActiveOutboundLineId] = useState(null)
@@ -165,10 +183,87 @@ const OutboundPage = () => {
   const activeOutboundLine = outboundLines.find((line) => line.id === activeOutboundLineId) || outboundLines[0]
   const formSkuId = activeOutboundLine?.skuId || ''
   const formTotalQuantity = activeOutboundLine?.quantity ?? 1
-  const selectedLocationStr = activeOutboundLine?.location || ''
   const updateOutboundLine = (lineId, patch) => {
     setOutboundLines((previous) => previous.map((line) => (
       line.id === lineId ? { ...line, ...patch } : line
+    )))
+  }
+  const updateOutboundAllocation = (lineId, allocationId, patch) => {
+    setOutboundLines((previous) => previous.map((line) => {
+      if (line.id !== lineId) return line
+
+      let allocations = (line.allocations || []).map((allocation) => (
+        allocation.id === allocationId ? { ...allocation, ...patch } : allocation
+      ))
+
+      if (outboundMethod === 'MANUAL' && patch.location) {
+        const selectedLocation = parseOutboundLocation(patch.location)
+        const quantityFromOtherLocations = allocations
+          .filter((allocation) => allocation.id !== allocationId)
+          .reduce((total, allocation) => total + (Number(allocation.quantity) || 0), 0)
+        const remainingQuantity = Math.max(
+          Number(line.quantity) - quantityFromOtherLocations,
+          1
+        )
+        const selectedLocationQuantity = Number(selectedLocation?.quantity) || 1
+
+        allocations = allocations.map((allocation) => (
+          allocation.id === allocationId
+            ? {
+                ...allocation,
+                quantity: Math.min(remainingQuantity, selectedLocationQuantity),
+              }
+            : allocation
+        ))
+      }
+
+      const requestedQuantity = Number(line.quantity)
+      const hasEmptyAllocation = allocations.some((allocation) => !allocation.location)
+      if (
+        outboundMethod === 'MANUAL'
+        && Number.isFinite(requestedQuantity)
+        && requestedQuantity > getOutboundAllocationCapacity(allocations)
+        && !hasEmptyAllocation
+      ) {
+        allocations = [
+          ...allocations,
+          {
+            ...createOutboundAllocation(),
+            quantity: Math.max(requestedQuantity - getOutboundAllocationCapacity(allocations), 1),
+          },
+        ]
+      }
+
+      return { ...line, allocations }
+    }))
+  }
+  const addOutboundAllocation = (lineId) => {
+    setOutboundLines((previous) => previous.map((line) => (
+      line.id === lineId
+        ? {
+            ...line,
+            allocations: [
+              ...(line.allocations || []),
+              {
+                ...createOutboundAllocation(),
+                quantity: Math.max(
+                  Number(line.quantity) - getOutboundAllocationCapacity(line.allocations || []),
+                  1
+                ),
+              },
+            ],
+          }
+        : line
+    )))
+  }
+  const removeOutboundAllocation = (lineId, allocationId) => {
+    setOutboundLines((previous) => previous.map((line) => (
+      line.id === lineId
+        ? {
+            ...line,
+            allocations: (line.allocations || []).filter((allocation) => allocation.id !== allocationId),
+          }
+        : line
     )))
   }
 
@@ -211,10 +306,16 @@ const OutboundPage = () => {
     const summaries = {}
     outboundLines.forEach((line) => {
       const skuBatches = warehouseStockBatches.filter(
-        (batch) => String(batch.skuId) === String(line.skuId) && Number(batch.quantity) > 0
+        (batch) => String(batch.skuId) === String(line.skuId)
       )
       const grouped = skuBatches.reduce((acc, batch) => {
         const key = `${batch.rackId || batch.rackName || 'rack'}_${batch.binId || batch.binName || 'bin'}`
+        const totalQuantity = Number(batch.quantity) || 0
+        const reservedQuantity = Number(batch.reservedQuantity) || 0
+        const availableQuantity = Math.max(
+          0,
+          Number(batch.availableQuantity ?? (totalQuantity - reservedQuantity)) || 0
+        )
         if (!acc[key]) {
           acc[key] = {
             rackId: batch.rackId,
@@ -222,14 +323,23 @@ const OutboundPage = () => {
             binId: batch.binId,
             binName: batch.binName,
             quantity: 0,
+            totalQuantity: 0,
+            reservedQuantity: 0,
           }
         }
-        acc[key].quantity += Number(batch.quantity) || 0
+        acc[key].quantity += availableQuantity
+        acc[key].totalQuantity += totalQuantity
+        acc[key].reservedQuantity += reservedQuantity
         return acc
       }, {})
-      const locations = Object.values(grouped).sort((first, second) => second.quantity - first.quantity)
+      const allLocations = Object.values(grouped)
+      const locations = allLocations
+        .filter((location) => location.quantity > 0)
+        .sort((first, second) => second.quantity - first.quantity)
       summaries[line.id] = {
-        totalQuantity: locations.reduce((sum, location) => sum + location.quantity, 0),
+        totalQuantity: allLocations.reduce((sum, location) => sum + location.quantity, 0),
+        grossQuantity: allLocations.reduce((sum, location) => sum + location.totalQuantity, 0),
+        reservedQuantity: allLocations.reduce((sum, location) => sum + location.reservedQuantity, 0),
         locations,
       }
     })
@@ -237,8 +347,6 @@ const OutboundPage = () => {
   }, [outboundLines, warehouseStockBatches])
 
   const activeStockSummary = stockSummaryByLine[activeOutboundLine?.id] || null
-  const availableLocationsForActiveLine = activeStockSummary?.locations || []
-  const availableLocations = availableLocationsForActiveLine
   const stockSummary = activeStockSummary
 
   const handleExport = async () => {
@@ -343,28 +451,63 @@ const OutboundPage = () => {
     const payloadItems = []
     if (outboundMethod === 'MANUAL') {
       for (const line of outboundLines) {
-        if (!line.location) {
-          toast.error('Select a location for every SKU.')
+        const allocations = Array.isArray(line.allocations) ? line.allocations : []
+        if (allocations.length === 0) {
+          toast.error('Chọn ít nhất một Rack/Bin cho mỗi SKU.')
           return
         }
-        let location
-        try {
-          location = JSON.parse(line.location)
-        } catch {
-          toast.error('The selected stock location is invalid.')
+
+        const requestedQuantity = Number(line.quantity)
+        const allocatedQuantity = allocations.reduce(
+          (total, allocation) => total + (Number(allocation.quantity) || 0),
+          0
+        )
+        if (allocatedQuantity !== requestedQuantity) {
+          toast.error(
+            `Tổng số lượng phân bổ cho SKU phải bằng ${requestedQuantity}.`
+          )
           return
         }
-        if (Number(line.quantity) > Number(location.quantity)) {
-          toast.error(`Quantity for ${location.rackName || 'the selected location'} exceeds available stock.`)
-          return
+
+        const quantitiesByLocation = new Map()
+        for (const allocation of allocations) {
+          if (positiveInteger(Number(allocation.quantity)) !== '') {
+            toast.error('Số lượng tại mỗi Rack/Bin phải là số nguyên dương.')
+            return
+          }
+
+          let location
+          try {
+            location = JSON.parse(allocation.location)
+          } catch {
+            toast.error('Vui lòng chọn Rack/Bin cho từng dòng phân bổ.')
+            return
+          }
+
+          const locationKey = `${location.rackId}_${location.binId}`
+          const existing = quantitiesByLocation.get(locationKey)
+          quantitiesByLocation.set(locationKey, {
+            location,
+            quantity: (existing?.quantity || 0) + Number(allocation.quantity),
+          })
         }
-        payloadItems.push({
-          skuId: line.skuId,
-          quantity: Number(line.quantity),
-          note: formNote,
-          rackId: location.rackId,
-          binId: location.binId,
-        })
+
+        for (const { location, quantity } of quantitiesByLocation.values()) {
+          if (quantity > Number(location.quantity)) {
+            toast.error(
+              `Số lượng phân bổ tại ${location.rackName || 'Rack đã chọn'} vượt quá tồn kho.`
+            )
+            return
+          }
+
+          payloadItems.push({
+            skuId: line.skuId,
+            quantity,
+            note: formNote,
+            rackId: location.rackId,
+            binId: location.binId,
+          })
+        }
       }
     } else {
       outboundLines.forEach((line) => {
@@ -435,7 +578,6 @@ const OutboundPage = () => {
         error.response?.data?.errorCode === 'OUTBOUND_PICK_LIST_STALE' ||
         error.response?.data?.code === 'OUTBOUND_PICK_LIST_STALE'
       ) {
-        toast.error('Pick list has become stale. Replanning to find new stock...')
         try {
           await receiptApi.replanPickList(id)
           toast.success('Pick list replanned. Please review the new picking order.')
@@ -444,7 +586,16 @@ const OutboundPage = () => {
           setDetailReceipt(res?.data?.data ?? res?.data)
           setIsDetailModalOpen(true)
         } catch (replanError) {
-          showApiErrorToast(replanError, 'Replan failed. Please try again.')
+          const replanErrorCode =
+            replanError.response?.data?.errorCode || replanError.response?.data?.code
+
+          if (replanErrorCode === 'OUTBOUND_PICK_LIST_STALE') {
+            toast.error(
+              'Tồn kho hiện tại không đủ để xuất phiếu này. Vui lòng kiểm tra và điều chỉnh số lượng.'
+            )
+          } else {
+            showApiErrorToast(replanError, 'Replan failed. Please try again.')
+          }
           fetchReceipts()
         }
       } else {
@@ -485,16 +636,9 @@ const OutboundPage = () => {
   const selectedSku = skus.find((sku) => String(sku.id) === String(formSkuId))
   const requestedQuantity = Number(formTotalQuantity) || 0
   const warehouseStockQuantity = stockSummary?.totalQuantity || 0
-  const selectedLocation = (() => {
-    if (!selectedLocationStr) return null
-    try {
-      return JSON.parse(selectedLocationStr)
-    } catch {
-      return null
-    }
-  })()
+  const manualAllocationCapacity = (line) => getOutboundAllocationCapacity(line?.allocations || [])
   const availableForRequest = outboundMethod === 'MANUAL'
-    ? Number(selectedLocation?.quantity) || 0
+    ? manualAllocationCapacity(activeOutboundLine)
     : warehouseStockQuantity
   const shortageQuantity = Math.max(requestedQuantity - availableForRequest, 0)
   const projectedRemainingQuantity = Math.max(warehouseStockQuantity - requestedQuantity, 0)
@@ -502,16 +646,8 @@ const OutboundPage = () => {
   const outboundLineSummaries = outboundLines.map((line) => {
     const summary = stockSummaryByLine[line.id]
     const quantity = Number(line.quantity) || 0
-    const selectedLocation = (() => {
-      if (!line.location) return null
-      try {
-        return JSON.parse(line.location)
-      } catch {
-        return null
-      }
-    })()
     const availableQuantity = outboundMethod === 'MANUAL'
-      ? Number(selectedLocation?.quantity) || 0
+      ? manualAllocationCapacity(line)
       : Number(summary?.totalQuantity) || 0
     return {
       ...line,
@@ -529,7 +665,18 @@ const OutboundPage = () => {
     (total, item) => total + (Number(item.shortageQuantity) || 0),
     0
   )
-  const allManualLocationsSelected = outboundLines.every((line) => Boolean(line.location))
+  const allManualAllocationsValid = outboundLines.every((line) => {
+    const allocations = Array.isArray(line.allocations) ? line.allocations : []
+    const allocatedQuantity = allocations.reduce(
+      (total, allocation) => total + (Number(allocation.quantity) || 0),
+      0
+    )
+    return allocations.length > 0
+      && allocations.every((allocation) => (
+        Boolean(allocation.location) && positiveInteger(Number(allocation.quantity)) === ''
+      ))
+      && allocatedQuantity === Number(line.quantity)
+  })
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -840,6 +987,11 @@ const OutboundPage = () => {
                       {outboundLines.map((line, index) => {
                         const lineSku = skus.find((sku) => String(sku.id) === String(line.skuId))
                         const lineSummary = stockSummaryByLine[line.id]
+                        const lineAllocations = Array.isArray(line.allocations) ? line.allocations : []
+                        const allocatedQuantity = lineAllocations.reduce(
+                          (total, allocation) => total + (Number(allocation.quantity) || 0),
+                          0
+                        )
                         const isActive = line.id === activeOutboundLine?.id
                         const lineShortage = Math.max(
                           Number(line.quantity || 0) - Number(lineSummary?.totalQuantity || 0),
@@ -858,7 +1010,10 @@ const OutboundPage = () => {
                                   value={line.skuId}
                                   onFocus={() => setActiveOutboundLineId(line.id)}
                                   onChange={(event) => {
-                                    updateOutboundLine(line.id, { skuId: event.target.value, location: '' })
+                                    updateOutboundLine(line.id, {
+                                      skuId: event.target.value,
+                                      allocations: [createOutboundAllocation()],
+                                    })
                                     setActiveOutboundLineId(line.id)
                                     setPreviewData(null)
                                   }}
@@ -914,36 +1069,108 @@ const OutboundPage = () => {
                                 </span>
                               )}
                             </div>
+
+                            {outboundMethod === 'MANUAL' && (
+                              <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <div>
+                                    <p className="text-xs font-semibold text-slate-700">
+                                      Phân bổ theo Rack/Bin
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-slate-500">
+                                      Đã phân bổ {allocatedQuantity} / {Number(line.quantity) || 0}
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => addOutboundAllocation(line.id)}
+                                    disabled={!line.skuId || isLocationsLoading}
+                                    className="rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    <Plus className="mr-1 inline h-3.5 w-3.5" />
+                                    Thêm Rack/Bin
+                                  </button>
+                                </div>
+
+                                <div className="mt-2 space-y-2">
+                                  {lineAllocations.map((allocation, allocationIndex) => (
+                                    <div
+                                      key={allocation.id}
+                                      className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_110px_auto] sm:items-end"
+                                    >
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-medium text-slate-500">
+                                          Rack/Bin {allocationIndex + 1}
+                                        </label>
+                                        <select
+                                          required
+                                          value={allocation.location}
+                                          onFocus={() => setActiveOutboundLineId(line.id)}
+                                          onChange={(event) => updateOutboundAllocation(
+                                            line.id,
+                                            allocation.id,
+                                            { location: event.target.value }
+                                          )}
+                                          disabled={!line.skuId || isLocationsLoading}
+                                          className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
+                                        >
+                                          <option value="">-- Chọn Rack/Bin --</option>
+                                          {(lineSummary?.locations || []).map((location) => {
+                                            const locationValue = JSON.stringify(location)
+                                            const alreadySelected = lineAllocations.some(
+                                              (otherAllocation) => (
+                                                otherAllocation.id !== allocation.id
+                                                && otherAllocation.location === locationValue
+                                              )
+                                            )
+                                            return (
+                                              <option
+                                                key={`${location.rackId}_${location.binId}`}
+                                                value={locationValue}
+                                                disabled={alreadySelected}
+                                              >
+                                                Kệ {location.rackName} — Ô {location.binName} (Khả dụng: {location.quantity}
+                                                {location.reservedQuantity > 0
+                                                  ? ` · Đang giữ: ${location.reservedQuantity}`
+                                                  : ''})
+                                              </option>
+                                            )
+                                          })}
+                                        </select>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[11px] font-medium text-slate-500">Số lượng</label>
+                                        <InputField
+                                          type="number"
+                                          min="1"
+                                          required
+                                          value={allocation.quantity}
+                                          onFocus={() => setActiveOutboundLineId(line.id)}
+                                          onChange={(event) => updateOutboundAllocation(
+                                            line.id,
+                                            allocation.id,
+                                            { quantity: event.target.value }
+                                          )}
+                                        />
+                                      </div>
+                                      <button
+                                        type="button"
+                                        disabled={lineAllocations.length === 1}
+                                        onClick={() => removeOutboundAllocation(line.id, allocation.id)}
+                                        className="h-9 rounded-md px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                                      >
+                                        Xóa
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )
                       })}
                     </div>
                   </section>
-
-                    {outboundMethod === 'MANUAL' && (
-                      <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-700">
-                          Location (Rack & Bin) {isLocationsLoading && <Loader2 className="inline h-3 w-3 animate-spin text-slate-400" />}
-                        </label>
-                        <select
-                          required
-                          className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
-                          value={selectedLocationStr}
-                          onChange={(e) => updateOutboundLine(activeOutboundLine?.id, { location: e.target.value })}
-                          disabled={!formSkuId || isLocationsLoading}
-                        >
-                          <option value="">-- Select location --</option>
-                          {availableLocations.map((loc) => (
-                            <option key={`${loc.rackId}_${loc.binId}`} value={JSON.stringify(loc)}>
-                              Kệ {loc.rackName} — Ô {loc.binName} (Tồn: {loc.quantity})
-                            </option>
-                          ))}
-                        </select>
-                        {availableLocations.length === 0 && formSkuId && !isLocationsLoading && (
-                          <p className="text-xs text-red-500">Sản phẩm này hiện không có tồn kho trong kho được chọn.</p>
-                        )}
-                      </div>
-                    )}
 
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-slate-700">Tên nơi nhận (Receiver Name)</label>
@@ -987,12 +1214,18 @@ const OutboundPage = () => {
                         <>
                           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3">
-                              <p className="text-xs text-slate-500">Tồn hiện tại trong kho</p>
+                              <p className="text-xs text-slate-500">Tồn khả dụng để xuất</p>
                               <p className="mt-1 text-xl font-bold tabular-nums text-slate-950">
                                 {warehouseStockQuantity.toLocaleString('vi-VN')}
                                 <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || 'đơn vị'}</span>
                               </p>
-                              <p className="mt-1 text-xs text-slate-400">{stockSummary.locations.length} kệ/ô đang có hàng</p>
+                              <p className="mt-1 text-xs text-slate-400">
+                                Tổng {Number(stockSummary.grossQuantity || 0).toLocaleString('vi-VN')}
+                                {stockSummary.reservedQuantity > 0
+                                  ? ` · Đang giữ ${Number(stockSummary.reservedQuantity).toLocaleString('vi-VN')}`
+                                  : ''}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-400">{stockSummary.locations.length} kệ/ô còn khả dụng</p>
                             </div>
                             <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3">
                               <p className="text-xs text-slate-500">Số lượng yêu cầu xuất</p>
@@ -1000,7 +1233,7 @@ const OutboundPage = () => {
                                 {requestedQuantity.toLocaleString('vi-VN')}
                                 <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || 'đơn vị'}</span>
                               </p>
-                              <p className="mt-1 text-xs text-slate-400">{outboundMethod === 'AUTO' ? 'Phân bổ theo FIFO' : 'Tại vị trí đã chọn'}</p>
+                              <p className="mt-1 text-xs text-slate-400">{outboundMethod === 'AUTO' ? 'Phân bổ theo FIFO' : 'Theo các vị trí đã chọn'}</p>
                             </div>
                             <div className={`rounded-lg border px-3.5 py-3 ${hasStockShortage ? 'border-rose-200 bg-rose-50/70' : 'border-emerald-200 bg-emerald-50/70'}`}>
                               <p className="text-xs text-slate-500">Còn lại dự kiến sau xuất</p>
@@ -1025,11 +1258,14 @@ const OutboundPage = () => {
                               <div className="mt-2 grid max-h-32 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
                                 {stockSummary.locations.map((location) => (
                                   <div key={`${location.rackId || location.rackName}_${location.binId || location.binName}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs">
-                                    <span className="truncate text-slate-600">
+                                    <span className="min-w-0 truncate text-slate-600">
                                       Kệ {location.rackName || '—'} · Ô {location.binName || '—'}
+                                      {location.reservedQuantity > 0
+                                        ? ` · Đang giữ ${location.reservedQuantity}`
+                                        : ''}
                                     </span>
                                     <span className="shrink-0 font-semibold tabular-nums text-slate-800">
-                                      {location.quantity.toLocaleString('vi-VN')}
+                                      Khả dụng {location.quantity.toLocaleString('vi-VN')}
                                     </span>
                                   </div>
                                 ))}
@@ -1149,7 +1385,7 @@ const OutboundPage = () => {
                         isLocationsLoading ||
                         hasAnyStockShortage ||
                         (outboundMethod === 'AUTO' && !previewData?.complete) ||
-                        (outboundMethod === 'MANUAL' && !allManualLocationsSelected)
+                        (outboundMethod === 'MANUAL' && !allManualAllocationsValid)
                       }
                     >
                       Confirm Outbound
