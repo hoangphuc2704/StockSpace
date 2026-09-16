@@ -52,9 +52,9 @@ const modalCopy = {
 const returnableQuantity = (item) =>
   Math.max(
     0,
-    Number(item.shippedQuantity || 0) -
-      Number(item.receivedGoodQuantity || 0) -
-      Number(item.returnedQuantity || 0)
+    Number(item?.shippedQuantity || 0) -
+      Number(item?.receivedGoodQuantity || 0) -
+      Number(item?.returnedQuantity || 0)
   )
 
 const pickedQuantity = (allocation) => Number(allocation?.pickedQuantity || 0)
@@ -92,7 +92,9 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
   const [layout, setLayout] = useState(null)
   const [loadingLayout, setLoadingLayout] = useState(false)
 
-  const items = useMemo(() => transfer?.items || [], [transfer])
+  const items = useMemo(() => (transfer?.items || []).filter(Boolean), [transfer])
+  const findItemById = (itemId) =>
+    items.find((item) => String(item.id) === String(itemId))
   const sourceAllocations = useMemo(
     () =>
       items.flatMap((item) =>
@@ -295,7 +297,7 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
         returnLines.some(
           (line) =>
             Number(line.quantity) >
-            returnableQuantity(items.find((item) => item.id === line.itemId))
+            returnableQuantity(findItemById(line.itemId))
         )
       )
         return toast.error('Returned quantity exceeds the returnable quantity.')
@@ -316,7 +318,7 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
             sourceRackId: line.sourceRackId,
             sourceBinId: line.sourceBinId,
             disposition,
-            note: disposition === 'REJECTED' ? line.note.trim() : null,
+            note: disposition === 'REJECTED' ? line.note?.trim() || null : null,
           }
         }),
       }
@@ -349,12 +351,12 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
       if (mode === 'reconcile')
         await transferApi.reconcileTransfer(transfer.id, payload, createTransferIdempotencyKey())
       toast.success('Transfer updated successfully.')
-      await onSuccess?.()
       onClose()
+      await onSuccess?.()
     } catch (error) {
       if (error.response?.status === 409) {
-        await onSuccess?.()
         onClose()
+        await onSuccess?.()
       }
       showApiErrorToast(error, 'Could not update transfer.')
     } finally {
@@ -554,7 +556,8 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
               ) : (
                 <div className="space-y-3">
                   {lines.map((line, index) => {
-                    const item = items.find((entry) => entry.id === line.itemId)
+                    const item = findItemById(line.itemId)
+                    if (!item) return null
                     const rack = layout?.racks?.find((entry) => entry.id === line.sourceRackId)
                     return (
                       <div key={line.itemId} className="rounded-xl border border-slate-200 p-4">

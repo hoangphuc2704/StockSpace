@@ -5,7 +5,15 @@ import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
-import { ArrowDownLeft, Search, Plus, Download, Loader2 } from 'lucide-react'
+import {
+  ArrowDownLeft,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Plus,
+  Download,
+  Loader2,
+} from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
@@ -22,6 +30,7 @@ import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 import { positiveInteger, required } from '@/config/validation'
 
 const CAPACITY_EPSILON = 1e-9
+const RECEIPT_PAGE_SIZE_OPTIONS = [10, 20, 50]
 
 const compareReceiptsByDateDesc = (firstReceipt, secondReceipt) => {
   const firstTime = Date.parse(firstReceipt?.createdAt || '')
@@ -59,6 +68,11 @@ const InboundPage = () => {
   const [warehouses, setWarehouses] = useState([])
   const [skus, setSkus] = useState([])
   const [layout, setLayout] = useState(null)
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
+  const [totalElements, setTotalElements] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const receiptRequestIdRef = useRef(0)
 
   // Selection states
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
@@ -356,25 +370,50 @@ const InboundPage = () => {
   }, [currentRole, selectedWarehouseId])
 
   const fetchReceipts = useCallback(async () => {
+    const requestId = receiptRequestIdRef.current + 1
+    receiptRequestIdRef.current = requestId
     setIsLoading(true)
     try {
       const res = await receiptApi.getReceipts(selectedWarehouseId, {
         type: 'INBOUND',
-        page: 0,
-        size: 20,
+        page,
+        size: pageSize,
       })
-      setReceipts(res.data?.data?.content || [])
+      if (requestId !== receiptRequestIdRef.current) return
+
+      const payload = res.data?.data || {}
+      const content = Array.isArray(payload) ? payload : payload.content || []
+      const responsePage = Number(payload.page ?? payload.pageNo ?? page)
+      const responseSize = Number(payload.size ?? payload.pageSize ?? pageSize)
+      const responseTotalElements = Number(payload.totalElements ?? content.length)
+      const calculatedTotalPages = responseSize > 0
+        ? Math.ceil(responseTotalElements / responseSize)
+        : 1
+      const responseTotalPages = Number(payload.totalPages ?? calculatedTotalPages)
+
+      setReceipts(content)
+      setTotalElements(Number.isFinite(responseTotalElements) ? responseTotalElements : 0)
+      setTotalPages(
+        Number.isFinite(responseTotalPages) ? Math.max(responseTotalPages, 1) : 1
+      )
+      if (Number.isInteger(responsePage) && responsePage >= 0 && responsePage !== page) {
+        setPage(responsePage)
+      }
     } catch (error) {
+      if (requestId !== receiptRequestIdRef.current) return
       console.error('Error fetching receipts:', error)
+      setReceipts([])
+      setTotalElements(0)
+      setTotalPages(1)
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
         // Only show if not already shown by initial data
       } else {
         showApiErrorToast(error, 'Could not load receipts.')
       }
     } finally {
-      setIsLoading(false)
+      if (requestId === receiptRequestIdRef.current) setIsLoading(false)
     }
-  }, [selectedWarehouseId])
+  }, [page, pageSize, selectedWarehouseId])
 
   useEffect(() => {
     // Initial server data is intentionally loaded when this screen mounts.
@@ -604,7 +643,8 @@ const InboundPage = () => {
       await receiptApi.createReceipt(payload)
       toast.success('Inbound receipt created.')
       setIsModalOpen(false)
-      fetchReceipts()
+      if (page === 0) await fetchReceipts()
+      else setPage(0)
 
       const emptyLine = createInboundLine()
       setInboundLines([emptyLine])
@@ -714,7 +754,7 @@ const InboundPage = () => {
       setIsRejectModalOpen(false)
       setRejectReason('')
       setRejectingReceiptId(null)
-      fetchReceipts()
+      await fetchReceipts()
     } catch (error) {
       console.error('Error rejecting receipt:', error)
       showApiErrorToast(error, 'Could not reject receipt.')
@@ -727,7 +767,7 @@ const InboundPage = () => {
     try {
       await receiptApi.approveReceipt(id)
       toast.success('Inbound receipt approved.')
-      fetchReceipts()
+      await fetchReceipts()
       setCapacityRefreshKey((current) => current + 1)
     } catch (error) {
       console.error('Error approving receipt:', error)
@@ -762,6 +802,9 @@ const InboundPage = () => {
       })
       .sort(compareReceiptsByDateDesc)
   }, [receipts, activeTab])
+
+  const firstReceiptNumber = totalElements === 0 ? 0 : page * pageSize + 1
+  const lastReceiptNumber = Math.min(totalElements, page * pageSize + receipts.length)
 
 
   return (
@@ -800,7 +843,16 @@ const InboundPage = () => {
                     className="rounded-md border border-slate-200 p-2 text-sm"
                     value={selectedWarehouseId}
                     onChange={(e) => {
-                      setSelectedWarehouseId(e.target.value)
+                      const warehouseId = e.target.value
+                      setSelectedWarehouseId(warehouseId)
+                      setPage(0)
+                      if (!warehouseId) {
+                        receiptRequestIdRef.current += 1
+                        setReceipts([])
+                        setTotalElements(0)
+                        setTotalPages(1)
+                        setIsLoading(false)
+                      }
                       setInboundLines((previous) => previous.map((line) => ({ ...line, allocations: {} })))
                       setBinCapacities({})
                       setSuggestedBinIdsByLine({})
@@ -838,7 +890,10 @@ const InboundPage = () => {
                       ].map(tab => (
                         <button
                           key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
+                          onClick={() => {
+                            setActiveTab(tab.id)
+                            setPage(0)
+                          }}
                           className={`relative pb-3 text-sm font-medium transition-colors ${activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-700'
                             }`}
                         >
@@ -975,6 +1030,54 @@ const InboundPage = () => {
                         </table>
                       )}
                     </div>
+                    <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                      <span className="text-slate-500">
+                        Showing {firstReceiptNumber}-{lastReceiptNumber} of {totalElements} receipts
+                      </span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="flex items-center gap-2 text-slate-500">
+                          Rows per page
+                          <select
+                            value={pageSize}
+                            disabled={isLoading}
+                            onChange={(event) => {
+                              setPageSize(Number(event.target.value))
+                              setPage(0)
+                            }}
+                            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:opacity-50"
+                          >
+                            {RECEIPT_PAGE_SIZE_OPTIONS.map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <span className="min-w-24 text-center text-slate-600">
+                          Page {page + 1} of {totalPages}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={page === 0 || isLoading}
+                            onClick={() => setPage((current) => Math.max(0, current - 1))}
+                            aria-label="Previous receipt page"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={page >= totalPages - 1 || isLoading}
+                            onClick={() => setPage((current) => current + 1)}
+                            aria-label="Next receipt page"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </footer>
                   </div>
                 </div>
               </div>
