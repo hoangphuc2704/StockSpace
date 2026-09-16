@@ -85,6 +85,15 @@ const transferApi = {
     )
   },
 
+  // Thu hồi chuyến đang vận chuyển về kho nguồn; BE chuyển transfer sang RETURN_REQUESTED.
+  recallTransfer: (id, reason, idempotencyKey) => {
+    return api.post(
+      `/tenant/inventory/transfers/${id}/recall`,
+      { reason },
+      idempotencyConfig(idempotencyKey)
+    )
+  },
+
   closeShort: (id, reason, idempotencyKey) => {
     return api.patch(
       `/tenant/inventory/transfers/${id}/close-short`,
