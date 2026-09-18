@@ -266,6 +266,14 @@ const manualTranslations = {
   'Loading notification...': 'Đang tải thông báo...',
   'There are no announcements yet': 'Chưa có thông báo nào',
   'When there are new announcements, they will appear here.': 'Khi có thông báo mới, chúng sẽ xuất hiện ở đây.',
+  Available: 'Sẵn sàng',
+  'Pending approval': 'Đang duyệt',
+  'Field verified': 'Đã xác minh thực địa',
+  Approved: 'Đã phê duyệt',
+  'Floor area': 'Diện tích sàn',
+  'Pricing model': 'Hình thức giá',
+  'Reference price': 'Đơn giá tham chiếu',
+  'View layout': 'Xem bản vẽ',
 }
 
 const translations = { ...vietnameseTranslations, ...additionalTranslations, ...manualTranslations }

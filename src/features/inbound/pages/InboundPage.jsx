@@ -28,6 +28,7 @@ import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailMod
 import { showApiErrorToast } from '@/config/apiError'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 import { positiveInteger, required } from '@/config/validation'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const CAPACITY_EPSILON = 1e-9
 const RECEIPT_PAGE_SIZE_OPTIONS = [10, 20, 50]
@@ -53,6 +54,7 @@ const InboundPage = () => {
   const [searchParams] = useSearchParams()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
+  const { language, t } = useLanguage()
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -840,10 +842,10 @@ const InboundPage = () => {
                     <div className="bg-success/10 text-success rounded-lg p-2">
                       <ArrowDownLeft className="h-6 w-6" />
                     </div>
-                    Inbound Operations
+                    {t('Inbound Operations')}
                   </h1>
                   <p className="text-sm text-slate-500">
-                    Manage incoming shipments and stock replenishment.
+                    {t('Manage incoming shipments and stock replenishment.')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -867,7 +869,7 @@ const InboundPage = () => {
                       setSuggestionScrollTarget(null)
                     }}
                   >
-                    <option value="">-- Select Warehouse --</option>
+                    <option value="">{t('-- Select Warehouse --')}</option>
                     {warehouses.map((wh) => (
                       <option key={wh.id} value={wh.id}>
                         {wh.name}
@@ -879,7 +881,7 @@ const InboundPage = () => {
                     onClick={() => setIsModalOpen(true)}
                     disabled={!selectedWarehouseId}
                   >
-                    <Plus className="mr-2 h-4 w-4" /> New
+                    <Plus className="mr-2 h-4 w-4" /> {t('New')}
                   </Button>
                 </div>
               </div>
@@ -890,11 +892,11 @@ const InboundPage = () => {
                     {/* Tabs */}
                     <div className="flex items-center gap-6 border-b border-slate-200 bg-slate-50 px-4 pt-2">
                       {[
-                        { id: 'ALL', label: 'Tất cả' },
-                        { id: 'PENDING', label: 'Chờ duyệt' },
-                        { id: 'APPROVED', label: 'Đã xác nhận' },
-                        { id: 'IN_PROGRESS', label: 'Đang xử lý' },
-                        { id: 'COMPLETED', label: 'Đã hoàn tất' }
+                        { id: 'ALL', label: t('All') },
+                        { id: 'PENDING', label: t('Pending Approval') },
+                        { id: 'APPROVED', label: t('Confirmed') },
+                        { id: 'IN_PROGRESS', label: t('In progress') },
+                        { id: 'COMPLETED', label: t('Completed') }
                       ].map(tab => (
                         <button
                           key={tab.id}
@@ -918,7 +920,7 @@ const InboundPage = () => {
                       <div className="flex items-center gap-3">
                         <div className="relative w-72">
                           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <InputField placeholder="Tìm kiếm phiếu nhập..." className="h-9 pl-9" />
+                          <InputField placeholder={t('Search inbound receipts...')} className="h-9 pl-9" />
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -934,7 +936,7 @@ const InboundPage = () => {
                           ) : (
                             <Download className="h-4 w-4" />
                           )}
-                          Xuất Excel
+                          {t('Export Excel')}
                         </Button>
                       </div>
                     </div>
@@ -950,27 +952,27 @@ const InboundPage = () => {
                           <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                             <tr>
                               <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
-                              <th className="px-4 py-3 border-x border-slate-200">Số dự kiến nhập kho</th>
-                              <th className="px-4 py-3 border-r border-slate-200">Tên nơi gửi</th>
-                              <th className="px-4 py-3 border-r border-slate-200">Tên người phụ trách</th>
-                              <th className="px-4 py-3 border-r border-slate-200">Tên mặt hàng [Thông số]</th>
-                              <th className="px-4 py-3 border-r border-slate-200">Ngày nhập kho</th>
-                              <th className="px-4 py-3 border-r border-slate-200 text-right">Tổng số lượng dự kiến</th>
-                              <th className="px-4 py-3 border-r border-slate-200 text-center">Hiện trạng</th>
-                              <th className="px-4 py-3 text-center">In</th>
+                              <th className="px-4 py-3 border-x border-slate-200">{t('Expected Receipt No.')}</th>
+                              <th className="px-4 py-3 border-r border-slate-200">{t('Sender')}</th>
+                              <th className="px-4 py-3 border-r border-slate-200">{t('Person in charge')}</th>
+                              <th className="px-4 py-3 border-r border-slate-200">{t('Item Name [Specs]')}</th>
+                              <th className="px-4 py-3 border-r border-slate-200">{t('Inbound Date')}</th>
+                              <th className="px-4 py-3 border-r border-slate-200 text-right">{t('Total Expected Qty')}</th>
+                              <th className="px-4 py-3 border-r border-slate-200 text-center">{t('Status')}</th>
+                              <th className="px-4 py-3 text-center">{t('Print')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {filteredReceipts.length === 0 ? (
                               <tr>
                                 <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
-                                  Không có dữ liệu phiếu nhập.
+                                  {t('No inbound receipt data found.')}
                                 </td>
                               </tr>
                             ) : filteredReceipts.map(r => {
                               const totalQty = (r.items || []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0)
                               const itemName = r.items?.length > 0
-                                ? `${r.items[0].skuName}${r.items.length > 1 ? ` và ${r.items.length - 1} mục khác` : ''}`
+                                ? `${r.items[0].skuName}${r.items.length > 1 ? ` ${t('and')} ${r.items.length - 1} ${t('other items')}` : ''}`
                                 : '—'
                               return (
                                 <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
@@ -979,7 +981,7 @@ const InboundPage = () => {
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-500">{r.senderName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-700">{r.createdByFullName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 whitespace-normal min-w-[200px]">{itemName}</td>
-                                  <td className="px-4 py-3 border-r border-slate-100">{new Date(r.createdAt).toLocaleDateString('vi-VN')}</td>
+                                  <td className="px-4 py-3 border-r border-slate-100">{new Date(r.createdAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-right font-semibold text-slate-700">{totalQty}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-center">
                                     <div className="flex flex-col gap-1 items-center">
@@ -989,14 +991,18 @@ const InboundPage = () => {
                                               r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
                                                 'bg-slate-100 text-slate-600'
                                         }`}>
-                                        {r.status}
+                                        {r.status === 'PENDING' ? t('Pending Approval') :
+                                         r.status === 'APPROVED' ? t('Approved') :
+                                         r.status === 'IN_PROGRESS' ? t('In progress') :
+                                         r.status === 'COMPLETED' ? t('Completed') :
+                                         r.status}
                                       </span>
                                       <div className="flex items-center justify-center gap-2 mt-1">
                                         <button
                                           onClick={() => handleViewDetail(r)}
                                           className="text-primary hover:underline text-xs font-medium"
                                         >
-                                          Xem
+                                          {t('View')}
                                         </button>
                                         {r.status === 'PENDING' && currentRole === 'TENANT' && (
                                           <>
@@ -1005,7 +1011,7 @@ const InboundPage = () => {
                                               onClick={() => handleApprove(r.id)}
                                               className="text-emerald-600 hover:underline text-xs font-medium"
                                             >
-                                              Duyệt
+                                              {t('Approve')}
                                             </button>
                                             <span className="text-slate-300">|</span>
                                             <button
@@ -1015,7 +1021,7 @@ const InboundPage = () => {
                                               }}
                                               className="text-red-600 hover:underline text-xs font-medium"
                                             >
-                                              Từ chối
+                                              {t('Reject')}
                                             </button>
                                           </>
                                         )}
@@ -1026,7 +1032,7 @@ const InboundPage = () => {
                                     <button
                                       onClick={() => handleExportSingleReceipt(r)}
                                       className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-                                      title="In/Xuất phiếu"
+                                      title={t('Print / Export receipt')}
                                     >
                                       <Download className="h-4 w-4 mx-auto" />
                                     </button>
@@ -1040,11 +1046,11 @@ const InboundPage = () => {
                     </div>
                     <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-slate-500">
-                        Showing {firstReceiptNumber}-{lastReceiptNumber} of {totalElements} receipts
+                        {t('Showing')} {firstReceiptNumber}-{lastReceiptNumber} {t('of')} {totalElements} {t('receipts')}
                       </span>
                       <div className="flex flex-wrap items-center gap-3">
                         <label className="flex items-center gap-2 text-slate-500">
-                          Rows per page
+                          {t('Rows per page')}
                           <select
                             value={pageSize}
                             disabled={isLoading}
@@ -1062,14 +1068,14 @@ const InboundPage = () => {
                           </select>
                         </label>
                         <span className="min-w-24 text-center text-slate-600">
-                          Page {page + 1} of {totalPages}
+                          {t('Page')} {page + 1} {t('of')} {totalPages}
                         </span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             disabled={page === 0 || isLoading}
                             onClick={() => setPage((current) => Math.max(0, current - 1))}
-                            aria-label="Previous receipt page"
+                            aria-label={t('Previous receipt page')}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <ChevronLeft className="h-4 w-4" />
@@ -1078,7 +1084,7 @@ const InboundPage = () => {
                             type="button"
                             disabled={page >= totalPages - 1 || isLoading}
                             onClick={() => setPage((current) => current + 1)}
-                            aria-label="Next receipt page"
+                            aria-label={t('Next receipt page')}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <ChevronRight className="h-4 w-4" />
@@ -1094,16 +1100,16 @@ const InboundPage = () => {
               <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title="Register New Inbound Shipment"
+                title={t('Register New Inbound Shipment')}
                 className="max-h-[92vh] max-w-5xl overflow-y-auto"
               >
                 <FormShell onSubmit={handleCreateReceipt} className="space-y-4">
                   <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-900">Products in this receipt</h3>
+                        <h3 className="text-sm font-semibold text-slate-900">{t('Products in this receipt')}</h3>
                         <p className="mt-0.5 text-xs text-slate-500">
-                          Add multiple SKUs and allocate each one to its destination bins.
+                          {t('Add multiple SKUs and allocate each one to its destination bins.')}
                         </p>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -1114,7 +1120,7 @@ const InboundPage = () => {
                           isLoading={isLoading}
                           disabled={inboundLines.some((line) => !line.skuId || positiveInteger(Number(line.quantity)))}
                         >
-                          Suggest all bins
+                          {t('Suggest all bins')}
                         </Button>
                         <Button
                           type="button"
@@ -1126,7 +1132,7 @@ const InboundPage = () => {
                             setActiveInboundLineId(nextLine.id)
                           }}
                         >
-                          <Plus className="mr-1.5 h-4 w-4" /> Add SKU
+                          <Plus className="mr-1.5 h-4 w-4" /> {t('Add SKU')}
                         </Button>
                       </div>
                     </div>
@@ -1147,7 +1153,7 @@ const InboundPage = () => {
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_140px_auto] sm:items-end">
                               <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-600">
-                                  SKU {index + 1} <span className="text-rose-500">*</span>
+                                  {t('SKU')} {index + 1} <span className="text-rose-500">*</span>
                                 </label>
                                 <select
                                   required
@@ -1164,7 +1170,7 @@ const InboundPage = () => {
                                   }}
                                   className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
                                 >
-                                  <option value="">-- Select product --</option>
+                                  <option value="">{t('-- Select product --')}</option>
                                   {skus
                                     .filter((sku) => !inboundLines.some((other) => other.id !== line.id && String(other.skuId) === String(sku.id)))
                                     .map((sku) => (
@@ -1176,7 +1182,7 @@ const InboundPage = () => {
                               </div>
                               <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-600">
-                                  Quantity <span className="text-rose-500">*</span>
+                                  {t('Quantity')} <span className="text-rose-500">*</span>
                                 </label>
                                 <InputField
                                   type="number"
@@ -1204,13 +1210,13 @@ const InboundPage = () => {
                                 }}
                                 className="h-9 rounded-md px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                               >
-                                Remove
+                                {t('Remove')}
                               </button>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                              <span>{lineSku ? `${lineSku.name} · ${lineSku.uomCode || lineSku.uomName || 'units'}` : 'Choose a SKU to configure bin allocation'}</span>
+                              <span>{lineSku ? `${lineSku.name} · ${lineSku.uomCode || lineSku.uomName || t('units')}` : t('Choose a SKU to configure bin allocation')}</span>
                               <button type="button" onClick={() => setActiveInboundLineId(line.id)} className="font-semibold text-blue-700 hover:underline">
-                                {isActive ? `Allocating ${lineAllocated}/${Number(line.quantity) || 0}` : `Configure allocation (${lineAllocated}/${Number(line.quantity) || 0})`}
+                                {isActive ? `${t('Allocating')} ${lineAllocated}/${Number(line.quantity) || 0}` : `${t('Configure allocation')} (${lineAllocated}/${Number(line.quantity) || 0})`}
                               </button>
                             </div>
                           </div>
@@ -1221,10 +1227,10 @@ const InboundPage = () => {
 
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-slate-700">
-                        Tên nơi gửi (Sender Name) <span className="text-rose-500">*</span>
+                        {t('Sender Name')} <span className="text-rose-500">*</span>
                       </label>
                       <InputField
-                        placeholder="Ví dụ: Nhà cung cấp A"
+                        placeholder={t('e.g. Supplier A')}
                         required
                         value={formSenderName}
                         onChange={(e) => setFormSenderName(e.target.value)}
@@ -1598,17 +1604,17 @@ const InboundPage = () => {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Note (Optional)</label>
+                    <label className="text-sm font-medium text-slate-700">{t('Note (Optional)')}</label>
                     <InputField
                       value={formNote}
                       onChange={(e) => updateInboundLine(activeInboundLine?.id, { note: e.target.value })}
-                      placeholder="Enter notes..."
+                      placeholder={t('Enter notes...')}
                     />
                   </div>
 
                   <div className="flex justify-end gap-3 border-t border-slate-200 pt-6">
                     <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                      Cancel
+                      {t('Cancel')}
                     </Button>
                     <Button
                       type="submit"
@@ -1621,7 +1627,7 @@ const InboundPage = () => {
                         selectedUnitVolumeM3 <= 0
                       }
                     >
-                      Confirm Inbound
+                      {t('Confirm Inbound')}
                     </Button>
                   </div>
                 </FormShell>
@@ -1630,15 +1636,15 @@ const InboundPage = () => {
               <Modal
                 isOpen={isRejectModalOpen}
                 onClose={() => setIsRejectModalOpen(false)}
-                title="Reject Receipt"
+                title={t('Reject Receipt')}
               >
                 <FormShell onSubmit={handleReject} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-700">
-                      Reason for rejection *
+                      {t('Reason for rejection *')}
                     </label>
                     <InputField
-                      placeholder="Enter reason..."
+                      placeholder={t('Enter reason...')}
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       required
@@ -1650,10 +1656,10 @@ const InboundPage = () => {
                       variant="outline"
                       onClick={() => setIsRejectModalOpen(false)}
                     >
-                      Cancel
+                      {t('Cancel')}
                     </Button>
                     <Button type="submit" variant="danger" isLoading={isSubmitting}>
-                      Confirm Reject
+                      {t('Confirm Reject')}
                     </Button>
                   </div>
                 </FormShell>

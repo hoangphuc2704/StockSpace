@@ -50,10 +50,12 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
             <Warehouse className="h-8 w-8" aria-hidden="true" />
           </div>
         )}
-        <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
-          {warehouse.isVerified ? 'Đã xác minh' : 'Chưa xác minh'}
-        </span>
+        {warehouse.isVerified && (
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
+            Đã xác minh
+          </span>
+        )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col p-4">

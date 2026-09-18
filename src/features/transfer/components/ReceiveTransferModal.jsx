@@ -8,9 +8,11 @@ import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { AlertCircle, CheckCircle2, X, PackageCheck, Loader2, Plus, Trash2 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRole = 'TENANT' }) => {
   useEscapeKey(isOpen, onClose)
+  const { t } = useLanguage()
 
   const [layout, setLayout] = useState(null)
   const [loadingLayout, setLoadingLayout] = useState(true)
@@ -377,7 +379,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
                             {alloc.disposition !== 'GOOD' && (
                               <div className="sm:col-span-4">
                                 <label className="mb-1 block text-xs font-semibold text-slate-700">
-                                  Lý do hàng không đạt <span className="text-rose-600">*</span>
+                                  {t('Reason for rejected items')} <span className="text-rose-600">*</span>
                                 </label>
                                 <textarea
                                   required
@@ -387,7 +389,7 @@ const ReceiveTransferModal = ({ isOpen, onClose, transfer, onSuccess, currentRol
                                   onChange={(e) =>
                                     handleAllocationChange(item.id, idx, 'note', e.target.value)
                                   }
-                                  placeholder="Nhập lý do hàng không đạt"
+                                  placeholder={t('Enter rejection reason')}
                                   className="min-h-10 w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
                                 />
                               </div>

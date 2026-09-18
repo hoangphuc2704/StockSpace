@@ -62,7 +62,7 @@ export const submitReport = createAsyncThunk(
       const res = await inspectorApi.submitReport(id, payload)
       const updatedInspection = normalizeInspection(res.data.data)
       const { page, size } = getState().inspectorManagement
-      dispatch(fetchAssignedInspections({ page, size }))
+      await dispatch(fetchAssignedInspections({ page, size }))
       return updatedInspection // InspectionReportResponse
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || err.message)
@@ -120,10 +120,8 @@ const inspectorManagementSlice = createSlice({
         state.actionLoading = true
         state.actionError = null
       })
-      .addCase(submitReport.fulfilled, (state, action) => {
+      .addCase(submitReport.fulfilled, (state) => {
         state.actionLoading = false
-        const updated = action.payload
-        state.inspections = state.inspections.map((item) => (item.id === updated.id ? updated : item))
       })
       .addCase(submitReport.rejected, (state, action) => {
         state.actionLoading = false

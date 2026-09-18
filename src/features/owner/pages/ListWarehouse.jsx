@@ -95,7 +95,7 @@ const WarehouseManagement = () => {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Inspection is optional and does not gate Admin approval or listing payment.
+  // A warehouse must pass inspection before the backend allows publication.
   const handleRequestInspection = async (warehouseId) => {
     try {
       setRequestingIds((prev) => [...prev, warehouseId])
@@ -152,7 +152,7 @@ const WarehouseManagement = () => {
             sortBy: 'createdAt',
             sortDir: 'desc',
           }),
-          // Inspection is optional; an inspection API failure must not block listing payment.
+          // Load the latest inspection beside the refreshed warehouse permissions.
           warehouseApi.getOwnerInspections({ page: 0, size: 200 }).catch((inspectionError) => {
             console.error('Could not load optional inspection data:', inspectionError)
             return null
@@ -168,7 +168,15 @@ const WarehouseManagement = () => {
 
         if (apiResult) {
           const contentList = apiResult.content || []
-          setWarehouses(Array.isArray(contentList) ? contentList : [])
+          const refreshedWarehouses = Array.isArray(contentList) ? contentList : []
+          setWarehouses(refreshedWarehouses)
+          setPublicationWarehouse((current) => {
+            if (!current) return null
+            const refreshed = refreshedWarehouses.find(
+              (warehouse) => String(warehouse.id) === String(current.id)
+            )
+            return refreshed?.canPublish === true || refreshed?.canRenew === true ? refreshed : null
+          })
           setTotalPages(apiResult.totalPages || 0)
           setTotalElements(apiResult.totalElements || 0)
         } else {
@@ -194,17 +202,22 @@ const WarehouseManagement = () => {
     fetchWarehouses()
   }, [currentPage, pageSize, refreshTrigger]) // Đã thêm chính xác refreshTrigger vào đây!
 
-  // Contract expiry can change a warehouse back to AVAILABLE on the BE.
-  // Reload the owner list when that change is pushed through WebSocket.
+  // Inspection results can revoke verification/publication while keeping the
+  // warehouse AVAILABLE. Always reload both warehouse and inspection data.
   useEffect(() => {
-    const handleRentalNotification = (event) => {
-      if (['RENTAL', 'CONTRACT_EXPIRED'].includes(String(event.detail?.type || '').toUpperCase())) {
+    const handleWarehouseNotification = (event) => {
+      const type = String(event.detail?.type || '').toUpperCase()
+      const notificationText = `${event.detail?.title || ''} ${event.detail?.message || ''}`
+      const isInspectionUpdate =
+        ['INSPECTION', 'SYSTEM'].includes(type) || /inspection|kiểm định/i.test(notificationText)
+
+      if (isInspectionUpdate || ['RENTAL', 'CONTRACT_EXPIRED'].includes(type)) {
         setRefreshTrigger((current) => current + 1)
       }
     }
 
-    window.addEventListener('new_notification', handleRentalNotification)
-    return () => window.removeEventListener('new_notification', handleRentalNotification)
+    window.addEventListener('new_notification', handleWarehouseNotification)
+    return () => window.removeEventListener('new_notification', handleWarehouseNotification)
   }, [])
 
   // Định dạng Badge hiển thị cho Trạng thái kho
@@ -240,15 +253,15 @@ const WarehouseManagement = () => {
 
   const getInspectionBadge = (warehouse, inspection) => {
     const inspectionStatus = String(inspection?.status || '').toUpperCase()
-    const isPassed =
-      Boolean(warehouse.isVerified ?? warehouse.verified) || inspectionStatus === 'PASSED'
-    const status = isPassed
-      ? 'PASSED'
-      : inspectionStatus === 'FAILED'
+    const isVerified = (warehouse.isVerified ?? warehouse.verified) === true
+    const status =
+      !isVerified || inspectionStatus === 'FAILED'
         ? 'FAILED'
-        : inspection
-          ? 'REQUESTED'
-          : null
+        : inspectionStatus === 'PASSED' || isVerified
+          ? 'PASSED'
+          : inspection
+            ? 'REQUESTED'
+            : null
     const configs = {
       REQUESTED: ['bg-blue-50 text-blue-700 border-blue-200', 'Inspection requested'],
       PASSED: ['bg-emerald-50 text-emerald-700 border-emerald-200', 'Passed'],
@@ -381,6 +394,11 @@ const WarehouseManagement = () => {
                         const isCurrentlyRequesting = requestingIds.includes(wh.id)
                         const inspection = inspectionsByWarehouse[String(wh.id)]
                         const inspectionBadge = getInspectionBadge(wh, inspection)
+                        const inspectionStatus = String(inspection?.status || '').toUpperCase()
+                        const canRequestInspection =
+                          !isRejectedListing &&
+                          (wh.isVerified ?? wh.verified) !== true &&
+                          !['PENDING', 'IN_PROGRESS'].includes(inspectionStatus)
 
                         return (
                           <tr key={wh.id} className="transition-colors hover:bg-slate-50">
@@ -481,7 +499,7 @@ const WarehouseManagement = () => {
                                     )}
                                   </>
                                 )}
-                                {!isRejectedListing && !inspectionBadge.status && (
+                                {canRequestInspection && (
                                   <div className="flex flex-col items-center gap-1">
                                     <button
                                       onClick={() => setInspectionConfirm(wh)}
@@ -494,7 +512,9 @@ const WarehouseManagement = () => {
                                           Sending...
                                         </>
                                       ) : (
-                                        'Request inspection'
+                                        inspectionStatus === 'FAILED'
+                                          ? 'Request reinspection'
+                                          : 'Request inspection'
                                       )}
                                     </button>
                                   </div>
@@ -546,8 +566,7 @@ const WarehouseManagement = () => {
                                           onClick: () => setDeleteWarehouseConfirm(wh),
                                           danger: true,
                                         },
-                                        ...(wh.status === 'AVAILABLE' &&
-                                        (wh.canPublish || wh.canRenew)
+                                        ...(wh.canPublish === true || wh.canRenew === true
                                           ? [
                                               {
                                                 label: wh.canRenew

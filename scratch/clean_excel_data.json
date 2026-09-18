@@ -261,10 +261,10 @@
     },
     {
       "no": 38,
-      "name": "Internal Stock Transfer",
+      "name": "Inter-Warehouse Stock Transfer",
       "sheet": "Inventory Management",
-      "desc": "Verify creating and approving internal bin-to-bin relocation tickets within the warehouse.",
-      "pre": "User is Tenant or assigned Staff, source batch has stock"
+      "desc": "Verify Tenant managing inter-warehouse stock transfers: request creation, staff assignments, picking, dispatch in-transit, arrival, destination receipt with dispositions, returns, and lost reconciliations.",
+      "pre": "User is Tenant or assigned Staff, active lease contracts in both source and destination warehouses"
     },
     {
       "no": 39,
@@ -901,7 +901,7 @@
     },
     "Inventory Management": {
       "feature": "Inventory Management",
-      "requirement": "Verify SKU creation, stock positions, inbound/outbound receipts, inventory audits, and internal stock transfer",
+      "requirement": "Verify SKU creation, stock positions, inbound/outbound receipts, inventory audits, and inter-warehouse stock transfer",
       "functions": [
         {
           "name": "Create Product SKU",
@@ -1094,21 +1094,105 @@
           ]
         },
         {
-          "name": "Internal Stock Transfer",
+          "name": "Inter-Warehouse Stock Transfer",
           "test_cases": [
             {
               "id": "TC_IM_021",
-              "desc": "Create and approve internal bin-to-bin stock transfer",
-              "proc": "1. Open Transfers > 'Tạo phiếu điều chuyển'.\n2. Select Source Bin A-01-01 (Qty 20), Destination Bin B-02-04.\n3. Approve transfer.",
-              "expected": "Stock quantity deducted from Source Bin and added to Destination Bin; ledger recorded.",
-              "pre": "User is Tenant or assigned Staff, source batch has stock"
+              "desc": "Tenant creates inter-warehouse stock transfer request between two leased warehouses",
+              "proc": "1. Log in as Tenant or assigned Staff.\n2. Open WMS > 'Chuyển kho' (Stock Transfers) > 'Tạo phiếu chuyển kho'.\n3. Select Source Warehouse (Kho A) and Destination Warehouse (Kho B).\n4. Assign Source Staff (phụ trách xuất) and Destination Staff (phụ trách nhận).\n5. Add SKU-001, Batch-B01, Quantity 50, Source Bin A-01-01.\n6. Submit transfer request.",
+              "expected": "Transfer request created successfully with status PENDING; unique transfer code generated; source and destination staff notified; source stock batches remain untouched until dispatch.",
+              "pre": "Tenant has active lease contracts in both warehouses, SKU and batch exist in source warehouse"
             },
             {
               "id": "TC_IM_022",
-              "desc": "Transfer to identical source bin",
-              "proc": "1. Select Destination Bin identical to Source Bin.\n2. Submit.",
-              "expected": "Validation error: 'Vị trí bin đích phải khác với vị trí bin nguồn'.",
-              "pre": "None"
+              "desc": "Create transfer request with identical source and destination warehouse",
+              "proc": "1. Open Create Transfer Modal.\n2. Select Source Warehouse: 'Kho Tổng Hà Nội'.\n3. Select Destination Warehouse: 'Kho Tổng Hà Nội' (same warehouse).\n4. Add items and submit.",
+              "expected": "System blocks creation with HTTP 400 Bad Request: 'Kho nguồn và kho đích không được trùng nhau' (STOCK_TRANSFER_SOURCE_DESTINATION_SAME).",
+              "pre": "User logged in as Tenant"
+            },
+            {
+              "id": "TC_IM_023",
+              "desc": "Attempt to create stock transfer while source warehouse has active inventory audit",
+              "proc": "1. Select Source Warehouse that currently has an ongoing audit (IN_PROGRESS state).\n2. Enter transfer items and submit.",
+              "expected": "System rejects request with HTTP 400 Bad Request: 'Kho nguồn đang trong quá trình kiểm kê tồn kho, tạm khóa mọi hoạt động xuất/nhập/chuyển kho' (AUDIT_MOVEMENT_LOCKED).",
+              "pre": "Source warehouse is locked by active inventory audit"
+            },
+            {
+              "id": "TC_IM_024",
+              "desc": "Create transfer with requested quantity exceeding available batch stock or foreign batch",
+              "proc": "1. Select Batch B02 with available quantity = 10 units.\n2. Enter transfer requested quantity = 50 units.\n3. Submit transfer.",
+              "expected": "System displays error: 'Số lượng chuyển vượt quá số lượng tồn khả dụng của lô hàng' (INSUFFICIENT_STOCK). Request is blocked.",
+              "pre": "Batch available quantity < requested quantity"
+            },
+            {
+              "id": "TC_IM_025",
+              "desc": "Source warehouse staff picks items and manager approves dispatch to IN_TRANSIT",
+              "proc": "1. Source staff opens transfer detail in PENDING state and triggers 'Phân bổ hàng' (Allocate).\n2. Batch quantities reserved -> status updates to ALLOCATED.\n3. Source staff picks goods from bins and confirms pick lines -> status updates to READY_TO_DISPATCH.\n4. Tenant manager clicks 'Duyệt xuất kho' (Approve Dispatch) with Idempotency-Key.",
+              "expected": "System generates Outbound Inventory Receipt; inventory batches at Source Warehouse are deducted; status updates to IN_TRANSIT with dispatched timestamp recorded; destination staff notified.",
+              "pre": "Transfer status is READY_TO_DISPATCH, source staff assigned"
+            },
+            {
+              "id": "TC_IM_026",
+              "desc": "Approve dispatch rejected when Tenant service subscription package has expired",
+              "proc": "1. Open transfer in READY_TO_DISPATCH state for a Tenant whose subscription expired.\n2. Click 'Duyệt xuất kho'.",
+              "expected": "System rejects action with HTTP 403 Forbidden: 'Gói dịch vụ đã hết hạn, không thể thực hiện xuất kho chuyển tiếp'. No stock is deducted.",
+              "pre": "Tenant subscription is EXPIRED"
+            },
+            {
+              "id": "TC_IM_027",
+              "desc": "Tenant manager recalls an in-transit transfer shipment back to source warehouse",
+              "proc": "1. Open transfer currently in IN_TRANSIT state.\n2. Click 'Thu hồi chuyến hàng' (Recall in Transit).\n3. Enter reason: 'Khách hàng hủy đơn cần giữ lại hàng tại kho nguồn'.\n4. Confirm recall.",
+              "expected": "Transfer status changes to RETURN_REQUESTED; return attempt record created; notification dispatched to destination staff that shipment was recalled; goods routed back to source warehouse.",
+              "pre": "Transfer status is IN_TRANSIT, caller is Tenant manager"
+            },
+            {
+              "id": "TC_IM_028",
+              "desc": "Destination staff confirms arrival and completes full receipt into destination bins",
+              "proc": "1. Shipment arrives at destination warehouse; destination staff clicks 'Xác nhận hàng đến' (Arrive) -> status becomes ARRIVED_AT_DESTINATION.\n2. Click 'Nhận hàng' (Receive Transfer).\n3. Inspect all items (full 50 units received intact).\n4. Allocate destination bins (Rack R-02, Bin B-01-01), disposition = AVAILABLE.\n5. Click 'Hoàn tất nhận hàng'.",
+              "expected": "System generates Inbound Inventory Receipt; stock batches are created/incremented in destination bins; transfer status updates to COMPLETED; ledger transaction recorded.",
+              "pre": "Transfer is in ARRIVED_AT_DESTINATION state, caller is assigned destination staff"
+            },
+            {
+              "id": "TC_IM_029",
+              "desc": "Destination receipt with damaged goods requiring note and initiating reconciliation",
+              "proc": "1. Destination staff inspects arriving shipment of 50 units.\n2. Receives 40 intact units into Bin B-01-01 with disposition AVAILABLE.\n3. Records 10 damaged units with disposition DAMAGED and enters defect note: 'Bao bì rách, móp méo do va đập khi vận chuyển'.\n4. Submit receipt.",
+              "expected": "System receives 40 units into usable stock; records 10 damaged units for quarantine/audit; transfer status updates to SHORT_RECEIVED or RECONCILING pending manager resolution.",
+              "pre": "Shipment has physical damage upon arrival"
+            },
+            {
+              "id": "TC_IM_030",
+              "desc": "Staff not assigned to destination warehouse attempts to receive transfer",
+              "proc": "1. Log in as a staff member assigned only to Warehouse C (unrelated warehouse).\n2. Send API request POST /receive for a transfer heading to Warehouse B.",
+              "expected": "System rejects request with HTTP 403 Forbidden: 'Nhân viên không được phân công làm việc tại kho đích này' (ACCESS_DENIED).",
+              "pre": "User is staff without active assignment at destination warehouse"
+            },
+            {
+              "id": "TC_IM_031",
+              "desc": "Source warehouse receives back returned shipment and restores inventory",
+              "proc": "1. Return shipment arrives back at Source Warehouse (RETURN_IN_TRANSIT).\n2. Source staff clicks 'Nhận hàng quay đầu' (Receive Return).\n3. Inspects returned items and selects restock bins.\n4. Confirms return receipt.",
+              "expected": "Status updates to RETURNED; stock quantities are restored to source warehouse bins; return transaction logged in inventory audit history.",
+              "pre": "Transfer status is RETURN_IN_TRANSIT back to source"
+            },
+            {
+              "id": "TC_IM_032",
+              "desc": "Manager reconciles missing in-transit cargo by declaring lost",
+              "proc": "1. Open transfer ticket in SHORT_RECEIVED / RECONCILING state with 5 unaccounted units.\n2. Manager opens 'Đối soát' (Reconcile) modal.\n3. Select resolution: DECLARE_LOST (Báo mất hàng).\n4. Enter reconciliation note: 'Hàng rơi mất trên chặng xe tải liên tỉnh, tài xế xác nhận biên bản thất lạc'.\n5. Submit reconciliation.",
+              "expected": "Transfer status transitions to LOST; inventory write-off transaction recorded in financial/operational ledger; transfer lifecycle closed.",
+              "pre": "Transfer is in SHORT_RECEIVED or RECONCILING status, user is Tenant manager"
+            },
+            {
+              "id": "TC_IM_033",
+              "desc": "Tenant cancels an un-dispatched transfer request in PENDING status",
+              "proc": "1. Open transfer ticket in PENDING state.\n2. Click 'Hủy yêu cầu' (Cancel Transfer).\n3. Enter cancellation reason: 'Thay đổi kế hoạch điều phối đơn hàng'.\n4. Confirm cancellation.",
+              "expected": "Transfer status immediately transitions to CANCELLED; any reserved allocations are freed; audit history records cancellation reason.",
+              "pre": "Transfer is in PENDING status"
+            },
+            {
+              "id": "TC_IM_034",
+              "desc": "Attempt to cancel transfer request that has already been dispatched or completed",
+              "proc": "1. Target a transfer ticket currently in IN_TRANSIT or COMPLETED status.\n2. Send cancel transfer request (PATCH /cancel).",
+              "expected": "System rejects request with HTTP 400 Bad Request: 'Chỉ có thể hủy yêu cầu chuyển kho khi đang ở trạng thái PENDING'.",
+              "pre": "Transfer status is not PENDING"
             }
           ]
         }
