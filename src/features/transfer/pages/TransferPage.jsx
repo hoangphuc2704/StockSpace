@@ -28,6 +28,7 @@ import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
+import { useLanguage } from '@/i18n/LanguageContext'
 import CreateTransferModal from '../components/CreateTransferModal'
 import ReceiveTransferModal from '../components/ReceiveTransferModal'
 import TransferActionModal from '../components/TransferActionModal'
@@ -99,13 +100,13 @@ const ATTENTION_STATUSES = new Set([
 const IN_PROGRESS_STATUSES = new Set(['ALLOCATED', 'PICKING', 'READY_TO_DISPATCH'])
 const RECEIVING_STATUSES = new Set(['ARRIVED_AT_DESTINATION', 'RECEIVING', 'PARTIALLY_RECEIVED'])
 
-const getStatusMeta = (status) => {
+const getStatusMeta = (status, t = (s) => s) => {
   const [label, className, icon] = STATUS_META[status] || [
     status || 'Unknown',
     'border-slate-200 bg-slate-100 text-slate-700',
     AlertCircle,
   ]
-  return { label, className, icon }
+  return { label: t(label), className, icon }
 }
 
 const matchesStatusFilter = (status, filter) => {
@@ -117,9 +118,9 @@ const matchesStatusFilter = (status, filter) => {
   return status === filter
 }
 
-const formatDate = (value) =>
+const formatDate = (value, language = 'en') =>
   value
-    ? new Intl.DateTimeFormat('en-GB', {
+    ? new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-GB', {
         day: '2-digit',
         month: 'short',
         year: 'numeric',
@@ -167,12 +168,13 @@ const totalReturnable = (transfer) =>
   )
 
 const ProgressRail = ({ status }) => {
+  const { t } = useLanguage()
   const steps = [
-    ['Request', new Set(['DRAFT', 'PENDING'])],
-    ['Allocate', new Set(['ALLOCATED', 'PICKING'])],
-    ['Dispatch', new Set(['READY_TO_DISPATCH', 'IN_TRANSIT', 'OVERDUE'])],
+    [t('Request'), new Set(['DRAFT', 'PENDING'])],
+    [t('Allocate'), new Set(['ALLOCATED', 'PICKING'])],
+    [t('Dispatch'), new Set(['READY_TO_DISPATCH', 'IN_TRANSIT', 'OVERDUE'])],
     [
-      'Receive',
+      t('Receive'),
       new Set([
         'ARRIVED_AT_DESTINATION',
         'RECEIVING',
@@ -198,7 +200,7 @@ const ProgressRail = ({ status }) => {
           steps.findIndex(([, statuses]) => statuses.has(status))
         )
   if (CLOSED_STATUSES.has(status) && !['COMPLETED', 'RETURNED', 'LOST'].includes(status))
-    return <span className="text-xs font-medium text-slate-400">No further action</span>
+    return <span className="text-xs font-medium text-slate-400">{t('No further action')}</span>
   return (
     <div className="flex min-w-[235px] items-center gap-1.5">
       {steps.map(([label], index) => (
@@ -264,6 +266,7 @@ const DecisionReasonModal = ({
   onClose,
   onSubmit,
 }) => {
+  const { t } = useLanguage()
   useEffect(() => {
     if (!decision) return undefined
     const closeOnEscape = (event) => {
@@ -280,39 +283,39 @@ const DecisionReasonModal = ({
   if (!decision) return null
   const copy = {
     reject: [
-      'Reject transfer request',
-      'Reject transfer',
-      'Explain why this request cannot be dispatched.',
+      t('Reject transfer request'),
+      t('Reject transfer'),
+      t('Explain why this request cannot be dispatched.'),
       'rose',
     ],
     cancel: [
-      'Cancel transfer request',
-      'Cancel transfer',
-      'Explain why this movement is no longer needed.',
+      t('Cancel transfer request'),
+      t('Cancel transfer'),
+      t('Explain why this movement is no longer needed.'),
       'amber',
     ],
     rejectReceipt: [
-      'Reject destination receipt',
-      'Reject receipt',
-      'Record why the destination cannot accept this shipment. This rejects receipt; it does not cancel the dispatch.',
+      t('Reject destination receipt'),
+      t('Reject receipt'),
+      t('Record why the destination cannot accept this shipment. This rejects receipt; it does not cancel the dispatch.'),
       'rose',
     ],
     recall: [
-      'Recall transfer to source',
-      'Recall to source',
-      'Record why the shipment must be recalled while it is still in transit.',
+      t('Recall transfer to source'),
+      t('Recall to source'),
+      t('Record why the shipment must be recalled while it is still in transit.'),
       'orange',
     ],
     closeShort: [
-      'Close short receipt',
-      'Close short receipt',
-      'Confirm that the remaining outstanding quantity will not be received in this attempt.',
+      t('Close short receipt'),
+      t('Close short receipt'),
+      t('Confirm that the remaining outstanding quantity will not be received in this attempt.'),
       'amber',
     ],
     requestReturn: [
-      'Request return to source',
-      'Request return',
-      'Explain why the shipped stock must be returned to the source warehouse.',
+      t('Request return to source'),
+      t('Request return'),
+      t('Explain why the shipped stock must be returned to the source warehouse.'),
       'orange',
     ],
   }[decision.type]
@@ -331,7 +334,7 @@ const DecisionReasonModal = ({
             <p
               className={`text-[11px] font-bold tracking-[0.14em] uppercase ${isDanger ? 'text-rose-600' : 'text-amber-700'}`}
             >
-              Transfer decision
+              {t('Transfer decision')}
             </p>
             <h2 className="mt-1 text-lg font-bold text-slate-950">{copy[0]}</h2>
             <p className="mt-1 text-xs text-slate-500">
@@ -357,9 +360,10 @@ const DecisionReasonModal = ({
             </div>
             {hasSourceStockWarning && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
-                <strong>Inventory warning:</strong> source stock was deducted when dispatch was
-                approved. This action does not add it back automatically. Only receiving the
-                returned shipment at the source warehouse restores source inventory.
+                <strong>{t('Inventory warning:')}</strong>{' '}
+                {t(
+                  'source stock was deducted when dispatch was approved. This action does not add it back automatically. Only receiving the returned shipment at the source warehouse restores source inventory.'
+                )}
               </div>
             )}
             <div>
@@ -367,7 +371,7 @@ const DecisionReasonModal = ({
                 htmlFor="transfer-decision-reason"
                 className="block text-sm font-semibold text-slate-800"
               >
-                Reason <span className="text-rose-600">*</span>
+                {t('Reason')} <span className="text-rose-600">*</span>
               </label>
               <textarea
                 id="transfer-decision-reason"
@@ -377,7 +381,7 @@ const DecisionReasonModal = ({
                 rows={5}
                 value={reason}
                 onChange={(event) => onReasonChange(event.target.value)}
-                placeholder="Write a clear operational reason"
+                placeholder={t('Write a clear operational reason')}
                 className="mt-2 w-full resize-none rounded-xl border border-slate-300 px-3.5 py-3 text-sm outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-100"
               />
               <div className="mt-1 text-right text-xs text-slate-400">{reason.length}/2000</div>
@@ -390,7 +394,7 @@ const DecisionReasonModal = ({
               disabled={submitting}
               className="min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100"
             >
-              Keep transfer
+              {t('Keep transfer')}
             </button>
             <button
               type="submit"
@@ -398,7 +402,7 @@ const DecisionReasonModal = ({
               className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold text-white disabled:opacity-60 ${isDanger ? 'bg-rose-600 hover:bg-rose-700' : 'bg-slate-800 hover:bg-slate-900'}`}
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-              {submitting ? 'Saving' : copy[1]}
+              {submitting ? t('Saving') : copy[1]}
             </button>
           </footer>
         </form>
@@ -408,6 +412,7 @@ const DecisionReasonModal = ({
 }
 
 const TransferPage = ({ currentRole }) => {
+  const { language, t } = useLanguage()
   const confirmDialog = useConfirmDialog()
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
@@ -454,9 +459,9 @@ const TransferPage = ({ currentRole }) => {
           : list[0]?.id || ''
       })
     } catch (error) {
-      showApiErrorToast(error, 'Could not load warehouses.')
+      showApiErrorToast(error, t('Could not load warehouses.'))
     }
-  }, [searchParams])
+  }, [searchParams, t])
 
   const fetchTransfers = useCallback(async ({ silent = false } = {}) => {
     try {
@@ -468,13 +473,13 @@ const TransferPage = ({ currentRole }) => {
       setTransfers(Array.isArray(payload) ? payload : payload?.content || [])
       setLastUpdated(new Date())
     } catch (error) {
-      setLoadError('Transfer records are temporarily unavailable.')
-      showApiErrorToast(error, 'Could not load transfer records.')
+      setLoadError(t('Transfer records are temporarily unavailable.'))
+      showApiErrorToast(error, t('Could not load transfer records.'))
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     // Screen entry intentionally synchronizes both server-backed resources.
@@ -578,40 +583,40 @@ const TransferPage = ({ currentRole }) => {
   const handleAllocate = (transfer) =>
     mutation(
       () => transferApi.allocateTransfer(transfer.id, createTransferIdempotencyKey()),
-      'Source stock allocated.',
-      'Could not allocate source stock.'
+      t('Source stock allocated.'),
+      t('Could not allocate source stock.')
     )
   const handlePickSuccess = refreshAfterMutation
   const handleApprove = async (transfer) => {
     const confirmed = await confirmDialog({
-      title: 'Approve dispatch?',
-      message: `Stock will be deducted from ${transfer.sourceWarehouse?.name || 'the source warehouse'} and the movement will enter transit.`,
-      confirmText: 'Approve dispatch',
+      title: t('Approve dispatch?'),
+      message: `${t('Stock will be deducted from')} ${transfer.sourceWarehouse?.name || t('the source warehouse')} ${t('and the movement will enter transit.')}`,
+      confirmText: t('Approve dispatch'),
     })
     if (confirmed)
       await mutation(
         () => transferApi.approveDispatch(transfer.id, createTransferIdempotencyKey()),
-        'Dispatch approved. Stock is now in transit.',
-        'Could not approve dispatch.'
+        t('Dispatch approved. Stock is now in transit.'),
+        t('Could not approve dispatch.')
       )
   }
   const handleArrive = (transfer) =>
     mutation(
       () => transferApi.arriveTransfer(transfer.id, createTransferIdempotencyKey()),
-      'Destination arrival recorded.',
-      'Could not record arrival.'
+      t('Destination arrival recorded.'),
+      t('Could not record arrival.')
     )
   const handleDispatchRetry = (transfer) =>
     mutation(
       () => transferApi.dispatchRetry(transfer.id, createTransferIdempotencyKey()),
-      'Retry shipment dispatched.',
-      'Could not dispatch retry.'
+      t('Retry shipment dispatched.'),
+      t('Could not dispatch retry.')
     )
   const handleDispatchReturn = (transfer) =>
     mutation(
       () => transferApi.dispatchReturn(transfer.id, createTransferIdempotencyKey()),
-      'Return shipment dispatched.',
-      'Could not dispatch return.'
+      t('Return shipment dispatched.'),
+      t('Could not dispatch return.')
     )
 
   const openDecision = (transfer, type) => {
@@ -640,7 +645,7 @@ const TransferPage = ({ currentRole }) => {
         await transferApi.requestReturn(id, reason, createTransferIdempotencyKey())
       if (decision.type === 'recall')
         await transferApi.recallTransfer(id, reason, createTransferIdempotencyKey())
-      toast.success('Transfer decision saved.')
+      toast.success(t('Transfer decision saved.'))
       closeDecision(true)
       await refreshAfterMutation()
     } catch (error) {
@@ -648,7 +653,7 @@ const TransferPage = ({ currentRole }) => {
         await refreshAfterMutation()
         closeDecision(true)
       }
-      showApiErrorToast(error, 'Could not save transfer decision.')
+      showApiErrorToast(error, t('Could not save transfer decision.'))
     } finally {
       setDecisionSubmitting(false)
     }
@@ -668,7 +673,7 @@ const TransferPage = ({ currentRole }) => {
       String(transfer.destinationStaff.id) === String(currentUserId)
     if (transfer.status === 'PENDING' && (tenant || (staff && isAssignedPicker)))
       return {
-        label: staff ? 'Allocate source stock' : 'Allocate stock',
+        label: staff ? t('Allocate source stock') : t('Allocate stock'),
         icon: PackageCheck,
         onClick: () => handleAllocate(transfer),
       }
@@ -681,16 +686,16 @@ const TransferPage = ({ currentRole }) => {
       return {
         label:
           transfer.status === 'PICKING'
-            ? `Continue picking · ${remainingToPick} remaining`
-            : 'Confirm picking',
+            ? `${t('Continue picking')} · ${remainingToPick} ${t('remaining')}`
+            : t('Confirm picking'),
         icon: PackageCheck,
         onClick: () => setAction({ mode: 'pick', transfer }),
       }
     if (tenant && transfer.status === 'READY_TO_DISPATCH')
-      return { label: 'Approve dispatch', icon: Truck, onClick: () => handleApprove(transfer) }
+      return { label: t('Approve dispatch'), icon: Truck, onClick: () => handleApprove(transfer) }
     if (isAssignedReceiver && ['IN_TRANSIT', 'OVERDUE'].includes(transfer.status))
       return {
-        label: 'Confirm arrival',
+        label: t('Confirm arrival'),
         icon: Truck,
         onClick: () => handleArrive(transfer),
       }
@@ -704,19 +709,19 @@ const TransferPage = ({ currentRole }) => {
       totalOutstanding(transfer) > 0
     )
       return {
-        label: 'Record receipt',
+        label: t('Record receipt'),
         icon: PackageCheck,
         onClick: () => setReceiveTransfer(transfer),
       }
     if (tenant && transfer.status === 'RETRY_REQUESTED')
       return {
-        label: 'Dispatch retry',
+        label: t('Dispatch retry'),
         icon: RotateCcw,
         onClick: () => handleDispatchRetry(transfer),
       }
     if (tenant && transfer.status === 'RETURN_REQUESTED')
       return {
-        label: 'Dispatch return',
+        label: t('Dispatch return'),
         icon: Undo2,
         onClick: () => handleDispatchReturn(transfer),
       }
@@ -726,13 +731,13 @@ const TransferPage = ({ currentRole }) => {
       totalReturnable(transfer) > 0
     )
       return {
-        label: 'Receive return',
+        label: t('Receive return'),
         icon: Undo2,
         onClick: () => setAction({ mode: 'returnReceive', transfer }),
       }
     if (tenant && transfer.status === 'RECONCILING')
       return {
-        label: 'Reconcile',
+        label: t('Reconcile'),
         icon: CheckCircle2,
         onClick: () => setAction({ mode: 'reconcile', transfer }),
       }
@@ -742,35 +747,35 @@ const TransferPage = ({ currentRole }) => {
   const getRoleHint = (transfer) => {
     if (currentRole !== 'STAFF') return ''
     if (['PENDING', 'ALLOCATED', 'PICKING'].includes(transfer.status)) {
-      if (!transfer.sourceStaff?.id) return 'Waiting for tenant to assign source staff'
+      if (!transfer.sourceStaff?.id) return t('Waiting for tenant to assign source staff')
       if (String(transfer.sourceStaff.id) !== String(currentUserId))
-        return 'Assigned to another source staff'
+        return t('Assigned to another source staff')
     }
-    if (transfer.status === 'READY_TO_DISPATCH') return 'Waiting for tenant approval'
+    if (transfer.status === 'READY_TO_DISPATCH') return t('Waiting for tenant approval')
     if (['IN_TRANSIT', 'OVERDUE'].includes(transfer.status)) {
       const isAssignedSourceStaff =
         transfer.sourceStaff?.id && String(transfer.sourceStaff.id) === String(currentUserId)
       const isAssignedDestinationStaff =
         transfer.destinationStaff?.id &&
         String(transfer.destinationStaff.id) === String(currentUserId)
-      if (isAssignedSourceStaff) return 'Ready to recall transfer to source'
-      if (isAssignedDestinationStaff) return 'Ready to confirm arrival or reject receipt'
+      if (isAssignedSourceStaff) return t('Ready to recall transfer to source')
+      if (isAssignedDestinationStaff) return t('Ready to confirm arrival or reject receipt')
       if (!transfer.sourceStaff?.id && !transfer.destinationStaff?.id)
-        return 'Waiting for tenant to assign transfer staff'
-      return 'Assigned to another transfer staff'
+        return t('Waiting for tenant to assign transfer staff')
+      return t('Assigned to another transfer staff')
     }
     if (['ARRIVED_AT_DESTINATION', 'RECEIVING', 'PARTIALLY_RECEIVED'].includes(transfer.status)) {
-      if (!transfer.destinationStaff?.id) return 'Waiting for tenant to assign destination staff'
+      if (!transfer.destinationStaff?.id) return t('Waiting for tenant to assign destination staff')
       if (String(transfer.destinationStaff.id) !== String(currentUserId))
-        return 'Assigned to another destination staff'
+        return t('Assigned to another destination staff')
       if (['ARRIVED_AT_DESTINATION', 'RECEIVING'].includes(transfer.status))
-        return 'Ready to record receipt or reject receipt'
-      return 'Ready to record receipt'
+        return t('Ready to record receipt or reject receipt')
+      return t('Ready to record receipt')
     }
     if (['RETRY_REQUESTED', 'RETURN_REQUESTED', 'RECONCILING'].includes(transfer.status))
-      return 'Tenant action required'
+      return t('Tenant action required')
     if (['COMPLETED', 'RETURNED', 'LOST', 'REJECTED', 'CANCELLED'].includes(transfer.status))
-      return 'Workflow closed'
+      return t('Workflow closed')
     return ''
   }
 
@@ -797,7 +802,7 @@ const TransferPage = ({ currentRole }) => {
       (tenant || isAssignedSourceStaff)
 
     return [
-      { label: 'View details & timeline', icon: Eye, onClick: () => setDetailId(transfer.id) },
+      { label: t('View details & timeline'), icon: Eye, onClick: () => setDetailId(transfer.id) },
       currentRole === 'TENANT' &&
       [
         'PENDING',
@@ -813,18 +818,18 @@ const TransferPage = ({ currentRole }) => {
       ].includes(transfer.status)
         ? {
             label: transfer.destinationStaff?.id
-              ? 'Change destination staff'
-              : 'Assign destination staff',
+              ? t('Change destination staff')
+              : t('Assign destination staff'),
             icon: PackageCheck,
             onClick: () => setAction({ mode: 'assignDestinationStaff', transfer }),
           }
         : null,
       tenant && ['IN_TRANSIT', 'OVERDUE'].includes(transfer.status)
-        ? { label: 'Mark arrived', icon: PackageCheck, onClick: () => handleArrive(transfer) }
+        ? { label: t('Mark arrived'), icon: PackageCheck, onClick: () => handleArrive(transfer) }
         : null,
       canRejectReceipt
         ? {
-            label: 'Reject destination receipt',
+            label: t('Reject destination receipt'),
             icon: X,
             danger: true,
             onClick: () => openDecision(transfer, 'rejectReceipt'),
@@ -832,7 +837,7 @@ const TransferPage = ({ currentRole }) => {
         : null,
       canRecall
         ? {
-            label: 'Recall transfer to source',
+            label: t('Recall transfer to source'),
             icon: Undo2,
             danger: true,
             onClick: () => openDecision(transfer, 'recall'),
@@ -840,7 +845,7 @@ const TransferPage = ({ currentRole }) => {
         : null,
       currentRole === 'TENANT' && transfer.status === 'PARTIALLY_RECEIVED'
         ? {
-            label: 'Close short',
+            label: t('Close short'),
             icon: CheckCircle2,
             onClick: () => openDecision(transfer, 'closeShort'),
           }
@@ -849,7 +854,7 @@ const TransferPage = ({ currentRole }) => {
       ['RECEIVE_REJECTED', 'SHORT_RECEIVED'].includes(transfer.status) &&
       totalReturnable(transfer) > 0
         ? {
-            label: 'Request return',
+            label: t('Request return'),
             icon: Undo2,
             danger: true,
             onClick: () => openDecision(transfer, 'requestReturn'),
@@ -857,7 +862,7 @@ const TransferPage = ({ currentRole }) => {
         : null,
       currentRole === 'TENANT' && ['RECEIVE_REJECTED', 'SHORT_RECEIVED'].includes(transfer.status)
         ? {
-            label: 'Retry transfer',
+            label: t('Retry transfer'),
             icon: RotateCcw,
             onClick: () => setAction({ mode: 'retry', transfer }),
           }
@@ -865,7 +870,7 @@ const TransferPage = ({ currentRole }) => {
       currentRole === 'TENANT' &&
       ['PENDING', 'ALLOCATED', 'PICKING', 'READY_TO_DISPATCH'].includes(transfer.status)
         ? {
-            label: 'Cancel transfer',
+            label: t('Cancel transfer'),
             icon: X,
             danger: true,
             onClick: () => openDecision(transfer, 'cancel'),
@@ -873,7 +878,7 @@ const TransferPage = ({ currentRole }) => {
         : null,
       currentRole === 'TENANT' && transfer.status === 'PENDING'
         ? {
-            label: 'Reject request',
+            label: t('Reject request'),
             icon: X,
             danger: true,
             onClick: () => openDecision(transfer, 'reject'),
@@ -894,7 +899,7 @@ const TransferPage = ({ currentRole }) => {
   }
   const handleReceiveSuccess = async () => {
     await refreshAfterMutation()
-    toast.success('Receipt recorded. The workflow was refreshed.')
+    toast.success(t('Receipt recorded. The workflow was refreshed.'))
   }
 
   return (
@@ -904,7 +909,7 @@ const TransferPage = ({ currentRole }) => {
         {isMobileOpen && (
           <button
             type="button"
-            aria-label="Close navigation"
+            aria-label={t('Close navigation')}
             className="fixed inset-0 z-40 bg-slate-900/40"
             onClick={() => dispatch(closeMobileSidebar())}
           />
@@ -921,41 +926,40 @@ const TransferPage = ({ currentRole }) => {
                 <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
                   <span className="inline-flex items-center gap-1.5 tracking-[0.12em] uppercase">
                     <ArrowRightLeft className="h-3.5 w-3.5" />
-                    Warehouse operations
+                    {t('Warehouse operations')}
                   </span>
                   <span className="h-3 w-px bg-slate-300" />
                   <span className="font-medium text-slate-700">
-                    {activeWarehouse?.name || 'All warehouses'}
+                    {activeWarehouse?.name || t('All warehouses')}
                   </span>
                   <span className="inline-flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    {warehouses.length} active warehouse{warehouses.length === 1 ? '' : 's'}
+                    {warehouses.length} {warehouses.length === 1 ? t('active warehouse') : t('active warehouses')}
                   </span>
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
-                  Stock transfers
+                  {t('Stock transfers')}
                 </h1>
                 <p className="mt-1.5 text-sm leading-6 text-slate-600">
-                  Move inventory between warehouses with a controlled approval, dispatch and receipt
-                  trail.
+                  {t('Move inventory between warehouses with a controlled approval, dispatch and receipt trail.')}
                 </p>
               </div>
               <div className="flex min-w-0 flex-col gap-2 xl:items-end">
                 {lastUpdated && (
                   <span className="hidden items-center gap-1.5 text-xs text-slate-500 sm:inline-flex">
                     <Clock3 className="h-3.5 w-3.5 text-slate-400" />
-                    Updated {formatDate(lastUpdated)}
+                    {t('Updated')} {formatDate(lastUpdated, language)}
                   </span>
                 )}
                 <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
                   <label className="flex min-w-56 flex-1 flex-col gap-1.5 text-xs font-semibold text-slate-600 sm:flex-none">
-                    Warehouse context
+                    {t('Warehouse context')}
                     <select
                       value={selectedWarehouseId}
                       onChange={(event) => setSelectedWarehouseId(event.target.value)}
                       className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     >
-                      <option value="">All warehouses</option>
+                      <option value="">{t('All warehouses')}</option>
                       {warehouses.map((warehouse) => (
                         <option key={warehouse.id} value={warehouse.id}>
                           {warehouse.name}
@@ -972,7 +976,7 @@ const TransferPage = ({ currentRole }) => {
                     <RefreshCw
                       className={`h-4 w-4 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
                     />
-                    {refreshing ? 'Refreshing' : 'Refresh'}
+                    {refreshing ? t('Refreshing') : t('Refresh')}
                   </button>
                   {['TENANT', 'STAFF'].includes(currentRole) && (
                     <button
@@ -981,7 +985,7 @@ const TransferPage = ({ currentRole }) => {
                       className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800"
                     >
                       <Plus className="h-4 w-4" />
-                      Create transfer
+                      {t('Create transfer')}
                     </button>
                   )}
                 </div>
@@ -990,50 +994,56 @@ const TransferPage = ({ currentRole }) => {
 
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
               <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:px-5">
-                <h2 className="text-sm font-semibold text-slate-950">Transfer workload</h2>
+                <h2 className="text-sm font-semibold text-slate-950">{t('Transfer workload')}</h2>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  A single source of truth for allocation, dispatch, receipt and exception handling.
+                  {t('A single source of truth for allocation, dispatch, receipt and exception handling.')}
                 </p>
               </div>
               <div className="grid grid-cols-2 xl:grid-cols-4">
                 <SummaryCard
-                  label="Total transfers"
+                  label={t('Total transfers')}
                   value={counts.ALL || 0}
-                  unit="records"
+                  unit={counts.ALL === 1 ? t('record') : t('records')}
                   description={
                     activeWarehouse
-                      ? `Visible in ${activeWarehouse.name}`
-                      : 'Across your warehouse network'
+                      ? `${t('Visible in')} ${activeWarehouse.name}`
+                      : t('Across your warehouse network')
                   }
                   icon={ArrowRightLeft}
                   tone="bg-blue-50 text-blue-700"
                   featured
                 />
                 <SummaryCard
-                  label="Pending review"
+                  label={t('Pending review')}
                   value={counts.PENDING || 0}
-                  unit="requests"
-                  description="Waiting for source allocation"
+                  unit={counts.PENDING === 1 ? t('request') : t('requests')}
+                  description={t('Waiting for source allocation')}
                   icon={Clock3}
                   tone="bg-amber-50 text-amber-700"
                 />
                 <SummaryCard
-                  label="In transit"
+                  label={t('In transit')}
                   value={
                     contextTransfers.filter((transfer) =>
                       ['IN_TRANSIT', 'OVERDUE'].includes(transfer.status)
                     ).length
                   }
-                  unit="requests"
-                  description="Awaiting destination receipt"
+                  unit={
+                    contextTransfers.filter((transfer) =>
+                      ['IN_TRANSIT', 'OVERDUE'].includes(transfer.status)
+                    ).length === 1
+                      ? t('request')
+                      : t('requests')
+                  }
+                  description={t('Awaiting destination receipt')}
                   icon={Truck}
                   tone="bg-blue-50 text-blue-700"
                 />
                 <SummaryCard
-                  label="Needs attention"
+                  label={t('Needs attention')}
                   value={counts.ATTENTION || 0}
-                  unit="requests"
-                  description="Exceptions, retries or returns"
+                  unit={counts.ATTENTION === 1 ? t('request') : t('requests')}
+                  description={t('Exceptions, retries or returns')}
                   icon={AlertCircle}
                   tone="bg-rose-50 text-rose-700"
                 />
@@ -1045,15 +1055,15 @@ const TransferPage = ({ currentRole }) => {
                 <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-sm font-semibold text-slate-950">Transfer records</h2>
+                      <h2 className="text-sm font-semibold text-slate-950">{t('Transfer records')}</h2>
                       {refreshing && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
                     </div>
                     <p className="mt-1 text-xs leading-5 text-slate-500">
-                      The next action is determined by the BE workflow status.
+                      {t('The next action is determined by the BE workflow status.')}
                     </p>
                   </div>
                   <span className="text-xs text-slate-500">
-                    {contextTransfers.length} records in this view
+                    {contextTransfers.length} {contextTransfers.length === 1 ? t('record in this view') : t('records in this view')}
                   </span>
                 </div>
                 <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -1067,7 +1077,7 @@ const TransferPage = ({ currentRole }) => {
                         onClick={() => setStatusFilter(filter.id)}
                         className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${statusFilter === filter.id ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-transparent text-slate-600 hover:bg-slate-50'}`}
                       >
-                        {filter.label}
+                        {t(filter.label)}
                         <span
                           className={`rounded-md px-1.5 py-0.5 text-[10px] ${statusFilter === filter.id ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'}`}
                         >
@@ -1078,12 +1088,12 @@ const TransferPage = ({ currentRole }) => {
                   </div>
                   <label className="relative block w-full xl:max-w-xs">
                     <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <span className="sr-only">Search transfers</span>
+                    <span className="sr-only">{t('Search transfers')}</span>
                     <input
                       type="search"
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
-                      placeholder="Search ID, warehouse, SKU or note"
+                      placeholder={t('Search ID, warehouse, SKU or note')}
                       className="min-h-10 w-full rounded-lg border border-slate-300 bg-white pr-3 pl-9 text-sm outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     />
                   </label>
@@ -1092,7 +1102,7 @@ const TransferPage = ({ currentRole }) => {
               {loadError && !loading ? (
                 <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
                   <AlertCircle className="h-7 w-7 text-rose-500" />
-                  <h3 className="mt-3 text-sm font-semibold">Transfer records unavailable</h3>
+                  <h3 className="mt-3 text-sm font-semibold">{t('Transfer records unavailable')}</h3>
                   <p className="mt-1 text-sm text-slate-500">{loadError}</p>
                   <button
                     type="button"
@@ -1100,7 +1110,7 @@ const TransferPage = ({ currentRole }) => {
                     className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    Try again
+                    {t('Try again')}
                   </button>
                 </div>
               ) : loading ? (
@@ -1121,25 +1131,25 @@ const TransferPage = ({ currentRole }) => {
               ) : filteredTransfers.length ? (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[1200px] text-left text-sm">
-                    <caption className="sr-only">Stock transfer records</caption>
+                    <caption className="sr-only">{t('Stock transfer records')}</caption>
                     <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-bold tracking-[0.12em] text-slate-500 uppercase">
                       <tr>
-                        <th className="px-5 py-3.5">Transfer</th>
-                        <th className="px-5 py-3.5">Warehouse route</th>
-                        <th className="px-5 py-3.5">Workflow status</th>
-                        <th className="px-5 py-3.5">Created & assigned</th>
-                        <th className="px-5 py-3.5 text-right">Next action</th>
+                        <th className="px-5 py-3.5">{t('Transfer')}</th>
+                        <th className="px-5 py-3.5">{t('Warehouse route')}</th>
+                        <th className="px-5 py-3.5">{t('Workflow status')}</th>
+                        <th className="px-5 py-3.5">{t('Created & assigned')}</th>
+                        <th className="px-5 py-3.5 text-right">{t('Next action')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {filteredTransfers.map((transfer) => {
-                        const meta = getStatusMeta(transfer.status)
+                        const meta = getStatusMeta(transfer.status, t)
                         const StatusIcon = meta.icon
                         const primary = getPrimaryAction(transfer)
                         const PrimaryIcon = primary?.icon
-                        const source = transfer.sourceWarehouse?.name || 'Unknown source'
+                        const source = transfer.sourceWarehouse?.name || t('Unknown source')
                         const originalDestination =
-                          transfer.destinationWarehouse?.name || 'Unknown destination'
+                          transfer.destinationWarehouse?.name || t('Unknown destination')
                         const currentDestination = transfer.currentDestinationWarehouse?.name
                         return (
                           <tr key={transfer.id} className="transition-colors hover:bg-blue-50/30">
@@ -1157,11 +1167,11 @@ const TransferPage = ({ currentRole }) => {
                                 </span>
                                 <span className="mt-1 block text-xs text-slate-500">
                                   {transfer.items?.length || 0} SKU · {totalRequested(transfer)}{' '}
-                                  requested
+                                  {t('requested')}
                                 </span>
                                 {transfer.attempts?.length > 1 && (
                                   <span className="mt-1 block text-[11px] font-semibold text-indigo-600">
-                                    {transfer.attempts.length} attempts
+                                    {transfer.attempts.length} {transfer.attempts.length === 1 ? t('attempt') : t('attempts')}
                                   </span>
                                 )}
                               </button>
@@ -1170,7 +1180,7 @@ const TransferPage = ({ currentRole }) => {
                               <div className="grid max-w-[470px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3">
                                 <div className="min-w-0">
                                   <span className="block text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase">
-                                    From
+                                    {t('From')}
                                   </span>
                                   <span
                                     className="mt-1 block truncate font-semibold text-slate-950"
@@ -1182,7 +1192,7 @@ const TransferPage = ({ currentRole }) => {
                                 <ArrowRight className="h-4 w-4 shrink-0 text-slate-300" />
                                 <div className="min-w-0">
                                   <span className="block text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase">
-                                    To
+                                    {t('To')}
                                   </span>
                                   <span
                                     className="mt-1 block truncate font-semibold text-slate-950"
@@ -1194,7 +1204,7 @@ const TransferPage = ({ currentRole }) => {
                               </div>
                               {currentDestination && currentDestination !== originalDestination && (
                                 <p className="mt-2 text-[11px] font-medium text-indigo-600">
-                                  Original destination: {originalDestination}
+                                  {t('Original destination:')} {originalDestination}
                                 </p>
                               )}
                               {transfer.items?.length > 0 && (
@@ -1223,28 +1233,28 @@ const TransferPage = ({ currentRole }) => {
                             </td>
                             <td className="px-5 py-4 align-top">
                               <span className="text-xs font-medium text-slate-700">
-                                {formatDate(transfer.createdAt)}
+                                {formatDate(transfer.createdAt, language)}
                               </span>
                               <span className="mt-1 block text-xs text-slate-400">
-                                Created by{' '}
+                                {t('Created by')}{' '}
                                 {transfer.createdBy?.fullName ||
                                   transfer.createdBy?.name ||
-                                  'Tenant'}
+                                  t('Tenant')}
                               </span>
                               <span className="mt-2 block text-xs text-slate-600">
-                                Source staff:{' '}
+                                {t('Source staff:')}{' '}
                                 <strong>
                                   {transfer.sourceStaff?.fullName ||
                                     transfer.sourceStaff?.name ||
-                                    'Not assigned'}
+                                    t('Not assigned')}
                                 </strong>
                               </span>
                               <span className="mt-1 block text-xs text-slate-600">
-                                Destination staff:{' '}
+                                {t('Destination staff:')}{' '}
                                 <strong>
                                   {transfer.destinationStaff?.fullName ||
                                     transfer.destinationStaff?.name ||
-                                    'Not assigned'}
+                                    t('Not assigned')}
                                 </strong>
                               </span>
                             </td>
@@ -1261,19 +1271,19 @@ const TransferPage = ({ currentRole }) => {
                                   </button>
                                 )}
                                 <TableActionMenu
-                                  label={`Actions for ${transfer.transferNo || transfer.id}`}
+                                  label={`${t('Actions for')} ${transfer.transferNo || transfer.id}`}
                                   items={getSecondaryActions(transfer)}
                                 />
                               </div>
                               {primary && totalOutstanding(transfer) > 0 && (
                                 <span className="mt-2 block text-right text-[11px] text-slate-500">
-                                  Outstanding: {totalOutstanding(transfer)}
+                                  {t('Outstanding:')} {totalOutstanding(transfer)}
                                 </span>
                               )}
                               {['ALLOCATED', 'PICKING'].includes(transfer.status) &&
                                 totalRemainingToPick(transfer) > 0 && (
                                   <span className="mt-2 block text-right text-[11px] text-indigo-700">
-                                    Picking: {totalPicked(transfer)}/{totalRequested(transfer)} · Remaining:{' '}
+                                    {t('Picking:')} {totalPicked(transfer)}/{totalRequested(transfer)} · {t('Remaining:')}{' '}
                                     {totalRemainingToPick(transfer)}
                                   </span>
                                 )}
@@ -1295,12 +1305,12 @@ const TransferPage = ({ currentRole }) => {
                     <Filter className="h-5 w-5" />
                   </span>
                   <h3 className="mt-4 text-sm font-semibold">
-                    {contextTransfers.length ? 'No matching transfers' : 'No transfer records yet'}
+                    {contextTransfers.length ? t('No matching transfers') : t('No transfer records yet')}
                   </h3>
                   <p className="mt-1 max-w-md text-sm leading-6 text-slate-500">
                     {contextTransfers.length
-                      ? 'Try another status, warehouse or search term.'
-                      : 'Create a transfer request to start moving stock between active warehouses.'}
+                      ? t('Try another status, warehouse or search term.')
+                      : t('Create a transfer request to start moving stock between active warehouses.')}
                   </p>
                   {contextTransfers.length ||
                   searchQuery ||
@@ -1311,7 +1321,7 @@ const TransferPage = ({ currentRole }) => {
                       onClick={clearFilters}
                       className="mt-4 min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                     >
-                      Clear filters
+                      {t('Clear filters')}
                     </button>
                   ) : (
                     ['TENANT', 'STAFF'].includes(currentRole) && (
@@ -1321,7 +1331,7 @@ const TransferPage = ({ currentRole }) => {
                         className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white"
                       >
                         <Plus className="h-4 w-4" />
-                        Create transfer
+                        {t('Create transfer')}
                       </button>
                     )
                   )}
@@ -1330,9 +1340,10 @@ const TransferPage = ({ currentRole }) => {
               {!loading && !loadError && filteredTransfers.length > 0 && (
                 <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/60 px-5 py-3 text-xs text-slate-500">
                   <span>
-                    Showing {filteredTransfers.length} of {contextTransfers.length} transfers
+                    {t('Showing')} {filteredTransfers.length} {t('of')} {contextTransfers.length}{' '}
+                    {contextTransfers.length === 1 ? t('transfer') : t('transfers')}
                   </span>
-                  <span>Open details for the full event audit trail</span>
+                  <span>{t('Open details for the full event audit trail')}</span>
                 </div>
               )}
             </section>

@@ -28,7 +28,7 @@ const WarehouseInfo = ({ warehouse, layout, extendedData }) => {
     <div className="flex-1 space-y-12">
       <section>
         <div className="mb-4 flex items-center gap-2">
-          <Badge variant="success">Verified Listing</Badge>
+          {warehouse.isVerified && <Badge variant="success">Verified Listing</Badge>}
           <Badge variant="primary" className="bg-primary/10 text-primary border-none">
             {warehouse.type}
           </Badge>

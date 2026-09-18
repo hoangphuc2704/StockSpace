@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import moment from 'moment'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 // Icons
 import {
@@ -56,50 +57,49 @@ import notificationApi, { normalizeNotification } from '@/services/notificationA
 
 const RECEIPT_STATUS_META = {
   APPROVED: {
-    label: 'Đã duyệt',
+    label: 'Approved',
     className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   },
   COMPLETED: {
-    label: 'Hoàn tất',
+    label: 'Completed',
     className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   },
   PENDING: {
-    label: 'Chờ xử lý',
+    label: 'Pending',
     className: 'border-amber-200 bg-amber-50 text-amber-800',
   },
   SUBMITTED: {
-    label: 'Chờ duyệt',
+    label: 'Submitted',
     className: 'border-amber-200 bg-amber-50 text-amber-800',
   },
   IN_PROGRESS: {
-    label: 'Đang xử lý',
+    label: 'In progress',
     className: 'border-blue-200 bg-blue-50 text-blue-700',
   },
   IN_TRANSIT: {
-    label: 'Đang vận chuyển',
+    label: 'In transit',
     className: 'border-blue-200 bg-blue-50 text-blue-700',
   },
   DRAFT: {
-    label: 'Bản nháp',
+    label: 'Draft',
     className: 'border-slate-200 bg-slate-100 text-slate-700',
   },
   REJECTED: {
-    label: 'Từ chối',
+    label: 'Rejected',
     className: 'border-rose-200 bg-rose-50 text-rose-700',
   },
   CANCELLED: {
-    label: 'Đã hủy',
+    label: 'Cancelled',
     className: 'border-rose-200 bg-rose-50 text-rose-700',
   },
 }
 
 const getReceiptStatusMeta = (status) =>
   RECEIPT_STATUS_META[status] || {
-    label: status || 'Chưa xác định',
+    label: status || 'Unknown',
     className: 'border-slate-200 bg-slate-100 text-slate-700',
   }
 
-const viRelativeTime = new Intl.RelativeTimeFormat('vi', { numeric: 'auto' })
 const relativeTimeIntervals = [
   { limit: 60, divisor: 1, unit: 'second' },
   { limit: 3600, divisor: 60, unit: 'minute' },
@@ -109,13 +109,40 @@ const relativeTimeIntervals = [
   { limit: Number.POSITIVE_INFINITY, divisor: 31536000, unit: 'year' },
 ]
 
-const formatRelativeTime = (value) => {
+const formatRelativeTime = (value, language = 'en') => {
   const timestamp = new Date(value).getTime()
   if (!Number.isFinite(timestamp)) return ''
 
   const deltaSeconds = (timestamp - Date.now()) / 1000
   const interval = relativeTimeIntervals.find(({ limit }) => Math.abs(deltaSeconds) < limit)
-  return viRelativeTime.format(Math.round(deltaSeconds / interval.divisor), interval.unit)
+  const rtf = new Intl.RelativeTimeFormat(language === 'vi' ? 'vi' : 'en', { numeric: 'auto' })
+  return rtf.format(Math.round(deltaSeconds / interval.divisor), interval.unit)
+}
+
+const translateNotificationText = (text = '', language = 'en', t) => {
+  if (!text) return ''
+  if (language === 'en') {
+    const viToEn = {
+      'Kết quả kiểm kê đã được nộp': 'Audit result submitted',
+      'Yêu cầu chỉnh sửa kiểm kê': 'Audit revision requested',
+      'Chuyển kho đã hoàn tất': 'Warehouse transfer completed',
+      'Không có thông báo mới': 'No new notifications',
+    }
+    if (viToEn[text]) return viToEn[text]
+    if (text.includes('đã sẵn sàng để đối soát')) {
+      return text.replace('Phiếu kiểm kê cho', 'Audit sheet for').replace('đã sẵn sàng để đối soát.', 'is ready for review.')
+    }
+    if (text.includes('cần được mở để chỉnh sửa:')) {
+      return text.replace('Phiếu kiểm kê cho', 'Audit sheet for').replace('cần được mở để chỉnh sửa:', 'needs to be reopened for revision:')
+    }
+    if (text.includes('yêu cầu chuyển kho từ kho')) {
+      return text
+        .replace('yêu cầu chuyển kho từ kho', 'Transfer request from warehouse')
+        .replace('đến kho', 'to warehouse')
+        .replace('đã được tiếp nhận thành công. Tồn kho tại kho đích đã được cập nhật.', 'has been successfully received. Inventory at the destination warehouse has been updated.')
+    }
+  }
+  return t ? t(text) : text
 }
 
 const TenantDashboard = () => {
@@ -123,6 +150,7 @@ const TenantDashboard = () => {
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
+  const { language, t } = useLanguage()
 
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -227,6 +255,7 @@ const TenantDashboard = () => {
                   .toUpperCase()}`,
               warehouseName: r.warehouseName || '',
               type: r.type,
+              createdAt: r.createdAt,
               item: r.items?.[0]?.skuCode
                 ? r.items.length > 1
                   ? `${r.items[0].skuCode} (+${r.items.length - 1})`
@@ -332,25 +361,25 @@ const TenantDashboard = () => {
   const subDateRange =
     hasSub && sub.startDate && sub.endDate
       ? `${moment(sub.startDate).format('DD/MM/YYYY')} — ${moment(sub.endDate).format('DD/MM/YYYY')}`
-      : 'Chưa kích hoạt'
+      : t('Not activated')
   const subscriptionStatusMeta = {
     ACTIVE: {
-      label: 'Đang hoạt động',
+      label: 'Active',
       className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
       dotClassName: 'bg-emerald-500',
     },
     EXPIRED: {
-      label: 'Đã hết hạn',
+      label: 'Expired',
       className: 'border-rose-200 bg-rose-50 text-rose-700',
       dotClassName: 'bg-rose-500',
     },
     CANCELLED: {
-      label: 'Đã hủy',
+      label: 'Cancelled',
       className: 'border-slate-200 bg-slate-100 text-slate-700',
       dotClassName: 'bg-slate-400',
     },
     INACTIVE: {
-      label: 'Chưa kích hoạt',
+      label: 'Inactive',
       className: 'border-slate-200 bg-slate-100 text-slate-700',
       dotClassName: 'bg-slate-400',
     },
@@ -363,25 +392,25 @@ const TenantDashboard = () => {
   // Operational workload data
   const workloadData = [
     {
-      name: 'Nhập kho',
+      name: t('Inbound'),
       count: metrics.pendingInboundReceiptCount,
       color: '#2563eb',
       path: '/tenant/inbound',
     },
     {
-      name: 'Xuất kho',
+      name: t('Outbound'),
       count: metrics.pendingOutboundReceiptCount,
       color: '#3b82f6',
       path: '/tenant/outbound',
     },
     {
-      name: 'Kiểm kê',
+      name: t('Audits'),
       count: metrics.pendingAuditCount,
       color: '#64748b',
       path: '/tenant/inventory-audits',
     },
     {
-      name: 'Điều chuyển',
+      name: t('Transfers'),
       count: metrics.pendingTransferCount,
       color: '#0f766e',
       path: '/tenant/transfers',
@@ -398,38 +427,38 @@ const TenantDashboard = () => {
 
   const summaryMetrics = [
     {
-      label: 'Tổng lượng hàng tồn',
+      label: 'Total inventory',
       value: metrics.totalStockQuantity.toLocaleString('vi-VN'),
-      unit: 'đơn vị',
-      detail: `${metrics.stockBatchCount.toLocaleString('vi-VN')} lô hàng trong hệ thống`,
+      unit: 'units',
+      detail: `${metrics.stockBatchCount.toLocaleString('vi-VN')} ${t('batches in system')}`,
       icon: Layers,
       path: '/tenant/inventory',
       featured: true,
       dividerClass: 'border-r border-b border-slate-200 xl:border-b-0',
     },
     {
-      label: 'Kho đang thuê',
+      label: 'Leased warehouses',
       value: metrics.activeWarehouseCount.toLocaleString('vi-VN'),
-      unit: 'cơ sở',
-      detail: `${metrics.activeContractCount.toLocaleString('vi-VN')} hợp đồng đang hiệu lực`,
+      unit: 'warehouses',
+      detail: `${metrics.activeContractCount.toLocaleString('vi-VN')} ${t('active contracts')}`,
       icon: Warehouse,
       path: '/tenant/contracts',
       dividerClass: 'border-b border-slate-200 xl:border-r xl:border-b-0',
     },
     {
-      label: 'Danh mục SKU',
+      label: 'SKU catalog',
       value: metrics.productCount.toLocaleString('vi-VN'),
-      unit: 'mã hàng',
-      detail: 'Danh mục sản phẩm đang quản lý',
+      unit: 'items',
+      detail: 'Product catalog under management',
       icon: Boxes,
       path: '/tenant/skus',
       dividerClass: 'border-r border-slate-200 xl:border-r',
     },
     {
-      label: 'Nhân lực vận hành',
+      label: 'Operational staff',
       value: metrics.activeStaffCount.toLocaleString('vi-VN'),
-      unit: 'nhân sự',
-      detail: 'Nhân sự đang hoạt động trên hệ thống',
+      unit: 'staff',
+      detail: 'Staff active in the system',
       icon: Users,
       path: '/tenant/staff',
       dividerClass: '',
@@ -438,29 +467,29 @@ const TenantDashboard = () => {
 
   const queueItems = [
     {
-      label: 'Phiếu nhập kho',
-      description: 'Yêu cầu tiếp nhận hàng đang mở',
+      label: 'Inbound receipts',
+      description: 'Open receiving requests',
       count: metrics.pendingInboundReceiptCount,
       icon: ArrowDownToLine,
       path: '/tenant/inbound',
     },
     {
-      label: 'Phiếu xuất kho',
-      description: 'Yêu cầu soạn và xuất hàng đang mở',
+      label: 'Outbound receipts',
+      description: 'Open picking and dispatch requests',
       count: metrics.pendingOutboundReceiptCount,
       icon: ArrowUpFromLine,
       path: '/tenant/outbound',
     },
     {
-      label: 'Đợt kiểm kê',
-      description: 'Tác vụ kiểm kê chưa kết thúc',
+      label: 'Inventory audits',
+      description: 'Unfinished audit tasks',
       count: metrics.pendingAuditCount,
       icon: ClipboardCheck,
       path: '/tenant/inventory-audits',
     },
     {
-      label: 'Điều chuyển kho',
-      description: 'Lệnh điều chuyển chưa kết thúc',
+      label: 'Warehouse transfers',
+      description: 'Pending transfer orders',
       count: metrics.pendingTransferCount,
       icon: Truck,
       path: '/tenant/transfers',
@@ -469,39 +498,39 @@ const TenantDashboard = () => {
 
   const quickActions = [
     {
-      label: 'Nhập kho',
-      description: 'Tiếp nhận lô hàng',
+      label: 'Inbound',
+      description: 'Receive shipment',
       icon: ArrowDownToLine,
       path: '/tenant/inbound',
       primary: true,
     },
     {
-      label: 'Xuất kho',
-      description: 'Soạn và xuất hàng',
+      label: 'Outbound',
+      description: 'Pick and ship',
       icon: ArrowUpFromLine,
       path: '/tenant/outbound',
     },
     {
-      label: 'Kiểm kê',
-      description: 'Đối soát tồn thực tế',
+      label: 'Audits',
+      description: 'Reconcile actual stock',
       icon: ClipboardCheck,
       path: '/tenant/inventory-audits',
     },
     {
-      label: 'Điều chuyển',
-      description: 'Luân chuyển giữa kho',
+      label: 'Transfers',
+      description: 'Transfer between warehouses',
       icon: Truck,
       path: '/tenant/transfers',
     },
     {
-      label: 'Mặt bằng kho',
-      description: 'Sơ đồ ô kệ 2D/3D',
+      label: 'Warehouse layout',
+      description: '2D/3D bin & rack layout',
       icon: LayoutGrid,
       path: '/tenant/layoutwarehouses',
     },
     {
-      label: 'Danh mục SKU',
-      description: 'Mã hàng và thông tin',
+      label: 'SKU catalog',
+      description: 'SKUs and product details',
       icon: Barcode,
       path: '/tenant/skus',
     },
@@ -535,9 +564,9 @@ const TenantDashboard = () => {
           <main className="mx-auto w-full max-w-[1600px] min-w-0 space-y-5 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
             <span className="sr-only" role="status" aria-live="polite">
               {isRefreshing
-                ? 'Đang đồng bộ dữ liệu bảng điều khiển'
+                ? t('Synchronizing dashboard data')
                 : lastUpdated
-                  ? `Đã cập nhật số liệu lúc ${moment(lastUpdated).format('HH:mm:ss')}`
+                  ? `${t('Dashboard data updated at')} ${moment(lastUpdated).format('HH:mm:ss')}`
                   : ''}
             </span>
 
@@ -547,10 +576,10 @@ const TenantDashboard = () => {
                 <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
                   <span className="inline-flex items-center gap-1.5 tracking-[0.12em] uppercase">
                     <Warehouse className="h-3.5 w-3.5" aria-hidden="true" />
-                    Phạm vi vận hành
+                    {t('Operating scope')}
                   </span>
                   <span className="h-3 w-px bg-slate-300" aria-hidden="true" />
-                  <span className="font-medium text-slate-700">Toàn bộ kho đang thuê</span>
+                  <span className="font-medium text-slate-700">{t('All leased warehouses')}</span>
                   <span className="inline-flex items-center gap-1.5 font-medium text-slate-600">
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
@@ -567,23 +596,23 @@ const TenantDashboard = () => {
                       aria-hidden="true"
                     />
                     {isLoading
-                      ? 'Đang tải phạm vi dữ liệu'
+                      ? t('Loading data scope')
                       : dashboardError
                         ? lastUpdated
-                          ? `${metrics.activeWarehouseCount.toLocaleString('en-US')} warehouses · data may be stale`
-                          : 'Synchronization unavailable'
-                        : `${metrics.activeWarehouseCount.toLocaleString('en-US')} active warehouses`}
+                          ? `${metrics.activeWarehouseCount.toLocaleString('en-US')} ${t('warehouses')} · ${t('data may be stale')}`
+                          : t('Synchronization unavailable')
+                        : `${metrics.activeWarehouseCount.toLocaleString('en-US')} ${t('active warehouses')}`}
                   </span>
                 </div>
                 <h1
                   id="dashboard-title"
                   className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl"
                 >
-                  Tổng quan vận hành
+                  {t('Operational overview')}
                 </h1>
                 <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">
-                  {user?.name ? `${user.name} · ` : ''}Theo dõi tồn kho, chứng từ và công việc cần
-                  xử lý trên toàn bộ cơ sở thuê.
+                  {user?.name ? `${user.name} · ` : ''}
+                  {t('Monitor inventory, receipts, and tasks across all leased facilities.')}
                 </p>
               </div>
 
@@ -591,7 +620,7 @@ const TenantDashboard = () => {
                 {lastUpdated && (
                   <span className="mr-1 hidden items-center gap-1.5 text-xs text-slate-500 sm:inline-flex">
                     <Clock className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
-                    Số liệu lúc {moment(lastUpdated).format('HH:mm:ss')}
+                    {t('Data as of')} {moment(lastUpdated).format('HH:mm:ss')}
                   </span>
                 )}
 
@@ -605,7 +634,7 @@ const TenantDashboard = () => {
                     className={`h-4 w-4 text-slate-500 ${isRefreshing ? 'animate-spin text-blue-600' : ''}`}
                     aria-hidden="true"
                   />
-                  <span>{isRefreshing ? 'Đang làm mới' : 'Làm mới'}</span>
+                  <span>{isRefreshing ? t('Refreshing') : t('Refresh')}</span>
                 </button>
 
                 <button
@@ -614,7 +643,7 @@ const TenantDashboard = () => {
                   className="inline-flex min-h-10 items-center gap-2 rounded-md bg-blue-700 px-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   <ArrowDownToLine className="h-4 w-4" aria-hidden="true" />
-                  <span>Nhập kho</span>
+                  <span>{t('Inbound')}</span>
                 </button>
 
                 <button
@@ -623,7 +652,7 @@ const TenantDashboard = () => {
                   className="inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
                   <ArrowUpFromLine className="h-4 w-4 text-slate-500" aria-hidden="true" />
-                  <span>Xuất kho</span>
+                  <span>{t('Outbound')}</span>
                 </button>
               </div>
             </header>
@@ -640,12 +669,12 @@ const TenantDashboard = () => {
                   />
                   <div>
                     <p className="text-sm font-semibold text-rose-900">
-                      Could not synchronize dashboard data
+                      {t('Could not synchronize dashboard data')}
                     </p>
                     <p className="mt-0.5 text-sm text-rose-700">
                       {lastUpdated
-                        ? 'The displayed data may not be the latest version.'
-                        : 'Reload the dashboard before making operational decisions.'}
+                        ? t('The displayed data may not be the latest version.')
+                        : t('Reload the dashboard before making operational decisions.')}
                     </p>
                   </div>
                 </div>
@@ -654,7 +683,7 @@ const TenantDashboard = () => {
                   onClick={() => fetchDashboardData(true)}
                   className="min-h-9 self-start rounded-md border border-rose-300 bg-white px-3 text-sm font-semibold text-rose-800 transition-colors hover:bg-rose-100 focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 focus-visible:outline-none sm:self-center"
                 >
-                  Thử lại
+                  {t('Retry')}
                 </button>
               </div>
             )}
@@ -672,14 +701,14 @@ const TenantDashboard = () => {
                   />
                   <div>
                     <h2 className="text-sm font-semibold text-amber-950">
-                      Cần xác nhận hợp đồng thuê kho
+                      {t('Warehouse lease contract needs confirmation')}
                     </h2>
                     <p className="mt-0.5 text-sm text-amber-800">
-                      Có{' '}
+                      {t('You have')}{' '}
                       <strong className="font-semibold text-amber-950">
-                        {metrics.pendingContractCount} hợp đồng
+                        {metrics.pendingContractCount} {t('contracts')}
                       </strong>{' '}
-                      đang chờ bên thuê ký duyệt. Hoàn tất xác nhận để tiếp tục vận hành kho.
+                      {t('pending tenant approval. Complete confirmation to continue warehouse operations.')}
                     </p>
                   </div>
                 </div>
@@ -688,7 +717,7 @@ const TenantDashboard = () => {
                   onClick={() => navigate('/tenant/contracts')}
                   className="inline-flex min-h-9 shrink-0 items-center gap-1 self-start rounded-md bg-amber-700 px-3 text-sm font-semibold text-white transition-colors hover:bg-amber-800 focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 focus-visible:outline-none sm:self-center"
                 >
-                  <span>Xem hợp đồng</span>
+                  <span>{t('View contract')}</span>
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
@@ -703,14 +732,14 @@ const TenantDashboard = () => {
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:px-5">
                 <div>
                   <h2 id="summary-heading" className="text-sm font-semibold text-slate-950">
-                    Nguồn lực đang quản lý
+                    {t('Managed resources')}
                   </h2>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    Số liệu tổng hợp trên toàn bộ phạm vi thuê kho
+                    {t('Aggregated metrics across all leased warehouses')}
                   </p>
                 </div>
                 <span className="text-xs font-medium text-slate-500">
-                  Nhấn vào chỉ số để xem chi tiết
+                  {t('Click metric to view details')}
                 </span>
               </div>
 
@@ -732,7 +761,7 @@ const TenantDashboard = () => {
                             metric.featured ? 'text-slate-300' : 'text-slate-500'
                           }`}
                         >
-                          {metric.label}
+                          {t(metric.label)}
                         </span>
                         <Icon
                           className={`h-4 w-4 ${metric.featured ? 'text-blue-300' : 'text-slate-400'}`}
@@ -759,7 +788,7 @@ const TenantDashboard = () => {
                         <span
                           className={`text-xs font-medium ${metric.featured ? 'text-slate-400' : 'text-slate-500'}`}
                         >
-                          {metric.unit}
+                          {t(metric.unit)}
                         </span>
                       </div>
 
@@ -768,10 +797,10 @@ const TenantDashboard = () => {
                           className={`line-clamp-2 text-xs sm:text-sm ${metric.featured ? 'text-slate-300' : 'text-slate-600'}`}
                         >
                           {isLoading
-                            ? 'Đang đồng bộ số liệu'
+                            ? t('Synchronizing metrics')
                             : initialDashboardUnavailable
-                              ? 'Chưa có dữ liệu'
-                              : metric.detail}
+                              ? t('No data available')
+                              : t(metric.detail)}
                         </span>
                         <ChevronRight
                           className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5"
@@ -793,10 +822,10 @@ const TenantDashboard = () => {
               <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
                   <h2 id="workload-heading" className="text-base font-semibold text-slate-950">
-                    Công việc cần xử lý
+                    {t('Workload & tasks')}
                   </h2>
                   <p className="mt-0.5 text-sm text-slate-500">
-                    Khối lượng tác vụ đang mở theo từng luồng nghiệp vụ WMS
+                    {t('Open task volume across WMS workflows')}
                   </p>
                 </div>
                 <span
@@ -807,10 +836,10 @@ const TenantDashboard = () => {
                   }`}
                 >
                   {isLoading
-                    ? 'Đang tải hàng đợi'
+                    ? t('Loading queue')
                     : initialDashboardUnavailable
-                      ? 'Chưa có dữ liệu'
-                      : `${totalPendingWorkload.toLocaleString('vi-VN')} tác vụ đang mở`}
+                      ? t('No data available')
+                      : `${totalPendingWorkload.toLocaleString('vi-VN')} ${t('open tasks')}`}
                 </span>
               </div>
 
@@ -819,11 +848,11 @@ const TenantDashboard = () => {
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-semibold text-slate-800">
-                        Phân bổ theo nghiệp vụ
+                        {t('Distribution by workflow')}
                       </h3>
-                      <p className="text-xs text-slate-500">So sánh số tác vụ chưa hoàn tất</p>
+                      <p className="text-xs text-slate-500">{t('Compare unfinished tasks')}</p>
                     </div>
-                    <span className="text-xs font-medium text-slate-500">Đơn vị: tác vụ</span>
+                    <span className="text-xs font-medium text-slate-500">{t('Unit: tasks')}</span>
                   </div>
 
                   <div className="h-64 w-full">
@@ -846,18 +875,18 @@ const TenantDashboard = () => {
                       <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                         <AlertCircle className="h-6 w-6 text-slate-400" aria-hidden="true" />
                         <p className="mt-2 text-sm font-semibold text-slate-800">
-                          Chưa thể hiển thị tải trọng nghiệp vụ
+                          {t('Unable to display operational workload')}
                         </p>
-                        <p className="mt-1 text-xs text-slate-500">Làm mới dữ liệu để thử lại.</p>
+                        <p className="mt-1 text-xs text-slate-500">{t('Refresh data to retry.')}</p>
                       </div>
                     ) : totalPendingWorkload === 0 ? (
                       <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                         <CheckCircle2 className="h-7 w-7 text-emerald-600" aria-hidden="true" />
                         <p className="mt-2 text-sm font-semibold text-slate-800">
-                          Không có tác vụ đang chờ
+                          {t('No pending tasks')}
                         </p>
                         <p className="mt-1 max-w-md text-xs leading-5 text-slate-500">
-                          Hiện chưa ghi nhận phiếu nhập, xuất, kiểm kê hoặc điều chuyển cần xử lý.
+                          {t('No inbound, outbound, audit, or transfer items currently require action.')}
                         </p>
                       </div>
                     ) : (
@@ -898,7 +927,7 @@ const TenantDashboard = () => {
                                       {dataPoint.name}
                                     </div>
                                     <div className="mt-0.5 text-sm font-bold text-slate-950 tabular-nums">
-                                      {dataPoint.count.toLocaleString('vi-VN')} tác vụ đang mở
+                                      {dataPoint.count.toLocaleString('vi-VN')} {t('open tasks')}
                                     </div>
                                   </div>
                                 )
@@ -933,7 +962,7 @@ const TenantDashboard = () => {
                 <div className="border-t border-slate-200 xl:border-t-0 xl:border-l">
                   <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-2.5">
                     <span className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
-                      Hàng đợi chi tiết
+                      {t('Queue breakdown')}
                     </span>
                   </div>
                   <div className="divide-y divide-slate-200">
@@ -952,10 +981,10 @@ const TenantDashboard = () => {
                             </span>
                             <span className="min-w-0">
                               <span className="block text-sm font-semibold text-slate-900">
-                                {item.label}
+                                {t(item.label)}
                               </span>
                               <span className="mt-0.5 block truncate text-xs text-slate-500">
-                                {item.description}
+                                {t(item.description)}
                               </span>
                             </span>
                           </span>
@@ -968,17 +997,17 @@ const TenantDashboard = () => {
                             <span
                               className={`mt-0.5 block text-xs font-medium ${
                                 !isLoading && !initialDashboardUnavailable && item.count > 0
-                                  ? 'text-amber-700'
-                                  : 'text-slate-500'
+                                    ? 'text-amber-700'
+                                    : 'text-slate-500'
                               }`}
                             >
                               {isLoading
-                                ? 'Đang tải'
+                                ? t('Loading')
                                 : initialDashboardUnavailable
-                                  ? 'Chưa có dữ liệu'
+                                  ? t('No data available')
                                   : item.count > 0
-                                    ? 'Cần xử lý'
-                                    : 'Không có tác vụ chờ'}
+                                    ? t('Needs action')
+                                    : t('No pending tasks')}
                             </span>
                           </span>
                         </button>
@@ -997,22 +1026,22 @@ const TenantDashboard = () => {
               <div className="flex flex-col gap-3 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                 <div>
                   <h2 id="quick-actions-heading" className="text-sm font-semibold text-slate-950">
-                    Công cụ vận hành
+                    {t('Operational tools')}
                   </h2>
-                  <p className="mt-0.5 text-xs text-slate-500">Mở nhanh nghiệp vụ thường dùng</p>
+                  <p className="mt-0.5 text-xs text-slate-500">{t('Quick shortcuts to common workflows')}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => navigate('/tenant/inventory')}
                   className="inline-flex min-h-9 items-center gap-1.5 self-start rounded-md px-2.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none sm:self-center"
                 >
-                  Báo cáo tồn kho
+                  {t('Inventory report')}
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </button>
               </div>
 
               <nav
-                aria-label="Công cụ vận hành nhanh"
+                aria-label={t('Quick operational tools')}
                 className="grid gap-px sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
               >
                 {quickActions.map((action) => {
@@ -1030,10 +1059,10 @@ const TenantDashboard = () => {
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-semibold text-slate-900">
-                          {action.label}
+                          {t(action.label)}
                         </span>
                         <span className="mt-0.5 block text-xs leading-4 text-slate-500">
-                          {action.description}
+                          {t(action.description)}
                         </span>
                       </span>
                       <ChevronRight
@@ -1060,10 +1089,10 @@ const TenantDashboard = () => {
                       id="recent-operations-heading"
                       className="text-base font-semibold text-slate-950"
                     >
-                      Chứng từ gần đây
+                      {t('Recent operations')}
                     </h2>
                     <p className="mt-0.5 text-sm text-slate-500">
-                      Nhật ký phiếu nhập và xuất mới nhất trên các kho đang thuê
+                      {t('Latest inbound and outbound receipts across leased warehouses')}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1080,7 +1109,7 @@ const TenantDashboard = () => {
                       onClick={() => navigate('/tenant/inbound')}
                       className="inline-flex min-h-9 items-center gap-1 rounded-md px-2.5 text-sm font-semibold text-blue-700 transition-colors hover:bg-blue-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                     >
-                      Mở phiếu nhập
+                      {t('Open inbound')}
                       <ChevronRight className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
@@ -1090,30 +1119,30 @@ const TenantDashboard = () => {
                   {isLoading || recentActivity.length > 0 ? (
                     <table
                       className="w-full min-w-[780px] text-left text-sm"
-                      aria-label="Chứng từ nhập và xuất gần đây"
+                      aria-label={t('Recent inbound and outbound receipts')}
                     >
                       <caption className="sr-only">
-                        Danh sách chứng từ nhập và xuất kho gần nhất
+                        {t('Latest warehouse inbound and outbound receipts')}
                       </caption>
                       <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
                         <tr>
                           <th scope="col" className="px-4 py-3 sm:px-5">
-                            Chứng từ
+                            {t('Receipt')}
                           </th>
                           <th scope="col" className="px-4 py-3">
-                            Nghiệp vụ
+                            {t('Type')}
                           </th>
                           <th scope="col" className="px-4 py-3">
-                            Mặt hàng
+                            {t('Items')}
                           </th>
                           <th scope="col" className="px-4 py-3 text-right">
-                            Số lượng
+                            {t('Quantity')}
                           </th>
                           <th scope="col" className="px-4 py-3">
-                            Thời điểm
+                            {t('Time')}
                           </th>
                           <th scope="col" className="px-4 py-3 text-center">
-                            Trạng thái
+                            {t('Status')}
                           </th>
                         </tr>
                       </thead>
@@ -1133,10 +1162,10 @@ const TenantDashboard = () => {
                               const isInbound = row.type === 'INBOUND'
                               const isOutbound = row.type === 'OUTBOUND'
                               const typeLabel = isInbound
-                                ? 'Nhập kho'
+                                ? t('Inbound')
                                 : isOutbound
-                                  ? 'Xuất kho'
-                                  : row.type || 'Khác'
+                                  ? t('Outbound')
+                                  : row.type ? t(row.type) : t('Other')
                               const statusMeta = getReceiptStatusMeta(row.status)
 
                               return (
@@ -1173,8 +1202,10 @@ const TenantDashboard = () => {
                                   </td>
                                   <td className="px-4 py-3.5 text-xs whitespace-nowrap text-slate-600">
                                     <div className="tabular-nums">{row.time}</div>
-                                    {row.fromNow && (
-                                      <div className="mt-1 text-slate-500">{row.fromNow}</div>
+                                    {row.createdAt && (
+                                      <div className="mt-1 text-slate-500">
+                                        {formatRelativeTime(row.createdAt, language)}
+                                      </div>
                                     )}
                                   </td>
                                   <td className="px-4 py-3.5 text-center">
@@ -1182,7 +1213,7 @@ const TenantDashboard = () => {
                                       title={row.status || undefined}
                                       className={`inline-flex items-center rounded border px-2 py-1 text-[11px] font-semibold ${statusMeta.className}`}
                                     >
-                                      {statusMeta.label}
+                                      {t(statusMeta.label)}
                                     </span>
                                   </td>
                                 </tr>
@@ -1194,27 +1225,27 @@ const TenantDashboard = () => {
                     <div className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
                       <AlertCircle className="h-7 w-7 text-slate-400" aria-hidden="true" />
                       <p className="mt-2 text-sm font-semibold text-slate-800">
-                        Could not load the receipt activity log
+                        {t('Could not load the receipt activity log')}
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Check your connection and synchronize the data again.
+                        {t('Check your connection and synchronize the data again.')}
                       </p>
                       <button
                         type="button"
                         onClick={() => fetchDashboardData(true)}
                         className="mt-3 min-h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                       >
-                        Retry
+                        {t('Retry')}
                       </button>
                     </div>
                   ) : (
                     <div className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
                       <Package className="h-7 w-7 text-slate-400" aria-hidden="true" />
                       <p className="mt-2 text-sm font-semibold text-slate-800">
-                        No receipts recorded
+                        {t('No receipts recorded')}
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Start an inbound operation to create the first receipt.
+                        {t('Start an inbound operation to create the first receipt.')}
                       </p>
                       <button
                         type="button"
@@ -1222,7 +1253,7 @@ const TenantDashboard = () => {
                         className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                       >
                         <ArrowDownToLine className="h-4 w-4 text-blue-700" aria-hidden="true" />
-                        <span>Open inbound</span>
+                        <span>{t('Open inbound')}</span>
                       </button>
                     </div>
                   )}
@@ -1241,9 +1272,9 @@ const TenantDashboard = () => {
                       id="notifications-heading"
                       className="text-base font-semibold text-slate-950"
                     >
-                      Thông báo vận hành
+                      {t('Operations notices')}
                     </h2>
-                    <p className="mt-0.5 text-sm text-slate-500">Cập nhật hệ thống và phê duyệt</p>
+                    <p className="mt-0.5 text-sm text-slate-500">{t('System updates and approvals')}</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {notificationError && (
@@ -1255,7 +1286,7 @@ const TenantDashboard = () => {
                       <Bell className="h-4 w-4 text-slate-400" aria-hidden="true" />
                       {isLoading || initialDashboardUnavailable
                         ? '—'
-                        : `${metrics.unreadNotificationCount.toLocaleString('vi-VN')} chưa đọc`}
+                        : `${metrics.unreadNotificationCount.toLocaleString('vi-VN')} ${t('unread')}`}
                     </span>
                   </div>
                 </div>
@@ -1296,19 +1327,19 @@ const TenantDashboard = () => {
                               <p
                                 className={`text-sm text-slate-900 ${isUnread ? 'font-semibold' : 'font-medium'}`}
                               >
-                                {notification.title || notification.message}
+                                {translateNotificationText(notification.title || notification.message, language, t)}
                               </p>
                               {notification.title &&
                                 notification.message &&
                                 notification.message !== notification.title && (
                                   <p className="mt-1 line-clamp-2 text-sm leading-5 text-slate-600">
-                                    {notification.message}
+                                    {translateNotificationText(notification.message, language, t)}
                                   </p>
                                 )}
                               <p className="mt-1.5 text-xs text-slate-500 tabular-nums">
                                 {notification.createdAt
-                                  ? `${moment(notification.createdAt).format('DD/MM · HH:mm')} · ${formatRelativeTime(notification.createdAt)}`
-                                  : 'No time information'}
+                                  ? `${moment(notification.createdAt).format('DD/MM · HH:mm')} · ${formatRelativeTime(notification.createdAt, language)}`
+                                  : t('No time information')}
                               </p>
                             </div>
                           </li>
@@ -1319,20 +1350,20 @@ const TenantDashboard = () => {
                     <div className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
                       <AlertCircle className="h-7 w-7 text-slate-400" aria-hidden="true" />
                       <p className="mt-2 text-sm font-semibold text-slate-800">
-                        Could not load notifications
+                        {t('Could not load notifications')}
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Synchronize again to view the latest updates.
+                        {t('Synchronize again to view the latest updates.')}
                       </p>
                     </div>
                   ) : (
                     <div className="flex min-h-56 flex-col items-center justify-center px-6 py-10 text-center">
                       <CheckCircle2 className="h-7 w-7 text-slate-400" aria-hidden="true" />
                       <p className="mt-2 text-sm font-semibold text-slate-800">
-                        Không có thông báo mới
+                        {t('No new notifications')}
                       </p>
                       <p className="mt-1 text-sm text-slate-500">
-                        Các cập nhật gần đây đã được theo dõi.
+                        {t('All recent updates have been acknowledged.')}
                       </p>
                     </div>
                   )}
@@ -1344,7 +1375,7 @@ const TenantDashboard = () => {
                     onClick={() => navigate('/profile')}
                     className="inline-flex min-h-9 w-full items-center justify-center gap-1 rounded-md text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                   >
-                    Mở hồ sơ tài khoản
+                    {t('Open profile')}
                     <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
@@ -1369,7 +1400,7 @@ const TenantDashboard = () => {
                         id="service-context-heading"
                         className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase"
                       >
-                        Dịch vụ tài khoản
+                        {t('Account subscription')}
                       </h2>
                       {!isLoading && !initialDashboardUnavailable && (
                         <span
@@ -1379,31 +1410,31 @@ const TenantDashboard = () => {
                             className={`h-1.5 w-1.5 rounded-full ${subscriptionStatusMeta.dotClassName}`}
                             aria-hidden="true"
                           />
-                          {subscriptionStatusMeta.label}
+                          {t(subscriptionStatusMeta.label)}
                         </span>
                       )}
                     </div>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                       {isLoading
-                        ? 'Đang tải thông tin gói dịch vụ'
+                        ? t('Loading subscription details')
                         : initialDashboardUnavailable
-                          ? 'Chưa thể tải thông tin dịch vụ'
+                          ? t('Could not load subscription details')
                           : hasSub
-                            ? sub.packageName || 'Gói dịch vụ đang hoạt động'
-                            : 'Chưa đăng ký gói dịch vụ'}
+                            ? sub.packageName || t('Active subscription plan')
+                            : t('No active subscription')}
                     </p>
                     {!isLoading && !initialDashboardUnavailable && (
                       <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                         <span className="inline-flex items-center gap-1.5">
                           <Calendar className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
-                          Thời hạn: {subDateRange}
+                          {t('Term:')} {subDateRange}
                         </span>
                         {hasSub && subStatus === 'ACTIVE' && (
                           <span
                             className={`inline-flex items-center gap-1.5 font-medium ${subDaysRemaining <= 30 ? 'text-amber-700' : 'text-slate-700'}`}
                           >
                             <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                            Còn {subDaysRemaining.toLocaleString('vi-VN')} ngày
+                            {t('Remaining')} {subDaysRemaining.toLocaleString('vi-VN')} {t('days')}
                           </span>
                         )}
                       </div>
@@ -1417,7 +1448,7 @@ const TenantDashboard = () => {
                     onClick={() => navigate('/tenant/subscription')}
                     className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                   >
-                    Quản lý gói dịch vụ
+                    {t('Manage subscription')}
                     <ExternalLink className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
                   </button>
                   <button
@@ -1426,7 +1457,7 @@ const TenantDashboard = () => {
                     className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
                   >
                     <FileText className="h-4 w-4 text-slate-400" aria-hidden="true" />
-                    Hợp đồng kho
+                    {t('Warehouse contracts')}
                   </button>
                 </div>
               </div>

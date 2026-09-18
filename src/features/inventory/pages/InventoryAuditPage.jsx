@@ -62,14 +62,18 @@ const STATUS_CONFIG = {
   },
 }
 
-const SCOPE_LABELS = { WAREHOUSE: 'Toàn kho', RACK: 'Theo rack', BIN: 'Theo bin' }
+const SCOPE_LABELS = {
+  WAREHOUSE: { vi: 'Toàn kho', en: 'Whole warehouse' },
+  RACK: { vi: 'Theo rack', en: 'By rack' },
+  BIN: { vi: 'Theo bin', en: 'By bin' },
+}
 
 const InventoryAuditPage = ({ currentRole }) => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
-  const { language } = useLanguage()
+  const { language, t } = useLanguage()
 
   const [audits, setAudits] = useState([])
   const [loading, setLoading] = useState(false)
@@ -319,7 +323,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         {isMobileOpen && (
           <button
             type="button"
-            aria-label="Đóng điều hướng"
+            aria-label={t('Close navigation')}
             className="fixed inset-0 z-40 bg-slate-900/40"
             onClick={() => dispatch(closeMobileSidebar())}
           />
@@ -335,18 +339,18 @@ const InventoryAuditPage = ({ currentRole }) => {
               <div>
                 <div className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
                   <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
-                  Kiểm soát tồn kho
+                  {t('INVENTORY CONTROL')}
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
-                  Kiểm kê kho
+                  {t('Inventory Audit')}
                 </h1>
                 <p className="mt-1 text-sm text-slate-600">
-                  Lập kế hoạch, kiểm đếm và đối soát chênh lệch tồn kho.
+                  {t('Plan, count, and reconcile inventory discrepancies.')}
                 </p>
               </div>
               <div className="flex flex-wrap items-end gap-2">
                 <label className="flex min-w-52 flex-col gap-1 text-xs font-semibold text-slate-600">
-                  Kho
+                  {t('Warehouse')}
                   <select
                     className="min-h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     value={selectedWarehouseId}
@@ -355,7 +359,7 @@ const InventoryAuditPage = ({ currentRole }) => {
                       setSelectedWarehouseId(event.target.value)
                     }}
                   >
-                    <option value="">Tất cả kho</option>
+                    <option value="">{t('All Warehouses')}</option>
                     {warehouses.map((warehouse) => (
                       <option key={warehouse.id} value={warehouse.id}>
                         {warehouse.name}
@@ -368,7 +372,7 @@ const InventoryAuditPage = ({ currentRole }) => {
                   className="flex min-h-10 items-center gap-2 rounded-md"
                 >
                   <Plus className="h-4 w-4" aria-hidden="true" />
-                  Tạo kế hoạch
+                  {t('Create Plan')}
                 </Button>
               </div>
             </header>
@@ -381,14 +385,14 @@ const InventoryAuditPage = ({ currentRole }) => {
               <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-3">
                 <div>
                   <h2 id="audit-list-heading" className="text-sm font-semibold text-slate-950">
-                    Phiếu kiểm kê
+                    {t('Audit Receipts')}
                   </h2>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    Hiển thị theo thời gian tạo mới nhất
+                    {t('Showing newest created audits')}
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-xs text-slate-500">
-                  Số dòng
+                  {t('Rows per page')}
                   <select
                     value={pageSize}
                     onChange={(event) => {
@@ -407,32 +411,32 @@ const InventoryAuditPage = ({ currentRole }) => {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[920px] text-left text-sm">
-                  <caption className="sr-only">Danh sách phiếu kiểm kê kho</caption>
+                  <caption className="sr-only">{t('Inventory audit receipt list')}</caption>
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
                     <tr>
                       <th scope="col" className="px-5 py-3">
-                        Phiếu
+                        {t('Receipt')}
                       </th>
                       <th scope="col" className="px-5 py-3">
-                        Kho
+                        {t('Warehouse')}
                       </th>
                       <th scope="col" className="px-5 py-3">
-                        Phạm vi
+                        {t('Scope')}
                       </th>
                       <th scope="col" className="px-5 py-3">
-                        Người thực hiện
+                        {t('Auditor')}
                       </th>
                       <th scope="col" className="px-5 py-3">
-                        Vòng đếm
+                        {t('Count Round')}
                       </th>
                       <th scope="col" className="px-5 py-3">
-                        Trạng thái
+                        {t('Status')}
                       </th>
                       <th scope="col" className="px-5 py-3">
-                        Ngày tạo
+                        {t('Created Date')}
                       </th>
                       <th scope="col" className="px-5 py-3 text-right">
-                        Thao tác
+                        {t('Actions')}
                       </th>
                     </tr>
                   </thead>
@@ -462,10 +466,10 @@ const InventoryAuditPage = ({ currentRole }) => {
                               {audit.warehouseName || '-'}
                             </td>
                             <td className="px-5 py-3.5 text-slate-700">
-                              {SCOPE_LABELS[audit.scopeType] || audit.scopeType || '-'}
+                              {SCOPE_LABELS[audit.scopeType]?.[language] || SCOPE_LABELS[audit.scopeType]?.en || audit.scopeType || '-'}
                             </td>
                             <td className="px-5 py-3.5 text-slate-700">
-                              {audit.assignedToName || audit.requestedByName || 'Chưa phân công'}
+                              {audit.assignedToName || audit.requestedByName || t('Unassigned')}
                             </td>
                             <td className="px-5 py-3.5 text-slate-700 tabular-nums">
                               {audit.countRound || 1}
@@ -479,15 +483,15 @@ const InventoryAuditPage = ({ currentRole }) => {
                             </td>
                             <td className="px-5 py-3.5 text-slate-600 tabular-nums">
                               {audit.createdAt
-                                ? moment(audit.createdAt).format('DD/MM/YYYY HH:mm')
+                                ? moment(audit.createdAt).locale(language === 'vi' ? 'vi' : 'en').format('DD/MM/YYYY HH:mm')
                                 : '-'}
                             </td>
                             <td className="px-5 py-3.5 text-right">
                               <TableActionMenu
-                                label={`Thao tác phiếu ${audit.id}`}
+                                label={`${t('Actions for receipt')} ${audit.id}`}
                                 items={[
                                   {
-                                    label: 'Xem chi tiết',
+                                    label: t('View Details'),
                                     icon: Eye,
                                     onClick: () => handleViewDetail(audit.id),
                                   },
@@ -504,9 +508,9 @@ const InventoryAuditPage = ({ currentRole }) => {
                             className="mx-auto h-7 w-7 text-slate-400"
                             aria-hidden="true"
                           />
-                          <p className="mt-3 font-semibold text-slate-800">Chưa có phiếu kiểm kê</p>
+                          <p className="mt-3 font-semibold text-slate-800">{t('No audit receipts yet')}</p>
                           <p className="mt-1 text-sm text-slate-500">
-                            Tạo kế hoạch kiểm kê để bắt đầu đối soát tồn kho.
+                            {t('Create an audit plan to start inventory reconciliation.')}
                           </p>
                         </td>
                       </tr>
@@ -516,14 +520,14 @@ const InventoryAuditPage = ({ currentRole }) => {
               </div>
               <footer className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm">
                 <span className="text-slate-500">
-                  Trang {page + 1} / {totalPages}
+                  {t('Page')} {page + 1} / {totalPages}
                 </span>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     disabled={page === 0 || loading}
                     onClick={() => setPage((current) => Math.max(0, current - 1))}
-                    aria-label="Trang trước"
+                    aria-label={t('Previous page')}
                     className="inline-flex h-8 w-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -532,7 +536,7 @@ const InventoryAuditPage = ({ currentRole }) => {
                     type="button"
                     disabled={page + 1 >= totalPages || loading}
                     onClick={() => setPage((current) => current + 1)}
-                    aria-label="Trang sau"
+                    aria-label={t('Next page')}
                     className="inline-flex h-8 w-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -547,20 +551,20 @@ const InventoryAuditPage = ({ currentRole }) => {
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Tạo kế hoạch kiểm kê"
+        title={t('Create Audit Plan')}
         size="lg"
       >
         <FormShell onSubmit={handleCreateAudit} className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block text-sm font-medium text-slate-700">
-              Kho <span className="text-red-600">*</span>
+              {t('Warehouse')} <span className="text-red-600">*</span>
               <select
                 value={formWarehouseId}
                 onChange={(event) => handleWarehouseChange(event.target.value)}
                 required
                 className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
               >
-                <option value="">Chọn kho</option>
+                <option value="">{t('-- Select warehouse --')}</option>
                 {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
                     {warehouse.name}
@@ -569,15 +573,15 @@ const InventoryAuditPage = ({ currentRole }) => {
               </select>
             </label>
             <label className="block text-sm font-medium text-slate-700">
-              Phạm vi <span className="text-red-600">*</span>
+              {t('Scope')} <span className="text-red-600">*</span>
               <select
                 value={formScopeType}
                 onChange={(event) => handleScopeChange(event.target.value)}
                 className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
               >
-                <option value="WAREHOUSE">Toàn kho</option>
-                <option value="RACK">Một rack</option>
-                <option value="BIN">Một bin</option>
+                <option value="WAREHOUSE">{t('Whole warehouse')}</option>
+                <option value="RACK">{t('Single rack')}</option>
+                <option value="BIN">{t('Single bin')}</option>
               </select>
             </label>
           </div>
@@ -585,7 +589,7 @@ const InventoryAuditPage = ({ currentRole }) => {
           {formScopeType !== 'WAREHOUSE' && (
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm font-medium text-slate-700">
-                Rack <span className="text-red-600">*</span>
+                {t('Rack')} <span className="text-red-600">*</span>
                 <select
                   value={formRackId}
                   disabled={!formWarehouseId || scopeLoading}
@@ -596,7 +600,7 @@ const InventoryAuditPage = ({ currentRole }) => {
                   required
                   className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
                 >
-                  <option value="">{scopeLoading ? 'Đang tải layout...' : 'Chọn rack'}</option>
+                  <option value="">{scopeLoading ? t('Loading layout...') : t('-- Select rack --')}</option>
                   {racks.map((rack) => (
                     <option key={rack.id} value={rack.id}>
                       {rack.name || rack.code || rack.id}
@@ -606,7 +610,7 @@ const InventoryAuditPage = ({ currentRole }) => {
               </label>
               {formScopeType === 'BIN' && (
                 <label className="block text-sm font-medium text-slate-700">
-                  Bin <span className="text-red-600">*</span>
+                  {t('Bin')} <span className="text-red-600">*</span>
                   <select
                     value={formBinId}
                     disabled={!formRackId}
@@ -614,7 +618,7 @@ const InventoryAuditPage = ({ currentRole }) => {
                     required
                     className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
                   >
-                    <option value="">Chọn bin</option>
+                    <option value="">{t('-- Select bin --')}</option>
                     {bins.map((bin) => (
                       <option key={bin.id} value={bin.id}>
                         {bin.name || bin.code || bin.id}
@@ -628,7 +632,7 @@ const InventoryAuditPage = ({ currentRole }) => {
 
           {currentRole === 'TENANT' && (
             <label className="block text-sm font-medium text-slate-700">
-              Phân công người kiểm đếm
+              {t('Assign Auditor')}
               <select
                 value={formAssignedToId}
                 onChange={(event) => setFormAssignedToId(event.target.value)}
@@ -638,10 +642,10 @@ const InventoryAuditPage = ({ currentRole }) => {
               >
                 <option value="">
                   {staffLoading
-                    ? 'Đang tải nhân viên...'
+                    ? t('Loading staff...')
                     : !formWarehouseId
-                      ? 'Chọn kho trước'
-                      : 'Chưa phân công'}
+                      ? t('Select warehouse first')
+                      : t('Unassigned')}
                 </option>
                 {staffOptions.map((staff) => (
                   <option key={staff.userId} value={staff.userId}>
@@ -652,19 +656,19 @@ const InventoryAuditPage = ({ currentRole }) => {
               </select>
               <span id="audit-assignee-help" className="mt-1.5 block text-xs font-normal text-slate-500">
                 {staffLoading
-                  ? 'Đang tải nhân viên active đã được phân công tại kho.'
+                  ? t('Loading active staff assigned to this warehouse.')
                   : formWarehouseId && staffOptions.length === 0
-                    ? 'Kho này chưa có nhân viên active được phân công.'
-                    : 'Chỉ hiển thị nhân viên active đã được phân công tại kho đã chọn.'}
+                    ? t('No active staff assigned to this warehouse.')
+                    : t('Only displaying active staff assigned to the selected warehouse.')}
               </span>
             </label>
           )}
 
           <label className="block text-sm font-medium text-slate-700">
-            Ghi chú
+            {t('Note')}
             <textarea
               rows={3}
-              placeholder="Mục đích hoặc hướng dẫn kiểm kê..."
+              placeholder={t('Audit purpose or instructions...')}
               value={formNote}
               onChange={(event) => setFormNote(event.target.value)}
               className="mt-1.5 w-full rounded-md border border-slate-300 p-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
@@ -672,10 +676,10 @@ const InventoryAuditPage = ({ currentRole }) => {
           </label>
           <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-              Hủy
+              {t('Cancel')}
             </Button>
             <Button type="submit" isLoading={creating}>
-              Tạo kế hoạch
+              {t('Create Plan')}
             </Button>
           </div>
         </FormShell>

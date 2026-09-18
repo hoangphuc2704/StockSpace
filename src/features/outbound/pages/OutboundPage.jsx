@@ -32,13 +32,14 @@ import ReceiptDetailModal from '@/features/inventory/components/ReceiptDetailMod
 import { showApiErrorToast } from '@/config/apiError'
 import { positiveInteger, required } from '@/config/validation'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const RECEIPT_PAGE_SIZE_OPTIONS = [10, 20, 50]
 
-const formatOutboundDate = (dateString) => {
+const formatOutboundDate = (dateString, language = 'en') => {
   if (!dateString) return '—'
 
-  return new Intl.DateTimeFormat('vi-VN', {
+  return new Intl.DateTimeFormat(language === 'vi' ? 'vi-VN' : 'en-US', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -81,6 +82,7 @@ const OutboundPage = () => {
   const [searchParams] = useSearchParams()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
+  const { language, t } = useLanguage()
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -762,10 +764,10 @@ const OutboundPage = () => {
                     <div className="bg-primary/10 text-primary rounded-lg p-2">
                       <ArrowUpRight className="h-6 w-6" />
                     </div>
-                    Outbound Operations
+                    {t('Outbound Operations')}
                   </h1>
                   <p className="text-sm text-slate-500">
-                    Coordinate outgoing shipments and order fulfillment.
+                    {t('Coordinate outgoing shipments and order fulfillment.')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -785,7 +787,7 @@ const OutboundPage = () => {
                       }
                     }}
                   >
-                    <option value="">-- Select Warehouse --</option>
+                    <option value="">{t('-- Select Warehouse --')}</option>
                     {warehouses.map((wh) => (
                       <option key={wh.id} value={wh.id}>
                         {wh.name}
@@ -797,7 +799,7 @@ const OutboundPage = () => {
                     onClick={() => setIsModalOpen(true)}
                     disabled={!selectedWarehouseId}
                   >
-                    <Minus className="mr-2 h-4 w-4" /> New
+                    <Minus className="mr-2 h-4 w-4" /> {t('New')}
                   </Button>
                 </div>
               </div>
@@ -807,11 +809,11 @@ const OutboundPage = () => {
                   <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                     <div className="flex items-center gap-6 border-b border-slate-200 bg-slate-50 px-4 pt-2">
                       {[
-                        { id: 'ALL', label: 'Tất cả' },
-                        { id: 'PENDING', label: 'Chờ duyệt' },
-                        { id: 'APPROVED', label: 'Đã xác nhận' },
-                        { id: 'IN_PROGRESS', label: 'Đang xử lý' },
-                        { id: 'COMPLETED', label: 'Đã hoàn tất' }
+                        { id: 'ALL', label: t('All') },
+                        { id: 'PENDING', label: t('Pending Approval') },
+                        { id: 'APPROVED', label: t('Confirmed') },
+                        { id: 'IN_PROGRESS', label: t('In progress') },
+                        { id: 'COMPLETED', label: t('Completed') }
                       ].map(tab => (
                         <button
                           key={tab.id}
@@ -835,7 +837,7 @@ const OutboundPage = () => {
                       <div className="flex items-center gap-3">
                         <div className="relative w-72">
                           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <InputField placeholder="Tìm kiếm phiếu xuất..." className="h-9 pl-9" />
+                          <InputField placeholder={t('Search outbound receipts...')} className="h-9 pl-9" />
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -851,7 +853,7 @@ const OutboundPage = () => {
                           ) : (
                             <Download className="h-4 w-4" />
                           )}
-                          Xuất Excel
+                          {t('Export Excel')}
                         </Button>
                       </div>
                     </div>
@@ -865,23 +867,23 @@ const OutboundPage = () => {
                         <table className="w-full text-left text-sm whitespace-nowrap">
                           <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                             <tr>
-                              <th className="border-x border-slate-200 px-4 py-3">Mã Phiếu</th>
-                              <th className="border-r border-slate-200 px-4 py-3">Trạng thái</th>
-                              <th className="border-r border-slate-200 px-4 py-3">Phương thức</th>
-                              <th className="border-r border-slate-200 px-4 py-3">Ngày xuất hàng</th>
-                              <th className="border-r border-slate-200 px-4 py-3">Nơi nhận</th>
-                              <th className="border-r border-slate-200 px-4 py-3">Người phụ trách</th>
-                              <th className="border-r border-slate-200 px-4 py-3">Mặt hàng</th>
-                              <th className="border-r border-slate-200 px-4 py-3 text-right">Tổng SL</th>
-                              <th className="border-r border-slate-200 px-4 py-3 text-center">Hành động</th>
-                              <th className="px-4 py-3 text-center">Xuất</th>
+                              <th className="border-x border-slate-200 px-4 py-3">{t('Receipt Code')}</th>
+                              <th className="border-r border-slate-200 px-4 py-3">{t('Status')}</th>
+                              <th className="border-r border-slate-200 px-4 py-3">{t('Method')}</th>
+                              <th className="border-r border-slate-200 px-4 py-3">{t('Outbound Date')}</th>
+                              <th className="border-r border-slate-200 px-4 py-3">{t('Receiver')}</th>
+                              <th className="border-r border-slate-200 px-4 py-3">{t('Person in charge')}</th>
+                              <th className="border-r border-slate-200 px-4 py-3">{t('Items')}</th>
+                              <th className="border-r border-slate-200 px-4 py-3 text-right">{t('Total Qty')}</th>
+                              <th className="border-r border-slate-200 px-4 py-3 text-center">{t('Actions')}</th>
+                              <th className="px-4 py-3 text-center">{t('Export')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {filteredReceipts.length === 0 && (
                               <tr>
                                 <td colSpan="10" className="px-4 py-8 text-center text-slate-500">
-                                  Không tìm thấy phiếu xuất kho.
+                                  {t('No outbound receipts found.')}
                                 </td>
                               </tr>
                             )}
@@ -906,19 +908,24 @@ const OutboundPage = () => {
                                               r.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
                                                 'bg-slate-100 text-slate-600'
                                     }`}>
-                                      {r.status}
+                                      {r.status === 'PENDING' ? t('Pending Approval') :
+                                       r.status === 'APPROVED' ? t('Approved') :
+                                       r.status === 'IN_PROGRESS' ? t('In progress') :
+                                       r.status === 'COMPLETED' ? t('Completed') :
+                                       r.status === 'REJECTED' ? t('Rejected') :
+                                       r.status}
                                     </span>
                                   </td>
                                   <td className="border-r border-slate-100 px-4 py-3">
-                                    <span className="text-slate-500">OUTBOUND</span>
+                                    <span className="text-slate-500">{t('OUTBOUND')}</span>
                                   </td>
                                   <td className="border-r border-slate-100 px-4 py-3 text-slate-600">
-                                    {formatOutboundDate(r.createdAt)}
+                                    {formatOutboundDate(r.createdAt, language)}
                                   </td>
                                   <td className="max-w-52 border-r border-slate-100 px-4 py-3">
                                     <span
                                       className="block max-w-52 truncate font-medium text-slate-700"
-                                      title={r.receiverName || 'Chưa cập nhật nơi nhận'}
+                                      title={r.receiverName || t('Receiver not specified')}
                                     >
                                       {r.receiverName || '—'}
                                     </span>
@@ -926,7 +933,7 @@ const OutboundPage = () => {
                                   <td className="max-w-52 border-r border-slate-100 px-4 py-3">
                                     <span
                                       className="block max-w-52 truncate font-medium text-slate-700"
-                                      title={r.createdByFullName || 'Chưa cập nhật người phụ trách'}
+                                      title={r.createdByFullName || t('Creator not specified')}
                                     >
                                       {r.createdByFullName || '—'}
                                     </span>
@@ -936,7 +943,7 @@ const OutboundPage = () => {
                                       {itemSummary}
                                     </span>
                                     <span className="mt-0.5 block text-xs text-slate-400">
-                                      {totalItems} mặt hàng
+                                      {totalItems} {t('items')}
                                     </span>
                                   </td>
                                   <td className="border-r border-slate-100 px-4 py-3 text-right font-semibold text-slate-700">
@@ -949,7 +956,7 @@ const OutboundPage = () => {
                                           onClick={() => handleViewDetail(r)}
                                           className="flex items-center gap-1 text-xs font-medium text-slate-600 transition-colors hover:text-primary"
                                         >
-                                          <Eye className="h-3.5 w-3.5" /> Chi tiết
+                                          <Eye className="h-3.5 w-3.5" /> {t('Details')}
                                         </button>
                                         {r.status === 'PENDING' && currentRole === 'TENANT' && (
                                           <>
@@ -958,7 +965,7 @@ const OutboundPage = () => {
                                               onClick={() => handleApprove(r.id)}
                                               className="text-emerald-600 hover:underline text-xs font-medium"
                                             >
-                                              Duyệt
+                                              {t('Approve')}
                                             </button>
                                             <span className="text-slate-300">|</span>
                                             <button
@@ -968,7 +975,7 @@ const OutboundPage = () => {
                                               }}
                                               className="text-red-600 hover:underline text-xs font-medium"
                                             >
-                                              Từ chối
+                                              {t('Reject')}
                                             </button>
                                           </>
                                         )}
@@ -979,7 +986,7 @@ const OutboundPage = () => {
                                     <button
                                       onClick={() => handleExportSingleReceipt(r)}
                                       className="text-slate-400 hover:text-slate-600 transition-colors p-1" 
-                                      title="In/Xuất phiếu"
+                                      title={t('Print / Export receipt')}
                                     >
                                       <Download className="h-4 w-4 mx-auto" />
                                     </button>
@@ -993,11 +1000,11 @@ const OutboundPage = () => {
                     </div>
                     <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
                       <span className="text-slate-500">
-                        Showing {firstReceiptNumber}-{lastReceiptNumber} of {totalElements} receipts
+                        {t('Showing')} {firstReceiptNumber}-{lastReceiptNumber} {t('of')} {totalElements} {t('receipts')}
                       </span>
                       <div className="flex flex-wrap items-center gap-3">
                         <label className="flex items-center gap-2 text-slate-500">
-                          Rows per page
+                          {t('Rows per page')}
                           <select
                             value={pageSize}
                             disabled={isLoading}
@@ -1015,14 +1022,14 @@ const OutboundPage = () => {
                           </select>
                         </label>
                         <span className="min-w-24 text-center text-slate-600">
-                          Page {page + 1} of {totalPages}
+                          {t('Page')} {page + 1} {t('of')} {totalPages}
                         </span>
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             disabled={page === 0 || isLoading}
                             onClick={() => setPage((current) => Math.max(0, current - 1))}
-                            aria-label="Previous receipt page"
+                            aria-label={t('Previous receipt page')}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <ChevronLeft className="h-4 w-4" />
@@ -1031,7 +1038,7 @@ const OutboundPage = () => {
                             type="button"
                             disabled={page >= totalPages - 1 || isLoading}
                             onClick={() => setPage((current) => current + 1)}
-                            aria-label="Next receipt page"
+                            aria-label={t('Next receipt page')}
                             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <ChevronRight className="h-4 w-4" />
@@ -1047,12 +1054,12 @@ const OutboundPage = () => {
               <Modal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                title="Create New Outbound Shipment"
+                title={t('Create New Outbound Shipment')}
                 className="max-h-[calc(100vh-1rem)] max-w-4xl overflow-auto sm:max-h-[calc(100vh-2rem)]"
               >
                 <FormShell onSubmit={handleCreateReceipt} className="space-y-4">
                   <div className="space-y-2 border-b border-slate-200 pb-4">
-                    <label className="text-sm font-medium text-slate-700">Phương thức xuất kho</label>
+                    <label className="text-sm font-medium text-slate-700">{t('Outbound Method')}</label>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input 
@@ -1062,7 +1069,7 @@ const OutboundPage = () => {
                           checked={outboundMethod === 'AUTO'}
                           onChange={() => setOutboundMethod('AUTO')}
                         />
-                        <span className="text-sm text-slate-700">Tự động lấy hàng (FIFO)</span>
+                        <span className="text-sm text-slate-700">{t('Automatic picking (FIFO)')}</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input 
@@ -1075,7 +1082,7 @@ const OutboundPage = () => {
                             setPreviewData(null)
                           }}
                         />
-                        <span className="text-sm text-slate-700">Thủ công (Chọn vị trí cụ thể)</span>
+                        <span className="text-sm text-slate-700">{t('Manual (Select specific locations)')}</span>
                       </label>
                     </div>
                   </div>
@@ -1083,9 +1090,9 @@ const OutboundPage = () => {
                   <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-900">Products in this shipment</h3>
+                        <h3 className="text-sm font-semibold text-slate-900">{t('Products in this shipment')}</h3>
                         <p className="mt-0.5 text-xs text-slate-500">
-                          Add multiple SKUs. FIFO preview and stock validation run for every line.
+                          {t('Add multiple SKUs. FIFO preview and stock validation run for every line.')}
                         </p>
                       </div>
                       <Button
@@ -1099,7 +1106,7 @@ const OutboundPage = () => {
                           setPreviewData(null)
                         }}
                       >
-                        <Plus className="mr-1.5 h-4 w-4" /> Add SKU
+                        <Plus className="mr-1.5 h-4 w-4" /> {t('Add SKU')}
                       </Button>
                     </div>
 
@@ -1125,7 +1132,7 @@ const OutboundPage = () => {
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_140px_auto] sm:items-end">
                               <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-600">
-                                  SKU {index + 1} <span className="text-rose-500">*</span>
+                                  {t('SKU')} {index + 1} <span className="text-rose-500">*</span>
                                 </label>
                                 <select
                                   required
@@ -1141,7 +1148,7 @@ const OutboundPage = () => {
                                   }}
                                   className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
                                 >
-                                  <option value="">-- Select product --</option>
+                                  <option value="">{t('-- Select product --')}</option>
                                   {skus
                                     .filter((sku) => !outboundLines.some((other) => other.id !== line.id && String(other.skuId) === String(sku.id)))
                                     .map((sku) => (
@@ -1153,7 +1160,7 @@ const OutboundPage = () => {
                               </div>
                               <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-600">
-                                  Quantity <span className="text-rose-500">*</span>
+                                  {t('Quantity')} <span className="text-rose-500">*</span>
                                 </label>
                                 <InputField
                                   type="number"
@@ -1180,16 +1187,16 @@ const OutboundPage = () => {
                                 }}
                                 className="h-9 rounded-md px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                               >
-                                Remove
+                                {t('Remove')}
                               </button>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
                               <span className="text-slate-500">
-                                {lineSku ? `${lineSku.name} · ${lineSku.uomCode || lineSku.uomName || 'units'}` : 'Choose a SKU to check warehouse stock'}
+                                {lineSku ? `${lineSku.name} · ${lineSku.uomCode || lineSku.uomName || t('units')}` : t('Choose a SKU to check warehouse stock')}
                               </span>
                               {line.skuId && !isLocationsLoading && (
                                 <span className={lineShortage > 0 ? 'font-semibold text-rose-600' : 'font-semibold text-emerald-600'}>
-                                  {lineShortage > 0 ? `Short ${lineShortage}` : `Available ${lineSummary?.totalQuantity || 0}`}
+                                  {lineShortage > 0 ? `${t('Short')} ${lineShortage}` : `${t('Available')} ${lineSummary?.totalQuantity || 0}`}
                                 </span>
                               )}
                             </div>
@@ -1199,10 +1206,10 @@ const OutboundPage = () => {
                                 <div className="flex items-center justify-between gap-3">
                                   <div>
                                     <p className="text-xs font-semibold text-slate-700">
-                                      Phân bổ theo Rack/Bin <span className="text-rose-500">*</span>
+                                      {t('Rack/Bin Allocation')} <span className="text-rose-500">*</span>
                                     </p>
                                     <p className="mt-0.5 text-xs text-slate-500">
-                                      Đã phân bổ {allocatedQuantity} / {Number(line.quantity) || 0}
+                                      {t('Allocated')} {allocatedQuantity} / {Number(line.quantity) || 0}
                                     </p>
                                   </div>
                                   <button
@@ -1212,7 +1219,7 @@ const OutboundPage = () => {
                                     className="rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     <Plus className="mr-1 inline h-3.5 w-3.5" />
-                                    Thêm Rack/Bin
+                                    {t('Add Rack/Bin')}
                                   </button>
                                 </div>
 
@@ -1224,7 +1231,7 @@ const OutboundPage = () => {
                                     >
                                       <div className="space-y-1">
                                         <label className="text-[11px] font-medium text-slate-500">
-                                          Rack/Bin {allocationIndex + 1} <span className="text-rose-500">*</span>
+                                          {t('Rack/Bin')} {allocationIndex + 1} <span className="text-rose-500">*</span>
                                         </label>
                                         <select
                                           required
@@ -1238,7 +1245,7 @@ const OutboundPage = () => {
                                           disabled={!line.skuId || isLocationsLoading}
                                           className="focus:ring-primary w-full rounded-md border border-slate-200 bg-white p-2 text-sm focus:ring-2 focus:outline-none"
                                         >
-                                          <option value="">-- Chọn Rack/Bin --</option>
+                                          <option value="">{t('-- Select Rack/Bin --')}</option>
                                           {(lineSummary?.locations || []).map((location) => {
                                             const locationValue = JSON.stringify(location)
                                             const alreadySelected = lineAllocations.some(
@@ -1253,9 +1260,9 @@ const OutboundPage = () => {
                                                 value={locationValue}
                                                 disabled={alreadySelected}
                                               >
-                                                Kệ {location.rackName} — Ô {location.binName} (Khả dụng: {location.quantity}
+                                                {t('Rack')} {location.rackName} — {t('Bin')} {location.binName} ({t('Available')}: {location.quantity}
                                                 {location.reservedQuantity > 0
-                                                  ? ` · Đang giữ: ${location.reservedQuantity}`
+                                                  ? ` · ${t('Reserved:')} ${location.reservedQuantity}`
                                                   : ''})
                                               </option>
                                             )
@@ -1264,7 +1271,7 @@ const OutboundPage = () => {
                                       </div>
                                       <div className="space-y-1">
                                         <label className="text-[11px] font-medium text-slate-500">
-                                          Số lượng <span className="text-rose-500">*</span>
+                                          {t('Quantity')} <span className="text-rose-500">*</span>
                                         </label>
                                         <InputField
                                           type="number"
@@ -1285,7 +1292,7 @@ const OutboundPage = () => {
                                         onClick={() => removeOutboundAllocation(line.id, allocation.id)}
                                         className="h-9 rounded-md px-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
                                       >
-                                        Xóa
+                                        {t('Remove')}
                                       </button>
                                     </div>
                                   ))}
@@ -1300,10 +1307,10 @@ const OutboundPage = () => {
 
                     <div className="space-y-1.5">
                       <label className="text-sm font-medium text-slate-700">
-                        Tên nơi nhận (Receiver Name) <span className="text-rose-500">*</span>
+                        {t('Receiver Name')} <span className="text-rose-500">*</span>
                       </label>
                       <InputField
-                        placeholder="Ví dụ: Khách hàng B"
+                        placeholder={t('e.g. Customer B')}
                         required
                         value={formReceiverName}
                         onChange={(e) => setFormReceiverName(e.target.value)}
@@ -1315,20 +1322,20 @@ const OutboundPage = () => {
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <p className="text-xs font-bold tracking-[0.08em] text-slate-500 uppercase">
-                            Kiểm tra tồn kho trước khi xuất
+                            {t('Pre-outbound inventory check')}
                           </p>
                           <p className="mt-1 text-xs text-slate-500">
-                            Số liệu được tổng hợp từ toàn bộ kệ và ô trong kho đã chọn.
+                            {t('Data is aggregated across all racks and bins in the selected warehouse.')}
                           </p>
                         </div>
                         {isLocationsLoading ? (
                           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Đang kiểm tra
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('Checking stock')}
                           </span>
                         ) : stockSummary ? (
                           <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${hasStockShortage ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
                             {hasStockShortage ? <AlertCircle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                            {hasStockShortage ? `Thiếu ${shortageQuantity.toLocaleString('vi-VN')} đơn vị` : 'Đủ hàng để xuất'}
+                            {hasStockShortage ? `${t('Short')} ${shortageQuantity.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} ${t('units')}` : t('Sufficient stock for outbound')}
                           </span>
                         ) : null}
                       </div>
@@ -1343,37 +1350,37 @@ const OutboundPage = () => {
                         <>
                           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                             <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3">
-                              <p className="text-xs text-slate-500">Tồn khả dụng để xuất</p>
+                              <p className="text-xs text-slate-500">{t('Available stock to outbound')}</p>
                               <p className="mt-1 text-xl font-bold tabular-nums text-slate-950">
-                                {warehouseStockQuantity.toLocaleString('vi-VN')}
-                                <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || 'đơn vị'}</span>
+                                {warehouseStockQuantity.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                                <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || t('units')}</span>
                               </p>
                               <p className="mt-1 text-xs text-slate-400">
-                                Tổng {Number(stockSummary.grossQuantity || 0).toLocaleString('vi-VN')}
+                                {t('Total')} {Number(stockSummary.grossQuantity || 0).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                                 {stockSummary.reservedQuantity > 0
-                                  ? ` · Đang giữ ${Number(stockSummary.reservedQuantity).toLocaleString('vi-VN')}`
+                                  ? ` · ${t('Reserved:')} ${Number(stockSummary.reservedQuantity).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}`
                                   : ''}
                               </p>
-                              <p className="mt-1 text-xs text-slate-400">{stockSummary.locations.length} kệ/ô còn khả dụng</p>
+                              <p className="mt-1 text-xs text-slate-400">{stockSummary.locations.length} {t('racks/bins available')}</p>
                             </div>
                             <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3">
-                              <p className="text-xs text-slate-500">Số lượng yêu cầu xuất</p>
+                              <p className="text-xs text-slate-500">{t('Requested outbound quantity')}</p>
                               <p className="mt-1 text-xl font-bold tabular-nums text-slate-950">
-                                {requestedQuantity.toLocaleString('vi-VN')}
-                                <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || 'đơn vị'}</span>
+                                {requestedQuantity.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                                <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || t('units')}</span>
                               </p>
-                              <p className="mt-1 text-xs text-slate-400">{outboundMethod === 'AUTO' ? 'Phân bổ theo FIFO' : 'Theo các vị trí đã chọn'}</p>
+                              <p className="mt-1 text-xs text-slate-400">{outboundMethod === 'AUTO' ? t('FIFO allocation') : t('According to selected locations')}</p>
                             </div>
                             <div className={`rounded-lg border px-3.5 py-3 ${hasStockShortage ? 'border-rose-200 bg-rose-50/70' : 'border-emerald-200 bg-emerald-50/70'}`}>
-                              <p className="text-xs text-slate-500">Còn lại dự kiến sau xuất</p>
+                              <p className="text-xs text-slate-500">{t('Projected remaining after outbound')}</p>
                               <p className={`mt-1 text-xl font-bold tabular-nums ${hasStockShortage ? 'text-rose-700' : 'text-emerald-700'}`}>
-                                {projectedRemainingQuantity.toLocaleString('vi-VN')}
-                                <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || 'đơn vị'}</span>
+                                {projectedRemainingQuantity.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
+                                <span className="ml-1 text-xs font-medium text-slate-500">{selectedSku?.uomCode || selectedSku?.uomName || t('units')}</span>
                               </p>
                               <p className="mt-1 text-xs text-slate-500">
                                 {hasStockShortage
-                                  ? `Cần bổ sung ${shortageQuantity.toLocaleString('vi-VN')} đơn vị`
-                                  : 'Tồn kho đáp ứng yêu cầu'}
+                                  ? `${t('Need additional')} ${shortageQuantity.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')} ${t('units')}`
+                                  : t('Inventory meets requirements')}
                               </p>
                             </div>
                           </div>
@@ -1381,20 +1388,20 @@ const OutboundPage = () => {
                           {stockSummary.locations.length > 0 && (
                             <div className="mt-4 border-t border-slate-200 pt-3">
                               <div className="flex items-center justify-between gap-3">
-                                <p className="text-xs font-semibold text-slate-700">Phân bổ hàng trên kệ</p>
-                                <span className="text-xs text-slate-400">{stockSummary.locations.length} vị trí</span>
+                                <p className="text-xs font-semibold text-slate-700">{t('Stock distribution on racks')}</p>
+                                <span className="text-xs text-slate-400">{stockSummary.locations.length} {t('locations')}</span>
                               </div>
                               <div className="mt-2 grid max-h-32 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
                                 {stockSummary.locations.map((location) => (
                                   <div key={`${location.rackId || location.rackName}_${location.binId || location.binName}`} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs">
                                     <span className="min-w-0 truncate text-slate-600">
-                                      Kệ {location.rackName || '—'} · Ô {location.binName || '—'}
+                                      {t('Rack')} {location.rackName || '—'} · {t('Bin')} {location.binName || '—'}
                                       {location.reservedQuantity > 0
-                                        ? ` · Đang giữ ${location.reservedQuantity}`
+                                        ? ` · ${t('Reserved:')} ${location.reservedQuantity}`
                                         : ''}
                                     </span>
                                     <span className="shrink-0 font-semibold tabular-nums text-slate-800">
-                                      Khả dụng {location.quantity.toLocaleString('vi-VN')}
+                                      {t('Available')} {location.quantity.toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US')}
                                     </span>
                                   </div>
                                 ))}
@@ -1410,7 +1417,7 @@ const OutboundPage = () => {
                     <div className="space-y-4 pt-2">
                       <div className="flex items-center justify-between">
                         <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                          <MapIcon className="h-4 w-4 text-emerald-600" /> Lộ trình lấy hàng đề xuất (FIFO)
+                          <MapIcon className="h-4 w-4 text-emerald-600" /> {t('Suggested picking route (FIFO)')}
                         </label>
                         <Button
                           type="button"
@@ -1420,20 +1427,20 @@ const OutboundPage = () => {
                           isLoading={isPreviewLoading}
                           disabled={!formSkuId || !formTotalQuantity}
                         >
-                          Xem trước lộ trình
+                          {t('Preview route')}
                         </Button>
                       </div>
 
                       {!previewData ? (
                           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                          Click "Preview route" to calculate the optimal picking route.
+                          {t('Click "Preview route" to calculate the optimal picking route.')}
                         </div>
                       ) : (
                         <div className="space-y-4">
                           {!previewData.complete && (
                             <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                              <strong>Stock shortage detected!</strong> The system is short{' '}
-                              {previewShortageQuantity} units compared with the requested quantity. This outbound receipt cannot be created.
+                              <strong>{t('Stock shortage detected!')}</strong> {t('The system is short')}{' '}
+                              {previewShortageQuantity} {t('units compared with the requested quantity. This outbound receipt cannot be created.')}
                             </div>
                           )}
                           <div className="max-h-[280px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
@@ -1451,11 +1458,11 @@ const OutboundPage = () => {
                                       <div className="flex min-w-0 items-start gap-2">
                                         <MapPin className="h-4 w-4 text-rose-500" />
                                         <span className="min-w-0 break-words text-sm font-bold text-slate-800">
-                                          Kệ {stop.rackCode} — Ô {stop.binCode}
+                                          {t('Rack')} {stop.rackCode} — {t('Bin')} {stop.binCode}
                                         </span>
                                       </div>
                                       <span className="shrink-0 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                                        Tầng {stop.shelfLevel}
+                                        {t('Level')} {stop.shelfLevel}
                                       </span>
                                     </div>
                                     
@@ -1463,9 +1470,9 @@ const OutboundPage = () => {
                                       <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50 text-xs text-slate-500">
                                           <tr>
-                                            <th className="px-3 py-2 font-medium">Sản phẩm (SKU)</th>
-                                            <th className="px-3 py-2 font-medium">Ngày nhập</th>
-                                            <th className="px-3 py-2 text-right font-medium">Cần lấy</th>
+                                            <th className="px-3 py-2 font-medium">{t('Product (SKU)')}</th>
+                                            <th className="px-3 py-2 font-medium">{t('Arrival date')}</th>
+                                            <th className="px-3 py-2 text-right font-medium">{t('Pick Quantity')}</th>
                                           </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -1473,7 +1480,7 @@ const OutboundPage = () => {
                                             <tr key={lIndex}>
                                               <td className="px-3 py-2 font-mono font-medium text-slate-800">{line.skuCode}</td>
                                               <td className="px-3 py-2 text-slate-500">
-                                                {line.arrivalDate ? new Date(line.arrivalDate).toLocaleDateString('vi-VN') : '—'}
+                                                {line.arrivalDate ? new Date(line.arrivalDate).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US') : '—'}
                                               </td>
                                               <td className="px-3 py-2 text-right font-bold text-emerald-700">
                                                 {line.quantity}
@@ -1494,17 +1501,17 @@ const OutboundPage = () => {
                   )}
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Note (Optional)</label>
+                    <label className="text-sm font-medium text-slate-700">{t('Note (Optional)')}</label>
                     <InputField
                       value={formNote}
                       onChange={(e) => setFormNote(e.target.value)}
-                      placeholder="Enter notes..."
+                      placeholder={t('Enter notes...')}
                     />
                   </div>
 
                   <div className="flex justify-end gap-3 border-t border-slate-200 pt-6">
                     <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-                      Cancel
+                      {t('Cancel')}
                     </Button>
                     <Button
                       type="submit"
@@ -1517,7 +1524,7 @@ const OutboundPage = () => {
                         (outboundMethod === 'MANUAL' && !allManualAllocationsValid)
                       }
                     >
-                      Confirm Outbound
+                      {t('Confirm Outbound')}
                     </Button>
                   </div>
                 </FormShell>
@@ -1526,15 +1533,15 @@ const OutboundPage = () => {
               <Modal
                 isOpen={isRejectModalOpen}
                 onClose={() => setIsRejectModalOpen(false)}
-                title="Reject Receipt"
+                title={t('Reject Receipt')}
               >
                 <FormShell onSubmit={handleReject} className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-700">
-                      Reason for rejection *
+                      {t('Reason for rejection *')}
                     </label>
                     <InputField
-                      placeholder="Enter reason..."
+                      placeholder={t('Enter reason...')}
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       required
@@ -1546,10 +1553,10 @@ const OutboundPage = () => {
                       variant="outline"
                       onClick={() => setIsRejectModalOpen(false)}
                     >
-                      Cancel
+                      {t('Cancel')}
                     </Button>
                     <Button type="submit" variant="danger" isLoading={isSubmitting}>
-                      Confirm Reject
+                      {t('Confirm Reject')}
                     </Button>
                   </div>
                 </FormShell>

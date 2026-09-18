@@ -10,6 +10,7 @@ const contractApi = {
     api.post(`/owner/contracts/${sourceContractId}/renewal-draft`, payload),
   updateDraft: (id, payload) => api.put(`/owner/contracts/${id}`, payload),
   submit: (id) => api.post(`/owner/contracts/${id}/submit`),
+  recall: (id) => api.post(`/owner/contracts/${id}/recall`),
   deleteDraft: (id) => api.delete(`/owner/contracts/${id}`),
   getOwnerLayout: (id) => api.get(`/owner/contracts/${id}/layout`),
   saveOwnerLayout: (id, payload) => api.put(`/owner/contracts/${id}/layout`, payload),

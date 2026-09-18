@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react'
+import { useCallback, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
@@ -908,6 +908,8 @@ const OwnerContractsPage = () => {
   // Draft modal state
   const [isDraftOpen, setIsDraftOpen] = useState(false)
   const [editContract, setEditContract] = useState(null)
+  const [recallingContractId, setRecallingContractId] = useState(null)
+  const recallRequestInFlightRef = useRef(false)
 
   // Renewal modal state
   const [isRenewalOpen, setIsRenewalOpen] = useState(false)
@@ -1027,19 +1029,52 @@ const OwnerContractsPage = () => {
     }
   }
 
-  const handleRecall = async () => {
-    const confirmed = await confirmDialog({
-      title: 'Recall contract',
-      message:
-        'This contract will be withdrawn from the tenant confirmation flow. The backend recall API is not available yet, so no data will be changed.',
-      confirmText: 'Recall contract',
-      type: 'danger',
-    })
-    if (!confirmed) return
+  const handleRecall = async (contract) => {
+    if (!contract?.id || recallRequestInFlightRef.current) return
 
-    toast('Recall contract is ready in the frontend. Waiting for the backend API.', {
-      icon: 'ℹ️',
+    const confirmed = await confirmDialog({
+      title: 'Recall contract for editing',
+      message:
+        'The contract will return to draft status and can be edited before resubmission.',
+      confirmText: 'Recall contract',
+      type: 'normal',
     })
+    if (!confirmed || recallRequestInFlightRef.current) return
+
+    recallRequestInFlightRef.current = true
+    setRecallingContractId(contract.id)
+    try {
+      const response = await contractApi.recall(contract.id)
+      const recalledContract = apiData(response)
+      toast.success('Contract recalled for editing')
+      await fetchContracts()
+
+      if (recalledContract) {
+        setEditContract(recalledContract)
+        setIsDraftOpen(true)
+      }
+    } catch (error) {
+      const errorCode = String(
+        error.response?.data?.errorCode || error.response?.data?.code || ''
+      ).toUpperCase()
+      const contractStatusChanged =
+        error.response?.status === 409 || errorCode.includes('STATUS')
+
+      showApiErrorToast(
+        error,
+        'Could not recall contract',
+        contractStatusChanged
+          ? {
+              message:
+                'The contract status changed. Reload the contract list and try again.',
+            }
+          : undefined
+      )
+      if (contractStatusChanged) await fetchContracts()
+    } finally {
+      recallRequestInFlightRef.current = false
+      setRecallingContractId(null)
+    }
   }
 
   const handleViewContract = (imageUrlRaw) => {
@@ -1184,12 +1219,13 @@ const OwnerContractsPage = () => {
               icon: Send,
               onClick: () => handleSubmit(row.id),
             },
-            row.status === 'PENDING_TENANT_CONFIRM' && {
-              label: 'Recall Contract',
-              icon: RotateCcw,
-              onClick: handleRecall,
-              danger: true,
-            },
+            row.status === 'PENDING_TENANT_CONFIRM' &&
+              row.canRecall === true && {
+                label: 'Recall for editing',
+                icon: RotateCcw,
+                onClick: () => handleRecall(row),
+                disabled: Boolean(recallingContractId),
+              },
             row.canDelete && {
               label:
                 row.status === 'REJECTED'

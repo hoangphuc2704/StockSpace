@@ -30,7 +30,7 @@ const OwnerDashboard = () => {
   const [loadingWallet, setLoadingWallet] = useState(true)
   const [depositLoading, setDepositLoading] = useState(false)
 
-  // Kiểm định là chức năng tùy chọn, không chặn duyệt hoặc thanh toán listing.
+  // Inspection status controls whether a warehouse can be published.
   const [inspections, setInspections] = useState([])
   const [loadingInspections, setLoadingInspections] = useState(true)
   const [inspectionReport, setInspectionReport] = useState(null)
@@ -234,7 +234,7 @@ const OwnerDashboard = () => {
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h3 className="mb-6 font-bold text-slate-900">Inspections (optional)</h3>
+                <h3 className="mb-6 font-bold text-slate-900">Warehouse inspections</h3>
                 <div className="space-y-4">
                   {loadingInspections ? (
                     <div className="flex justify-center p-4">
@@ -279,9 +279,9 @@ const OwnerDashboard = () => {
               <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-6 shadow-sm">
                 <h3 className="font-bold text-slate-900">Listing workflow</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  Submit a warehouse for Admin approval first. After it is approved, choose a listing
-                  package and pay from My Warehouses to make it visible to tenants. Inspection is
-                  optional and does not affect this flow.
+                  Submit a warehouse for Admin approval, then request and pass inspection. Once the
+                  warehouse is verified, choose a listing package from My Warehouses to make it
+                  visible to tenants.
                 </p>
               </div>
             </div>

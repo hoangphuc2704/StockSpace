@@ -35,35 +35,57 @@ import walletApi from '@/services/wallet/walletApi'
 import { toast } from 'react-hot-toast'
 import { positiveNumber } from '@/config/validation'
 import { showApiErrorToast } from '@/config/apiError'
+import { useLanguage } from '@/i18n/LanguageContext'
+
+// Relative time formatting helper
+const relativeTimeIntervals = [
+  { limit: 60, divisor: 1, unit: 'second' },
+  { limit: 3600, divisor: 60, unit: 'minute' },
+  { limit: 86400, divisor: 3600, unit: 'hour' },
+  { limit: 604800, divisor: 86400, unit: 'day' },
+  { limit: 2629800, divisor: 604800, unit: 'week' },
+  { limit: 31557600, divisor: 2629800, unit: 'month' },
+  { limit: Infinity, divisor: 31557600, unit: 'year' },
+]
+
+const formatRelativeTime = (value, language = 'en') => {
+  const timestamp = new Date(value).getTime()
+  if (!Number.isFinite(timestamp)) return ''
+
+  const deltaSeconds = (timestamp - Date.now()) / 1000
+  const interval = relativeTimeIntervals.find(({ limit }) => Math.abs(deltaSeconds) < limit)
+  const rtf = new Intl.RelativeTimeFormat(language === 'vi' ? 'vi' : 'en', { numeric: 'auto' })
+  return rtf.format(Math.round(deltaSeconds / interval.divisor), interval.unit)
+}
 
 // Metadata Mappings for WMS Financial Operations
 const TRANSACTION_TYPE_MAP = {
   TOP_UP: {
-    label: 'Nạp tiền vào ví',
+    label: 'Top-up',
     direction: 'in',
     icon: ArrowDownLeft,
     badgeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   },
   DEPOSIT_REFUND: {
-    label: 'Hoàn trả cọc kho',
+    label: 'Deposit refund',
     direction: 'in',
     icon: RotateCcw,
     badgeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   },
   DEPOSIT_PAYMENT: {
-    label: 'Thanh toán cọc kho',
+    label: 'Deposit payment',
     direction: 'out',
     icon: ArrowUpRight,
     badgeClass: 'border-purple-200 bg-purple-50 text-purple-700',
   },
   PACKAGE_PAYMENT: {
-    label: 'Thanh toán gói dịch vụ',
+    label: 'Service package payment',
     direction: 'out',
     icon: CreditCard,
     badgeClass: 'border-blue-200 bg-blue-50 text-blue-700',
   },
   WITHDRAW: {
-    label: 'Rút tiền về ngân hàng',
+    label: 'Withdrawal to bank',
     direction: 'out',
     icon: ArrowUpRight,
     badgeClass: 'border-amber-200 bg-amber-50 text-amber-700',
@@ -94,6 +116,7 @@ const formatVND = (value) => {
 
 const WalletTenant = () => {
   const dispatch = useDispatch()
+  const { language, t } = useLanguage()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
 
@@ -201,7 +224,7 @@ const WalletTenant = () => {
     } else {
       fetchWithdrawals(withdrawPagination.page)
     }
-    toast.success('Wallet data refreshed.')
+    toast.success(t('Wallet data refreshed.'))
   }
 
   useEffect(() => {
@@ -216,14 +239,14 @@ const WalletTenant = () => {
     e.preventDefault()
 
     const amountNumber = Number(inputAmount)
-    const amountError = positiveNumber(amountNumber, 'Enter a valid deposit amount.')
+    const amountError = positiveNumber(amountNumber, t('Enter a valid deposit amount.'))
     if (amountError) {
       toast.error(amountError)
       return
     }
 
     if (amountNumber < 10000) {
-      toast.error('The minimum deposit amount is VND 10,000.')
+      toast.error(t('The minimum deposit amount is VND 10,000.'))
       return
     }
 
@@ -240,11 +263,11 @@ const WalletTenant = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-        showApiErrorToast({ response: { data: res?.data } }, 'Could not create the payment link.')
+        showApiErrorToast({ response: { data: res?.data } }, t('Could not create the payment link.'))
       }
     } catch (error) {
       console.error('Deposit error:', error)
-      showApiErrorToast(error, 'Deposit failed. Please try again later.')
+      showApiErrorToast(error, t('Deposit failed. Please try again later.'))
     } finally {
       setDepositLoading(false)
     }
@@ -254,7 +277,7 @@ const WalletTenant = () => {
     if (!text) return
     navigator.clipboard.writeText(text)
     setCopiedCode(text)
-    toast.success('Transaction code copied.')
+    toast.success(t('Transaction code copied.'))
     setTimeout(() => setCopiedCode(null), 2000)
   }
 
@@ -289,15 +312,15 @@ const WalletTenant = () => {
               <div>
                 <div className="flex items-center gap-2.5">
                   <h1 className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl">
-                    Ví Của Tôi
+                    {t('My Wallet')}
                   </h1>
                   <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 shadow-2xs">
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
-                    Bảo mật WMS
+                    {t('WMS Secure')}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  {user?.name ? `${user.name} — ` : ''}Quản lý số dư khả dụng, thực hiện nạp/rút tiền và kiểm soát dòng tiền luân chuyển theo thời gian thực.
+                  {user?.name ? `${user.name} — ` : ''}{t('Manage available balance, process deposits/withdrawals and monitor real-time cash flow.')}
                 </p>
               </div>
 
@@ -314,7 +337,7 @@ const WalletTenant = () => {
                       loadingWallet || loadingTransactions ? 'animate-spin text-blue-600' : ''
                     }`}
                   />
-                  <span>Làm mới</span>
+                  <span>{t('Refresh')}</span>
                 </button>
 
                 <button
@@ -323,7 +346,7 @@ const WalletTenant = () => {
                   className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:border-slate-400 hover:bg-slate-50 transition-colors"
                 >
                   <MinusCircle className="h-3.5 w-3.5 text-rose-600" />
-                  <span>Rút tiền</span>
+                  <span>{t('Withdraw')}</span>
                 </button>
 
                 <button
@@ -335,7 +358,7 @@ const WalletTenant = () => {
                   className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700 transition-colors"
                 >
                   <PlusCircle className="h-3.5 w-3.5" />
-                  <span>Nạp tiền</span>
+                  <span>{t('Deposit')}</span>
                 </button>
               </div>
             </div>
@@ -351,11 +374,11 @@ const WalletTenant = () => {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                        Số Dư Khả Dụng
+                        {t('Available Balance')}
                       </span>
                       <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.2 text-[10px] font-semibold text-emerald-700">
                         <span className="mr-1 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Sẵn sàng giao dịch
+                        {t('Active')}
                       </span>
                     </div>
                     <div className="mt-1 text-2xl sm:text-3xl font-bold tracking-tight text-slate-950 font-mono">
@@ -366,7 +389,7 @@ const WalletTenant = () => {
                       )}
                     </div>
                     <p className="mt-0.5 text-[11px] text-slate-400">
-                      Được sử dụng để thanh toán tiền thuê kho, đặt cọc và gia hạn các gói giải pháp dịch vụ.
+                      {t('Used to pay warehouse rent, deposits and service package extensions.')}
                     </p>
                   </div>
                 </div>
@@ -374,28 +397,32 @@ const WalletTenant = () => {
                 {/* 2. Total Recorded Transactions */}
                 <div className="md:pl-5 flex flex-col justify-center">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Lịch Sử Ghi Nhận
+                    {t('Transaction History')}
                   </span>
                   <div className="mt-1 text-xl font-bold text-slate-900 font-mono">
                     {loadingTransactions ? '—' : pagination.totalElements}
-                    <span className="ml-1 text-xs font-normal text-slate-500">giao dịch</span>
+                    <span className="ml-1 text-xs font-normal text-slate-500">
+                      {pagination.totalElements === 1 ? t('transaction') : t('transactions')}
+                    </span>
                   </div>
                   <p className="mt-0.5 text-[11px] text-slate-400">
-                    Bao gồm các lệnh nạp tiền, đặt cọc và thanh toán
+                    {t('Includes deposits, escrow and payments')}
                   </p>
                 </div>
 
                 {/* 3. Withdrawal Requests Info */}
                 <div className="md:pl-5 flex flex-col justify-center">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Yêu Cầu Rút Tiền
+                    {t('Withdrawal Requests')}
                   </span>
                   <div className="mt-1 text-xl font-bold text-slate-900 font-mono">
                     {loadingWithdrawals ? '—' : withdrawPagination.totalElements}
-                    <span className="ml-1 text-xs font-normal text-slate-500">yêu cầu</span>
+                    <span className="ml-1 text-xs font-normal text-slate-500">
+                      {withdrawPagination.totalElements === 1 ? t('request') : t('requests')}
+                    </span>
                   </div>
                   <p className="mt-0.5 text-[11px] text-slate-400">
-                    Chuyển khoản trực tiếp về số tài khoản ngân hàng thụ hưởng
+                    {t('Direct transfer to your beneficiary bank account')}
                   </p>
                 </div>
               </div>
@@ -415,7 +442,7 @@ const WalletTenant = () => {
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    <span>Lịch sử giao dịch</span>
+                    <span>{t('Transaction history')}</span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                         activeTab === 'transactions'
@@ -436,7 +463,7 @@ const WalletTenant = () => {
                         : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
-                    <span>Yêu cầu rút tiền</span>
+                    <span>{t('Withdrawal requests')}</span>
                     <span
                       className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                         activeTab === 'withdrawals'
@@ -450,7 +477,7 @@ const WalletTenant = () => {
                 </div>
 
                 <div className="hidden sm:block text-[11px] text-slate-400 font-mono">
-                  {activeTab === 'transactions' ? 'Sổ cái giao dịch ví' : 'Nhật ký lệnh rút tiền'}
+                  {activeTab === 'transactions' ? t('Wallet transaction ledger') : t('Withdrawal request log')}
                 </div>
               </div>
 
@@ -461,24 +488,24 @@ const WalletTenant = () => {
                     {loadingTransactions ? (
                       <div className="p-8 text-center">
                         <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
-                        <p className="mt-2 text-xs font-medium text-slate-500">Đang tải lịch sử giao dịch...</p>
+                        <p className="mt-2 text-xs font-medium text-slate-500">{t('Loading transaction history...')}</p>
                       </div>
                     ) : transactions.length > 0 ? (
                       <table className="w-full text-left text-xs">
                         <thead className="border-b border-slate-200 bg-slate-50/80 font-semibold text-slate-600 uppercase tracking-wider text-[10px]">
                           <tr>
-                            <th className="px-4 py-2.5">Mã Giao Dịch</th>
-                            <th className="px-4 py-2.5">Loại Giao Dịch</th>
-                            <th className="px-4 py-2.5">Phương Thức</th>
-                            <th className="px-4 py-2.5 text-right">Số Tiền</th>
-                            <th className="px-4 py-2.5 text-center">Trạng Thái</th>
-                            <th className="px-4 py-2.5">Thời Gian</th>
+                            <th className="px-4 py-2.5">{t('TRANSACTION CODE')}</th>
+                            <th className="px-4 py-2.5">{t('TRANSACTION TYPE')}</th>
+                            <th className="px-4 py-2.5">{t('PAYMENT METHOD')}</th>
+                            <th className="px-4 py-2.5 text-right">{t('AMOUNT')}</th>
+                            <th className="px-4 py-2.5 text-center">{t('STATUS')}</th>
+                            <th className="px-4 py-2.5">{t('DATE / TIME')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {transactions.map((row) => {
                             const meta = TRANSACTION_TYPE_MAP[row.transactionType] || {
-                              label: row.transactionType || 'Khác',
+                              label: row.transactionType || 'Other',
                               direction: 'out',
                               icon: CreditCard,
                               badgeClass: 'border-slate-200 bg-slate-50 text-slate-700',
@@ -487,7 +514,7 @@ const WalletTenant = () => {
                             const isFailed =
                               row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
                             const statusMeta = STATUS_MAP[row.status] || {
-                              label: row.status || 'Chưa xác định',
+                              label: row.status || 'Unknown',
                               className: 'border-slate-200 bg-slate-100 text-slate-600',
                             }
                             const TypeIcon = meta.icon
@@ -502,7 +529,7 @@ const WalletTenant = () => {
                                       <button
                                         type="button"
                                         onClick={() => handleCopy(row.paymentCode)}
-                                        title="Sao chép mã"
+                                        title={t('Copy code')}
                                         className="text-slate-400 hover:text-slate-700 transition-colors"
                                       >
                                         {copiedCode === row.paymentCode ? (
@@ -531,7 +558,7 @@ const WalletTenant = () => {
                                     >
                                       <TypeIcon className="h-3.5 w-3.5" />
                                     </span>
-                                    <span className="font-semibold text-slate-800">{meta.label}</span>
+                                    <span className="font-semibold text-slate-800">{t(meta.label)}</span>
                                   </div>
                                 </td>
 
@@ -539,7 +566,7 @@ const WalletTenant = () => {
                                 <td className="px-4 py-3">
                                   <div className="flex items-center gap-1.5 text-slate-600">
                                     <CreditCard className="h-3.5 w-3.5 text-slate-400" />
-                                    <span>{PAYMENT_METHOD_MAP[row.paymentMethod] || row.paymentMethod || '—'}</span>
+                                    <span>{t(PAYMENT_METHOD_MAP[row.paymentMethod] || row.paymentMethod || '—')}</span>
                                   </div>
                                 </td>
 
@@ -563,7 +590,7 @@ const WalletTenant = () => {
                                   <span
                                     className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold border ${statusMeta.className}`}
                                   >
-                                    {statusMeta.label}
+                                    {t(statusMeta.label)}
                                   </span>
                                 </td>
 
@@ -573,7 +600,7 @@ const WalletTenant = () => {
                                     {moment(row.createdAt).format('DD/MM/YYYY · HH:mm')}
                                   </div>
                                   <div className="text-[10px] text-slate-400">
-                                    {moment(row.createdAt).fromNow()}
+                                    {formatRelativeTime(row.createdAt, language)}
                                   </div>
                                 </td>
                               </tr>
@@ -584,9 +611,9 @@ const WalletTenant = () => {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-14 text-center">
                         <Wallet className="h-9 w-9 text-slate-300 mb-2" />
-                        <p className="text-xs font-bold text-slate-700">Chưa có giao dịch nào</p>
+                        <p className="text-xs font-bold text-slate-700">{t('No transactions yet')}</p>
                         <p className="text-[11px] text-slate-400 mt-0.5 max-w-sm">
-                          Các giao dịch nạp tiền, rút tiền và thanh toán cọc/gói dịch vụ sẽ được ghi nhận chi tiết tại đây.
+                          {t('Top-ups, withdrawals, and escrow/package payments will be recorded here.')}
                         </p>
                         <button
                           type="button"
@@ -597,7 +624,7 @@ const WalletTenant = () => {
                           className="mt-3.5 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700 transition-colors"
                         >
                           <PlusCircle className="h-3.5 w-3.5" />
-                          <span>Nạp tiền ngay</span>
+                          <span>{t('Deposit now')}</span>
                         </button>
                       </div>
                     )}
@@ -607,8 +634,8 @@ const WalletTenant = () => {
                   {pagination.totalPages > 1 && (
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3">
                       <p className="text-xs text-slate-500">
-                        Hiển thị <span className="font-semibold text-slate-700">{transactions.length}</span> /{' '}
-                        <span className="font-semibold text-slate-700">{pagination.totalElements}</span> giao dịch
+                        {t('Showing')} <span className="font-semibold text-slate-700">{transactions.length}</span> /{' '}
+                        <span className="font-semibold text-slate-700">{pagination.totalElements}</span> {t('transactions')}
                       </p>
 
                       <div className="flex items-center gap-1">
@@ -619,7 +646,7 @@ const WalletTenant = () => {
                           className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
                         >
                           <ChevronLeft className="h-3.5 w-3.5" />
-                          <span>Trước</span>
+                          <span>{t('Previous')}</span>
                         </button>
 
                         {[...Array(pagination.totalPages).keys()]
@@ -645,7 +672,7 @@ const WalletTenant = () => {
                           onClick={() => fetchTransactions(pagination.page + 1)}
                           className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
                         >
-                          <span>Sau</span>
+                          <span>{t('Next')}</span>
                           <ChevronRight className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -661,23 +688,23 @@ const WalletTenant = () => {
                     {loadingWithdrawals ? (
                       <div className="p-8 text-center">
                         <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
-                        <p className="mt-2 text-xs font-medium text-slate-500">Đang tải lịch sử rút tiền...</p>
+                        <p className="mt-2 text-xs font-medium text-slate-500">{t('Loading withdrawal history...')}</p>
                       </div>
                     ) : withdrawals.length > 0 ? (
                       <table className="w-full text-left text-xs">
                         <thead className="border-b border-slate-200 bg-slate-50/80 font-semibold text-slate-600 uppercase tracking-wider text-[10px]">
                           <tr>
-                            <th className="px-4 py-2.5">Mã Yêu Cầu</th>
-                            <th className="px-4 py-2.5">Ngân Hàng Thụ Hưởng</th>
-                            <th className="px-4 py-2.5 text-right">Số Tiền Rút</th>
-                            <th className="px-4 py-2.5 text-center">Trạng Thái</th>
-                            <th className="px-4 py-2.5">Thời Gian Yêu Cầu</th>
+                            <th className="px-4 py-2.5">{t('REQUEST CODE')}</th>
+                            <th className="px-4 py-2.5">{t('BENEFICIARY BANK')}</th>
+                            <th className="px-4 py-2.5 text-right">{t('WITHDRAWAL AMOUNT')}</th>
+                            <th className="px-4 py-2.5 text-center">{t('STATUS')}</th>
+                            <th className="px-4 py-2.5">{t('REQUEST TIME')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {withdrawals.map((row) => {
                             const statusMeta = STATUS_MAP[row.status] || {
-                              label: row.status || 'Chờ duyệt',
+                              label: row.status || 'Pending',
                               className: 'border-slate-200 bg-slate-100 text-slate-600',
                             }
 
@@ -695,7 +722,7 @@ const WalletTenant = () => {
                                     <div>
                                       <p className="font-bold text-slate-900">{row.bankName}</p>
                                       <p className="font-mono text-xs text-slate-600 mt-0.5">
-                                        STK: {row.bankAccountNumber}
+                                        {t('Account:')} {row.bankAccountNumber}
                                       </p>
                                       <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
                                         {row.bankAccountHolder}
@@ -715,14 +742,14 @@ const WalletTenant = () => {
                                     <span
                                       className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold border ${statusMeta.className}`}
                                     >
-                                      {statusMeta.label}
+                                      {t(statusMeta.label)}
                                     </span>
                                     {row.adminNotes && (
                                       <p
                                         className="mt-1 max-w-xs truncate text-[10px] text-slate-500 italic"
                                         title={row.adminNotes}
                                       >
-                                        Ghi chú: {row.adminNotes}
+                                        {t('Note:')} {row.adminNotes}
                                       </p>
                                     )}
                                   </div>
@@ -734,7 +761,7 @@ const WalletTenant = () => {
                                     {moment(row.createdAt).format('DD/MM/YYYY · HH:mm')}
                                   </div>
                                   <div className="text-[10px] text-slate-400">
-                                    {moment(row.createdAt).fromNow()}
+                                    {formatRelativeTime(row.createdAt, language)}
                                   </div>
                                 </td>
                               </tr>
@@ -745,9 +772,9 @@ const WalletTenant = () => {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-14 text-center">
                         <CreditCard className="h-9 w-9 text-slate-300 mb-2" />
-                        <p className="text-xs font-bold text-slate-700">Chưa có yêu cầu rút tiền</p>
+                        <p className="text-xs font-bold text-slate-700">{t('No withdrawal requests yet')}</p>
                         <p className="text-[11px] text-slate-400 mt-0.5 max-w-sm">
-                          Khi bạn tạo lệnh rút số dư về tài khoản ngân hàng, thông tin xử lý sẽ được cập nhật tại đây.
+                          {t('When you submit a withdrawal request to your bank account, processing status will be shown here.')}
                         </p>
                         <button
                           type="button"
@@ -755,7 +782,7 @@ const WalletTenant = () => {
                           className="mt-3.5 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition-colors"
                         >
                           <MinusCircle className="h-3.5 w-3.5 text-rose-600" />
-                          <span>Tạo yêu cầu rút tiền</span>
+                          <span>{t('Create withdrawal request')}</span>
                         </button>
                       </div>
                     )}
@@ -765,8 +792,8 @@ const WalletTenant = () => {
                   {withdrawPagination.totalPages > 1 && (
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/50 px-4 py-3">
                       <p className="text-xs text-slate-500">
-                        Hiển thị <span className="font-semibold text-slate-700">{withdrawals.length}</span> /{' '}
-                        <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span> yêu cầu
+                        {t('Showing')} <span className="font-semibold text-slate-700">{withdrawals.length}</span> /{' '}
+                        <span className="font-semibold text-slate-700">{withdrawPagination.totalElements}</span> {t('requests')}
                       </p>
 
                       <div className="flex items-center gap-1">
@@ -777,7 +804,7 @@ const WalletTenant = () => {
                           className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
                         >
                           <ChevronLeft className="h-3.5 w-3.5" />
-                          <span>Trước</span>
+                          <span>{t('Previous')}</span>
                         </button>
 
                         {[...Array(withdrawPagination.totalPages).keys()]
@@ -803,7 +830,7 @@ const WalletTenant = () => {
                           onClick={() => fetchWithdrawals(withdrawPagination.page + 1)}
                           className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors"
                         >
-                          <span>Sau</span>
+                          <span>{t('Next')}</span>
                           <ChevronRight className="h-3.5 w-3.5" />
                         </button>
                       </div>
@@ -827,9 +854,9 @@ const WalletTenant = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    Nạp Tiền Vào Ví StockSpace
+                    {t('Deposit into StockSpace Wallet')}
                   </h3>
-                  <p className="text-[11px] text-slate-500">Cổng thanh toán an toàn VNPay Gateway</p>
+                  <p className="text-[11px] text-slate-500">{t('Secure VNPay payment gateway')}</p>
                 </div>
               </div>
               <button
@@ -844,7 +871,7 @@ const WalletTenant = () => {
             <FormShell onSubmit={handleDepositSubmit} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                  Nhập số tiền cần nạp (VND)
+                  {t('Enter deposit amount (VND)')}
                 </label>
                 <div className="relative">
                   <input
@@ -855,7 +882,7 @@ const WalletTenant = () => {
                     step={10000}
                     value={inputAmount}
                     onChange={(e) => setInputAmount(e.target.value)}
-                    placeholder="Ví dụ: 2000000"
+                    placeholder={t('e.g. 2000000')}
                     className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm font-mono font-bold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                   <span className="absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-bold text-slate-400">
@@ -883,7 +910,7 @@ const WalletTenant = () => {
 
                 {inputAmount && !isNaN(Number(inputAmount)) && Number(inputAmount) > 0 && (
                   <div className="mt-3 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/70 p-2.5 text-xs text-emerald-800">
-                    <span>Số tiền thực nạp:</span>
+                    <span>{t('Actual deposit amount:')}</span>
                     <span className="font-mono font-bold text-emerald-900">
                       {formatVND(Number(inputAmount))}
                     </span>
@@ -894,9 +921,9 @@ const WalletTenant = () => {
               <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 border border-slate-100 space-y-1">
                 <div className="flex items-center gap-1.5 font-semibold text-slate-700">
                   <CreditCard className="h-3.5 w-3.5 text-blue-600" />
-                  <span>Hình thức thanh toán:</span>
+                  <span>{t('Payment method:')}</span>
                 </div>
-                <p>Hỗ trợ quét mã VNPAY-QR, Thẻ ATM nội địa, Internet Banking và Thẻ quốc tế Visa/Mastercard.</p>
+                <p>{t('Supports VNPAY-QR scanning, domestic ATM cards, Internet Banking, and international Visa/Mastercard.')}</p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
@@ -905,7 +932,7 @@ const WalletTenant = () => {
                   onClick={() => setIsDepositModalOpen(false)}
                   className="rounded-lg border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
                 >
-                  Hủy bỏ
+                  {t('Cancel')}
                 </button>
                 <button
                   type="submit"
@@ -915,10 +942,10 @@ const WalletTenant = () => {
                   {depositLoading ? (
                     <>
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      Đang kết nối cổng VNPay...
+                      {t('Connecting to VNPay gateway...')}
                     </>
                   ) : (
-                    <>Tiến hành thanh toán VNPay</>
+                    <>{t('Proceed with VNPay payment')}</>
                   )}
                 </button>
               </div>

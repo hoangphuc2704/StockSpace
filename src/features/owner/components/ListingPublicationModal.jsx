@@ -33,7 +33,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
   const [startDate, setStartDate] = useState(() => formatDateInput(new Date()))
   const [isLoading, setIsLoading] = useState(true)
   const [isPurchasing, setIsPurchasing] = useState(false)
-  const isApprovedForPayment = String(warehouse.status || '').toUpperCase() === 'AVAILABLE'
+  const canPurchasePublication = warehouse.canPublish === true || warehouse.canRenew === true
   const selectedPackage = packages.find((pkg) => String(pkg.id) === String(selectedPackageId))
   const now = new Date()
   const todayInputValue = formatDateInput(now)
@@ -83,7 +83,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
   }, [historyOnly, warehouse.id, warehouse.preferredPackageId])
 
   const handlePurchase = async () => {
-    if (!isApprovedForPayment || !selectedPackageId || !startDate || isPurchasing) return
+    if (!canPurchasePublication || !selectedPackageId || !startDate || isPurchasing) return
 
     try {
       setIsPurchasing(true)
@@ -181,10 +181,9 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
                 </p>
               </div>
             )
-          ) : !isApprovedForPayment ? (
+          ) : !canPurchasePublication ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              This warehouse must be approved by Admin before you can choose a listing package and
-              pay.
+              This warehouse is not currently eligible to publish or renew a listing.
             </div>
           ) : packages.length === 0 ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -275,7 +274,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
         <div className="flex shrink-0 justify-end gap-3 border-t border-slate-100 bg-slate-50/70 p-6">
           <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
           {!historyOnly && (
-            <Button type="button" onClick={handlePurchase} isLoading={isPurchasing} disabled={!isApprovedForPayment || isLoading || packages.length === 0 || !selectedPackageId || !startDate}>
+            <Button type="button" onClick={handlePurchase} isLoading={isPurchasing} disabled={!canPurchasePublication || isLoading || packages.length === 0 || !selectedPackageId || !startDate}>
               <CreditCard className="mr-2 h-4 w-4" />
               {selectedPackage
                 ? `Pay ${formatVND(selectedPackage.price)} & ${warehouse.canRenew ? 'renew' : 'publish'}`

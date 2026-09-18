@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { CheckCircle, XCircle, ArrowLeft } from 'lucide-react'
 import PublicHeader from '../../../components/PublicHeader'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const WalletCallback = () => {
+  const { t } = useLanguage()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
@@ -32,24 +33,28 @@ const WalletCallback = () => {
               <div className="mb-6 flex justify-center">
                 <CheckCircle className="h-20 w-20 text-emerald-500" />
               </div>
-              <h2 className="mb-2 text-2xl font-bold text-stone-900">Payment successful!</h2>
+              <h2 className="mb-2 text-2xl font-bold text-stone-900">{t('Payment successful!')}</h2>
               <p className="mb-6 text-stone-500">
-                You have successfully loaded{' '}
+                {t('You have successfully loaded')}{' '}
                 <span className="font-bold text-emerald-600">
                   {Number(amount || 0).toLocaleString('vi-VN')} VND
                 </span>{' '}
-                into your wallet.
+                {t('into your wallet.')}
               </p>
-              {code && <p className="mb-8 text-sm text-stone-400">Transaction code: {code}</p>}
+              {code && (
+                <p className="mb-8 text-sm text-stone-400">
+                  {t('Transaction code:')} {code}
+                </p>
+              )}
             </>
           ) : (
             <>
               <div className="mb-6 flex justify-center">
                 <XCircle className="h-20 w-20 text-red-500" />
               </div>
-              <h2 className="mb-2 text-2xl font-bold text-stone-900">Payment failed</h2>
+              <h2 className="mb-2 text-2xl font-bold text-stone-900">{t('Payment failed')}</h2>
               <p className="mb-8 text-stone-500">
-                Your transaction has been canceled or an error has occurred. Please try again later.
+                {t('Your transaction has been canceled or an error has occurred. Please try again later.')}
               </p>
             </>
           )}
@@ -58,7 +63,7 @@ const WalletCallback = () => {
             onClick={handleGoBack}
             className="inline-flex w-full items-center justify-center rounded-md bg-[#FF5A1F] px-6 py-3 text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-[#e04e19]"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" /> Return to My Wallet
+            <ArrowLeft className="mr-2 h-4 w-4" /> {t('Return to My Wallet')}
           </button>
         </div>
       </main>

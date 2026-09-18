@@ -29,8 +29,10 @@ import { toast } from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import { showApiErrorToast } from '@/config/apiError'
 import { email, required } from '@/config/validation'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const TenantStaffManagementPage = () => {
+  const { language, t } = useLanguage()
   const confirmDialog = useConfirmDialog()
   const dispatch = useDispatch()
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -266,19 +268,22 @@ const TenantStaffManagementPage = () => {
                   <div className="rounded-xl bg-blue-100 p-2 text-blue-600">
                     <Users className="h-6 w-6" />
                   </div>
-                  Warehouse Staff Management
+                  {t('Warehouse Staff Management')}
                 </h1>
                 <p className="mt-1 text-sm text-slate-500">
-                  Invite and manage your organization's warehouse operations staff.
+                  {t("Invite and manage your organization's warehouse operations staff.")}
                 </p>
               </div>
-              <div className="flex items-center gap-3 text-black">
+              <div className="flex items-center gap-3">
                 <span className="text-sm text-slate-500">
-                  Total: <strong className="text-slate-900">{totalElements}</strong> staff
+                  {t('Total')}: <strong className="text-slate-900">{totalElements}</strong> {t('staff')}
                 </span>
-                <Button className="text-black" onClick={() => setIsInviteOpen(true)}>
-                  <UserPlus className="mr-2 h-4 w-4 text-black" />
-                  Invite Staff
+                <Button
+                  className="bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+                  onClick={() => setIsInviteOpen(true)}
+                >
+                  <UserPlus className="mr-2 h-4 w-4 text-white" />
+                  {t('Invite Staff')}
                 </Button>
               </div>
             </div>
@@ -290,7 +295,7 @@ const TenantStaffManagementPage = () => {
                   <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <InputField
                     className="pl-10"
-                    placeholder="Search by name, email..."
+                    placeholder={t('Search by name, email...')}
                     value={keyword}
                     onChange={(e) => {
                       setKeyword(e.target.value)
@@ -308,9 +313,9 @@ const TenantStaffManagementPage = () => {
               ) : staffList.length === 0 ? (
                 <div className="py-16 text-center">
                   <Shield className="mx-auto mb-4 h-12 w-12 text-slate-200" />
-                  <p className="font-medium text-slate-500">There are no employees yet</p>
+                  <p className="font-medium text-slate-500">{t('There are no employees yet')}</p>
                   <p className="mt-1 text-sm text-slate-400">
-                    Click "Invite Staff" to send an email invitation
+                    {t('Click "Invite Staff" to send an email invitation')}
                   </p>
                 </div>
               ) : (
@@ -319,19 +324,19 @@ const TenantStaffManagementPage = () => {
                     <thead>
                       <tr className="border-b border-slate-100">
                         <th className="px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                          Staff
+                          {t('Staff')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                          Contact
+                          {t('Contact')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                          Joining date
+                          {t('Joining date')}
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                          Status
+                          {t('Status')}
                         </th>
                         <th className="px-4 py-3 text-right text-xs font-semibold tracking-wider text-slate-500 uppercase">
-                          Action
+                          {t('Action')}
                         </th>
                       </tr>
                     </thead>
@@ -366,11 +371,11 @@ const TenantStaffManagementPage = () => {
                             {staff.joinedAt ? (
                               <span className="flex items-center gap-1 text-slate-600">
                                 <Calendar className="h-3 w-3 text-slate-400" />
-                                {new Date(staff.joinedAt).toLocaleDateString('en-US')}
+                                {new Date(staff.joinedAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
                               </span>
                             ) : (
                               <span className="text-xs font-medium text-amber-500">
-                                Wait for activation
+                                {t('Wait for activation')}
                               </span>
                             )}
                           </td>
@@ -378,12 +383,12 @@ const TenantStaffManagementPage = () => {
                             {(staff.active !== undefined ? staff.active : staff.isActive) ? (
                               <Badge variant="success">
                                 <CheckCircle className="mr-1 h-3 w-3" />
-                                Activities
+                                {t('Activities')}
                               </Badge>
                             ) : (
                               <Badge variant="danger">
                                 <XCircle className="mr-1 h-3 w-3" />
-                                Locked
+                                {t('Locked')}
                               </Badge>
                             )}
                           </td>
@@ -392,7 +397,7 @@ const TenantStaffManagementPage = () => {
                               label={`Actions for ${staff.fullName}`}
                               items={[
                                 {
-                                  label: 'Assignment',
+                                  label: t('Assignment'),
                                   icon: Briefcase,
                                   disabled: !(staff.active !== undefined
                                     ? staff.active
@@ -400,7 +405,7 @@ const TenantStaffManagementPage = () => {
                                   onClick: () => handleOpenAssign(staff),
                                 },
                                 {
-                                  label: removingId === staff.memberId ? 'Removing...' : 'Remove',
+                                  label: removingId === staff.memberId ? t('Removing...') : t('Remove'),
                                   icon: Trash2,
                                   danger: true,
                                   disabled: removingId === staff.memberId,
@@ -425,10 +430,10 @@ const TenantStaffManagementPage = () => {
                     disabled={page === 0}
                     onClick={() => setPage((p) => p - 1)}
                   >
-                    ← Previous
+                    ← {t('Previous')}
                   </Button>
                   <span className="flex items-center text-sm text-slate-500">
-                    Page {page + 1} / {totalPages}
+                    {t('Page')} {page + 1} / {totalPages}
                   </span>
                   <Button
                     variant="outline"
@@ -436,7 +441,7 @@ const TenantStaffManagementPage = () => {
                     disabled={page >= totalPages - 1}
                     onClick={() => setPage((p) => p + 1)}
                   >
-                    Next →
+                    {t('Next')} →
                   </Button>
                 </div>
               )}
@@ -452,17 +457,17 @@ const TenantStaffManagementPage = () => {
           setIsInviteOpen(false)
           setInviteForm({ email: '', fullName: '', phone: '' })
         }}
-        title="Invite Warehouse Staff"
+        title={t('Invite Warehouse Staff')}
       >
         <FormShell onSubmit={handleInvite} className="space-y-4">
           <p className="text-sm text-slate-500">
-            The system will send an email containing the activation link to the address below. Link
-            is valid in <strong>48 hours</strong>.
+            {t('The system will send an email containing the activation link to the address below. Link is valid in')}{' '}
+            <strong>48 {t('hours')}</strong>.
           </p>
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-slate-700">
-              Email <span className="text-red-500">*</span>
+              {t('Email')} <span className="text-red-500">*</span>
             </label>
             <InputField
               type="email"
@@ -475,7 +480,7 @@ const TenantStaffManagementPage = () => {
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-slate-700">
-              Full name <span className="text-red-500">*</span>
+              {t('Full name')} <span className="text-red-500">*</span>
             </label>
             <InputField
               required
@@ -486,7 +491,7 @@ const TenantStaffManagementPage = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-slate-700">Phone number</label>
+            <label className="text-sm font-medium text-slate-700">{t('Phone number')}</label>
             <InputField
               type="tel"
               placeholder="0987654321"
@@ -504,11 +509,15 @@ const TenantStaffManagementPage = () => {
                 setInviteForm({ email: '', fullName: '', phone: '' })
               }}
             >
-              Cancel
+              {t('Cancel')}
             </Button>
-            <Button className="text-black" type="submit" isLoading={isInviting}>
-              <Mail className="mr-2 h-4 w-4" />
-              Send Invitations
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
+              type="submit"
+              isLoading={isInviting}
+            >
+              <Mail className="mr-2 h-4 w-4 text-white" />
+              {t('Send Invitations')}
             </Button>
           </div>
         </FormShell>
@@ -521,14 +530,14 @@ const TenantStaffManagementPage = () => {
           setIsAssignOpen(false)
           setSelectedStaff(null)
         }}
-        title={`Warehouse assignment - ${selectedStaff?.fullName || ''}`}
+        title={`${t('Warehouse assignment')} - ${selectedStaff?.fullName || ''}`}
         size="lg"
       >
         <div className="space-y-6">
           {/* Current Assignments */}
           <div>
             <h3 className="mb-3 text-sm font-semibold text-slate-800">
-              The warehouse is in charge
+              {t('The warehouse is in charge')}
             </h3>
             <div className="space-y-2">
               {assignments.length > 0 ? (
@@ -559,14 +568,14 @@ const TenantStaffManagementPage = () => {
                         {revokingId === assign.id ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
-                          'Revoke'
+                          t('Revoke')
                         )}
                       </Button>
                     )}
                   </div>
                 ))
               ) : (
-                <p className="text-sm text-slate-500 italic">No warehouse has been assigned yet.</p>
+                <p className="text-sm text-slate-500 italic">{t('No warehouse has been assigned yet.')}</p>
               )}
             </div>
           </div>
@@ -575,7 +584,7 @@ const TenantStaffManagementPage = () => {
 
           {/* Add new assignment */}
           <div>
-            <h3 className="mb-3 text-sm font-semibold text-slate-800">New warehouse assignment</h3>
+            <h3 className="mb-3 text-sm font-semibold text-slate-800">{t('New warehouse assignment')}</h3>
             <FormShell
               onSubmit={handleAssign}
               className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4"
@@ -583,7 +592,7 @@ const TenantStaffManagementPage = () => {
               <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">
-                    Select warehouse <span className="text-red-500">*</span>
+                    {t('Select warehouse')} <span className="text-red-500">*</span>
                   </label>
                   <select
                     className="focus:ring-primary/20 focus:border-primary h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm transition-all outline-none focus:ring-2"
@@ -592,10 +601,10 @@ const TenantStaffManagementPage = () => {
                     onChange={(e) => setAssignForm((f) => ({ ...f, warehouseId: e.target.value }))}
                     required
                   >
-                    <option value="">-- Select warehouse --</option>
+                    <option value="">{t('-- Select warehouse --')}</option>
                     {myWarehouses.map((w) => (
                       <option key={w.id} value={w.id} disabled={hasActiveAssignment(w.id)}>
-                        {w.name}{hasActiveAssignment(w.id) ? ' (Assigned)' : ''}
+                        {w.name}{hasActiveAssignment(w.id) ? ` (${t('Assigned')})` : ''}
                       </option>
                     ))}
                   </select>
@@ -604,17 +613,17 @@ const TenantStaffManagementPage = () => {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Title displayed</label>
+                  <label className="text-sm font-medium text-slate-700">{t('Title displayed')}</label>
                   <InputField
-                    placeholder="Example: Storekeeper Shift 1"
+                    placeholder={t('Example: Storekeeper Shift 1')}
                     value={assignForm.customTitle}
                     onChange={(e) => setAssignForm((f) => ({ ...f, customTitle: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Notes</label>
+                  <label className="text-sm font-medium text-slate-700">{t('Notes')}</label>
                   <InputField
-                    placeholder="Assignment notes..."
+                    placeholder={t('Assignment notes...')}
                     value={assignForm.notes}
                     onChange={(e) => setAssignForm((f) => ({ ...f, notes: e.target.value }))}
                   />
@@ -624,6 +633,7 @@ const TenantStaffManagementPage = () => {
               <div className="flex justify-end pt-2">
                 <Button
                   type="submit"
+                  className="bg-blue-600 text-white hover:bg-blue-700 shadow-sm"
                   isLoading={isAssigning}
                   disabled={
                     isAssigning ||
@@ -633,11 +643,11 @@ const TenantStaffManagementPage = () => {
                   }
                   title={
                     selectedWarehouseAlreadyAssigned
-                      ? 'This warehouse is already assigned to this staff member.'
+                      ? t('This warehouse is already assigned to this staff member.')
                       : undefined
                   }
                 >
-                  Add Assignment
+                  {t('Add Assignment')}
                 </Button>
               </div>
             </FormShell>

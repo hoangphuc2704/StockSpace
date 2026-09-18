@@ -123,7 +123,7 @@ const WarehouseDetailPage = () => {
         const payload = response?.data?.data || response?.data
         const normalized = normalizeWarehouse(payload || {})
 
-        if (!normalized.id) {
+        if (!normalized.id || normalized.isVerified !== true) {
           setWarehouse(null)
           setError('Warehouse not found.')
           return

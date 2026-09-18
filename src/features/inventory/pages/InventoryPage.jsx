@@ -32,11 +32,87 @@ import dataContinuityApi from '@/services/wms/dataContinuityApi'
 import { WMS_IMPORT_TYPE } from '@/services/wms/wmsDataTypes'
 import { formatStockQuantity, sumStockQuantity } from '@/utils/stockQuantity'
 import { toast } from 'react-hot-toast'
+import { useLanguage } from '@/i18n/LanguageContext'
+
+const UOM_VI_TO_EN = {
+  'thùng': 'Box',
+  'hộp': 'Box',
+  'cái': 'Piece',
+  'chiếc': 'Piece',
+  'kiện': 'Package',
+  'bao': 'Bag',
+  'cuộn': 'Roll',
+  'chai': 'Bottle',
+  'lọ': 'Jar',
+  'gói': 'Pack',
+  'pallet': 'Pallet',
+  'bộ': 'Set',
+  'tấn': 'Ton',
+  'lít': 'Liter',
+  'mét': 'Meter',
+  'túi': 'Bag',
+  'bình': 'Bottle',
+  'can': 'Can',
+  'lon': 'Can',
+  'vỉ': 'Blister',
+  'ống': 'Tube',
+  'cây': 'Piece',
+  'thanh': 'Bar',
+  'tấm': 'Sheet',
+  'đôi': 'Pair',
+  'cặp': 'Pair',
+}
+
+const UOM_EN_TO_VI = {
+  'box': 'Thùng',
+  'piece': 'Cái',
+  'pieces': 'Cái',
+  'package': 'Kiện',
+  'packages': 'Kiện',
+  'bag': 'Bao',
+  'bags': 'Bao',
+  'roll': 'Cuộn',
+  'rolls': 'Cuộn',
+  'bottle': 'Chai',
+  'bottles': 'Chai',
+  'jar': 'Lọ',
+  'jars': 'Lọ',
+  'pack': 'Gói',
+  'packs': 'Gói',
+  'pallet': 'Pallet',
+  'pallets': 'Pallet',
+  'set': 'Bộ',
+  'sets': 'Bộ',
+  'ton': 'Tấn',
+  'tons': 'Tấn',
+  'liter': 'Lít',
+  'liters': 'Lít',
+  'meter': 'Mét',
+  'meters': 'Mét',
+  'can': 'Can',
+  'cans': 'Can',
+  'blister': 'Vỉ',
+  'tube': 'Ống',
+  'bar': 'Thanh',
+  'sheet': 'Tấm',
+  'pair': 'Đôi',
+  'pairs': 'Đôi',
+}
+
+const translateUom = (uom, language) => {
+  if (!uom) return '—'
+  const key = String(uom).trim().toLowerCase()
+  if (language === 'en') {
+    return UOM_VI_TO_EN[key] || uom
+  }
+  return UOM_EN_TO_VI[key] || uom
+}
 
 const InventoryPage = () => {
   const [searchParams] = useSearchParams()
   const { isSidebarExpanded } = useSelector((state) => state.ui)
   const { user } = useSelector((state) => state.auth)
+  const { language, t } = useLanguage()
   const currentRole = user?.role === 'ROLE_STAFF' ? 'STAFF' : 'TENANT'
 
   const [isLoading, setIsLoading] = useState(true)
@@ -83,11 +159,11 @@ const InventoryPage = () => {
       if (!list.length) setIsLoading(false)
       return list
     } catch (error) {
-      showApiErrorToast(error, 'Could not load warehouses.')
+      showApiErrorToast(error, t('Could not load warehouses.'))
       setIsLoading(false)
       return null
     }
-  }, [searchParams])
+  }, [searchParams, t])
 
   const fetchData = useCallback(async () => {
     if (!selectedWarehouseId) {
@@ -113,11 +189,11 @@ const InventoryPage = () => {
     } catch (error) {
       setLayout(null)
       setAllStock([])
-      showApiErrorToast(error, 'Could not load inventory data.')
+      showApiErrorToast(error, t('Could not load inventory data.'))
     } finally {
       setIsLoading(false)
     }
-  }, [currentRole, selectedWarehouseId])
+  }, [currentRole, selectedWarehouseId, t])
 
   useEffect(() => {
     // Load the server-backed warehouse list when the page scope changes.
@@ -250,7 +326,7 @@ const InventoryPage = () => {
       const res = await stockApi.getStockTransactions(batchId)
       setBatchHistory(res.data?.data?.content || [])
     } catch (err) {
-      showApiErrorToast(err, 'Could not load transaction history.')
+      showApiErrorToast(err, t('Could not load transaction history.'))
     } finally {
       setIsHistoryLoading(false)
     }
@@ -259,31 +335,33 @@ const InventoryPage = () => {
   const handleDownloadWorkbook = async (type) => {
     if (!selectedWarehouseId || downloadingWorkbook) return
     if (type === 'snapshot' && hasMaskedQuantities) {
-      toast.error('Inventory snapshot export is unavailable during a blind count.')
+      toast.error(t('Inventory snapshot export is unavailable during a blind count.'))
       return
     }
     try {
       setDownloadingWorkbook(type)
       if (type === 'snapshot') {
         await dataContinuityApi.exportInventorySnapshot(selectedWarehouseId)
-        toast.success('Inventory snapshot downloaded.')
+        toast.success(t('Inventory snapshot downloaded.'))
       } else {
         await dataContinuityApi.downloadOfflineMovementTemplate(selectedWarehouseId)
-        toast.success('Offline movement template downloaded.')
+        toast.success(t('Offline movement template downloaded.'))
       }
     } catch (error) {
       const errorCode = error?.response?.data?.errorCode || error?.response?.data?.code
       if (type === 'snapshot' && errorCode === 'AUDIT_MOVEMENT_LOCKED') {
         toast.error(
-          'The warehouse is under a blind count. Wait for the staff audit to finish before exporting the snapshot.'
+          t(
+            'The warehouse is under a blind count. Wait for the staff audit to finish before exporting the snapshot.'
+          )
         )
         return
       }
       showApiErrorToast(
         error,
         type === 'snapshot'
-          ? 'Could not export the inventory snapshot.'
-          : 'Could not download the offline movement template.'
+          ? t('Could not export the inventory snapshot.')
+          : t('Could not download the offline movement template.')
       )
     } finally {
       setDownloadingWorkbook('')
@@ -331,8 +409,8 @@ const InventoryPage = () => {
                 <PackageSearch className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Quản lý Hàng Tồn Kho</h1>
-                <p className="text-sm text-slate-500">Xem chi tiết tồn kho theo sơ đồ vật lý</p>
+                <h1 className="text-xl font-bold text-slate-900">{t('Inventory Management')}</h1>
+                <p className="text-sm text-slate-500">{t('View detailed inventory by physical layout')}</p>
               </div>
             </div>
 
@@ -363,12 +441,12 @@ const InventoryPage = () => {
                   }
                   title={
                     hasMaskedQuantities
-                      ? 'Không thể xuất snapshot khi đang kiểm kê mù'
-                      : 'Export inventory snapshot'
+                      ? t('Cannot export snapshot during blind count')
+                      : t('Export snapshot')
                   }
                   className="w-full gap-2 sm:w-auto"
                 >
-                  <Download className="h-4 w-4" /> Export snapshot
+                  <Download className="h-4 w-4" /> {t('Export snapshot')}
                 </Button>
                 <Button
                   type="button"
@@ -379,7 +457,7 @@ const InventoryPage = () => {
                   disabled={!selectedWarehouseId || Boolean(downloadingWorkbook)}
                   className="w-full gap-2 sm:w-auto"
                 >
-                  <FileSpreadsheet className="h-4 w-4" /> Offline template
+                  <FileSpreadsheet className="h-4 w-4" /> {t('Offline template')}
                 </Button>
                 <Button
                   type="button"
@@ -388,7 +466,7 @@ const InventoryPage = () => {
                   disabled={!selectedWarehouseId}
                   className="w-full gap-2 sm:w-auto"
                 >
-                  <Upload className="h-4 w-4" /> Import movements
+                  <Upload className="h-4 w-4" /> {t('Import movements')}
                 </Button>
               </div>
             </div>
@@ -399,7 +477,7 @@ const InventoryPage = () => {
               role="status"
               className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
             >
-              Kho đang được kiểm kê. Số lượng hệ thống trong phạm vi kiểm kê được ẩn cho đến khi Staff gửi kết quả.
+              {t('The warehouse is currently undergoing an audit. System quantities in the audit scope are hidden until staff submit the results.')}
             </div>
           )}
 
@@ -412,7 +490,7 @@ const InventoryPage = () => {
                   <Search className="absolute top-2.5 left-3 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Tìm Dãy/Ô..."
+                    placeholder={t('Search rack/bin...')}
                     value={locationSearch}
                     onChange={(e) => setLocationSearch(e.target.value)}
                     className="w-full rounded-lg border border-slate-200 py-2 pr-3 pl-9 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
@@ -433,7 +511,7 @@ const InventoryPage = () => {
                       className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${selectedLocation.type === 'all' ? 'bg-emerald-100 text-emerald-800' : 'text-slate-700 hover:bg-slate-100'}`}
                     >
                       <Warehouse className="h-4 w-4 text-emerald-600" />
-                      [Tất cả] Kho Hàng
+                      {t('[All] Entire Warehouse')}
                     </button>
 
                     {/* Racks */}
@@ -449,7 +527,7 @@ const InventoryPage = () => {
                           >
                             <button
                               type="button"
-                              aria-label={`${isRackExpanded ? 'Thu gọn' : 'Mở rộng'} ${rack.name || rack.code}`}
+                              aria-label={`${isRackExpanded ? t('Collapse') : t('Expand')} ${rack.name || rack.code}`}
                               aria-expanded={isRackExpanded}
                               onClick={() => toggleRack(rack.id)}
                               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-white hover:text-emerald-600"
@@ -503,24 +581,24 @@ const InventoryPage = () => {
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <ListTree className="h-4 w-4" />
                   <span>
-                    Đang xem:{' '}
+                    {t('Viewing')}:{' '}
                     <strong className="text-slate-900">
                       {selectedLocation.type === 'all'
-                        ? 'Tất cả vị trí'
+                        ? t('All locations')
                         : selectedLocation.type === 'rack'
-                          ? `Dãy ${treeRacks.find((r) => r.id === selectedLocation.id)?.name || ''}`
-                          : `Ô ${treeRacks.flatMap((r) => r.bins).find((b) => b?.id === selectedLocation.id)?.name || ''}`}
+                          ? `${t('Rack')} ${treeRacks.find((r) => r.id === selectedLocation.id)?.name || ''}`
+                          : `${t('Bin')} ${treeRacks.flatMap((r) => r.bins).find((b) => b?.id === selectedLocation.id)?.name || ''}`}
                     </strong>
                   </span>
                   <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-                    {groupedStock.length} Nhóm Sản Phẩm
+                    {groupedStock.length} {groupedStock.length === 1 ? t('Product Group') : t('Product Groups')}
                   </span>
                 </div>
                 <div className="relative w-64">
                   <Search className="absolute top-2.5 left-3 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
-                    placeholder="Tìm theo Mã/Tên sản phẩm..."
+                    placeholder={t('Search by SKU code/name...')}
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
                     className="w-full rounded-lg border border-slate-200 py-2 pr-3 pl-9 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
@@ -537,20 +615,20 @@ const InventoryPage = () => {
                 ) : groupedStock.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center text-slate-500">
                     <PackageSearch className="mb-3 h-12 w-12 text-slate-300" />
-                    <p>Không có hàng hóa nào tại vị trí này.</p>
+                    <p>{t('No inventory found at this location.')}</p>
                   </div>
                 ) : (
                   <table className="w-full text-left text-sm whitespace-nowrap">
                     <thead className="sticky top-0 z-10 bg-slate-50 font-medium text-slate-600 shadow-sm">
                       <tr>
                         <th className="w-10 px-4 py-3"></th>
-                        <th className="px-4 py-3">Mã SKU</th>
-                        <th className="px-4 py-3">Tên sản phẩm</th>
-                        <th className="px-4 py-3">Đơn vị</th>
-                        <th className="px-4 py-3 text-right">Tổng số lượng</th>
-                        <th className="px-4 py-3 text-right">Khả dụng</th>
-                        <th className="px-4 py-3">Tên khu vực (Dãy)</th>
-                        <th className="px-4 py-3">Tên vị trí (Ô)</th>
+                        <th className="px-4 py-3">{t('SKU Code')}</th>
+                        <th className="px-4 py-3">{t('Product Name')}</th>
+                        <th className="px-4 py-3">{t('UOM')}</th>
+                        <th className="px-4 py-3 text-right">{t('Total Quantity')}</th>
+                        <th className="px-4 py-3 text-right">{t('Available Qty')}</th>
+                        <th className="px-4 py-3">{t('Zone / Rack')}</th>
+                        <th className="px-4 py-3">{t('Location / Bin')}</th>
                         <th className="px-4 py-3"></th>
                       </tr>
                     </thead>
@@ -559,11 +637,11 @@ const InventoryPage = () => {
                         const isExpanded = expandedSkus.has(group.skuId)
                         const rackDisplay =
                           group.rackNames.size > 1
-                            ? `Nhiều dãy (${group.rackNames.size})`
+                            ? `${t('Multiple racks')} (${group.rackNames.size})`
                             : [...group.rackNames][0] || '—'
                         const binDisplay =
                           group.binNames.size > 1
-                            ? `Nhiều ô (${group.binNames.size})`
+                            ? `${t('Multiple bins')} (${group.binNames.size})`
                             : [...group.binNames][0] || '—'
 
                         return (
@@ -586,7 +664,9 @@ const InventoryPage = () => {
                               <td className="min-w-[200px] px-4 py-3 font-medium whitespace-normal text-slate-700">
                                 {group.skuName}
                               </td>
-                              <td className="px-4 py-3 text-slate-500">{group.uomName}</td>
+                              <td className="px-4 py-3 text-slate-500">
+                                {translateUom(group.uomName, language)}
+                              </td>
                               <td className="px-4 py-3 text-right font-bold text-emerald-600">
                                 {formatStockQuantity(group.totalQuantity, group.quantityMasked)}
                               </td>
@@ -599,7 +679,7 @@ const InventoryPage = () => {
                                 </div>
                                 {!group.quantityMasked && (
                                   <span className="text-xs font-normal text-slate-400">
-                                    Giữ: {formatStockQuantity(group.totalReservedQuantity, false)}
+                                    {t('Reserved:')} {formatStockQuantity(group.totalReservedQuantity, false)}
                                   </span>
                                 )}
                               </td>
@@ -635,10 +715,10 @@ const InventoryPage = () => {
                                     colSpan={2}
                                     className="px-4 py-2.5 text-sm whitespace-normal text-slate-500"
                                   >
-                                    Ngày nhập:{' '}
+                                    {t('Arrival date:')}{' '}
                                     <span className="font-medium text-slate-700">
                                       {batch.arrivalDate
-                                        ? new Date(batch.arrivalDate).toLocaleDateString('vi-VN')
+                                        ? new Date(batch.arrivalDate).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')
                                         : '—'}
                                     </span>
                                   </td>
@@ -654,7 +734,7 @@ const InventoryPage = () => {
                                     </div>
                                     {!batch.quantityMasked && (
                                       <span className="text-xs font-normal text-slate-400">
-                                        Giữ: {formatStockQuantity(batch.reservedQuantity, false)}
+                                        {t('Reserved:')} {formatStockQuantity(batch.reservedQuantity, false)}
                                       </span>
                                     )}
                                   </td>
@@ -667,7 +747,7 @@ const InventoryPage = () => {
                                         handleViewHistory(batch.id)
                                       }}
                                       className="ml-auto flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600"
-                                      title="Lịch sử giao dịch"
+                                      title={t('Transaction history')}
                                     >
                                       <History className="h-4 w-4" />
                                     </button>
@@ -690,7 +770,7 @@ const InventoryPage = () => {
       <Modal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
-        title="Lịch sử Lô hàng"
+        title={t('Batch History')}
         className="max-w-4xl"
       >
         {isHistoryLoading ? (
@@ -700,9 +780,9 @@ const InventoryPage = () => {
         ) : (
           <DataTable
             columns={[
-              { header: 'Ngày', render: (row) => new Date(row.createdAt).toLocaleString('vi-VN') },
+              { header: t('Date'), render: (row) => new Date(row.createdAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') },
               {
-                header: 'Loại',
+                header: t('Type'),
                 render: (row) => (
                   <span
                     className={`rounded-md px-2 py-1 text-xs font-medium ${row.quantityChanged > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}
@@ -712,7 +792,7 @@ const InventoryPage = () => {
                 ),
               },
               {
-                header: 'Thay đổi',
+                header: t('Change'),
                 render: (row) => (
                   <span
                     className={`font-bold ${row.quantityChanged > 0 ? 'text-emerald-600' : 'text-amber-600'}`}
@@ -723,7 +803,7 @@ const InventoryPage = () => {
                 ),
               },
               {
-                header: 'Mã phiếu',
+                header: t('Receipt Code'),
                 render: (row) =>
                   row.receiptId ? row.receiptId.substring(0, 8).toUpperCase() : '—',
               },
@@ -736,8 +816,10 @@ const InventoryPage = () => {
       <WmsImportDialog
         isOpen={isOfflineImportOpen}
         onClose={() => setIsOfflineImportOpen(false)}
-        title="Import offline inbound / outbound movements"
-        description="Use only the newest template downloaded for the selected warehouse. Movements are validated and later applied in sequence_no order as one atomic operation."
+        title={t('Import offline inbound / outbound movements')}
+        description={t(
+          'Use only the newest template downloaded for the selected warehouse. Movements are validated and later applied in sequence_no order as one atomic operation.'
+        )}
         importType={WMS_IMPORT_TYPE.OFFLINE_MOVEMENT}
         scopeKey={selectedWarehouseId}
         validateWorkbook={(file) =>
@@ -745,12 +827,15 @@ const InventoryPage = () => {
         }
         applyWorkbook={dataContinuityApi.applyOfflineMovements}
         allowApply={currentRole === 'TENANT'}
-        applyUnavailableMessage="Staff can validate offline movements when permitted, but only the tenant can apply them."
+        applyUnavailableMessage={t(
+          'Staff can validate offline movements when permitted, but only the tenant can apply them.'
+        )}
         confirmation={{
-          title: 'Apply offline movements',
-          message:
-            'Create and approve every inbound/outbound receipt in workbook sequence. Inventory will change atomically. Are you sure you want to continue?',
-          confirmText: 'Apply movements',
+          title: t('Apply offline movements'),
+          message: t(
+            'Create and approve every inbound/outbound receipt in workbook sequence. Inventory will change atomically. Are you sure you want to continue?'
+          ),
+          confirmText: t('Apply movements'),
         }}
         onApplied={fetchData}
         onStale={fetchData}
