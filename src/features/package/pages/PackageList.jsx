@@ -49,6 +49,7 @@ const PackageList = () => {
             setActiveSub(subRes?.data?.data)
           } catch {
             // A tenant can legitimately have no active subscription.
+            setActiveSub(null)
           }
         }
       } catch (error) {

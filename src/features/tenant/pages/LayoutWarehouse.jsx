@@ -1328,6 +1328,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [loadingLayout, setLoadingLayout] = useState(false)
   const [saving, setSaving] = useState(false)
+  const layoutSaveInFlightRef = useRef(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [contractCanEdit, setContractCanEdit] = useState(false)
@@ -1704,6 +1705,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
   const loadLayout = useCallback(async () => {
     // Keep the local draft visible while the first create + layout save request is in flight.
+    // Creating the warehouse changes selectedWarehouseId before the PUT finishes;
+    // loading the new warehouse at that moment would incorrectly return 404 because
+    // its layout has not been persisted yet.
+    if (layoutSaveInFlightRef.current) return
     if (pendingOwnerDraft && draftWarehouseId && isMandatorySetup) return
     if (!selectedWarehouseId && !isContractLayout) {
       if (isUnsavedOwnerDraft) {
@@ -3138,6 +3143,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [pendingOwnerDraft])
 
   const saveLayout = async () => {
+    if (layoutSaveInFlightRef.current) return
     const hasPendingOwnerDraft = Boolean(isOwner && !isContractLayout && pendingOwnerDraft)
     if (isReadOnly || (!selectedWarehouseId && !isContractLayout && !hasPendingOwnerDraft)) return
     if (layout.racks.some((rack) => rectangleOverlapsBlockedCell(rack, layout))) {
@@ -3145,6 +3151,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       return
     }
     try {
+      layoutSaveInFlightRef.current = true
       setSaving(true)
       setError('')
       const payload = toPayload(layout)
@@ -3201,6 +3208,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     } catch (requestError) {
       setError(getEnglishApiMessage(requestError, 'Saving layout failed.'))
     } finally {
+      layoutSaveInFlightRef.current = false
       setSaving(false)
     }
   }

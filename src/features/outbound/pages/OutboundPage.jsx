@@ -483,6 +483,12 @@ const OutboundPage = () => {
 
   const handleCreateReceipt = async (e) => {
     e.preventDefault()
+    const receiverNameError = required(formReceiverName, 'Receiver name')
+    if (receiverNameError) {
+      toast.error('Enter a receiver name.')
+      return
+    }
+
     if (outboundLines.some((line) => !line.skuId)) {
       toast.error('Select a product for every line.')
       return
@@ -572,7 +578,7 @@ const OutboundPage = () => {
       const payload = {
         warehouseId: selectedWarehouseId,
         type: 'OUTBOUND',
-        receiverName: formReceiverName,
+        receiverName: formReceiverName.trim(),
         items: payloadItems,
       }
       await receiptApi.createReceipt(payload)
@@ -1118,7 +1124,9 @@ const OutboundPage = () => {
                           >
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_140px_auto] sm:items-end">
                               <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-600">SKU {index + 1}</label>
+                                <label className="text-xs font-semibold text-slate-600">
+                                  SKU {index + 1} <span className="text-rose-500">*</span>
+                                </label>
                                 <select
                                   required
                                   value={line.skuId}
@@ -1144,7 +1152,9 @@ const OutboundPage = () => {
                                 </select>
                               </div>
                               <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-600">Quantity</label>
+                                <label className="text-xs font-semibold text-slate-600">
+                                  Quantity <span className="text-rose-500">*</span>
+                                </label>
                                 <InputField
                                   type="number"
                                   min="1"
@@ -1189,7 +1199,7 @@ const OutboundPage = () => {
                                 <div className="flex items-center justify-between gap-3">
                                   <div>
                                     <p className="text-xs font-semibold text-slate-700">
-                                      Phân bổ theo Rack/Bin
+                                      Phân bổ theo Rack/Bin <span className="text-rose-500">*</span>
                                     </p>
                                     <p className="mt-0.5 text-xs text-slate-500">
                                       Đã phân bổ {allocatedQuantity} / {Number(line.quantity) || 0}
@@ -1214,7 +1224,7 @@ const OutboundPage = () => {
                                     >
                                       <div className="space-y-1">
                                         <label className="text-[11px] font-medium text-slate-500">
-                                          Rack/Bin {allocationIndex + 1}
+                                          Rack/Bin {allocationIndex + 1} <span className="text-rose-500">*</span>
                                         </label>
                                         <select
                                           required
@@ -1253,7 +1263,9 @@ const OutboundPage = () => {
                                         </select>
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[11px] font-medium text-slate-500">Số lượng</label>
+                                        <label className="text-[11px] font-medium text-slate-500">
+                                          Số lượng <span className="text-rose-500">*</span>
+                                        </label>
                                         <InputField
                                           type="number"
                                           min="1"
@@ -1287,9 +1299,12 @@ const OutboundPage = () => {
                   </section>
 
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">Tên nơi nhận (Receiver Name)</label>
+                      <label className="text-sm font-medium text-slate-700">
+                        Tên nơi nhận (Receiver Name) <span className="text-rose-500">*</span>
+                      </label>
                       <InputField
                         placeholder="Ví dụ: Khách hàng B"
+                        required
                         value={formReceiverName}
                         onChange={(e) => setFormReceiverName(e.target.value)}
                       />

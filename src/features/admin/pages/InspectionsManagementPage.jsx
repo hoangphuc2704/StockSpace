@@ -50,7 +50,6 @@ const STATUS_CONFIG = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
-const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
 
 // ─── Assign Inspector Modal ───────────────────────────────────────────────────
 const AssignModal = ({ inspection, onClose }) => {
@@ -117,7 +116,7 @@ const AssignModal = ({ inspection, onClose }) => {
             <p className="mt-0.5 text-sm text-slate-500">
               Warehouse:{' '}
               <span className="font-semibold text-slate-700">
-                {inspection.warehouseName || shortId(inspection.warehouseId)}
+                {inspection.warehouseName || '—'}
               </span>
             </p>
           </div>
@@ -134,7 +133,7 @@ const AssignModal = ({ inspection, onClose }) => {
           <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm">
             <p className="mb-1 text-xs font-medium text-blue-500">Current Inspector</p>
             <p className="font-semibold text-blue-800">
-              {inspection.inspectorName || shortId(inspection.inspectorId)}
+              {inspection.inspectorName || 'Not assigned yet'}
             </p>
           </div>
         )}
@@ -217,7 +216,6 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-900">Inspection Details</h2>
-              <p className="text-xs text-slate-400">{shortId(inspection.id)}</p>
             </div>
           </div>
           <button
@@ -245,9 +243,6 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
             </p>
             <p className="font-semibold text-slate-800">{inspection.warehouseName || '—'}</p>
             <p className="mt-0.5 text-xs text-slate-500">{inspection.warehouseAddress || '—'}</p>
-            <p className="mt-0.5 font-mono text-[10px] text-slate-400">
-              {shortId(inspection.warehouseId)}
-            </p>
           </div>
 
           {/* People */}
@@ -259,22 +254,12 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
               <p className="font-semibold text-slate-800">
                 {inspection.inspectorName || 'Not yet'}
               </p>
-              {inspection.inspectorId && (
-                <p className="font-mono text-[10px] text-slate-400">
-                  {shortId(inspection.inspectorId)}
-                </p>
-              )}
             </div>
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1 flex items-center gap-1 text-xs text-slate-400">
                 <User size={11} /> Warehouse owner
               </p>
               <p className="font-semibold text-slate-800">{inspection.ownerName || '—'}</p>
-              {inspection.ownerId && (
-                <p className="font-mono text-[10px] text-slate-400">
-                  {shortId(inspection.ownerId)}
-                </p>
-              )}
             </div>
           </div>
 
@@ -562,7 +547,6 @@ const InspectionsManagementPage = () => {
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
                         {[
-                          'ID',
                           'Warehouse',
                           'Address',
                           'Inspector',
@@ -591,19 +575,8 @@ const InspectionsManagementPage = () => {
                             className="group transition-colors hover:bg-slate-50/60"
                           >
                             <td className="px-5 py-3.5">
-                              <span
-                                className="font-mono text-xs font-bold text-slate-400"
-                                title={item.id}
-                              >
-                                {shortId(item.id)}
-                              </span>
-                            </td>
-                            <td className="px-5 py-3.5">
                               <p className="font-semibold text-slate-800">
                                 {item.warehouseName || '—'}
-                              </p>
-                              <p className="font-mono text-[10px] text-slate-400">
-                                {shortId(item.warehouseId)}
                               </p>
                             </td>
                             <td className="max-w-40 px-5 py-3.5">
@@ -618,9 +591,6 @@ const InspectionsManagementPage = () => {
                               {item.inspectorId ? (
                                 <div>
                                   <p className="font-medium text-slate-700">{item.inspectorName}</p>
-                                  <p className="font-mono text-[10px] text-slate-400">
-                                    {shortId(item.inspectorId)}
-                                  </p>
                                 </div>
                               ) : (
                                 <span className="text-xs text-slate-400 italic">

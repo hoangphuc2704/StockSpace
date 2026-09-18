@@ -488,6 +488,12 @@ const InboundPage = () => {
 
   const handleCreateReceipt = async (e) => {
     e.preventDefault()
+    const senderNameError = required(formSenderName, 'Sender name')
+    if (senderNameError) {
+      toast.error('Enter a sender name.')
+      return
+    }
+
     const payloadItems = []
     const binsById = new Map()
     const racksById = new Map()
@@ -639,7 +645,7 @@ const InboundPage = () => {
       const payload = {
         warehouseId: selectedWarehouseId,
         type: 'INBOUND',
-        senderName: formSenderName,
+        senderName: formSenderName.trim(),
         items: payloadItems,
       }
       await receiptApi.createReceipt(payload)
@@ -1141,7 +1147,7 @@ const InboundPage = () => {
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_140px_auto] sm:items-end">
                               <div className="space-y-1.5">
                                 <label className="text-xs font-semibold text-slate-600">
-                                  SKU {index + 1}
+                                  SKU {index + 1} <span className="text-rose-500">*</span>
                                 </label>
                                 <select
                                   required
@@ -1169,7 +1175,9 @@ const InboundPage = () => {
                                 </select>
                               </div>
                               <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-slate-600">Quantity</label>
+                                <label className="text-xs font-semibold text-slate-600">
+                                  Quantity <span className="text-rose-500">*</span>
+                                </label>
                                 <InputField
                                   type="number"
                                   min="1"
@@ -1212,9 +1220,12 @@ const InboundPage = () => {
                   </section>
 
                     <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">Tên nơi gửi (Sender Name)</label>
+                      <label className="text-sm font-medium text-slate-700">
+                        Tên nơi gửi (Sender Name) <span className="text-rose-500">*</span>
+                      </label>
                       <InputField
                         placeholder="Ví dụ: Nhà cung cấp A"
+                        required
                         value={formSenderName}
                         onChange={(e) => setFormSenderName(e.target.value)}
                       />
@@ -1224,7 +1235,7 @@ const InboundPage = () => {
                       <div className="flex items-center gap-3">
                         <div>
                           <label className="text-sm font-medium text-slate-700">
-                          Allocate into Bins
+                            Allocate into Bins <span className="text-rose-500">*</span>
                           </label>
                           <p className="mt-0.5 text-xs text-slate-500">
                             Auto-Suggest calculates all {inboundLines.length} SKU lines together.
