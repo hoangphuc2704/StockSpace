@@ -252,14 +252,15 @@ const WarehouseManagement = () => {
   }
 
   const getInspectionBadge = (warehouse, inspection) => {
-    const inspectionStatus = String(inspection?.status || '').toUpperCase()
-    const isVerified = (warehouse.isVerified ?? warehouse.verified) === true
+    const inspectionStatus = String(
+      warehouse?.inspectionStatus || inspection?.status || ''
+    ).toUpperCase()
     const status =
-      !isVerified || inspectionStatus === 'FAILED'
+      inspectionStatus === 'FAILED'
         ? 'FAILED'
-        : inspectionStatus === 'PASSED' || isVerified
+        : inspectionStatus === 'PASSED'
           ? 'PASSED'
-          : inspection
+          : inspectionStatus
             ? 'REQUESTED'
             : null
     const configs = {
@@ -394,7 +395,9 @@ const WarehouseManagement = () => {
                         const isCurrentlyRequesting = requestingIds.includes(wh.id)
                         const inspection = inspectionsByWarehouse[String(wh.id)]
                         const inspectionBadge = getInspectionBadge(wh, inspection)
-                        const inspectionStatus = String(inspection?.status || '').toUpperCase()
+                        const inspectionStatus = String(
+                          wh.inspectionStatus || inspection?.status || ''
+                        ).toUpperCase()
                         const canRequestInspection =
                           !isRejectedListing &&
                           (wh.isVerified ?? wh.verified) !== true &&

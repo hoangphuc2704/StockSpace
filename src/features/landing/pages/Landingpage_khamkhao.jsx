@@ -227,11 +227,7 @@ const LandingPageKhamkhao = () => {
           : Array.isArray(payload)
             ? payload
             : []
-        setApprovedWarehouses(
-          content
-            .filter((warehouse) => (warehouse.isVerified ?? warehouse.verified) === true)
-            .map(normalizeWarehouse)
-        )
+        setApprovedWarehouses(content.map(normalizeWarehouse))
       } catch {
         setApprovedWarehouses([])
       } finally {

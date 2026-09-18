@@ -71,11 +71,7 @@ const WarehouseListingPage = () => {
           : Array.isArray(payload)
             ? payload
             : []
-        setWarehouses(
-          content
-            .filter((warehouse) => (warehouse.isVerified ?? warehouse.verified) === true)
-            .map(normalizeWarehouse)
-        )
+        setWarehouses(content.map(normalizeWarehouse))
       } catch (err) {
         setError(err.response?.data?.message || err.message || 'Unable to load warehouses.')
         setWarehouses([])
