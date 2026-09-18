@@ -25,9 +25,12 @@ const SubscriptionPage = () => {
     setIsLoading(true)
     try {
       const res = await subscriptionApi.getMyActiveSubscription()
-      setSubscription(res.data?.data)
+      setSubscription(res.data?.data || null)
     } catch (err) {
-      console.error('Failed to load subscription:', err)
+      if (err.response?.status !== 404) {
+        console.error('Failed to load subscription:', err)
+      }
+      setSubscription(null)
     } finally {
       setIsLoading(false)
     }

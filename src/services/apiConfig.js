@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { showApiErrorToast } from '@/config/apiError'
+import { normalizeApiErrorForUi, showApiErrorToast } from '@/config/apiError'
 // ==================== Main Axios Instance ====================
 
 const api = axios.create({
@@ -61,6 +61,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     await hydrateBlobErrorPayload(error)
+    normalizeApiErrorForUi(error)
     const originalRequest = error.config
 
     // A 401 may be recovered by the refresh flow, so wait before notifying.

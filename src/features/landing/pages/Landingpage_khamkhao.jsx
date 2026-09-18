@@ -36,13 +36,6 @@ const WMS_CAPABILITIES = [
   },
 ]
 
-const formatWarehouseCode = (id) => {
-  const normalizedId = String(id || '')
-    .replace(/-/g, '')
-    .toUpperCase()
-  return normalizedId ? `WH-${normalizedId.slice(-6)}` : 'WH-N/A'
-}
-
 const formatWarehouseStatus = (status) => {
   if (status === 'AVAILABLE') return 'Sẵn sàng'
   if (status === 'PENDING_APPROVAL') return 'Đang duyệt'
@@ -58,7 +51,6 @@ const formatWarehousePricingType = (pricingType) => {
 
 const normalizeWarehouse = (item) => ({
   id: item.id,
-  code: item.code || item.warehouseCode || formatWarehouseCode(item.id),
   name: item.name || 'Warehouse',
   address: item.address || item.location || 'Đang cập nhật địa chỉ',
   area: Number(item.area ?? item.capacity ?? 0),
@@ -78,8 +70,7 @@ const ListingPreviewCard = ({ warehouse }) => (
     to={`/warehouse/${warehouse.id}`}
     className="group flex h-full flex-col overflow-hidden border border-slate-300 bg-white transition-colors hover:border-slate-500 hover:shadow-md focus-visible:ring-2 focus-visible:ring-[#FF5A1F] focus-visible:ring-offset-2 focus-visible:outline-none"
   >
-    <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 font-mono text-[10px] font-bold tracking-[0.08em] text-slate-900 uppercase">
-      <span className="truncate">ID: {warehouse.code}</span>
+    <div className="flex items-center justify-end gap-3 border-b border-slate-200 px-4 py-3 font-mono text-[10px] font-bold tracking-[0.08em] text-slate-900 uppercase">
       <span className="shrink-0 border border-sky-200 bg-sky-50 px-2 py-1 text-[9px] text-sky-800">
         {warehouse.type}
       </span>

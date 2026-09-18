@@ -2,8 +2,10 @@ import { toast } from 'react-hot-toast'
 
 const DEFAULT_API_ERROR = 'Something went wrong. Please try again.'
 
-// Override message theo errorCode của BE tại một nơi duy nhất.
-// Ví dụ: SUBSCRIPTION_REQUIRED: 'Vui lòng đăng ký gói dịch vụ trước.'
+const VIETNAMESE_MESSAGE_PATTERN =
+  /[À-ỹ]|\b(vui\s*lòng|không|khong|đã|da|chưa|chua|phiếu|phieu|kho|hàng|hang|thông báo|thong bao|yêu cầu|yeu cau|thành công|thanh cong|từ chối|tu choi|duyệt|duyet|kiểm kê|kiem ke|nhân viên|nhan vien|hợp đồng|hop dong|được|duoc|lỗi|loi)\b/i
+
+// Keep backend error messages consistent with the English FE UI.
 export const API_ERROR_MESSAGE_OVERRIDES = {
   WMS_IMPORT_FILE_INVALID:
     'The workbook is empty, damaged, contains a formula, or is not a supported .xlsx file.',
@@ -19,7 +21,7 @@ export const API_ERROR_MESSAGE_OVERRIDES = {
   WMS_IMPORT_STALE:
     'Warehouse, inventory, layout, or audit data changed. Download a fresh workbook and start again.',
   AUDIT_MOVEMENT_LOCKED:
-    'Kho đang được kiểm kê mù. Hãy chờ Staff hoàn tất kiểm kê trước khi thay đổi hoặc xuất tồn kho.',
+    'The warehouse is under a blind count. Wait for the staff audit to finish before changing or exporting inventory.',
   // EMAIL_ALREADY_EXISTS: 'Email này đã được sử dụng.',
 }
 
@@ -51,9 +53,30 @@ export const getApiErrorMessage = (
 
   if (customMessage) return customMessage
 
-  const message = toMessage(payload) || toMessage(payload?.errors) || toMessage(error?.message)
+  const message =
+    toMessage(payload) ||
+    toMessage(payload?.errors) ||
+    (error?.__apiErrorMessageSanitized ? '' : toMessage(error?.message))
 
-  return message || fallback
+  return message && !VIETNAMESE_MESSAGE_PATTERN.test(message) ? message : fallback
+}
+
+/** Prevent raw Vietnamese backend messages from leaking into inline FE errors. */
+export const normalizeApiErrorForUi = (error) => {
+  const payload = error?.response?.data
+  const rawMessage = toMessage(payload?.message || payload?.error || payload?.detail)
+  if (!error || !rawMessage || !VIETNAMESE_MESSAGE_PATTERN.test(rawMessage)) return error
+
+  if (payload && typeof payload === 'object') {
+    payload.message = ''
+    payload.error = ''
+    payload.detail = ''
+    payload.title = ''
+    payload.errors = []
+  }
+  error.message = DEFAULT_API_ERROR
+  error.__apiErrorMessageSanitized = true
+  return error
 }
 
 /** Show a backend error consistently from one place. */

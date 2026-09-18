@@ -1328,6 +1328,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [loadingLayout, setLoadingLayout] = useState(false)
   const [saving, setSaving] = useState(false)
+  const layoutSaveInFlightRef = useRef(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [contractCanEdit, setContractCanEdit] = useState(false)
@@ -1704,6 +1705,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
   const loadLayout = useCallback(async () => {
     // Keep the local draft visible while the first create + layout save request is in flight.
+    // Creating the warehouse changes selectedWarehouseId before the PUT finishes;
+    // loading the new warehouse at that moment would incorrectly return 404 because
+    // its layout has not been persisted yet.
+    if (layoutSaveInFlightRef.current) return
     if (pendingOwnerDraft && draftWarehouseId && isMandatorySetup) return
     if (!selectedWarehouseId && !isContractLayout) {
       if (isUnsavedOwnerDraft) {
@@ -2058,13 +2063,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
     const rackHeight = numberOf(newRackHeight, 0)
     if (rackHeight <= 0) {
-      setError('Vui lòng nhập chiều cao Rack để BE tính khoảng cách giữa các tầng.')
+      setError('Enter a rack height so the backend can calculate shelf spacing.')
       return
     }
     const warehouseHeight = numberOf(layout.height, 0)
     if (warehouseHeight > 0 && rackHeight > warehouseHeight) {
       setError(
-        `Chiều cao Rack không được vượt quá chiều cao kho (${formatMeters(warehouseHeight)}).`
+        `Rack height cannot exceed the warehouse height (${formatMeters(warehouseHeight)}).`
       )
       return
     }
@@ -2081,11 +2086,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const shelfCount = integerOf(newRackShelfCount, 0)
     const requestedBinCount = integerOf(newRackBinCount, 0)
     if (shelfCount < 1) {
-      setError('Vui lòng nhập số tầng Rack trước khi thêm Rack.')
+      setError('Enter the rack shelf count before adding a rack.')
       return
     }
     if (requestedBinCount < 1) {
-      setError('Vui lòng nhập số Bin / Rack trước khi thêm Rack.')
+      setError('Enter the number of bins per rack before adding a rack.')
       return
     }
     const requestedCount = addMultipleRacks ? Math.max(integerOf(newRackQuantity, 2), 2) : 1
@@ -2105,8 +2110,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       if (!position) {
         setError(
           requestedCount === 1
-            ? `Không còn diện tích trống để thêm ${preset.name} vào kho.`
-            : `Không đủ diện tích trống để thêm ${requestedCount} ${preset.name}.`
+            ? `There is not enough free space to add ${preset.name} to the warehouse.`
+            : `There is not enough free space to add ${requestedCount} ${preset.name} racks.`
         )
         return
       }
@@ -2164,8 +2169,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     setError('')
     setMessage(
       requestedCount === 1
-        ? `${lastRack.name} đã được thêm vào layout.`
-        : `Đã thêm ${requestedCount} ${preset.name} vào layout.`
+        ? `${lastRack.name} was added to the layout.`
+        : `${requestedCount} ${preset.name} racks were added to the layout.`
     )
   }, [
     addMultipleRacks,
@@ -2188,17 +2193,17 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
       const levels = getRackLevelCount(targetRack)
       if (levels < 1) {
-        setError('Rack chưa có số tầng từ BE nên chưa thể thêm Bin.')
+        setError('The rack has no shelf count from the backend, so a bin cannot be added.')
         return
       }
       const currentBinCount = Array.isArray(targetRack.bins) ? targetRack.bins.length : 0
       const binLimit = getRackMaxBinCount(targetRack)
       if (binLimit < 1) {
-        setError('Rack chưa có giới hạn số Bin từ BE nên chưa thể thêm Bin.')
+        setError('The rack has no bin limit from the backend, so a bin cannot be added.')
         return
       }
       if (currentBinCount >= binLimit) {
-        setError(`${targetRack.name || targetRack.code || 'Rack'} đã đủ ${binLimit} Bin.`)
+        setError(`${targetRack.name || targetRack.code || 'Rack'} already has the maximum of ${binLimit} bins.`)
         return
       }
 
@@ -2224,11 +2229,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const height = numberOf(newBinHeight, 0)
     const quantity = Math.max(integerOf(newBinQuantity, 1), 1)
     if (displayWidth <= 0 || displayLength <= 0 || height <= 0) {
-      setError('Vui lòng nhập chiều rộng, chiều dài và chiều cao Bin lớn hơn 0.')
+      setError('Bin width, length, and height must be greater than 0.')
       return
     }
     if (shelfLevel < 1 || shelfLevel > levels) {
-      setError('Tầng Bin không hợp lệ với số tầng của Rack.')
+      setError('The bin shelf level is invalid for this rack.')
       return
     }
 
@@ -2236,13 +2241,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const binLimit = getRackMaxBinCount(selectedRack)
     if (binLimit < 1) {
       setError(
-        'Rack chưa có giới hạn số Bin từ BE. Hãy nhập Bin tối đa trong bảng Tổng quan Rack / Bin.'
+        'The rack has no bin limit from the backend. Enter the maximum bin count in the Rack/Bin overview.'
       )
       return
     }
     if (currentBinCount + quantity > binLimit) {
       setError(
-        `Rack chỉ còn thêm được ${Math.max(binLimit - currentBinCount, 0)} Bin (giới hạn ${binLimit}).`
+        `The rack can only add ${Math.max(binLimit - currentBinCount, 0)} more bins (limit: ${binLimit}).`
       )
       return
     }
@@ -2252,7 +2257,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const rackFootprint = getRackFootprint(selectedRack)
     if (width > rackFootprint.width || length > rackFootprint.length) {
       setError(
-        `Bin (Dài ${formatMeters(displayLength)} × Rộng ${formatMeters(displayWidth)}) không vừa mặt bằng Rack ${formatMeters(rackFootprint.width)} × ${formatMeters(rackFootprint.length)}.`
+        `The bin (${formatMeters(displayLength)} long × ${formatMeters(displayWidth)} wide) does not fit within the rack footprint (${formatMeters(rackFootprint.width)} × ${formatMeters(rackFootprint.length)}).`
       )
       return
     }
@@ -2271,8 +2276,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       if (!position) {
         setError(
           quantity === 1
-            ? 'Không còn vị trí trống ở tầng này. Bin hiện tại sẽ không bị co lại.'
-            : `Chỉ có thể thêm ${createdBins.length}/${quantity} Bin vì tầng này không còn vị trí trống.`
+            ? 'There is no free space on this shelf. Existing bins will not be resized.'
+            : `Only ${createdBins.length}/${quantity} bins could be added because this shelf has no more free space.`
         )
         return
       }
@@ -2347,7 +2352,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
       const levels = getRackLevelCount(targetRack)
       if (levels < 1) {
-        setError('Rack chưa có số tầng từ BE nên chưa thể chỉnh sửa Bin.')
+        setError('The rack has no shelf count from the backend, so the bin cannot be edited.')
         return
       }
 
@@ -2384,16 +2389,16 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const rackFootprint = getRackFootprint(selectedRack)
 
     if (width <= 0 || length <= 0 || height <= 0) {
-      setError('Vui lòng nhập chiều rộng và chiều cao Bin lớn hơn 0.')
+      setError('Bin width and height must be greater than 0.')
       return
     }
     if (shelfLevel < 1 || shelfLevel > levels) {
-      setError('Tầng Bin không hợp lệ với số tầng của Rack.')
+      setError('The bin shelf level is invalid for this rack.')
       return
     }
     if (width > rackFootprint.width || length > rackFootprint.length) {
       setError(
-        `Bin (Dài ${formatMeters(length)} × Rộng ${formatMeters(width)}) không vừa mặt bằng Rack ${formatMeters(rackFootprint.width)} × ${formatMeters(rackFootprint.length)}.`
+        `The bin (${formatMeters(length)} long × ${formatMeters(width)} wide) does not fit within the rack footprint (${formatMeters(rackFootprint.width)} × ${formatMeters(rackFootprint.length)}).`
       )
       return
     }
@@ -2418,7 +2423,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       : findAvailableBinPosition(selectedRack, shelfLevel, width, length, editingBinKey)
 
     if (!position) {
-      setError('Không còn vị trí trống ở tầng mới. Bin hiện tại vẫn được giữ nguyên.')
+      setError('There is no free space on the new shelf. The current bin will remain unchanged.')
       return
     }
 
@@ -2439,7 +2444,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     setEditingBinKey(null)
     setBlockedMode(false)
     setError('')
-    setMessage(`${selectedEntity.name || selectedEntity.code || 'Bin'} đã được cập nhật.`)
+    setMessage(`${selectedEntity.name || selectedEntity.code || 'Bin'} was updated.`)
   }, [
     canEditLayout,
     editingBinKey,
@@ -2456,13 +2461,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
     const targetRack = layout.racks.find((rack) => rack.clientKey !== selectedRack.clientKey)
     if (!targetRack) {
-      setError('Cần có ít nhất 2 Rack để chuyển Bin.')
+      setError('At least two racks are required to move a bin.')
       return
     }
 
     const targetLevels = getRackLevelCount(targetRack)
     if (targetLevels < 1) {
-      setError('Rack đích chưa có số tầng từ BE nên chưa thể chuyển Bin.')
+      setError('The destination rack has no shelf count from the backend, so the bin cannot be moved.')
       return
     }
 
@@ -2477,32 +2482,32 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
     const targetRack = layout.racks.find((rack) => rack.clientKey === moveBinTargetRackKey)
     if (!targetRack || targetRack.clientKey === selectedRack.clientKey) {
-      setError('Vui lòng chọn Rack đích khác Rack hiện tại.')
+      setError('Select a destination rack different from the current rack.')
       return
     }
 
     const targetShelfLevel = integerOf(moveBinShelfLevel, 0)
     const targetLevels = getRackLevelCount(targetRack)
     if (targetShelfLevel < 1 || targetShelfLevel > targetLevels) {
-      setError('Tầng Bin không hợp lệ với số tầng của Rack đích.')
+      setError('The bin shelf level is invalid for the destination rack.')
       return
     }
 
     const targetBins = Array.isArray(targetRack.bins) ? targetRack.bins : []
     const targetLimit = getRackMaxBinCount(targetRack)
     if (targetLimit < 1) {
-      setError('Rack đích chưa có giới hạn số Bin từ BE.')
+      setError('The destination rack has no bin limit from the backend.')
       return
     }
     if (targetBins.length >= targetLimit) {
-      setError(`${targetRack.name || targetRack.code || 'Rack đích'} đã đủ ${targetLimit} Bin.`)
+      setError(`${targetRack.name || targetRack.code || 'Destination rack'} already has the maximum of ${targetLimit} bins.`)
       return
     }
 
     const displayWidth = numberOf(selectedEntity.width, 0)
     const displayLength = numberOf(selectedEntity.length, 0)
     if (displayWidth <= 0 || displayLength <= 0) {
-      setError('Bin hiện tại chưa có kích thước hợp lệ từ BE.')
+      setError('The current bin has no valid dimensions from the backend.')
       return
     }
     const width = displayWidth
@@ -2510,14 +2515,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const targetFootprint = getRackFootprint(targetRack)
     if (width > targetFootprint.width || length > targetFootprint.length) {
       setError(
-        'Bin không vừa mặt bằng Rack đích. Kích thước Bin sẽ được giữ nguyên, không tự co lại.'
+        'The bin does not fit within the destination rack. Its dimensions will remain unchanged.'
       )
       return
     }
 
     const position = findAvailableBinPosition(targetRack, targetShelfLevel, width, length)
     if (!position) {
-      setError('Không còn vị trí trống ở tầng Rack đích. Các Bin hiện tại sẽ không bị co lại.')
+      setError('There is no free space on the destination rack shelf. Existing bins will not be resized.')
       return
     }
 
@@ -2684,7 +2689,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       const targetLevels = getRackLevelCount(targetRack)
       const shelfLevel = integerOf(targetShelfLevel, 0)
       if (shelfLevel < 1 || shelfLevel > targetLevels) {
-        setError('Tầng Bin không hợp lệ với Rack đích.')
+        setError('The bin shelf level is invalid for the destination rack.')
         return
       }
 
@@ -2693,7 +2698,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       )
       const targetLimit = getRackMaxBinCount(targetRack)
       if (!targetIsSource && (targetLimit < 1 || targetBins.length >= targetLimit)) {
-        setError(`${targetRack.name || targetRack.code || 'Rack đích'} đã đủ số Bin cho phép.`)
+        setError(`${targetRack.name || targetRack.code || 'Destination rack'} has reached its bin limit.`)
         return
       }
 
@@ -2701,11 +2706,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       const length = numberOf(sourceBin.length, 0)
       const targetFootprint = getRackFootprint(targetRack)
       if (width <= 0 || length <= 0) {
-        setError('Bin chưa có kích thước hợp lệ từ BE.')
+        setError('The bin has no valid dimensions from the backend.')
         return
       }
       if (width > targetFootprint.width || length > targetFootprint.length) {
-        setError('Bin không vừa Rack đích. Kích thước Bin sẽ được giữ nguyên.')
+        setError('The bin does not fit within the destination rack. Its dimensions will remain unchanged.')
         return
       }
 
@@ -2742,7 +2747,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           rectanglesTooClose({ coordinateX, coordinateY, width, length }, bin)
       )
       if (!canDropAtPosition) {
-        setError('Vị trí đang đè lên Bin khác. Hãy thả vào khoảng trống trong Rack.')
+        setError('This position overlaps another bin. Drop the bin in an empty space within the rack.')
         return
       }
 
@@ -2882,7 +2887,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           bins: (Array.isArray(rack.bins) ? rack.bins : []).map((bin) => ({ ...bin, id: null })),
         },
       }
-      setMessage(`Đã copy ${rack.name || rack.code || 'Rack'}. Nhấn Ctrl/Cmd + V để dán.`)
+      setMessage(`${rack.name || rack.code || 'Rack'} copied. Press Ctrl/Cmd + V to paste.`)
       return
     }
 
@@ -2897,7 +2902,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       rackId: rack.id,
       entity: { ...bin, id: null },
     }
-    setMessage(`Đã copy ${bin.name || bin.code || 'Bin'}. Nhấn Ctrl/Cmd + V để dán.`)
+    setMessage(`${bin.name || bin.code || 'Bin'} copied. Press Ctrl/Cmd + V to paste.`)
   }, [canEditLayout, layout.racks, selectedItems, selection])
 
   const pasteCopied = useCallback(() => {
@@ -2914,7 +2919,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
         minimumRackGap
       )
       if (!position) {
-        setError('Không còn vị trí trống để dán Rack. Rack và Bin hiện tại sẽ không bị co lại.')
+        setError('There is no free space to paste the rack. Existing racks and bins will not be resized.')
         return
       }
 
@@ -2941,7 +2946,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       setLayout((current) => ({ ...current, racks: [...current.racks, rack] }))
       updateSelection({ type: 'rack', key: rack.clientKey }, false, true)
       setError('')
-      setMessage(`Đã dán ${rack.name}. Kích thước Rack và các Bin được giữ nguyên.`)
+      setMessage(`${rack.name} pasted. The rack and bin dimensions were preserved.`)
       return
     }
 
@@ -2949,7 +2954,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       (rack) => rack.clientKey === copied.rackKey || String(rack.id) === String(copied.rackId)
     )
     if (!parentRack) {
-      setError('Không tìm thấy Rack chứa Bin đã copy.')
+      setError('The rack containing the copied bin could not be found.')
       return
     }
 
@@ -2959,7 +2964,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const length = numberOf(sourceBin.length, 0)
     const position = findAvailableBinPosition(parentRack, shelfLevel, width, length)
     if (!position) {
-      setError('Không còn vị trí trống để dán Bin. Các Bin hiện tại sẽ không bị co lại.')
+      setError('There is no free space to paste the bin. Existing bins will not be resized.')
       return
     }
 
@@ -2987,7 +2992,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     )
     updateSelection({ type: 'bin', key: bin.clientKey }, false, true)
     setError('')
-    setMessage(`Đã dán ${bin.name}. Kích thước Bin được giữ nguyên.`)
+    setMessage(`${bin.name} pasted. The bin dimensions were preserved.`)
   }, [canEditLayout, layout, minimumRackGap, updateSelection])
 
   useEffect(() => {
@@ -3138,6 +3143,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   }, [pendingOwnerDraft])
 
   const saveLayout = async () => {
+    if (layoutSaveInFlightRef.current) return
     const hasPendingOwnerDraft = Boolean(isOwner && !isContractLayout && pendingOwnerDraft)
     if (isReadOnly || (!selectedWarehouseId && !isContractLayout && !hasPendingOwnerDraft)) return
     if (layout.racks.some((rack) => rectangleOverlapsBlockedCell(rack, layout))) {
@@ -3145,6 +3151,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       return
     }
     try {
+      layoutSaveInFlightRef.current = true
       setSaving(true)
       setError('')
       const payload = toPayload(layout)
@@ -3201,6 +3208,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     } catch (requestError) {
       setError(getEnglishApiMessage(requestError, 'Saving layout failed.'))
     } finally {
+      layoutSaveInFlightRef.current = false
       setSaving(false)
     }
   }
@@ -3232,7 +3240,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       column === 0 ||
       column === FOOTPRINT_GRID_SIZE - 1
     if (!isOuterEdge) {
-      setError('Cửa ra vào chỉ được đặt ở ô ngoài cùng của layout.')
+      setError('The entrance can only be placed on an outermost layout cell.')
       return
     }
 
@@ -3251,13 +3259,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
       return { ...current, accessPoints: [...nextPoints, { type: accessPointMode, row, column }] }
     })
-    setError('')
-  }
-
-  const toggleAccessPointMode = (type) => {
-    if (!canEditLayout) return
-    setBlockedMode(false)
-    setAccessPointMode((current) => (current === type ? null : type))
     setError('')
   }
 

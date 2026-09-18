@@ -46,8 +46,6 @@ const formatDateTime = (value) =>
       })
     : '---'
 
-const shortId = (value) => (value ? `#${String(value).slice(0, 8).toUpperCase()}` : '---')
-
 const getInspectionDate = (inspection) =>
   inspection?.inspectedAt ||
   inspection?.inspectionDate ||
@@ -171,7 +169,6 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
                 <h2 className="text-xl font-bold text-slate-900">{inspection.warehouseName}</h2>
                 <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
               </div>
-              <p className="mt-2 font-mono text-xs text-slate-400">{shortId(inspection.id)}</p>
             </div>
             <button
               onClick={onClose}
@@ -860,7 +857,7 @@ const InspectorInspectionsPage = () => {
                       <thead className="bg-slate-50 text-slate-500">
                         <tr>
                           <th className="px-5 py-4 text-xs font-bold tracking-wide uppercase">
-                            Inspection
+                            Last updated
                           </th>
                           <th className="px-5 py-4 text-xs font-bold tracking-wide uppercase">
                             Warehouse
@@ -893,10 +890,7 @@ const InspectorInspectionsPage = () => {
                               className="transition-colors hover:bg-slate-50"
                             >
                               <td className="px-5 py-4">
-                                <p className="font-mono text-xs font-bold tracking-wide text-slate-500">
-                                  {shortId(inspection.id)}
-                                </p>
-                                <p className="mt-2 text-sm text-slate-600">
+                                <p className="text-sm text-slate-600">
                                   Updated:{' '}
                                   {formatDate(inspection.updatedAt || inspection.createdAt)}
                                 </p>

@@ -102,7 +102,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         setTotalPages(Math.max(res.data.data.totalPages || 1, 1))
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể tải danh sách kiểm kê.')
+      showApiErrorToast(error, 'Could not load audit records.')
     } finally {
       setLoading(false)
     }
@@ -124,7 +124,7 @@ const InventoryAuditPage = ({ currentRole }) => {
       })
       return list
     } catch (error) {
-      showApiErrorToast(error, 'Không thể tải danh sách kho.')
+      showApiErrorToast(error, 'Could not load warehouses.')
       return []
     }
   }, [searchParams])
@@ -155,7 +155,7 @@ const InventoryAuditPage = ({ currentRole }) => {
       setScopeLayout(response.data?.data || null)
     } catch (error) {
       setScopeLayout(null)
-      showApiErrorToast(error, 'Không thể tải layout kho để chọn phạm vi.')
+      showApiErrorToast(error, 'Could not load the warehouse layout for scope selection.')
     } finally {
       setScopeLoading(false)
     }
@@ -195,7 +195,7 @@ const InventoryAuditPage = ({ currentRole }) => {
         if (cancelled) return
         setStaffOptions([])
         setFormAssignedToId('')
-        showApiErrorToast(error, 'Không thể tải danh sách nhân viên được phân công tại kho.')
+        showApiErrorToast(error, 'Could not load staff assigned to this warehouse.')
       } finally {
         if (!cancelled) setStaffLoading(false)
       }
@@ -252,26 +252,26 @@ const InventoryAuditPage = ({ currentRole }) => {
   const handleCreateAudit = async (event) => {
     event.preventDefault()
     if (!formWarehouseId) {
-      toast.error('Vui lòng chọn kho.')
+      toast.error('Select a warehouse.')
       return
     }
     if (formScopeType === 'RACK' && !formRackId) {
-      toast.error('Vui lòng chọn rack cần kiểm kê.')
+      toast.error('Select a rack to audit.')
       return
     }
     if (formScopeType === 'BIN' && !formBinId) {
-      toast.error('Vui lòng chọn bin cần kiểm kê.')
+      toast.error('Select a bin to audit.')
       return
     }
     if (
       formScopeType !== 'WAREHOUSE' &&
       !racks.some((rack) => String(rack.id) === String(formRackId))
     ) {
-      toast.error('Rack đã chọn không thuộc layout hiện tại. Vui lòng chọn lại.')
+      toast.error('The selected rack is not part of the current layout. Select another rack.')
       return
     }
     if (formScopeType === 'BIN' && !bins.some((bin) => String(bin.id) === String(formBinId))) {
-      toast.error('Bin đã chọn không thuộc rack hiện tại. Vui lòng chọn lại.')
+      toast.error('The selected bin is not part of the current rack. Select another bin.')
       return
     }
     if (
@@ -279,7 +279,7 @@ const InventoryAuditPage = ({ currentRole }) => {
       formAssignedToId &&
       !staffOptions.some((staff) => String(staff.userId) === String(formAssignedToId))
     ) {
-      toast.error('Nhân viên đã chọn không còn hoạt động. Vui lòng chọn lại.')
+      toast.error('The selected staff member is no longer active. Select another staff member.')
       return
     }
 
@@ -295,13 +295,13 @@ const InventoryAuditPage = ({ currentRole }) => {
       }
       const res = await auditApi.createAudit(payload)
       if (res.data?.success) {
-        toast.success('Đã tạo kế hoạch kiểm kê.')
+        toast.success('Audit plan created.')
         setIsCreateModalOpen(false)
         setPage(0)
         fetchAudits()
       }
     } catch (error) {
-      showApiErrorToast(error, 'Không thể tạo kế hoạch kiểm kê.')
+      showApiErrorToast(error, 'Could not create the audit plan.')
     } finally {
       setCreating(false)
     }

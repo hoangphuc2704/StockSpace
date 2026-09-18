@@ -83,7 +83,7 @@ const InventoryPage = () => {
       if (!list.length) setIsLoading(false)
       return list
     } catch (error) {
-      showApiErrorToast(error, 'Không thể tải danh sách kho.')
+      showApiErrorToast(error, 'Could not load warehouses.')
       setIsLoading(false)
       return null
     }
@@ -113,7 +113,7 @@ const InventoryPage = () => {
     } catch (error) {
       setLayout(null)
       setAllStock([])
-      showApiErrorToast(error, 'Lỗi tải dữ liệu tồn kho.')
+      showApiErrorToast(error, 'Could not load inventory data.')
     } finally {
       setIsLoading(false)
     }
@@ -250,7 +250,7 @@ const InventoryPage = () => {
       const res = await stockApi.getStockTransactions(batchId)
       setBatchHistory(res.data?.data?.content || [])
     } catch (err) {
-      showApiErrorToast(err, 'Lỗi khi tải lịch sử giao dịch.')
+      showApiErrorToast(err, 'Could not load transaction history.')
     } finally {
       setIsHistoryLoading(false)
     }
@@ -259,7 +259,7 @@ const InventoryPage = () => {
   const handleDownloadWorkbook = async (type) => {
     if (!selectedWarehouseId || downloadingWorkbook) return
     if (type === 'snapshot' && hasMaskedQuantities) {
-      toast.error('Không thể xuất snapshot khi đang kiểm kê mù.')
+      toast.error('Inventory snapshot export is unavailable during a blind count.')
       return
     }
     try {
@@ -275,15 +275,15 @@ const InventoryPage = () => {
       const errorCode = error?.response?.data?.errorCode || error?.response?.data?.code
       if (type === 'snapshot' && errorCode === 'AUDIT_MOVEMENT_LOCKED') {
         toast.error(
-          'Kho đang được kiểm kê mù. Hãy chờ Staff hoàn tất kiểm kê trước khi xuất snapshot.'
+          'The warehouse is under a blind count. Wait for the staff audit to finish before exporting the snapshot.'
         )
         return
       }
       showApiErrorToast(
         error,
         type === 'snapshot'
-          ? 'KhÃ´ng thá»ƒ xuáº¥t snapshot tá»“n kho.'
-          : 'KhÃ´ng thá»ƒ táº£i template offline movement.'
+          ? 'Could not export the inventory snapshot.'
+          : 'Could not download the offline movement template.'
       )
     } finally {
       setDownloadingWorkbook('')

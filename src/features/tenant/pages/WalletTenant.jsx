@@ -71,18 +71,18 @@ const TRANSACTION_TYPE_MAP = {
 }
 
 const PAYMENT_METHOD_MAP = {
-  BANK_TRANSFER: 'Chuyển khoản NH',
-  WALLET: 'Số dư ví',
-  VNPAY: 'Cổng VNPay',
+  BANK_TRANSFER: 'Bank transfer',
+  WALLET: 'Wallet balance',
+  VNPAY: 'VNPay gateway',
 }
 
 const STATUS_MAP = {
-  SUCCESS: { label: 'Thành công', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  APPROVED: { label: 'Thành công', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
-  PENDING: { label: 'Đang xử lý', className: 'border-amber-200 bg-amber-50 text-amber-800' },
-  FAILED: { label: 'Thất bại', className: 'border-rose-200 bg-rose-50 text-rose-700' },
-  REJECTED: { label: 'Từ chối', className: 'border-rose-200 bg-rose-50 text-rose-700' },
-  CANCELLED: { label: 'Đã hủy', className: 'border-slate-200 bg-slate-100 text-slate-600' },
+  SUCCESS: { label: 'Successful', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  APPROVED: { label: 'Successful', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
+  PENDING: { label: 'Processing', className: 'border-amber-200 bg-amber-50 text-amber-800' },
+  FAILED: { label: 'Failed', className: 'border-rose-200 bg-rose-50 text-rose-700' },
+  REJECTED: { label: 'Rejected', className: 'border-rose-200 bg-rose-50 text-rose-700' },
+  CANCELLED: { label: 'Canceled', className: 'border-slate-200 bg-slate-100 text-slate-600' },
 }
 
 const PRESET_AMOUNTS = [1000000, 2000000, 5000000, 10000000, 20000000]
@@ -201,7 +201,7 @@ const WalletTenant = () => {
     } else {
       fetchWithdrawals(withdrawPagination.page)
     }
-    toast.success('Đã làm mới dữ liệu ví')
+    toast.success('Wallet data refreshed.')
   }
 
   useEffect(() => {
@@ -216,14 +216,14 @@ const WalletTenant = () => {
     e.preventDefault()
 
     const amountNumber = Number(inputAmount)
-    const amountError = positiveNumber(amountNumber, 'Vui lòng nhập số tiền hợp lệ.')
+    const amountError = positiveNumber(amountNumber, 'Enter a valid deposit amount.')
     if (amountError) {
       toast.error(amountError)
       return
     }
 
     if (amountNumber < 10000) {
-      toast.error('Số tiền nạp tối thiểu là 10.000 ₫')
+      toast.error('The minimum deposit amount is VND 10,000.')
       return
     }
 
@@ -240,11 +240,11 @@ const WalletTenant = () => {
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
         window.location.href = res.data.data.paymentUrl
       } else {
-        showApiErrorToast({ response: { data: res?.data } }, 'Không thể tạo liên kết thanh toán.')
+        showApiErrorToast({ response: { data: res?.data } }, 'Could not create the payment link.')
       }
     } catch (error) {
       console.error('Deposit error:', error)
-      showApiErrorToast(error, 'Nạp tiền thất bại. Vui lòng thử lại sau.')
+      showApiErrorToast(error, 'Deposit failed. Please try again later.')
     } finally {
       setDepositLoading(false)
     }
@@ -254,7 +254,7 @@ const WalletTenant = () => {
     if (!text) return
     navigator.clipboard.writeText(text)
     setCopiedCode(text)
-    toast.success('Đã sao chép mã giao dịch')
+    toast.success('Transaction code copied.')
     setTimeout(() => setCopiedCode(null), 2000)
   }
 

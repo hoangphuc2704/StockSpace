@@ -19,6 +19,7 @@ import {
   Eye,
   Plus,
   RefreshCw,
+  RotateCcw,
   MessageSquareText,
 } from 'lucide-react'
 import contractApi from '@/services/contractApi'
@@ -224,6 +225,14 @@ const DraftModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    const hasPaperContractFiles =
+      contractFiles.length > 0 ||
+      (Array.isArray(existingData.paperContractFiles) && existingData.paperContractFiles.length > 0)
+    if (!hasPaperContractFiles) {
+      setError('Please upload at least one paper contract file.')
+      return
+    }
 
     if (!isEdit && previewData && previewPayload) {
       setSubmitting(true)
@@ -567,7 +576,9 @@ const DraftModal = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700">Photo of Paper Contract</label>
+            <label className="text-xs font-semibold text-slate-700">
+              Photo of Paper Contract <span className="text-rose-500">*</span>
+            </label>
             <input
               type="file"
               accept="image/*"
@@ -605,6 +616,7 @@ const DraftModal = ({
                   />
                 ))}
             </div>
+            <p className="text-xs text-slate-500">At least one paper contract file is required.</p>
           </div>
 
           {error && <p className="text-sm text-rose-600">{error}</p>}
@@ -680,6 +692,11 @@ const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+
+    if (contractFiles.length === 0) {
+      setError('Please upload at least one paper contract file.')
+      return
+    }
 
     const dateError = validateDateRange(startDate, endDate)
     if (dateError) {
@@ -818,7 +835,9 @@ const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-700">Paper Contract Files (optional now)</label>
+            <label className="text-xs font-semibold text-slate-700">
+              Paper Contract Files <span className="text-rose-500">*</span>
+            </label>
             <input
               type="file"
               accept="image/*"
@@ -836,7 +855,7 @@ const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
               className="w-full text-sm"
             />
             <p className="text-xs text-slate-500">
-              At least one paper contract file is required before submitting the renewal to the tenant.
+              At least one paper contract file is required.
             </p>
             <div className="flex gap-2">
               {contractFiles.map((item, index) => (
@@ -1008,6 +1027,21 @@ const OwnerContractsPage = () => {
     }
   }
 
+  const handleRecall = async () => {
+    const confirmed = await confirmDialog({
+      title: 'Recall contract',
+      message:
+        'This contract will be withdrawn from the tenant confirmation flow. The backend recall API is not available yet, so no data will be changed.',
+      confirmText: 'Recall contract',
+      type: 'danger',
+    })
+    if (!confirmed) return
+
+    toast('Recall contract is ready in the frontend. Waiting for the backend API.', {
+      icon: 'ℹ️',
+    })
+  }
+
   const handleViewContract = (imageUrlRaw) => {
     try {
       if (!imageUrlRaw) throw new Error('No image')
@@ -1149,6 +1183,12 @@ const OwnerContractsPage = () => {
               label: 'Submit to Tenant',
               icon: Send,
               onClick: () => handleSubmit(row.id),
+            },
+            row.status === 'PENDING_TENANT_CONFIRM' && {
+              label: 'Recall Contract',
+              icon: RotateCcw,
+              onClick: handleRecall,
+              danger: true,
             },
             row.canDelete && {
               label:
