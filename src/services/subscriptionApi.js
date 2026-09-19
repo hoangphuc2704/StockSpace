@@ -7,8 +7,8 @@ const subscriptionApi = {
   },
   
   // Xem thông tin gói dịch vụ đang hoạt động
-  getActiveSubscription: () => {
-    return api.get('/tenant/subscriptions/active')
+  getActiveSubscription: (config = {}) => {
+    return api.get('/tenant/subscriptions/active', config)
   }
 }
 

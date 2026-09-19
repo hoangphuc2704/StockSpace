@@ -961,7 +961,12 @@ const OwnerContractsPage = () => {
         sortDir: 'desc',
       })
       const payload = apiData(response)
-      setWarehouses(Array.isArray(payload) ? payload : payload?.content || [])
+      const ownerWarehouses = Array.isArray(payload) ? payload : payload?.content || []
+      setWarehouses(
+        ownerWarehouses.filter(
+          (warehouse) => String(warehouse?.inspectionStatus || '').toUpperCase() !== 'FAILED'
+        )
+      )
     } catch (error) {
       console.error('Error getting owner warehouses:', error)
       showApiErrorToast(error, 'Could not load your warehouses.')

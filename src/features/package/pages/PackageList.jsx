@@ -6,6 +6,7 @@ import PublicHeader from '../../../components/PublicHeader'
 import packageApi from '../../../services/packageApi'
 import subscriptionApi from '../../../services/subscriptionApi'
 import { isInternalFeePackage, parseFeaturesToList } from '../../../utils/formatFeatures'
+import { showApiErrorToast } from '@/config/apiError'
 import TranslatableText from '@/components/TranslatableText'
 import { useLanguage } from '@/i18n/LanguageContext'
 
@@ -81,10 +82,11 @@ const PackageList = () => {
 
         if (isAuthenticated && user?.role === 'ROLE_TENANT') {
           try {
-            const subRes = await subscriptionApi.getActiveSubscription()
+            const subRes = await subscriptionApi.getActiveSubscription({ skipErrorToast: true })
             setActiveSub(subRes?.data?.data)
-          } catch {
+          } catch (error) {
             // A tenant can legitimately have no active subscription.
+            if (error?.response?.status !== 404) showApiErrorToast(error)
             setActiveSub(null)
           }
         }
