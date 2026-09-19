@@ -64,10 +64,9 @@ const formatContractDate = (dateString) => {
 }
 
 const formatContractReference = (id) =>
-  `CT-${
-    String(id || '')
-      .slice(0, 8)
-      .toUpperCase() || '-'
+  `CT-${String(id || '')
+    .slice(0, 8)
+    .toUpperCase() || '-'
   }`
 
 const getDaysUntilEnd = (contract) => {
@@ -192,11 +191,10 @@ const ReasonModal = ({ isOpen, title, action, contractId, onClose, onSuccess }) 
             <button
               type="submit"
               disabled={submitting}
-              className={`inline-flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold text-white transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
-                isRejecting
+              className={`inline-flex min-h-9 items-center gap-2 rounded-md px-3 text-sm font-semibold text-white transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${isRejecting
                   ? 'bg-rose-700 hover:bg-rose-800 focus-visible:ring-rose-600'
                   : 'bg-blue-700 hover:bg-blue-800 focus-visible:ring-blue-600'
-              }`}
+                }`}
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
               {submitting ? 'Sending...' : 'Send request'}
@@ -281,8 +279,8 @@ const RenewalReviewModal = ({
     } catch (requestError) {
       setError(
         requestError.response?.data?.message ||
-          requestError.message ||
-          'Could not confirm this renewal. Please try again.'
+        requestError.message ||
+        'Could not confirm this renewal. Please try again.'
       )
     } finally {
       setSubmitting(false)
@@ -330,22 +328,20 @@ const RenewalReviewModal = ({
               return (
                 <li key={item.label} className="min-w-0">
                   <div
-                    className={`flex items-center gap-2 border-b-2 pb-2 ${
-                      isCurrent
+                    className={`flex items-center gap-2 border-b-2 pb-2 ${isCurrent
                         ? 'border-blue-600 text-blue-700'
                         : isComplete
                           ? 'border-emerald-500 text-emerald-700'
                           : 'border-slate-200 text-slate-400'
-                    }`}
+                      }`}
                   >
                     <span
-                      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                        isCurrent
+                      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isCurrent
                           ? 'bg-blue-600 text-white'
                           : isComplete
                             ? 'bg-emerald-100 text-emerald-700'
                             : 'bg-slate-100 text-slate-500'
-                      }`}
+                        }`}
                     >
                       {isComplete ? <CheckCircle className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                     </span>
@@ -808,9 +804,8 @@ const TenantContractsPage = () => {
       <div className="flex pt-14">
         <Sidebar currentRole="TENANT" />
         <div
-          className={`flex min-w-0 flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex min-w-0 flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="max-w-1600px mx-auto w-full space-y-5 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
             <header className="flex flex-col gap-5 border-b border-slate-300 pb-5 xl:flex-row xl:items-end xl:justify-between">
@@ -858,11 +853,10 @@ const TenantContractsPage = () => {
             {nearestExpiringContract && (
               <aside
                 role="status"
-                className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${
-                  getDaysUntilEnd(nearestExpiringContract) <= 7
+                className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${getDaysUntilEnd(nearestExpiringContract) <= 7
                     ? 'border-rose-200 bg-rose-50 text-rose-900'
                     : 'border-amber-200 bg-amber-50 text-amber-900'
-                }`}
+                  }`}
               >
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
                 <div className="min-w-0">
@@ -1041,9 +1035,9 @@ const TenantContractsPage = () => {
         previousContract={
           renewalReviewContract?.renewedFromContractId
             ? contracts.find(
-                (contract) =>
-                  String(contract.id) === String(renewalReviewContract.renewedFromContractId)
-              )
+              (contract) =>
+                String(contract.id) === String(renewalReviewContract.renewedFromContractId)
+            )
             : null
         }
         onClose={() => setRenewalReviewContract(null)}

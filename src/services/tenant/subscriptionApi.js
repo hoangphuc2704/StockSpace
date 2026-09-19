@@ -4,8 +4,8 @@ const subscriptionApi = {
   purchasePackage: (data) => {
     return api.post('/tenant/subscriptions', data)
   },
-  getMyActiveSubscription: () => {
-    return api.get('/tenant/subscriptions/active')
+  getMyActiveSubscription: (config = {}) => {
+    return api.get('/tenant/subscriptions/active', config)
   },
   previewSubscriptionChange: (packageId) => {
     return api.get('/tenant/subscriptions/preview-change', { params: { packageId } })

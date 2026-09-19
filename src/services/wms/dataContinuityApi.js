@@ -95,12 +95,24 @@ const dataContinuityApi = {
   exportCatalog: () =>
     downloadXlsx('/tenant/wms-data/catalog/export', `stockspace-catalog-${currentWmsDate()}.xlsx`),
   validateCatalog: (file) => uploadWorkbook('/tenant/wms-data/catalog/imports/validate', file),
-  applyCatalog: async (jobId) =>
-    unwrapEnvelope(
+  applyCatalog: async (jobId) => {
+    const result = unwrapEnvelope(
       await api.post(`/tenant/wms-data/catalog/imports/${jobId}/apply`, undefined, {
         skipErrorToast: true,
       })
-    ),
+    )
+    const returnedJob = result?.job || result
+
+    // The catalog backend currently builds its response before the shared
+    // apply transaction marks the job APPLIED. Reload the committed job so
+    // the dialog validates the final state instead of the stale response.
+    if (returnedJob?.status !== 'APPLIED') {
+      const appliedJob = await dataContinuityApi.getImportJob(jobId)
+      return result?.job ? { ...result, job: appliedJob } : appliedJob
+    }
+
+    return result
+  },
 
   exportInventorySnapshot: (warehouseId) =>
     downloadXlsx(

@@ -11,6 +11,8 @@ import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '@/store/uiSlide'
 import subscriptionApi from '@/services/tenant/subscriptionApi'
 import { parseFeaturesToList } from '@/utils/formatFeatures'
+import { showApiErrorToast } from '@/config/apiError'
+import { toast } from 'react-hot-toast'
 import moment from 'moment'
 
 const SubscriptionPage = () => {
@@ -24,11 +26,16 @@ const SubscriptionPage = () => {
   const fetchActiveSubscription = useCallback(async () => {
     setIsLoading(true)
     try {
-      const res = await subscriptionApi.getMyActiveSubscription()
+      // A tenant without a purchased/active package receives 404 from BE.
+      // This is an expected empty state, so do not show the global error toast.
+      const res = await subscriptionApi.getMyActiveSubscription({ skipErrorToast: true })
       setSubscription(res.data?.data || null)
     } catch (err) {
-      if (err.response?.status !== 404) {
+      if (err.response?.status === 404) {
+        toast('Chưa có gói nào', { id: 'subscription-no-active', icon: 'ℹ️' })
+      } else {
         console.error('Failed to load subscription:', err)
+        showApiErrorToast(err)
       }
       setSubscription(null)
     } finally {
