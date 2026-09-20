@@ -1,10 +1,8 @@
-import api from '@/services/apiConfig'
+import api, { apiBaseUrl } from '@/services/apiConfig'
 import { showApiErrorToast } from '@/config/apiError'
 
 const CHAT_TOKEN_KEY = 'stockspace_guest_chat_token'
 const CHAT_SESSION_KEY = 'stockspace_guest_chat_session'
-
-const apiBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 
 const refreshAccessToken = async () => {
   const response = await api.post('/auth/refresh')
@@ -83,7 +81,7 @@ export const chatApi = {
     onEvent,
   }) => {
     const endpoint = isAuthenticatedChat ? '/chat/stream' : '/chat/guest/stream'
-    const sendRequest = (accessToken) =>
+    const sendRequest = (accessToken, guestSessionToken = sessionToken) =>
       fetch(`${apiBaseUrl}${endpoint}`, {
         method: 'POST',
         credentials: 'include',
@@ -93,8 +91,8 @@ export const chatApi = {
           ...(isAuthenticatedChat && accessToken
             ? { Authorization: `Bearer ${accessToken}` }
             : {}),
-          ...(!isAuthenticatedChat && sessionToken
-            ? { 'X-Chat-Session-Token': sessionToken }
+          ...(!isAuthenticatedChat && guestSessionToken
+            ? { 'X-Chat-Session-Token': guestSessionToken }
             : {}),
         },
         body: JSON.stringify({
@@ -106,6 +104,12 @@ export const chatApi = {
       })
 
     let response = await sendRequest(localStorage.getItem('token'))
+    if (response.status === 404 && !isAuthenticatedChat && sessionToken) {
+      // A guest token can outlive the database session after a redeploy or
+      // cleanup job. Start a new guest session instead of surfacing a 404.
+      guestChatStorage.clear()
+      response = await sendRequest(null, null)
+    }
     if (response.status === 401 && isAuthenticatedChat) {
       try {
         const refreshedToken = await refreshAccessToken()

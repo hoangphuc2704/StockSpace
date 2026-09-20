@@ -2,14 +2,22 @@ import axios from 'axios'
 import { normalizeApiErrorForUi, showApiErrorToast } from '@/config/apiError'
 // ==================== Main Axios Instance ====================
 
+const normalizeApiBaseUrl = (value) => {
+  const configuredUrl = String(value || '').trim().replace(/\/+$/, '')
+  if (!configuredUrl) return '/api'
+  return /\/api$/i.test(configuredUrl) ? configuredUrl : `${configuredUrl}/api`
+}
+
+export const apiBaseUrl = normalizeApiBaseUrl(import.meta.env.VITE_API_URL)
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: apiBaseUrl,
   withCredentials: true, // Gửi cookie (refreshToken) kèm mọi request
 })
 
 // ==================== Refresh Axios Instance (tránh infinite loop) ====================
 const refreshApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: apiBaseUrl,
   withCredentials: true,
 })
 
