@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FormShell } from '@/form/FormControls'
 import { useSelector } from 'react-redux'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import {
   Bot,
   ChevronLeft,
@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { chatApi, guestChatStorage } from '../services/chatApi'
+import warehouseApi from '@/services/warehouse/warehouseApi'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import ReactMarkdown from 'react-markdown'
@@ -135,6 +136,95 @@ const normalizeChatContent = (value = '') =>
     .replace(/\n{2,}/g, '\n')
     .trim()
 
+const normalizeWarehouseText = (value = '') =>
+  value
+    .toLocaleLowerCase('vi-VN')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+
+const isWarehouseListQuestion = (value = '') => {
+  const normalized = normalizeWarehouseText(value)
+  return (
+    normalized.includes('kho nao') ||
+    normalized.includes('nhung kho') ||
+    normalized.includes('danh sach kho') ||
+    normalized.includes('tim kho') ||
+    normalized.includes('find warehouse') ||
+    normalized.includes('which warehouse') ||
+    normalized.includes('available warehouse')
+  )
+}
+
+const mentionsWarehouse = (value = '') => {
+  const normalized = normalizeWarehouseText(value)
+  return normalized.includes('kho') || normalized.includes('warehouse')
+}
+
+const extractPublicWarehouses = (response) => {
+  const payload = response?.data?.data
+  const warehouses = Array.isArray(payload?.content)
+    ? payload.content
+    : Array.isArray(payload)
+      ? payload
+      : []
+
+  return warehouses
+    .filter((warehouse) => warehouse?.id && warehouse?.name)
+    .map((warehouse) => ({ id: warehouse.id, name: warehouse.name }))
+}
+
+const findWarehouseLinksFromPublicApi = async (userMessage, assistantText) => {
+  if (
+    !isWarehouseListQuestion(userMessage) &&
+    !mentionsWarehouse(userMessage) &&
+    !mentionsWarehouse(assistantText)
+  ) {
+    return []
+  }
+
+  try {
+    const response = await warehouseApi.getPublicWarehouses({
+      page: 0,
+      size: 50,
+      sortBy: 'createdAt',
+      sortDir: 'desc',
+    })
+    const warehouses = extractPublicWarehouses(response)
+    const normalizedAnswer = normalizeWarehouseText(assistantText)
+
+    // Only attach warehouses whose names actually appear in the answer. This
+    // prevents unrelated public listings from becoming clickable suggestions.
+    return warehouses.filter((warehouse) =>
+      normalizedAnswer.includes(normalizeWarehouseText(warehouse.name))
+    )
+  } catch {
+    // A missing fallback lookup must never make an otherwise valid chat fail.
+    return []
+  }
+}
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+const linkifyWarehouseNames = (content = '', warehouses = []) => {
+  const candidates = warehouses
+    .filter((warehouse) => warehouse?.id && warehouse?.name)
+    .sort((left, right) => right.name.length - left.name.length)
+
+  return candidates.reduce((result, warehouse) => {
+    const name = String(warehouse.name).trim()
+    if (!name) return result
+
+    return result.replace(
+      new RegExp(escapeRegExp(name), 'gi'),
+      (matched) => `[${matched}](/warehouse/${warehouse.id})`
+    )
+  }, content)
+}
+
 const AIChatPanel = ({ chatRole }) => {
   const confirmDialog = useConfirmDialog()
   const location = useLocation()
@@ -184,32 +274,10 @@ const AIChatPanel = ({ chatRole }) => {
     }
   }
 
-  const loadGuestHistory = async () => {
-    const guestToken = guestChatStorage.getToken()
-    if (!guestToken) return
-
-    setIsLoadingHistory(true)
-    try {
-      const data = await chatApi.getGuestHistory(guestToken)
-      if (data.length) setMessages(data)
-    } catch (requestError) {
-      const statusCode = requestError?.response?.status
-      if ([400, 401, 404].includes(statusCode)) {
-        guestChatStorage.clear()
-        setSessionId(null)
-      } else {
-        setError(getErrorMessage(requestError))
-      }
-    } finally {
-      setIsLoadingHistory(false)
-    }
-  }
-
   const handleOpen = () => {
     setIsOpen(true)
     setTimeout(() => inputRef.current?.focus(), 100)
     if (isAuthenticatedChat) loadUserSessions()
-    else loadGuestHistory()
   }
 
   const startNewChat = () => {
@@ -277,7 +345,13 @@ const AIChatPanel = ({ chatRole }) => {
     setMessages((current) => [
       ...current,
       userMessage,
-      { id: assistantId, role: 'assistant', content: '', createdAt: new Date().toISOString() },
+      {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        warehouseLinks: [],
+        createdAt: new Date().toISOString(),
+      },
     ])
     setInput('')
     setError('')
@@ -287,6 +361,8 @@ const AIChatPanel = ({ chatRole }) => {
     const controller = new AbortController()
     abortRef.current = controller
     let receivedContent = false
+    let receivedWarehouseLinks = false
+    let streamedAssistantText = ''
     let streamError = null
 
     try {
@@ -305,11 +381,21 @@ const AIChatPanel = ({ chatRole }) => {
           if (eventName === 'status') setStatus(data.message || 'Processing your request...')
           if (eventName === 'delta' && data.content) {
             receivedContent = true
+            streamedAssistantText += data.content
             setStatus('')
             setMessages((current) =>
               current.map((item) =>
                 item.id === assistantId ? { ...item, content: item.content + data.content } : item
               )
+            )
+          }
+          if (eventName === 'warehouse-links' && Array.isArray(data?.warehouses)) {
+            const warehouseLinks = data.warehouses.filter(
+              (warehouse) => warehouse?.id && warehouse?.name
+            )
+            receivedWarehouseLinks = warehouseLinks.length > 0
+            setMessages((current) =>
+              current.map((item) => (item.id === assistantId ? { ...item, warehouseLinks } : item))
             )
           }
           if (eventName === 'error') {
@@ -329,6 +415,17 @@ const AIChatPanel = ({ chatRole }) => {
               : item
           )
         )
+      }
+      if (!receivedWarehouseLinks) {
+        const warehouseLinks = await findWarehouseLinksFromPublicApi(
+          message,
+          streamedAssistantText
+        )
+        if (warehouseLinks.length > 0) {
+          setMessages((current) =>
+            current.map((item) => (item.id === assistantId ? { ...item, warehouseLinks } : item))
+          )
+        }
       }
       if (isAuthenticatedChat) loadUserSessions()
     } catch (requestError) {
@@ -560,20 +657,53 @@ const AIChatPanel = ({ chatRole }) => {
                                           {children}
                                         </strong>
                                       ),
-                                      a: ({ href, children }) => (
-                                        <a
-                                          href={href}
-                                          className="text-orange-600 hover:underline"
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                        >
-                                          {children}
-                                        </a>
-                                      ),
+                                      a: ({ href, children }) =>
+                                        href?.startsWith('/warehouse/') ? (
+                                          <Link
+                                            to={href}
+                                            onClick={() => setIsOpen(false)}
+                                            className="font-semibold text-orange-600 underline underline-offset-2 hover:text-orange-700"
+                                          >
+                                            {children}
+                                          </Link>
+                                        ) : (
+                                          <a
+                                            href={href}
+                                            className="text-orange-600 hover:underline"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                          >
+                                            {children}
+                                          </a>
+                                        ),
                                     }}
                                   >
-                                    {item.content}
+                                    {linkifyWarehouseNames(item.content, item.warehouseLinks)}
                                   </ReactMarkdown>
+                                  {item.warehouseLinks?.length > 0 && (
+                                    <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-2">
+                                      <p className="text-xs font-semibold text-slate-500">
+                                        Xem chi tiết kho:
+                                      </p>
+                                      {item.warehouseLinks.map((warehouse) => (
+                                        <div
+                                          key={warehouse.id}
+                                          className="flex min-w-0 items-center justify-between gap-3 text-xs"
+                                        >
+                                          <span className="min-w-0 truncate text-slate-600">
+                                            {warehouse.name}
+                                          </span>
+                                          <Link
+                                            to={`/warehouse/${warehouse.id}`}
+                                            onClick={() => setIsOpen(false)}
+                                            className="shrink-0 font-semibold text-orange-600 underline underline-offset-2 hover:text-orange-700 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:outline-none"
+                                          >
+                                            Chi tiết
+                                          </Link>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
