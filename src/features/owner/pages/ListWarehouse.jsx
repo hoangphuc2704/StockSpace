@@ -71,6 +71,7 @@ const WarehouseManagement = () => {
   const [requestingIds, setRequestingIds] = useState([])
   const [inspectionsByWarehouse, setInspectionsByWarehouse] = useState({})
   const [inspectionConfirm, setInspectionConfirm] = useState(null)
+  const [inspectionConsent, setInspectionConsent] = useState(false)
   const [inspectionReport, setInspectionReport] = useState(null)
 
   // State quản lý xem chi tiết kho bằng Modal
@@ -97,6 +98,8 @@ const WarehouseManagement = () => {
 
   // A warehouse must pass inspection before the backend allows publication.
   const handleRequestInspection = async (warehouseId) => {
+    if (!inspectionConsent) return
+
     try {
       setRequestingIds((prev) => [...prev, warehouseId])
       const res = await warehouseApi.requestInspection(warehouseId)
@@ -111,6 +114,7 @@ const WarehouseManagement = () => {
           }))
         }
         setInspectionConfirm(null)
+        setInspectionConsent(false)
         setRefreshTrigger((prev) => prev + 1)
       } else {
         showApiErrorToast({ response: { data: res?.data || res } }, 'Inspection request failed.')
@@ -121,6 +125,16 @@ const WarehouseManagement = () => {
     } finally {
       setRequestingIds((prev) => prev.filter((id) => id !== warehouseId))
     }
+  }
+
+  const openInspectionConfirmation = (warehouse) => {
+    setInspectionConsent(false)
+    setInspectionConfirm(warehouse)
+  }
+
+  const closeInspectionConfirmation = () => {
+    setInspectionConfirm(null)
+    setInspectionConsent(false)
   }
 
   const handleDeleteWarehouse = async () => {
@@ -505,7 +519,7 @@ const WarehouseManagement = () => {
                                 {canRequestInspection && (
                                   <div className="flex flex-col items-center gap-1">
                                     <button
-                                      onClick={() => setInspectionConfirm(wh)}
+                                      onClick={() => openInspectionConfirmation(wh)}
                                       disabled={isCurrentlyRequesting}
                                       className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline disabled:cursor-not-allowed disabled:text-slate-400 disabled:no-underline"
                                     >
@@ -660,19 +674,39 @@ const WarehouseManagement = () => {
               Submit <strong>{inspectionConfirm.name}</strong> for inspection? The inspection is
               optional and does not affect Admin approval or listing payment.
             </p>
+            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-800">
+              <p className="font-semibold">Please verify your listing before confirming.</p>
+              <p className="mt-1">
+                If the inspector finds that the actual warehouse differs from the information in
+                this listing, the warehouse will be hidden from the platform and you will no longer
+                be able to edit it.
+              </p>
+            </div>
+            <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm leading-5 text-slate-700">
+              <input
+                type="checkbox"
+                checked={inspectionConsent}
+                onChange={(event) => setInspectionConsent(event.target.checked)}
+                className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span>
+                I have read and agree to the inspection warning above. I confirm that the warehouse
+                information is accurate.
+              </span>
+            </label>
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setInspectionConfirm(null)}
+                onClick={closeInspectionConfirmation}
                 className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold hover:bg-slate-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                disabled={requestingIds.includes(inspectionConfirm.id)}
+                disabled={!inspectionConsent || requestingIds.includes(inspectionConfirm.id)}
                 onClick={() => handleRequestInspection(inspectionConfirm.id)}
-                className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {requestingIds.includes(inspectionConfirm.id) && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

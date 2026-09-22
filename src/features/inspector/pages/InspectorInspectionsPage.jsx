@@ -13,11 +13,13 @@ import {
   Clock3,
   Eye,
   FileText,
+  ImagePlus,
   Loader2,
   MapPin,
   Save,
   ShieldCheck,
   User,
+  Upload,
   Warehouse,
   X,
   XCircle,
@@ -35,6 +37,7 @@ import {
   submitReport,
 } from '../../../store/inspectorManagement'
 import { validateInspectionResult } from '@/config/validation'
+import uploadApi from '@/services/uploadApi'
 
 const formatDate = (value) => (value ? new Date(value).toLocaleDateString('en-US') : '---')
 
@@ -314,6 +317,8 @@ const SubmitReportModal = ({ inspection, onClose }) => {
   const [status, setStatus] = useState(inspection.status === 'FAILED' ? 'FAILED' : 'PASSED')
   const [notes, setNotes] = useState('')
   const [localError, setLocalError] = useState('')
+  const [reportFiles, setReportFiles] = useState([])
+  const [uploadingImages, setUploadingImages] = useState(false)
   const [checklist, setChecklist] = useState({
     fireSafety: true,
     electrical: true,
@@ -342,6 +347,21 @@ const SubmitReportModal = ({ inspection, onClose }) => {
 
   const updateOwnerInformationReason = (key, value) => {
     setOwnerInformationReasons((current) => ({ ...current, [key]: value }))
+  }
+
+  const handleReportFilesChange = (event) => {
+    const files = Array.from(event.target.files || [])
+    const invalidFile = files.find((file) => !file.type.startsWith('image/'))
+
+    if (invalidFile) {
+      setLocalError('Only image files can be uploaded for the signed inventory report.')
+      setReportFiles([])
+      event.target.value = ''
+      return
+    }
+
+    setLocalError('')
+    setReportFiles(files)
   }
 
   const handleSubmit = async (event) => {
@@ -376,12 +396,38 @@ const SubmitReportModal = ({ inspection, onClose }) => {
       return
     }
 
+    if (reportFiles.length === 0) {
+      setLocalError(
+        "Upload the inventory report with the warehouse owner's signature confirmation before saving."
+      )
+      return
+    }
+
+    let imageUrls
+    try {
+      setUploadingImages(true)
+      const uploadResponse = await uploadApi.uploadImages(reportFiles)
+      if (!uploadResponse?.data?.success) {
+        throw new Error(uploadResponse?.data?.message || 'Could not upload the signed inventory report.')
+      }
+      imageUrls = Array.isArray(uploadResponse.data.data) ? uploadResponse.data.data : []
+      if (imageUrls.length === 0) {
+        throw new Error('The signed inventory report upload did not return any image.')
+      }
+    } catch (error) {
+      setLocalError(error.message || 'Could not upload the signed inventory report.')
+      return
+    } finally {
+      setUploadingImages(false)
+    }
+
     const result = await dispatch(
       submitReport({
         id: inspection.id,
         payload: {
           status,
           notes: notes.trim(),
+          images: imageUrls,
           checklistData: {
             ...checklist,
             ownerInformation: Object.fromEntries(
@@ -573,6 +619,41 @@ const SubmitReportModal = ({ inspection, onClose }) => {
             </div>
           </div>
 
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+            <div className="flex items-start gap-3">
+              <ImagePlus className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Upload signed inventory report <span className="text-rose-600">*</span>
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-slate-600">
+                  Upload the inventory report with the warehouse owner's signature confirmation.
+                  You can upload one or more image pages before saving the inspection result.
+                </p>
+              </div>
+            </div>
+            <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-blue-300 bg-white px-4 py-4 text-sm font-semibold text-blue-700 transition-colors hover:border-blue-500 hover:bg-blue-50">
+              <Upload className="h-4 w-4" />
+              Choose report images
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleReportFilesChange}
+                className="sr-only"
+              />
+            </label>
+            {reportFiles.length > 0 && (
+              <div className="mt-3 rounded-xl border border-blue-100 bg-white px-3 py-2 text-xs text-slate-600">
+                {reportFiles.map((file) => (
+                  <p key={`${file.name}-${file.lastModified}`} className="truncate py-1">
+                    {file.name}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="mb-3 block text-sm font-semibold text-slate-800">
               Inspection Result
@@ -632,15 +713,15 @@ const SubmitReportModal = ({ inspection, onClose }) => {
             </button>
             <button
               type="submit"
-              disabled={actionLoading}
+              disabled={actionLoading || uploadingImages}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              {actionLoading ? (
+              {actionLoading || uploadingImages ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              Save Inspection Result
+              {uploadingImages ? 'Uploading report...' : 'Save Inspection Result'}
             </button>
           </div>
         </FormShell>
