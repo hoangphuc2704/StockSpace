@@ -21,6 +21,8 @@ export const API_ERROR_MESSAGE_OVERRIDES = {
   WMS_IMPORT_STALE:
     'Warehouse, inventory, layout, or audit data changed. Download a fresh workbook and start again.',
   SUBSCRIPTION_REQUIRED: 'Hãy mua gói subscription để thực hiện chức năng này.',
+  INSUFFICIENT_BALANCE: 'Hiện số dư không đủ',
+  WALLET_INSUFFICIENT_BALANCE: 'Hiện số dư không đủ',
   AUDIT_MOVEMENT_LOCKED:
     'The warehouse is under a blind count. Wait for the staff audit to finish before changing or exporting inventory.',
   // EMAIL_ALREADY_EXISTS: 'Email này đã được sử dụng.',

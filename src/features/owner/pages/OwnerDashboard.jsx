@@ -121,25 +121,29 @@ const OwnerDashboard = () => {
       return
     }
 
+    if (amountNumber < 1000) {
+      toast.error('The minimum deposit amount is VND 1,000.')
+      return
+    }
+
     try {
       setDepositLoading(true)
 
       // Truyền payload đúng cấu trúc BE của bạn yêu cầu
       const payload = {
         amount: amountNumber,
-        paymentMethod: 'BANK_TRANSFER',
+        paymentMethod: 'PAYOS',
       }
 
       const res = await walletApi.requestDeposit(payload)
 
       // Đọc chính xác res.data.data.paymentUrl từ BE response của bạn
       if (res?.data?.success && res?.data?.data?.paymentUrl) {
-        window.location.href = res.data.data.paymentUrl // Chuyển hướng sang VNPay
+        window.location.href = res.data.data.paymentUrl
       } else {
         showApiErrorToast({ response: { data: res?.data } }, 'Payment link unavailable.')
       }
     } catch (error) {
-      console.error('Deposit error:', error)
       showApiErrorToast(error, 'Deposit failed. Try again.')
     } finally {
       setDepositLoading(false)
@@ -302,7 +306,7 @@ const OwnerDashboard = () => {
           <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <Wallet className="h-5 w-5 text-blue-600" /> Top Up via VNPay
+                <Wallet className="h-5 w-5 text-blue-600" /> Top Up via PayOS
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
@@ -322,6 +326,8 @@ const OwnerDashboard = () => {
                     type="number"
                     autoFocus
                     required
+                    min={1000}
+                    step={1000}
                     value={inputAmount}
                     onChange={(e) => setInputAmount(e.target.value)}
                     placeholder="For example: 2000000"

@@ -11,8 +11,8 @@ import adminApi from '../services/admin/adminApi'
  *     paymentCode, referenceId, bookingId, subscriptionId, createdAt }
  *
  * TransactionType enum: TOP_UP | WITHDRAWAL | DEPOSIT_PAYMENT | DEPOSIT_REFUND | PACKAGE_PAYMENT | COMMISSION
- * TransactionStatus enum: PENDING | SUCCESS | FAILED
- * PaymentMethod enum: BANK_TRANSFER | VNPAY | MOMO | WALLET
+ * TransactionStatus enum: PENDING | SUCCESS | FAILED | EXPIRED
+ * PaymentMethod enum: BANK_TRANSFER | VNPAY | PAYOS | MOMO | WALLET
  */
 
 export const fetchTransactions = createAsyncThunk(

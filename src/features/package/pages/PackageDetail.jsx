@@ -88,7 +88,7 @@ const PackageDetail = () => {
       navigate('/tenant/dashboard')
     } catch (error) {
       const errorCode = error.response?.data?.errorCode
-      if (errorCode === 'WALLET_INSUFFICIENT_BALANCE') {
+      if (['INSUFFICIENT_BALANCE', 'WALLET_INSUFFICIENT_BALANCE'].includes(errorCode)) {
         setShowWalletConfirm(true)
       } else if (errorCode === 'PACKAGE_NOT_FOUND' || error.response?.status === 404) {
         showApiErrorToast(error, 'Package no longer available.')

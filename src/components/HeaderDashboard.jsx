@@ -46,7 +46,8 @@ const Header = () => {
         </div>
       </div>
 
-      <div className="ml-2 flex shrink-0 items-center gap-1 sm:ml-4 sm:gap-2">
+      {/* Keep the notification bell clear of the fixed EN/VI switcher. */}
+      <div className="mr-20 ml-2 flex shrink-0 items-center gap-1 sm:mr-28 sm:ml-4 sm:gap-2">
         <NotificationDropdown />
       </div>
     </header>
