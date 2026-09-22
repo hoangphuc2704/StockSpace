@@ -17,14 +17,26 @@ const formatVND = (value) =>
     ? null
     : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value)
 
+const getWalletPath = (role) => {
+  if (role === 'ROLE_OWNER') return '/owner/wallet/withdraws'
+  if (role === 'ROLE_ADMIN') return '/admin/wallet'
+  return '/tenant/wallet'
+}
+
 const WalletCallback = () => {
   const { t } = useLanguage()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
 
-  const gatewayStatus = searchParams.get('status')?.toLowerCase() || 'fail'
-  const paymentCode = searchParams.get('code') || searchParams.get('orderCode')
+  const rawGatewayStatus = searchParams.get('status')?.toLowerCase() || 'fail'
+  const gatewayCode = searchParams.get('code')
+  const orderCode = searchParams.get('orderCode')
+  const isDirectPayOsSuccess = rawGatewayStatus === 'paid' && gatewayCode === '00'
+  const gatewayStatus = rawGatewayStatus === 'success' || isDirectPayOsSuccess ? 'success' : rawGatewayStatus
+  // For a direct PayOS redirect, code=00 is only the result code. The order
+  // identifier is orderCode. The BE callback uses code for the orderCode.
+  const paymentCode = orderCode || (rawGatewayStatus === 'success' ? gatewayCode : null)
   const gatewayAmount = searchParams.get('amount')
   const canCheckStatus = gatewayStatus === 'success' && Boolean(paymentCode) && Boolean(localStorage.getItem('token'))
   const [transaction, setTransaction] = useState(null)
@@ -78,15 +90,19 @@ const WalletCallback = () => {
     return checkingStatus ? 'pending' : 'pending'
   }, [gatewayStatus, transaction?.status, checkingStatus])
 
-  const handleGoBack = () => {
-    if (user?.role === 'ROLE_OWNER') {
-      navigate('/owner/wallet/withdraws')
-    } else if (user?.role === 'ROLE_ADMIN') {
-      navigate('/admin/wallet')
-    } else {
-      navigate('/tenant/wallet')
-    }
-  }
+  const walletPath = getWalletPath(user?.role)
+
+  useEffect(() => {
+    if (resolvedStatus !== 'success') return undefined
+
+    const timerId = window.setTimeout(() => {
+      navigate(walletPath, { replace: true })
+    }, 400)
+
+    return () => window.clearTimeout(timerId)
+  }, [navigate, resolvedStatus, walletPath])
+
+  const handleGoBack = () => navigate(walletPath)
 
   const isSuccess = resolvedStatus === 'success'
   const isPending = resolvedStatus === 'pending'
