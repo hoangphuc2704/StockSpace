@@ -9,7 +9,7 @@ import adminApi from '../services/admin/adminApi'
  *   { id, userId, amount, bankName, bankAccountNumber, bankAccountHolder,
  *     status, adminNotes, transactionId, createdAt, updatedAt }
  *
- * ApprovalStatus enum: PENDING | APPROVED | REJECTED
+ * ApprovalStatus enum: PENDING | APPROVED | REJECTED | CANCELLED
  *
  * approve: PATCH /admin/withdrawals/{id}/approve  body: { adminNotes? }
  * reject:  PATCH /admin/withdrawals/{id}/reject   body: { adminNotes }

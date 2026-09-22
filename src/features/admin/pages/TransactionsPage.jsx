@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchTransactions, setPage } from '../../../store/adminTransactionSlice'
 // Import các actions điều khiển Sidebar toàn hệ thống từ uiSlice
@@ -40,11 +40,13 @@ const STATUS_VARIANT = {
   SUCCESS: 'success',
   PENDING: 'warning',
   FAILED: 'danger',
+  EXPIRED: 'secondary',
 }
 
 const PAYMENT_METHOD_LABELS = {
   BANK_TRANSFER: 'Transfer',
   VNPAY: 'VNPay',
+  PAYOS: 'PayOS',
   MOMO: 'Momo',
   WALLET: 'Internal wallet',
 }
@@ -59,7 +61,7 @@ const ALL_TYPES = [
   'PACKAGE_PAYMENT',
   'COMMISSION',
 ]
-const ALL_STATUSES = ['', 'SUCCESS', 'PENDING', 'FAILED']
+const ALL_STATUSES = ['', 'SUCCESS', 'PENDING', 'FAILED', 'EXPIRED']
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 const formatVND = (amount) =>
@@ -229,7 +231,7 @@ const TransactionsPage = () => {
             </span>
           </div>
         </div>
-        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-4">
+        <div className="mr-20 ml-auto flex items-center sm:mr-28">
           <NotificationDropdown />
         </div>
       </header>

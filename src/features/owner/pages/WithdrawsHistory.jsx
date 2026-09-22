@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { closeMobileSidebar } from '../../../store/uiSlide'
 import { CircleDollarSign, CreditCard, RefreshCw, Wallet, MinusCircle } from 'lucide-react'
@@ -171,6 +171,8 @@ const WithdrawHistory = () => {
     if (status === 'SUCCESS' || status === 'APPROVED')
       return <Badge variant="success">Success</Badge>
     if (status === 'PENDING') return <Badge variant="warning">Processing</Badge>
+    if (status === 'EXPIRED') return <Badge variant="secondary">Expired</Badge>
+    if (status === 'CANCELLED') return <Badge variant="secondary">Canceled</Badge>
     return <Badge variant="danger">Failed</Badge>
   }
 
@@ -197,7 +199,7 @@ const WithdrawHistory = () => {
         <div className="space-y-1">
           <div>{getTransactionTypeBadge(row.transactionType)}</div>
           <div className="flex items-center gap-1 text-[11px] text-slate-500">
-            <CreditCard className="h-3 w-3" /> {row.paymentMethod}
+            <CreditCard className="h-3 w-3" /> {row.paymentMethod === 'PAYOS' ? 'PayOS' : row.paymentMethod}
           </div>
         </div>
       ),

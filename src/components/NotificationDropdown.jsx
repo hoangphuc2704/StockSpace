@@ -311,7 +311,12 @@ const NotificationDropdown = () => {
     <div className="relative" ref={dropdownRef}>
       {/* Nút Chuông (Bell Icon) */}
       <button
+        type="button"
         onClick={handleToggle}
+        aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        title="Notifications"
         className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-primary transition-colors focus:outline-none"
       >
         <Bell className="h-6 w-6" />

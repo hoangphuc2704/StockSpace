@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+/* eslint-disable no-irregular-whitespace */
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useSelector, useDispatch } from 'react-redux'
@@ -171,13 +172,17 @@ const WalletAdmin = () => {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchWallet()
     fetchTransactions(0)
     fetchWithdrawals(0)
   }, [])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchRevenue()
+    // fetchRevenue is intentionally re-run only when the selected year changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentYear])
 
   // --- Xá»¬ LÃ Náº P TIá»€N ---
@@ -191,12 +196,17 @@ const WalletAdmin = () => {
       return
     }
 
+    if (amountNumber < 1000) {
+      toast.error('The minimum deposit amount is VND 1,000.')
+      return
+    }
+
     try {
       setDepositLoading(true)
 
       const payload = {
         amount: amountNumber,
-        paymentMethod: 'BANK_TRANSFER',
+        paymentMethod: 'PAYOS',
       }
 
       const res = await walletApi.requestDeposit(payload)
@@ -207,7 +217,6 @@ const WalletAdmin = () => {
         showApiErrorToast({ response: { data: res?.data } }, 'Payment link unavailable.')
       }
     } catch (error) {
-      console.error('Failed to create deposit request:', error)
       showApiErrorToast(error, 'Deposit failed. Try again.')
     } finally {
       setDepositLoading(false)
@@ -247,6 +256,7 @@ const WalletAdmin = () => {
           </span>
         )
       case 'WITHDRAW':
+      case 'WITHDRAWAL':
         return (
           <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-700/10 ring-inset">
             Withdrawal
@@ -265,6 +275,8 @@ const WalletAdmin = () => {
     if (status === 'SUCCESS' || status === 'APPROVED')
       return <Badge variant="success">Successful</Badge>
     if (status === 'PENDING') return <Badge variant="warning">Processing</Badge>
+    if (status === 'EXPIRED') return <Badge variant="secondary">Expired</Badge>
+    if (status === 'CANCELLED') return <Badge variant="secondary">Canceled</Badge>
     return <Badge variant="danger">Failed</Badge>
   }
 
@@ -291,7 +303,7 @@ const WalletAdmin = () => {
         <div className="space-y-1">
           <div>{getTransactionTypeBadge(row.transactionType)}</div>
           <div className="flex items-center gap-1 text-[11px] text-slate-500">
-            <CreditCard className="h-3 w-3" /> {row.paymentMethod}
+            <CreditCard className="h-3 w-3" /> {row.paymentMethod === 'PAYOS' ? 'PayOS' : row.paymentMethod}
           </div>
         </div>
       ),
@@ -672,7 +684,7 @@ const WalletAdmin = () => {
           <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                <Wallet className="h-5 w-5 text-blue-600" /> Deposit via VNPay
+                <Wallet className="h-5 w-5 text-blue-600" /> Deposit via PayOS
               </h3>
               <button
                 onClick={() => setIsDepositModalOpen(false)}
@@ -692,6 +704,8 @@ const WalletAdmin = () => {
                     type="number"
                     autoFocus
                     required
+                    min={1000}
+                    step={1000}
                     value={inputAmount}
                     onChange={(e) => setInputAmount(e.target.value)}
                     placeholder="Example: 2000000"
@@ -724,7 +738,7 @@ const WalletAdmin = () => {
                   {depositLoading ? (
                     <>
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      Connecting...
+                      Connecting to PayOS...
                     </>
                   ) : (
                     <>Pay now</>

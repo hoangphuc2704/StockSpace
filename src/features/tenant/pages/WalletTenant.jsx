@@ -84,6 +84,12 @@ const TRANSACTION_TYPE_MAP = {
     icon: CreditCard,
     badgeClass: 'border-blue-200 bg-blue-50 text-blue-700',
   },
+  WITHDRAWAL: {
+    label: 'Withdrawal to bank',
+    direction: 'out',
+    icon: ArrowUpRight,
+    badgeClass: 'border-amber-200 bg-amber-50 text-amber-700',
+  },
   WITHDRAW: {
     label: 'Withdrawal to bank',
     direction: 'out',
@@ -96,6 +102,7 @@ const PAYMENT_METHOD_MAP = {
   BANK_TRANSFER: 'Bank transfer',
   WALLET: 'Wallet balance',
   VNPAY: 'VNPay gateway',
+  PAYOS: 'PayOS gateway',
 }
 
 const STATUS_MAP = {
@@ -103,6 +110,7 @@ const STATUS_MAP = {
   APPROVED: { label: 'Successful', className: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
   PENDING: { label: 'Processing', className: 'border-amber-200 bg-amber-50 text-amber-800' },
   FAILED: { label: 'Failed', className: 'border-rose-200 bg-rose-50 text-rose-700' },
+  EXPIRED: { label: 'Expired', className: 'border-slate-200 bg-slate-100 text-slate-600' },
   REJECTED: { label: 'Rejected', className: 'border-rose-200 bg-rose-50 text-rose-700' },
   CANCELLED: { label: 'Canceled', className: 'border-slate-200 bg-slate-100 text-slate-600' },
 }
@@ -245,8 +253,8 @@ const WalletTenant = () => {
       return
     }
 
-    if (amountNumber < 10000) {
-      toast.error(t('The minimum deposit amount is VND 10,000.'))
+    if (amountNumber < 1000) {
+      toast.error(t('The minimum deposit amount is VND 1,000.'))
       return
     }
 
@@ -255,7 +263,7 @@ const WalletTenant = () => {
 
       const payload = {
         amount: amountNumber,
-        paymentMethod: 'BANK_TRANSFER',
+        paymentMethod: 'PAYOS',
       }
 
       const res = await walletApi.requestDeposit(payload)
@@ -266,7 +274,6 @@ const WalletTenant = () => {
         showApiErrorToast({ response: { data: res?.data } }, t('Could not create the payment link.'))
       }
     } catch (error) {
-      console.error('Deposit error:', error)
       showApiErrorToast(error, t('Deposit failed. Please try again later.'))
     } finally {
       setDepositLoading(false)
@@ -856,7 +863,7 @@ const WalletTenant = () => {
                   <h3 className="text-sm font-bold text-slate-900">
                     {t('Deposit into StockSpace Wallet')}
                   </h3>
-                  <p className="text-[11px] text-slate-500">{t('Secure VNPay payment gateway')}</p>
+                  <p className="text-[11px] text-slate-500">{t('Secure PayOS payment gateway')}</p>
                 </div>
               </div>
               <button
@@ -878,8 +885,8 @@ const WalletTenant = () => {
                     type="number"
                     autoFocus
                     required
-                    min={10000}
-                    step={10000}
+                    min={1000}
+                    step={1000}
                     value={inputAmount}
                     onChange={(e) => setInputAmount(e.target.value)}
                     placeholder={t('e.g. 2000000')}
@@ -923,7 +930,7 @@ const WalletTenant = () => {
                   <CreditCard className="h-3.5 w-3.5 text-blue-600" />
                   <span>{t('Payment method:')}</span>
                 </div>
-                <p>{t('Supports VNPAY-QR scanning, domestic ATM cards, Internet Banking, and international Visa/Mastercard.')}</p>
+                <p>{t('PayOS supports QR payments and Vietnamese banking methods. You will be redirected to the secure PayOS checkout page.')}</p>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
@@ -942,10 +949,10 @@ const WalletTenant = () => {
                   {depositLoading ? (
                     <>
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      {t('Connecting to VNPay gateway...')}
+                      {t('Connecting to PayOS gateway...')}
                     </>
                   ) : (
-                    <>{t('Proceed with VNPay payment')}</>
+                    <>{t('Proceed with PayOS payment')}</>
                   )}
                 </button>
               </div>

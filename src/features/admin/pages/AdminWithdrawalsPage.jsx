@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
@@ -20,7 +20,6 @@ import {
   XCircle,
   Clock,
   Banknote,
-  User,
   X,
   Loader2,
   AlertCircle,
@@ -33,13 +32,14 @@ import NotificationDropdown from '@/components/NotificationDropdown'
 import { required } from '@/config/validation'
 
 // ─── Enum / Constants từ BE ─────────────────────────────────────────────────
-// ApprovalStatus enum: PENDING | APPROVED | REJECTED
-const STATUS_OPTIONS = ['', 'PENDING', 'APPROVED', 'REJECTED']
+// ApprovalStatus enum: PENDING | APPROVED | REJECTED | CANCELLED
+const STATUS_OPTIONS = ['', 'PENDING', 'APPROVED', 'REJECTED', 'CANCELLED']
 
 const STATUS_CONFIG = {
   PENDING: { label: 'Waiting for approval', variant: 'warning', icon: Clock },
   APPROVED: { label: 'Approved', variant: 'success', icon: CheckCircle2 },
   REJECTED: { label: 'Refuse', variant: 'danger', icon: XCircle },
+  CANCELLED: { label: 'Canceled', variant: 'outline', icon: XCircle },
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -394,7 +394,7 @@ const AdminWithdrawalsPage = () => {
             </span>
           </div>
         </div>
-        <div className="mr-0 ml-auto flex items-center sm:mr-4 md:mr-4">
+        <div className="mr-20 ml-auto flex items-center sm:mr-28">
           <NotificationDropdown />
         </div>
       </header>
