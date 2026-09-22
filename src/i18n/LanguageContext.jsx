@@ -274,6 +274,11 @@ const manualTranslations = {
   'Pricing model': 'Hình thức giá',
   'Reference price': 'Đơn giá tham chiếu',
   'View layout': 'Xem bản vẽ',
+  Successful: 'Thành công',
+  Processing: 'Đang xử lý',
+  Failed: 'Thất bại',
+  Expired: 'Đã hết hạn',
+  Canceled: 'Đã hủy',
 }
 
 const translations = { ...vietnameseTranslations, ...additionalTranslations, ...manualTranslations }
