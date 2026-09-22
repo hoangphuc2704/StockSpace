@@ -311,7 +311,12 @@ const WalletAdmin = () => {
     {
       header: 'Amount',
       render: (row) => {
-        const isPlus = row.transactionType === 'TOP_UP' || row.transactionType === 'DEPOSIT_REFUND'
+        // Admin wallet receives service-package revenue credited by BE as a
+        // PACKAGE_PAYMENT transaction, so it is an incoming amount here.
+        const isPlus =
+          row.transactionType === 'TOP_UP' ||
+          row.transactionType === 'DEPOSIT_REFUND' ||
+          row.transactionType === 'PACKAGE_PAYMENT'
         const isFailed =
           row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
         return (
