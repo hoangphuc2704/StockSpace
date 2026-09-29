@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import { useDispatch, useSelector } from 'react-redux'
@@ -42,14 +42,173 @@ import { required } from '@/config/validation'
 const STATUS_OPTIONS = ['', 'PENDING', 'IN_PROGRESS', 'PASSED', 'FAILED']
 
 const STATUS_CONFIG = {
-  PENDING: { label: 'Waiting for assignment', variant: 'warning', icon: Clock },
-  IN_PROGRESS: { label: 'Inspecting', variant: 'info', icon: PlayCircle },
-  PASSED: { label: 'Passed', variant: 'success', icon: CheckCircle2 },
-  FAILED: { label: 'Failed', variant: 'danger', icon: XCircle },
+  PENDING: {
+    label: 'Waiting for assignment',
+    badgeLabel: 'Pending',
+    variant: 'warning',
+    badgeClass: 'border-amber-200 bg-amber-50 text-amber-700',
+    icon: Clock,
+  },
+  IN_PROGRESS: {
+    label: 'Inspecting',
+    badgeLabel: 'In progress',
+    variant: 'primary',
+    badgeClass: 'border-sky-200 bg-sky-50 text-sky-700',
+    icon: PlayCircle,
+  },
+  PASSED: {
+    label: 'Passed',
+    badgeLabel: 'Passed',
+    variant: 'success',
+    badgeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    icon: CheckCircle2,
+  },
+  FAILED: {
+    label: 'Failed',
+    badgeLabel: 'Failed',
+    variant: 'danger',
+    badgeClass: 'border-rose-200 bg-rose-50 text-rose-700',
+    icon: XCircle,
+  },
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
+
+const getStatusConfig = (status) =>
+  STATUS_CONFIG[String(status || '').toUpperCase()] || {
+    label: status || 'Unknown',
+    badgeLabel: status || 'Unknown',
+    variant: 'secondary',
+    badgeClass: 'border-slate-200 bg-slate-50 text-slate-600',
+    icon: AlertCircle,
+  }
+
+const CHECKLIST_LABELS = {
+  fireSafety: 'Fire safety system',
+  electrical: 'Electrical and lighting systems',
+  structure: 'Warehouse structure',
+  cleanliness: 'Cleanliness and environment',
+  ownerInformation: 'Owner information',
+  warehouseName: 'Warehouse name',
+  warehouseAddress: 'Warehouse address',
+  ownerName: 'Warehouse owner',
+  physicalDetails: 'Physical details',
+  descriptionAndImages: 'Description and submitted images',
+}
+
+const getChecklistLabel = (key) =>
+  CHECKLIST_LABELS[key] ||
+  String(key)
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/^./, (character) => character.toUpperCase())
+
+const parseChecklistData = (value) => {
+  if (!value) return null
+
+  let parsed = value
+  for (let attempt = 0; attempt < 2 && typeof parsed === 'string'; attempt += 1) {
+    try {
+      parsed = JSON.parse(parsed)
+    } catch {
+      return null
+    }
+  }
+
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null
+}
+
+const getChecklistBoolean = (value) => {
+  const candidate =
+    value && typeof value === 'object' && !Array.isArray(value) && 'verified' in value
+      ? value.verified
+      : value
+
+  if (typeof candidate === 'boolean') return candidate
+  if (typeof candidate !== 'string') return null
+
+  const normalized = candidate.trim().toLowerCase()
+  if (['true', 'passed', 'pass', 'yes', 'ok', 'verified'].includes(normalized)) return true
+  if (['false', 'failed', 'fail', 'no', 'rejected', 'unverified'].includes(normalized)) return false
+  return null
+}
+
+const formatChecklistValue = (value) => {
+  if (value === null || value === undefined || value === '') return 'Not recorded'
+  if (typeof value === 'boolean') return value ? 'Passed' : 'Failed'
+  if (Array.isArray(value)) return value.map(formatChecklistValue).join(', ')
+  if (typeof value === 'object') {
+    return Object.entries(value)
+      .map(([key, item]) => `${getChecklistLabel(key)}: ${formatChecklistValue(item)}`)
+      .join(' · ')
+  }
+  return String(value)
+}
+
+const ChecklistRow = ({ label, value }) => {
+  const result = getChecklistBoolean(value)
+  const reason = value && typeof value === 'object' ? value.reason : null
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+      <div className="flex items-start gap-2 text-sm">
+        {result === true ? (
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+        ) : result === false ? (
+          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+        ) : (
+          <Clock className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+        )}
+        <span className="min-w-0 flex-1 font-semibold text-slate-800">{label}</span>
+        <span
+          className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+            result === true
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+              : result === false
+                ? 'border-rose-200 bg-rose-50 text-rose-700'
+                : 'border-slate-200 bg-slate-50 text-slate-500'
+          }`}
+        >
+          {result === true ? 'Passed' : result === false ? 'Failed' : formatChecklistValue(value)}
+        </span>
+      </div>
+      {reason && <p className="mt-2 pl-6 text-xs leading-5 text-rose-700">{reason}</p>}
+    </div>
+  )
+}
+
+const ChecklistDataView = ({ value }) => {
+  const checklist = parseChecklistData(value)
+
+  if (!checklist) {
+    return <p className="text-sm text-slate-500">Checklist data is unavailable or invalid.</p>
+  }
+
+  const entries = Object.entries(checklist)
+  if (!entries.length) return <p className="text-sm text-slate-500">No checklist data recorded.</p>
+
+  return (
+    <div className="mt-2 space-y-2">
+      {entries.map(([key, item]) =>
+        key === 'ownerInformation' && item && typeof item === 'object' ? (
+          <div key={key} className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+            <p className="mb-2 text-xs font-bold tracking-wide text-slate-600 uppercase">
+              {getChecklistLabel(key)}
+            </p>
+            <div className="space-y-2">
+              {Object.entries(item).map(([nestedKey, nestedValue]) => (
+                <ChecklistRow key={nestedKey} label={getChecklistLabel(nestedKey)} value={nestedValue} />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <ChecklistRow key={key} label={getChecklistLabel(key)} value={item} />
+        )
+      )}
+    </div>
+  )
+}
 
 // ─── Assign Inspector Modal ───────────────────────────────────────────────────
 const AssignModal = ({ inspection, onClose }) => {
@@ -193,7 +352,7 @@ const AssignModal = ({ inspection, onClose }) => {
 // ─── Detail Modal ─────────────────────────────────────────────────────────────
 const DetailModal = ({ inspection, onClose, onAssignClick }) => {
   useEscapeKey(true, onClose)
-  const cfg = STATUS_CONFIG[inspection.status] || {}
+  const cfg = getStatusConfig(inspection.status)
   const StatusIcon = cfg.icon || Clock
 
   return (
@@ -230,7 +389,11 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
           {/* Status */}
           <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
             <span className="font-medium text-slate-600">Status</span>
-            <Badge variant={cfg.variant || 'slate'} size="sm" className="rounded-full">
+            <Badge
+              variant={cfg.variant}
+              size="sm"
+              className={`w-fit rounded-full whitespace-nowrap ${cfg.badgeClass}`}
+            >
               <StatusIcon size={12} className="mr-1 inline" />
               {cfg.label || inspection.status}
             </Badge>
@@ -289,9 +452,7 @@ const DetailModal = ({ inspection, onClose, onAssignClick }) => {
           {inspection.checklistData && (
             <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
               <p className="mb-1.5 text-xs text-slate-400">Checklist Data</p>
-              <p className="font-mono text-xs break-all text-slate-600">
-                {inspection.checklistData}
-              </p>
+              <ChecklistDataView value={inspection.checklistData} />
             </div>
           )}
 
@@ -542,7 +703,7 @@ const InspectionsManagementPage = () => {
               ) : filtered.length === 0 ? (
                 <div className="py-20 text-center text-sm text-slate-400">No matching results.</div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="table-scroll-container overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
@@ -566,7 +727,7 @@ const InspectionsManagementPage = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                       {filtered.map((item) => {
-                        const cfg = STATUS_CONFIG[item.status] || {}
+                        const cfg = getStatusConfig(item.status)
                         return (
                           <motion.tr
                             key={item.id}
@@ -603,11 +764,11 @@ const InspectionsManagementPage = () => {
                             </td>
                             <td className="px-5 py-3.5">
                               <Badge
-                                variant={cfg.variant || 'slate'}
+                                variant={cfg.variant}
                                 size="sm"
-                                className="rounded-full"
+                                className={`w-fit rounded-full whitespace-nowrap ${cfg.badgeClass}`}
                               >
-                                {cfg.label || item.status}
+                                {cfg.badgeLabel || cfg.label || item.status}
                               </Badge>
                             </td>
                             <td className="px-5 py-3.5 text-xs whitespace-nowrap text-slate-500">

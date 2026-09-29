@@ -1115,7 +1115,7 @@ const TenantDashboard = () => {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="table-scroll-container overflow-x-auto">
                   {isLoading || recentActivity.length > 0 ? (
                     <table
                       className="w-full min-w-[780px] text-left text-sm"

@@ -6,6 +6,7 @@ import useEscapeKey from '../../hooks/useEscapeKey'
 import { positiveNumber } from '@/config/validation'
 import { showApiErrorToast } from '@/config/apiError'
 import { useLanguage } from '@/i18n/LanguageContext'
+import { formatAmountInput, parseAmountInput } from '@/utils/currency'
 
 const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
   useEscapeKey(isOpen, onClose)
@@ -28,7 +29,10 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'amount' ? formatAmountInput(value) : value,
+    }))
     setError('')
   }
 
@@ -36,7 +40,7 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
     e.preventDefault()
     setError('')
 
-    const amountNum = Number(formData.amount)
+    const amountNum = parseAmountInput(formData.amount)
     const amountError = positiveNumber(amountNum, t('Withdrawal amount must be greater than 0.'))
     if (amountError) {
       setError(amountError)
@@ -116,29 +120,20 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
             </div>
             <div className="relative">
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 name="amount"
                 required
                 autoFocus
-                min={10000}
-                step={10000}
                 value={formData.amount}
                 onChange={handleChange}
-                placeholder={t('e.g. 5000000')}
+                placeholder={t('e.g. 5.000.000')}
                 className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm font-mono font-bold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
               />
               <span className="absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-bold text-slate-400">
                 ₫
               </span>
             </div>
-            {formData.amount && !isNaN(Number(formData.amount)) && Number(formData.amount) > 0 && (
-              <div className="mt-2 flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5 text-xs text-slate-700">
-                <span>{t('Estimated withdrawal:')}</span>
-                <span className="font-mono font-bold text-rose-600">
-                  − {formatVND(Number(formData.amount))}
-                </span>
-              </div>
-            )}
           </div>
 
           <div>
@@ -203,7 +198,7 @@ const WithdrawModal = ({ isOpen, onClose, onSuccess, currentBalance = 0 }) => {
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.amount || Number(formData.amount) <= 0}
+              disabled={loading || !formData.amount || parseAmountInput(formData.amount) <= 0}
               className="inline-flex items-center justify-center rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-rose-700 transition-colors disabled:bg-slate-300"
             >
               {loading ? (

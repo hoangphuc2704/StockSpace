@@ -181,7 +181,7 @@ const AdminAuditsPage = () => {
 
             {/* Danh sách phiếu kiểm kê */}
             <div className="flex flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-              <div className="flex-1 overflow-x-auto">
+              <div className="table-scroll-container flex-1 overflow-x-auto">
                 <table className="w-full text-left text-sm text-slate-600">
                   <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs text-slate-500 uppercase">
                     <tr>

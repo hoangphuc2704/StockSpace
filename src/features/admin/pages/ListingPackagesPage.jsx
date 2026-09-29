@@ -20,6 +20,7 @@ import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import listingApi from '@/services/listingApi'
 import { toggleSidebar, closeMobileSidebar } from '@/store/uiSlide'
 import { showApiErrorToast } from '@/config/apiError'
+import { formatAmountInput, parseAmountInput } from '@/utils/currency'
 
 const DURATIONS = [10, 15, 30]
 
@@ -27,7 +28,17 @@ const formatVND = (value) =>
   value == null ? '—' : `${Number(value).toLocaleString('vi-VN', { maximumFractionDigits: 0 })} ₫`
 
 const emptyForm = { name: '', durationDays: 10, price: '' }
-const isPackageActive = (pkg) => Boolean(pkg?.isActive ?? pkg?.active)
+const isPackageActive = (pkg) => {
+  const rawStatus = pkg?.status ?? pkg?.isActive ?? pkg?.active
+
+  if (typeof rawStatus === 'string') {
+    const normalizedStatus = rawStatus.trim().toLowerCase()
+    if (['active', 'true', '1'].includes(normalizedStatus)) return true
+    if (['deactive', 'deactivated', 'inactive', 'false', '0'].includes(normalizedStatus)) return false
+  }
+
+  return Boolean(rawStatus)
+}
 
 const PackageFormModal = ({ packageToEdit, onClose, onSaved }) => {
   const [form, setForm] = useState(
@@ -35,7 +46,7 @@ const PackageFormModal = ({ packageToEdit, onClose, onSaved }) => {
       ? {
           name: packageToEdit.name || '',
           durationDays: packageToEdit.durationDays || 10,
-          price: packageToEdit.price ?? '',
+          price: formatAmountInput(packageToEdit.price ?? ''),
         }
       : emptyForm
   )
@@ -46,7 +57,7 @@ const PackageFormModal = ({ packageToEdit, onClose, onSaved }) => {
     event.preventDefault()
     const name = form.name.trim()
     const durationDays = Number(form.durationDays)
-    const price = Number(form.price)
+    const price = parseAmountInput(form.price)
 
     if (!name) return setError('Package name is required.')
     if (!DURATIONS.includes(durationDays)) return setError('Duration must be 10, 15 or 30 days.')
@@ -134,12 +145,11 @@ const PackageFormModal = ({ packageToEdit, onClose, onSaved }) => {
                 Price (VND)
               </label>
               <input
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputMode="numeric"
                 value={form.price}
-                onChange={(event) => setForm({ ...form, price: event.target.value })}
-                placeholder="50000"
+                onChange={(event) => setForm({ ...form, price: formatAmountInput(event.target.value) })}
+                placeholder="50.000"
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-500 focus:bg-white focus:outline-none"
               />
             </div>
@@ -273,7 +283,7 @@ const ListingPackagesPage = () => {
             </div>
 
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="overflow-x-auto">
+              <div className="table-scroll-container overflow-x-auto">
                 <table className="w-full min-w-[680px] text-left text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50 text-xs font-bold tracking-wider text-slate-400 uppercase">
                     <tr>
@@ -322,7 +332,7 @@ const ListingPackagesPage = () => {
                                 className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}
                               >
                                 {active && <CheckCircle2 className="h-3.5 w-3.5" />}
-                                {active ? 'Active' : 'Inactive'}
+                                {active ? 'Active' : 'Deactive'}
                               </span>
                             </td>
                             <td className="px-6 py-4">

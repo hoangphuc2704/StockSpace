@@ -592,16 +592,16 @@ const WarehouseApprovalPage = () => {
       <Modal
         isOpen={rejectModalOpen}
         onClose={() => setRejectModalOpen(false)}
-        title="Từ chối duyệt đăng kho"
+        title="Reject warehouse listing"
       >
         <div className="p-4 sm:p-6">
           <p className="mb-4 text-sm text-slate-600">
-            Bạn đang từ chối phê duyệt kho <span className="font-bold text-slate-900">{warehouseToReject?.name}</span>. Vui lòng cung cấp lý do cụ thể để người cho thuê có thể nắm rõ và khắc phục.
+            You are rejecting approval for <span className="font-bold text-slate-900">{warehouseToReject?.name}</span>. Please provide a clear reason so the owner can make corrections.
           </p>
           <textarea
             className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             rows={4}
-            placeholder="Nhập lý do từ chối (bắt buộc)..."
+            placeholder="Enter a rejection reason (required)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
           />
@@ -610,7 +610,7 @@ const WarehouseApprovalPage = () => {
               onClick={() => setRejectModalOpen(false)}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              Hủy
+              Cancel
             </button>
             <button
               onClick={submitReject}
@@ -620,10 +620,10 @@ const WarehouseApprovalPage = () => {
               {pendingAction.type === 'reject' ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Đang xử lý...
+                  Processing...
                 </>
               ) : (
-                'Xác nhận từ chối'
+                'Confirm rejection'
               )}
             </button>
           </div>

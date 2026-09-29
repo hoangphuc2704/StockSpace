@@ -228,7 +228,7 @@ const SystemPolicyPage = () => {
                             ) : policies.length === 0 ? (
                                 <div className="py-20 text-center text-sm text-slate-400">There is no policy version yet.</div>
                             ) : (
-                                <div className="overflow-x-auto">
+                                <div className="table-scroll-container overflow-x-auto">
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b border-slate-100 bg-slate-50">

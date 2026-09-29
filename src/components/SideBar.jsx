@@ -54,8 +54,8 @@ const SIDEBAR_MENUS = {
     { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/tenant/dashboard' },
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/tenant/inventory' },
     // <<<<<<< HEAD
-    { text: 'Category Mgt', icon: HiOutlineSquaresPlus, path: '/tenant/categories' },
-    { text: 'SKU Mgt', icon: HiOutlineArchiveBox, path: '/tenant/skus' },
+    { text: 'Category', icon: HiOutlineSquaresPlus, path: '/tenant/categories' },
+    { text: 'SKU', icon: HiOutlineArchiveBox, path: '/tenant/skus' },
     // =======
     //     { text: 'Categories & SKU', icon: HiOutlineTag, path: '/tenant/products' },
     // >>>>>>> d40fad7adaa86ada5f5ce70c1028c65295711262
@@ -63,9 +63,9 @@ const SIDEBAR_MENUS = {
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/tenant/outbound' },
     { text: 'Audits', icon: HiOutlineClipboardDocumentList, path: '/tenant/inventory-audits' },
     { text: 'Transfers', icon: HiOutlineArrowRightOnRectangle, path: '/tenant/transfers' },
-    { text: 'My Contracts', icon: HiOutlineDocumentText, path: '/tenant/contracts' },
+    { text: 'Contracts', icon: HiOutlineDocumentText, path: '/tenant/contracts' },
     { text: 'Subscription', icon: HiOutlineCurrencyDollar, path: '/tenant/subscription' },
-    { text: 'Warehouse Layout', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
+    { text: 'WH Layout', icon: HiOutlineSquaresPlus, path: '/tenant/layoutwarehouses' },
     { text: 'Wallet', icon: HiOutlineCurrencyDollar, path: '/tenant/wallet' },
     { text: 'Staff', icon: HiOutlineUserGroup, path: '/tenant/staff' },
   ],
@@ -108,6 +108,10 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
 
   // Lấy trạng thái đóng mở Sidebar từ Redux Global State
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
+  // A mobile drawer is always rendered in its expanded layout. Otherwise a
+  // desktop-collapsed state can leave the drawer wide while its menu items
+  // still use the narrow icon-and-label layout, which clips text on phones.
+  const isMenuExpanded = isSidebarExpanded || isMobileOpen
   useEscapeKey(isMobileOpen, () => dispatch(closeMobileSidebar()))
   const menuItems = SIDEBAR_MENUS[currentRole] || []
 
@@ -140,67 +144,75 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
 
       <aside
         aria-label={`${currentRole.toLowerCase()} navigation`}
-        className={`fixed top-14 bottom-0 left-0 z-40 flex max-w-[calc(100vw-1rem)] flex-col overflow-x-hidden overflow-y-auto bg-white shadow-xl transition-all duration-150 ease-in-out md:shadow-none ${isSidebarExpanded ? 'w-60 px-3' : 'w-18 px-1'
-          } ${isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
-          } `}
+        className={`fixed top-14 bottom-0 left-0 z-40 flex max-w-[calc(100vw-1rem)] flex-col overflow-x-hidden overflow-y-auto bg-white shadow-xl transition-all duration-150 ease-in-out md:shadow-none ${
+          isMenuExpanded ? 'w-60 px-3' : 'w-18 px-1'
+        } ${
+          isMobileOpen ? 'w-60 translate-x-0 border-r px-3' : '-translate-x-full md:translate-x-0'
+        } `}
       >
-      {/* Danh sách Menu điều hướng */}
-      <nav className="flex-1 space-y-1 py-3">
-        {menuItems.map((item, idx) => {
-          const isActive = location.pathname === item.path
+        {/* Danh sách Menu điều hướng */}
+        <nav className="flex-1 space-y-1 py-3">
+          {menuItems.map((item, idx) => {
+            const isActive = location.pathname === item.path
 
-          return (
-            <button
-              key={idx}
-              onClick={() => handleNavigation(item.path)}
-              className={`group flex w-full items-center rounded-xl transition-all ${isSidebarExpanded
-                ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-                : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
-                } ${isActive
-                  ? 'bg-slate-100 font-semibold text-slate-950'
-                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
+            return (
+              <button
+                key={idx}
+                onClick={() => handleNavigation(item.path)}
+                className={`group flex w-full min-w-0 items-center rounded-xl transition-all ${
+                  isMenuExpanded
+                    ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
+                    : 'flex-col justify-center gap-1 py-3 font-sans text-[10px] font-normal'
+                } ${
+                  isActive
+                    ? 'bg-slate-100 font-semibold text-slate-950'
+                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-950'
                 } `}
-              title={!isSidebarExpanded ? item.text : undefined}
-            >
-              <item.icon
-                className={`shrink-0 transition-transform group-hover:scale-105 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'
-                  } ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
-              />
-
-              <span
-                className={`overflow-hidden text-ellipsis whitespace-nowrap ${!isSidebarExpanded && 'tracking-tight'
-                  }`}
+                title={!isMenuExpanded ? item.text : undefined}
               >
-                {item.text}
-              </span>
-            </button>
-          )
-        })}
-      </nav>
+                <item.icon
+                  className={`shrink-0 transition-transform group-hover:scale-105 ${
+                    isMenuExpanded ? 'h-5 w-5' : 'h-6 w-6'
+                  } ${isActive ? 'text-slate-950' : 'text-slate-600'} `}
+                />
 
-      {/* Nút Đăng xuất */}
-      <div className="border-t border-slate-100 py-3">
-        <button
-          // Logout locally and navigate immediately; the thunk also clears the
-          // refresh-token cookie through the API in the background.
-          onClick={() => {
-            dispatch(logoutThunk())
-            dispatch(closeMobileSidebar())
-            navigate('/', { replace: true })
-          }}
+                <span
+                  className={`${
+                    isMenuExpanded
+                      ? 'min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap'
+                      : 'sr-only'
+                  }`}
+                >
+                  {item.text}
+                </span>
+              </button>
+            )
+          })}
+        </nav>
 
-          className={`flex w-full items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${isSidebarExpanded
-            ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
-            : 'flex-col justify-center gap-1 py-3 text-[10px]'
+        {/* Nút Đăng xuất */}
+        <div className="border-t border-slate-100 py-3">
+          <button
+            // Logout locally and navigate immediately; the thunk also clears the
+            // refresh-token cookie through the API in the background.
+            onClick={() => {
+              dispatch(logoutThunk())
+              dispatch(closeMobileSidebar())
+              navigate('/', { replace: true })
+            }}
+            className={`flex w-full min-w-0 items-center rounded-xl text-red-600 transition-all hover:bg-red-50/60 ${
+              isMenuExpanded
+                ? 'flex-row justify-start gap-5 px-4 py-3 text-sm font-medium'
+                : 'flex-col justify-center gap-1 py-3 text-[10px]'
             } `}
-          title={!isSidebarExpanded ? 'Logout' : undefined}
-        >
-          <HiOutlineArrowRightOnRectangle
-            className={`shrink-0 ${isSidebarExpanded ? 'h-5 w-5' : 'h-6 w-6'}`}
-          />
-          <span className="whitespace-nowrap">Logout</span>
-        </button>
-      </div>
+            title={!isMenuExpanded ? 'Logout' : undefined}
+          >
+            <HiOutlineArrowRightOnRectangle
+              className={`shrink-0 ${isMenuExpanded ? 'h-5 w-5' : 'h-6 w-6'}`}
+            />
+            <span className={isMenuExpanded ? 'whitespace-nowrap' : 'sr-only'}>Logout</span>
+          </button>
+        </div>
       </aside>
     </>
   )

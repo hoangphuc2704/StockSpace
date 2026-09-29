@@ -942,13 +942,13 @@ const InboundPage = () => {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto bg-white">
+                    <div className="table-scroll-container overflow-x-auto bg-white">
                       {isLoading ? (
                         <div className="flex justify-center p-8">
                           <Loader2 className="animate-spin text-slate-400 h-6 w-6" />
                         </div>
                       ) : (
-                        <table className="w-full text-left text-sm whitespace-nowrap">
+                        <table className="w-full min-w-[1180px] text-left text-sm whitespace-nowrap">
                           <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                             <tr>
                               <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
@@ -959,6 +959,7 @@ const InboundPage = () => {
                               <th className="px-4 py-3 border-r border-slate-200">{t('Inbound Date')}</th>
                               <th className="px-4 py-3 border-r border-slate-200 text-right">{t('Total Expected Qty')}</th>
                               <th className="px-4 py-3 border-r border-slate-200 text-center">{t('Status')}</th>
+                              <th className="px-4 py-3 border-r border-slate-200 text-center">{t('Actions')}</th>
                               <th className="px-4 py-3 text-center">{t('Print')}</th>
                             </tr>
                           </thead>
@@ -984,48 +985,48 @@ const InboundPage = () => {
                                   <td className="px-4 py-3 border-r border-slate-100">{new Date(r.createdAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-right font-semibold text-slate-700">{totalQty}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-center">
-                                    <div className="flex flex-col gap-1 items-center">
-                                      <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                                          r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                                            r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
-                                              r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
-                                                'bg-slate-100 text-slate-600'
-                                        }`}>
-                                        {r.status === 'PENDING' ? t('Pending Approval') :
-                                         r.status === 'APPROVED' ? t('Approved') :
-                                         r.status === 'IN_PROGRESS' ? t('In progress') :
-                                         r.status === 'COMPLETED' ? t('Completed') :
-                                         r.status}
-                                      </span>
-                                      <div className="flex items-center justify-center gap-2 mt-1">
-                                        <button
-                                          onClick={() => handleViewDetail(r)}
-                                          className="text-primary hover:underline text-xs font-medium"
-                                        >
-                                          {t('View')}
-                                        </button>
-                                        {r.status === 'PENDING' && currentRole === 'TENANT' && (
-                                          <>
-                                            <span className="text-slate-300">|</span>
-                                            <button
-                                              onClick={() => handleApprove(r.id)}
-                                              className="text-emerald-600 hover:underline text-xs font-medium"
-                                            >
-                                              {t('Approve')}
-                                            </button>
-                                            <span className="text-slate-300">|</span>
-                                            <button
-                                              onClick={() => {
-                                                setRejectingReceiptId(r.id)
-                                                setIsRejectModalOpen(true)
-                                              }}
-                                              className="text-red-600 hover:underline text-xs font-medium"
-                                            >
-                                              {t('Reject')}
-                                            </button>
-                                          </>
-                                        )}
-                                      </div>
+                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider ${r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                        r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                                          r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
+                                            r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                              'bg-slate-100 text-slate-600'
+                                      }`}>
+                                      {r.status === 'PENDING' ? t('Pending Approval') :
+                                       r.status === 'APPROVED' ? t('Approved') :
+                                       r.status === 'IN_PROGRESS' ? t('In progress') :
+                                       r.status === 'COMPLETED' ? t('Completed') :
+                                       r.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 border-r border-slate-100 text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <button
+                                        onClick={() => handleViewDetail(r)}
+                                        className="text-primary hover:underline text-xs font-medium"
+                                      >
+                                        {t('View')}
+                                      </button>
+                                      {r.status === 'PENDING' && currentRole === 'TENANT' && (
+                                        <>
+                                          <span className="text-slate-300">|</span>
+                                          <button
+                                            onClick={() => handleApprove(r.id)}
+                                            className="text-emerald-600 hover:underline text-xs font-medium"
+                                          >
+                                            {t('Approve')}
+                                          </button>
+                                          <span className="text-slate-300">|</span>
+                                          <button
+                                            onClick={() => {
+                                              setRejectingReceiptId(r.id)
+                                              setIsRejectModalOpen(true)
+                                            }}
+                                            className="text-red-600 hover:underline text-xs font-medium"
+                                          >
+                                            {t('Reject')}
+                                          </button>
+                                        </>
+                                      )}
                                     </div>
                                   </td>
                                   <td className="px-4 py-3 text-center">
@@ -1101,7 +1102,7 @@ const InboundPage = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title={t('Register New Inbound Shipment')}
-                className="max-h-[92vh] max-w-5xl overflow-y-auto"
+                className="h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] max-w-5xl sm:h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)]"
               >
                 <FormShell onSubmit={handleCreateReceipt} className="space-y-4">
                   <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">

@@ -28,13 +28,32 @@ const OWNER_INFORMATION_LABELS = {
 
 const parseChecklist = (value) => {
   if (!value) return {}
-  if (typeof value === 'object') return value
-  try {
-    const parsed = JSON.parse(value)
-    return parsed && typeof parsed === 'object' ? parsed : {}
-  } catch {
-    return {}
+
+  let parsed = value
+  for (let attempt = 0; attempt < 2 && typeof parsed === 'string'; attempt += 1) {
+    try {
+      parsed = JSON.parse(parsed)
+    } catch {
+      return {}
+    }
   }
+
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+}
+
+const getChecklistBoolean = (value) => {
+  const candidate =
+    value && typeof value === 'object' && !Array.isArray(value) && 'verified' in value
+      ? value.verified
+      : value
+
+  if (typeof candidate === 'boolean') return candidate
+  if (typeof candidate !== 'string') return null
+
+  const normalized = candidate.trim().toLowerCase()
+  if (['true', 'passed', 'pass', 'yes', 'ok', 'verified'].includes(normalized)) return true
+  if (['false', 'failed', 'fail', 'no', 'rejected', 'unverified'].includes(normalized)) return false
+  return null
 }
 
 const formatDateTime = (value) =>
@@ -47,10 +66,32 @@ const formatDateTime = (value) =>
 
 const getStatusConfig = (status) => {
   const normalized = String(status || '').toUpperCase()
-  if (normalized === 'PASSED') return { label: 'Passed', variant: 'success' }
-  if (normalized === 'FAILED') return { label: 'Failed', variant: 'danger' }
-  if (normalized === 'IN_PROGRESS') return { label: 'In progress', variant: 'primary' }
-  return { label: 'Pending', variant: 'warning' }
+  if (normalized === 'PASSED') {
+    return {
+      label: 'Passed',
+      variant: 'success',
+      className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    }
+  }
+  if (normalized === 'FAILED') {
+    return {
+      label: 'Failed',
+      variant: 'danger',
+      className: 'border-rose-200 bg-rose-50 text-rose-700',
+    }
+  }
+  if (normalized === 'IN_PROGRESS') {
+    return {
+      label: 'In progress',
+      variant: 'primary',
+      className: 'border-sky-200 bg-sky-50 text-sky-700',
+    }
+  }
+  return {
+    label: 'Pending',
+    variant: 'warning',
+    className: 'border-amber-200 bg-amber-50 text-amber-700',
+  }
 }
 
 const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
@@ -79,7 +120,12 @@ const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
             <div className="flex flex-wrap items-center gap-3">
               <ClipboardCheck className="h-5 w-5 text-blue-600" />
               <h2 className="text-xl font-bold text-slate-900">Inspection Report</h2>
-              <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+              <Badge
+                variant={statusConfig.variant}
+                className={`w-fit whitespace-nowrap ${statusConfig.className}`}
+              >
+                {statusConfig.label}
+              </Badge>
             </div>
             <p className="mt-2 text-sm text-slate-500">{warehouseName}</p>
           </div>
@@ -142,7 +188,7 @@ const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
               <h3 className="text-sm font-semibold text-slate-900">Owner Information Check</h3>
               <div className="mt-3 space-y-3">
                 {Object.entries(ownerInformation).map(([key, item]) => {
-                  const verified = item?.verified !== false
+                  const verified = getChecklistBoolean(item?.verified) !== false
                   return (
                     <div
                       key={key}
@@ -174,14 +220,14 @@ const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
             <div className="flex items-center justify-between gap-3">
               <h3 className="text-sm font-semibold text-slate-900">Inspection Checklist</h3>
               <span className="text-xs font-semibold text-slate-500">
-                {GENERAL_CHECKLIST.filter((item) => checklist[item.key] === true).length}/
+                {GENERAL_CHECKLIST.filter((item) => getChecklistBoolean(checklist[item.key]) === true).length}/
                 {GENERAL_CHECKLIST.length} passed
               </span>
             </div>
             <div className="mt-3 space-y-2">
               {GENERAL_CHECKLIST.map((item) => {
                 const hasResult = Object.prototype.hasOwnProperty.call(checklist, item.key)
-                const passed = hasResult && checklist[item.key] === true
+                const passed = hasResult && getChecklistBoolean(checklist[item.key]) === true
                 return (
                   <div
                     key={item.key}
@@ -205,9 +251,9 @@ const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
 
         <div
           className={`flex shrink-0 items-center justify-between gap-4 border-t px-6 py-4 ${
-            inspection.status === 'PASSED'
+            String(inspection.status || '').toUpperCase() === 'PASSED'
               ? 'border-emerald-200 bg-emerald-50'
-              : inspection.status === 'FAILED'
+              : String(inspection.status || '').toUpperCase() === 'FAILED'
                 ? 'border-rose-200 bg-rose-50'
                 : 'border-slate-100 bg-slate-50'
           }`}
@@ -218,7 +264,12 @@ const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
             </p>
             <p className="mt-1 text-sm text-slate-600">Result recorded by the Inspector</p>
           </div>
-          <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
+          <Badge
+            variant={statusConfig.variant}
+            className={`w-fit whitespace-nowrap ${statusConfig.className}`}
+          >
+            {statusConfig.label}
+          </Badge>
         </div>
       </div>
     </div>

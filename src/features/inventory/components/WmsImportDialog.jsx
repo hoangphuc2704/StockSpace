@@ -680,7 +680,7 @@ const WmsImportDialog = ({
             )}
 
             {validationErrors.length > 0 && (
-              <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <div className="table-scroll-container overflow-x-auto rounded-lg border border-slate-200">
                 <table className="w-full min-w-[760px] text-left text-sm">
                   <thead className="bg-slate-50 text-xs font-semibold tracking-wide text-slate-600 uppercase">
                     <tr>
@@ -716,7 +716,7 @@ const WmsImportDialog = ({
             )}
 
             {receiptResults.length > 0 && (
-              <div className="overflow-x-auto rounded-lg border border-emerald-200">
+              <div className="table-scroll-container overflow-x-auto rounded-lg border border-emerald-200">
                 <table className="w-full min-w-[520px] text-left text-sm">
                   <thead className="bg-emerald-50 text-xs font-semibold text-emerald-900 uppercase">
                     <tr>

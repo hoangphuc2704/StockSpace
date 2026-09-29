@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import TableActionMenu from '@/components/TableActionMenu'
@@ -22,7 +22,6 @@ import {
   Loader2,
   Edit3,
   Trash2,
-  CheckCircle2,
   AlertCircle,
   ChevronLeft,
   ChevronRight,
@@ -37,6 +36,7 @@ import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import { parseFeaturesToList } from '../../../utils/formatFeatures'
+import { formatAmountInput, parseAmountInput } from '@/utils/currency'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleDateString('en-US') : '—')
@@ -58,7 +58,7 @@ const PackageFormModal = ({ pkg, onClose }) => {
 
   const [name, setName] = useState(pkg?.name || '')
   const [features, setFeatures] = useState(pkg?.features || '')
-  const [price, setPrice] = useState(pkg?.price || '')
+  const [price, setPrice] = useState(formatAmountInput(pkg?.price || ''))
   const [durationDays, setDurationDays] = useState(pkg?.durationDays || '')
   const [maxStaff, setMaxStaff] = useState(pkg?.maxStaff !== undefined ? pkg.maxStaff : 0)
   const [localError, setLocalError] = useState(null)
@@ -69,7 +69,10 @@ const PackageFormModal = ({ pkg, onClose }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const validationError = firstError(validatePackageForm({ name, price, durationDays, maxStaff }))
+    const priceNumber = parseAmountInput(price)
+    const validationError = firstError(
+      validatePackageForm({ name, price: priceNumber, durationDays, maxStaff })
+    )
     if (validationError) return setLocalError(validationError)
 
     setLocalError(null)
@@ -77,7 +80,7 @@ const PackageFormModal = ({ pkg, onClose }) => {
     const payload = {
       name: name.trim(),
       features: features.trim(),
-      price: Number(price),
+      price: priceNumber,
       durationDays: Number(durationDays),
       maxStaff: Number(maxStaff),
     }
@@ -144,9 +147,9 @@ const PackageFormModal = ({ pkg, onClose }) => {
               </label>
               <input
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                type="number"
-                min="0"
+                onChange={(e) => setPrice(formatAmountInput(e.target.value))}
+                type="text"
+                inputMode="numeric"
                 placeholder="0"
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
               />
@@ -403,7 +406,7 @@ const Packages_SubcriptionsManagementPage = () => {
                     There are no service packages yet.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="table-scroll-container overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50">
@@ -493,7 +496,7 @@ const Packages_SubcriptionsManagementPage = () => {
                     There is no registration history yet.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="table-scroll-container overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50">

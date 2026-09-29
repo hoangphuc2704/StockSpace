@@ -27,8 +27,10 @@ import staffApi from '@/services/staff/staffApi'
 import stockApi from '@/services/wms/stockApi'
 import { getEnglishApiMessage } from '@/utils/englishMessages'
 import { formatStockQuantity } from '@/utils/stockQuantity'
+import { parseAmountInput } from '@/utils/currency'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 import useEscapeKey from '@/hooks/useEscapeKey'
+import { toast } from 'react-hot-toast'
 
 const DEFAULT_LAYOUT_SIZE = 100
 // Racks can be smaller than the old 4m hard limit. Keep a small positive
@@ -42,21 +44,21 @@ const BIN_MAX_RATIO = 0.8
 const RACK_PRESETS = [
   {
     id: 'small',
-    name: 'Rack nhỏ',
+    name: 'Small Rack',
     code: 'SMALL',
     width: 6,
     length: 3,
   },
   {
     id: 'standard',
-    name: 'Rack tiêu chuẩn',
+    name: 'Standard Rack',
     code: 'STANDARD',
     width: 10,
     length: 4,
   },
   {
     id: 'large',
-    name: 'Rack lớn',
+    name: 'Large Rack',
     code: 'LARGE',
     width: 14,
     length: 6,
@@ -65,19 +67,19 @@ const RACK_PRESETS = [
 const BIN_PRESETS = [
   {
     id: 'small',
-    name: 'Bin nhỏ',
+    name: 'Small Bin',
     width: 1.2,
     height: 1,
   },
   {
     id: 'standard',
-    name: 'Bin tiêu chuẩn',
+    name: 'Standard Bin',
     width: 1.6,
     height: 1.2,
   },
   {
     id: 'large',
-    name: 'Bin lớn',
+    name: 'Large Bin',
     width: 2.24,
     height: 1.8,
   },
@@ -874,11 +876,11 @@ function RackElevationView({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] font-bold tracking-wider text-orange-600 uppercase">
-            Mặt cắt Rack
+            Rack cross-section
           </p>
           <h3 className="mt-1 font-bold text-slate-900">{rack.name || rack.code || 'Rack'}</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Kéo Bin theo chiều ngang để đổi vị trí, kéo lên/xuống để đổi tầng. Đang có{' '}
+            Drag a Bin horizontally to change its position, or up/down to change its level. Current count:{' '}
             <strong className="text-slate-700">{rack.bins?.length || 0}</strong> /{' '}
             <strong className="text-slate-700">
               {getRackMaxBinCount(rack) > 0 ? `${getRackMaxBinCount(rack)} Bin / Rack` : '—'}
@@ -893,7 +895,7 @@ function RackElevationView({
               onClick={onAddBin}
               className="rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs font-semibold text-orange-700 shadow-sm transition-all duration-200 hover:bg-orange-100 active:scale-[0.98]"
             >
-              Thêm Bin
+              Add Bin
             </button>
           </div>
         )}
@@ -983,7 +985,7 @@ function RackElevationView({
           </div>
         ) : (
           <div className="flex h-full items-center justify-center px-4 text-center text-xs text-slate-500">
-            Chưa nhận được số tầng Rack từ BE.
+            Rack level information has not been received from the backend.
           </div>
         )}
       </div>
@@ -995,7 +997,7 @@ const formatTableNumber = (value) =>
   numberOf(value).toLocaleString('vi-VN', { maximumFractionDigits: 2 })
 
 const formatTableLimit = (value, unit) => {
-  if (value == null || numberOf(value) <= 0) return 'Không giới hạn'
+  if (value == null || numberOf(value) <= 0) return 'Unlimited'
   return `${formatTableNumber(value)} ${unit}`
 }
 
@@ -1053,13 +1055,13 @@ function RackStatisticsTable({
     <section className="mt-4 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_4px_20px_-2px_rgba(15,23,42,0.05)]">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5">
         <div>
-          <h2 className="font-bold text-slate-900">Tổng quan Rack / Bin</h2>
+          <h2 className="font-bold text-slate-900">Rack / Bin overview</h2>
           <p className="mt-1 text-xs text-slate-500">
             {racks.length} rack · {totalBins} bin
           </p>
           {canEdit && (
             <p className="mt-1 text-[11px] text-orange-700">
-              Có thể bổ sung giới hạn khối lượng/thể tích tại đây, sau đó bấm Save layout.
+              You can add weight or volume limits here, then click Save layout.
             </p>
           )}
         </div>
@@ -1067,21 +1069,21 @@ function RackStatisticsTable({
 
       {racks.length === 0 ? (
         <p className="px-5 py-8 text-center text-sm text-slate-500">
-          Chưa có rack nào trong layout.
+          No racks in this layout.
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="table-scroll-container overflow-x-auto">
           <table className="w-full min-w-[980px] text-left text-sm">
             <thead className="border-b border-slate-100 bg-slate-50 text-xs font-bold tracking-wide text-slate-500 uppercase">
               <tr>
                 <th className="px-4 py-3">STT</th>
                 <th className="px-4 py-3">Rack</th>
-                <th className="px-4 py-3">Loại</th>
-                <th className="px-4 py-3">Kích thước</th>
-                <th className="px-4 py-3">Tầng</th>
-                <th className="px-4 py-3">Bin tối đa / thực tế</th>
-                <th className="px-4 py-3">Khối lượng</th>
-                <th className="px-4 py-3">Thể tích</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Dimensions</th>
+                <th className="px-4 py-3">Levels</th>
+                <th className="px-4 py-3">Max / actual Bins</th>
+                <th className="px-4 py-3">Weight</th>
+                <th className="px-4 py-3">Volume</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1110,7 +1112,7 @@ function RackStatisticsTable({
                       {rack.code && <p className="mt-0.5 text-xs text-slate-400">{rack.code}</p>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {preset?.name || 'Rack tùy chỉnh'}
+                      {preset?.name || 'Custom Rack'}
                     </td>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">
                       {formatTableNumber(footprint.width)} × {formatTableNumber(footprint.length)} ×{' '}
@@ -1127,7 +1129,7 @@ function RackStatisticsTable({
                             min="1"
                             step="1"
                             value={getDraftValue(rack, 'maxBinCount')}
-                            aria-label={`Số Bin tối đa của ${rack.name || rack.code || 'Rack'}`}
+                            aria-label={`Maximum Bin count for ${rack.name || rack.code || 'Rack'}`}
                             onChange={(event) =>
                               setDraftValue(rack, 'maxBinCount', event.target.value)
                             }
@@ -1135,7 +1137,7 @@ function RackStatisticsTable({
                             className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-xs font-semibold text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
                           />
                           <span className="mt-1 block text-[10px] font-normal text-slate-400">
-                            Đang có {rack.bins?.length || 0} Bin
+                            Current: {rack.bins?.length || 0} Bins
                           </span>
                         </div>
                       ) : (
@@ -1152,7 +1154,7 @@ function RackStatisticsTable({
                       {canEdit ? (
                         <div className="min-w-36">
                           <p className="text-xs text-slate-500">
-                            Hiện tại:{' '}
+                            Current:{' '}
                             {currentWeight == null ? '—' : `${formatTableNumber(currentWeight)} kg`}
                           </p>
                           <input
@@ -1160,15 +1162,15 @@ function RackStatisticsTable({
                             min="0"
                             step="0.01"
                             value={getDraftValue(rack, 'maxWeight')}
-                            placeholder="0 = không giới hạn"
-                            aria-label={`Khối lượng tối đa của ${rack.name || rack.code || 'Rack'}`}
+                            placeholder="0 = unlimited"
+                            aria-label={`Maximum weight for ${rack.name || rack.code || 'Rack'}`}
                             onChange={(event) =>
                               setDraftValue(rack, 'maxWeight', event.target.value)
                             }
                             onBlur={() => commitDraftValue(rack, 'maxWeight')}
                             className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
                           />
-                          <span className="text-[10px] text-slate-400">Tối đa (kg)</span>
+                          <span className="text-[10px] text-slate-400">Maximum (kg)</span>
                         </div>
                       ) : (
                         <>
@@ -1185,7 +1187,7 @@ function RackStatisticsTable({
                       {canEdit ? (
                         <div className="min-w-36">
                           <p className="text-xs text-slate-500">
-                            Hiện tại:{' '}
+                            Current:{' '}
                             {currentVolume == null ? '—' : `${formatTableNumber(currentVolume)} m³`}
                           </p>
                           <input
@@ -1193,15 +1195,15 @@ function RackStatisticsTable({
                             min="0"
                             step="0.01"
                             value={getDraftValue(rack, 'maxVolume')}
-                            placeholder="0 = không giới hạn"
-                            aria-label={`Thể tích tối đa của ${rack.name || rack.code || 'Rack'}`}
+                            placeholder="0 = unlimited"
+                            aria-label={`Maximum volume for ${rack.name || rack.code || 'Rack'}`}
                             onChange={(event) =>
                               setDraftValue(rack, 'maxVolume', event.target.value)
                             }
                             onBlur={() => commitDraftValue(rack, 'maxVolume')}
                             className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-semibold text-slate-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
                           />
-                          <span className="text-[10px] text-slate-400">Tối đa (m³)</span>
+                          <span className="text-[10px] text-slate-400">Maximum (m³)</span>
                         </div>
                       ) : (
                         <>
@@ -1221,11 +1223,11 @@ function RackStatisticsTable({
             <tfoot className="border-t border-slate-100 bg-orange-50/60 text-sm font-bold text-slate-800">
               <tr>
                 <td className="px-4 py-3" colSpan={5}>
-                  Tổng cộng: {racks.length} Rack
+                  Total: {racks.length} Racks
                 </td>
                 <td className="px-4 py-3 text-center">{totalBins}</td>
                 <td className="px-4 py-3" colSpan={2}>
-                  {totalBins} Bin đang được cấu hình
+                  {totalBins} Bins configured
                 </td>
               </tr>
             </tfoot>
@@ -1236,7 +1238,7 @@ function RackStatisticsTable({
       {racks.length > RACKS_PER_PAGE && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-4 py-3 sm:px-5">
           <span className="text-xs text-slate-500">
-            Trang {currentRackPage + 1} / {totalRackPages} · Hiển thị {firstRackIndex + 1}-
+            Page {currentRackPage + 1} / {totalRackPages} · Showing {firstRackIndex + 1}-
             {Math.min(firstRackIndex + RACKS_PER_PAGE, racks.length)} / {racks.length} Rack
           </span>
           <div className="flex items-center gap-2">
@@ -1246,7 +1248,7 @@ function RackStatisticsTable({
               onClick={() => setRackPage((current) => Math.max(current - 1, 0))}
               className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Trước
+              Previous
             </button>
             <button
               type="button"
@@ -1254,7 +1256,7 @@ function RackStatisticsTable({
               onClick={() => setRackPage((current) => Math.min(current + 1, totalRackPages - 1))}
               className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Tiếp
+              Next
             </button>
           </div>
         </div>
@@ -1448,7 +1450,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
   const ownedWarehouseAreaM2 = numberOf(selectedWarehouse?.area, 0)
   const previewAreaM2 =
     isOwner && ownedWarehouseAreaM2 > 0 ? ownedWarehouseAreaM2 : leasedLayoutAreaM2
-  const previewAreaLabel = isOwner ? 'Diện tích toàn kho' : 'Diện tích đang thuê'
+  const previewAreaLabel = isOwner ? 'Total warehouse area' : 'Leased area'
 
   useActiveWarehouseContext(selectedWarehouseId)
 
@@ -2320,8 +2322,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     setError('')
     setMessage(
       quantity === 1
-        ? `Đã thêm ${lastBin.name} ở tầng ${shelfLevel}. Có thể kéo Bin theo chiều dọc trong chế độ 3D.`
-        : `Đã thêm ${quantity} Bin ở tầng ${shelfLevel}. Các Bin cũ được giữ nguyên kích thước.`
+        ? `${lastBin.name} was added at level ${shelfLevel}. You can drag the Bin vertically in 3D mode.`
+        : `${quantity} Bins were added at level ${shelfLevel}. Existing Bins kept their dimensions.`
     )
   }, [
     canEditLayout,
@@ -2564,7 +2566,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     setBlockedMode(false)
     setError('')
     setMessage(
-      `${movedBin.name || movedBin.code || 'Bin'} đã được chuyển sang ${targetRack.name || targetRack.code || 'Rack đích'}. Kích thước được giữ nguyên.`
+      `${movedBin.name || movedBin.code || 'Bin'} was moved to ${targetRack.name || targetRack.code || 'the target Rack'}. Dimensions were preserved.`
     )
   }, [
     canEditLayout,
@@ -2790,8 +2792,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       setError('')
       setMessage(
         targetIsSource
-          ? `${movedBin.name || movedBin.code || 'Bin'} đã được đổi vị trí trong Rack.`
-          : `${movedBin.name || movedBin.code || 'Bin'} đã được kéo sang ${targetRack.name || targetRack.code || 'Rack đích'}.`
+          ? `${movedBin.name || movedBin.code || 'Bin'} was repositioned within the Rack.`
+          : `${movedBin.name || movedBin.code || 'Bin'} was dragged to ${targetRack.name || targetRack.code || 'the target Rack'}.`
       )
     },
     [canEditLayout, layout.racks, updateSelection]
@@ -3042,7 +3044,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
     const firstControl =
       dialog.querySelector('input:not([disabled]), select, textarea') ||
-      dialog.querySelector('button:not([aria-label="Đóng"])')
+      dialog.querySelector('button:not([aria-label="Close"])')
     firstControl?.focus()
   }, [isBinConfigOpen, isMoveBinOpen, isRackConfigOpen])
 
@@ -3086,7 +3088,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
     const width = numberOf(draftFormData.warehouseWidth)
     const length = numberOf(draftFormData.warehouseLength)
     const height = numberOf(draftFormData.warehouseHeight)
-    const rentalPrice = numberOf(draftFormData.rentalPrice)
+    const rentalPrice = parseAmountInput(draftFormData.rentalPrice) || 0
     const formPayload = new FormData()
     const warehouseInfo = {
       typeId: draftFormData.typeId,
@@ -3179,7 +3181,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       if (saved) setLayout(normalizeLayout(saved))
 
       updateSelection({ type: 'layout', key: null }, false, true)
-      setMessage(
+      toast.success(
         isContractLayout
           ? 'Contract layout saved successfully.'
           : 'Warehouse layout saved successfully.'
@@ -3191,7 +3193,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           // Ignore storage cleanup errors; the saved layout is still valid.
         }
         setLayoutSetupComplete(true)
-        setMessage(
+        toast.success(
           'Warehouse created and submitted for Admin approval. Listing packages will be available after approval.'
         )
         const nextParams = new URLSearchParams(searchParams)
@@ -3289,7 +3291,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                   <button
                     type="button"
-                    aria-label="Đóng chuyển Bin"
+                    aria-label="Close move Bin dialog"
                     className="absolute inset-0 bg-slate-950/35 backdrop-blur-[2px]"
                     onClick={() => setIsMoveBinOpen(false)}
                   />
@@ -3306,16 +3308,15 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           Move Bin
                         </p>
                         <h2 id="move-bin-title" className="mt-1 text-lg font-bold text-slate-900">
-                          Chuyển {selectedEntity.name || selectedEntity.code || 'Bin'} sang Rack
-                          khác
+                          Move {selectedEntity.name || selectedEntity.code || 'Bin'} to another Rack
                         </h2>
                         <p className="mt-1 text-xs text-slate-600">
-                          Kích thước Bin và các Bin đang có sẽ được giữ nguyên, không tự co lại.
+                          The Bin and existing Bin dimensions will remain unchanged.
                         </p>
                       </div>
                       <button
                         type="button"
-                        aria-label="Đóng"
+                        aria-label="Close"
                         onClick={() => setIsMoveBinOpen(false)}
                         className="rounded-full p-2 text-slate-400 transition hover:bg-white hover:text-slate-700"
                       >
@@ -3325,7 +3326,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
                     <div className="grid gap-3 p-5 sm:p-6">
                       <label className="text-xs font-semibold text-slate-600">
-                        Rack đích
+                        Destination Rack
                         <select
                           value={moveBinTargetRackKey}
                           onChange={(event) => {
@@ -3357,7 +3358,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         </select>
                       </label>
                       <label className="text-xs font-semibold text-slate-600">
-                        Tầng mới
+                        New level
                         <select
                           value={moveBinShelfLevel}
                           onChange={(event) => setMoveBinShelfLevel(event.target.value)}
@@ -3367,19 +3368,19 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             { length: getRackLevelCount(moveBinTargetRack) },
                             (_, index) => (
                               <option key={index + 1} value={index + 1}>
-                                Tầng {index + 1}
+                                Level {index + 1}
                               </option>
                             )
                           )}
                         </select>
                       </label>
                       <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                        Kích thước giữ nguyên: Dài {numberOf(selectedEntity.length)}m × Rộng{' '}
-                        {numberOf(selectedEntity.width)}m × Cao {numberOf(selectedEntity.height)}m.
+                        Dimensions preserved: Length {numberOf(selectedEntity.length)}m × Width{' '}
+                        {numberOf(selectedEntity.width)}m × Height {numberOf(selectedEntity.height)}m.
                       </div>
                       <p className="text-[11px] text-slate-500">
-                        FE chỉ tìm vị trí trống trong Rack đích. Nếu Bin đang có tồn kho, BE có thể
-                        từ chối việc chuyển Rack.
+                        The FE only finds an available position in the destination Rack. The BE may
+                        reject the move if the Bin contains inventory.
                       </p>
                     </div>
 
@@ -3396,7 +3397,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         onClick={() => setIsMoveBinOpen(false)}
                         className={secondaryButtonClass}
                       >
-                        Hủy
+                        Cancel
                       </button>
                       <button
                         type="button"
@@ -3405,7 +3406,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         className={`${primaryButtonClass} inline-flex items-center justify-center`}
                       >
                         <Plus className="mr-1.5 h-4 w-4" />
-                        Chuyển Bin
+                        Move Bin
                       </button>
                     </div>
                   </div>
@@ -3415,7 +3416,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
                 <button
                   type="button"
-                  aria-label="Đóng cấu hình Bin"
+                  aria-label="Close Bin configuration"
                   className="absolute inset-0 bg-slate-950/35 backdrop-blur-[2px]"
                   onClick={() => setIsBinConfigOpen(false)}
                 />
@@ -3432,18 +3433,18 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         Bin configuration
                       </p>
                       <h2 id="bin-config-title" className="mt-1 text-lg font-bold text-slate-900">
-                        {editingBinKey ? 'Chỉnh sửa' : 'Thêm Bin vào'}{' '}
+                        {editingBinKey ? 'Edit' : 'Add Bin to'}{' '}
                         {selectedRack.name || selectedRack.code || 'Rack'}
                       </h2>
                       <p className="mt-1 text-xs text-slate-600">
                         {editingBinKey
-                          ? 'Cập nhật kích thước hoặc tầng của Bin đã chọn. Vị trí hiện tại sẽ được giữ nếu vẫn phù hợp.'
-                          : 'Kích thước mặc định được căn theo Rack và chiều cao mỗi tầng. Bạn vẫn có thể chỉnh trước khi thêm.'}
+                          ? 'Update the selected Bin dimensions or level. Its current position will be kept when possible.'
+                          : 'Default dimensions are based on the Rack and level height. You can adjust them before adding.'}
                       </p>
                     </div>
                     <button
                       type="button"
-                      aria-label="Đóng"
+                      aria-label="Close"
                       onClick={() => setIsBinConfigOpen(false)}
                       className="rounded-full p-2 text-slate-400 transition hover:bg-white hover:text-slate-700"
                     >
@@ -3453,7 +3454,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
                   <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
                     <div className="sm:col-span-2">
-                      <p className="text-xs font-semibold text-slate-600">Gợi ý kích thước Bin</p>
+                      <p className="text-xs font-semibold text-slate-600">Bin size presets</p>
                       <div className="mt-2 grid grid-cols-3 gap-2">
                         {BIN_PRESETS.map((preset) => (
                           <div key={preset.id} className="group relative">
@@ -3471,7 +3472,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                               role="tooltip"
                               className="pointer-events-none absolute bottom-[calc(100%+0.5rem)] left-1/2 z-20 w-max max-w-[calc(100vw-3rem)] -translate-x-1/2 rounded-lg bg-slate-900 px-3 py-2 text-[11px] font-medium whitespace-nowrap text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100"
                             >
-                              Rộng {preset.width}m × Dài{' '}
+                              Width {preset.width}m × Length{' '}
                               {editingBinKey
                                 ? numberOf(selectedEntity?.length)
                                 : numberOf(selectedRack.length)}
@@ -3483,19 +3484,19 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       </div>
                     </div>
                     <label className="text-xs font-semibold text-slate-600">
-                      Chiều rộng Bin (m)
+                      Bin width (m)
                       <input
                         type="number"
                         min="0.000001"
                         step="0.01"
                         value={newBinWidth}
                         onChange={(event) => setNewBinWidth(event.target.value)}
-                        placeholder="Nhập chiều rộng"
+                        placeholder="Enter width"
                         className={`${inputClass} mt-1`}
                       />
                     </label>
                     <label className="text-xs font-semibold text-slate-600">
-                      Chiều dài Bin (m) - theo Rack
+                      Bin length (m) - based on Rack
                       <input
                         type="number"
                         value={
@@ -3509,12 +3510,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       />
                       <span className="mt-1 block text-[11px] font-normal text-slate-500">
                         {editingBinKey
-                          ? 'Chiều dài hiện tại của Bin được giữ nguyên.'
-                          : 'Bằng chiều dài của Rack đang chọn.'}
+                          ? 'The current Bin length will be preserved.'
+                          : 'Matches the selected Rack length.'}
                       </span>
                     </label>
                     <label className="text-xs font-semibold text-slate-600">
-                      Chiều cao Bin (m)
+                      Bin height (m)
                       <input
                         type="number"
                         min="0.000001"
@@ -3526,7 +3527,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       />
                     </label>
                     <label className="text-xs font-semibold text-slate-600">
-                      Tầng Bin
+                      Bin level
                       <select
                         value={newBinShelfLevel}
                         onChange={(event) => setNewBinShelfLevel(event.target.value)}
@@ -3534,14 +3535,14 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       >
                         {Array.from({ length: getRackLevelCount(selectedRack) }, (_, index) => (
                           <option key={index + 1} value={index + 1}>
-                            Tầng {index + 1}
+                            Level {index + 1}
                           </option>
                         ))}
                       </select>
                     </label>
                     {!editingBinKey && (
                       <label className="text-xs font-semibold text-slate-600">
-                        Số lượng thêm
+                        Quantity to add
                         <input
                           type="number"
                           min="1"
@@ -3555,19 +3556,19 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           className={`${inputClass} mt-1`}
                         />
                         <span className="mt-1 block text-[11px] font-normal text-slate-500">
-                          Còn trống{' '}
+                          Available{' '}
                           {Math.max(
                             getRackMaxBinCount(selectedRack) - (selectedRack.bins?.length || 0),
                             0
                           )}{' '}
-                          vị trí theo giới hạn Rack.
+                          positions within the Rack limit.
                         </span>
                       </label>
                     )}
                     <p className="text-[11px] text-slate-500 sm:col-span-2">
                       {editingBinKey
-                        ? 'Sau khi lưu, Bin sẽ được cập nhật ngay trên layout và vẫn giữ mã/tồn kho hiện tại.'
-                        : 'Vị trí trống sẽ được chọn tự động trong tầng đã chọn. BE sẽ tính lại vị trí đứng theo `shelfLevel` khi lưu.'}
+                        ? 'After saving, the Bin will update on the layout while keeping its code and inventory.'
+                        : 'An available position will be selected automatically in the chosen level. The BE will recalculate the position from `shelfLevel` when saving.'}
                     </p>
                   </div>
 
@@ -3584,7 +3585,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       onClick={() => setIsBinConfigOpen(false)}
                       className={secondaryButtonClass}
                     >
-                      Hủy
+                      Cancel
                     </button>
                     <button
                       type="button"
@@ -3596,7 +3597,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       ) : (
                         <Plus className="mr-1.5 h-4 w-4" />
                       )}
-                      {editingBinKey ? 'Lưu thay đổi' : 'Thêm Bin'}
+                      {editingBinKey ? 'Save changes' : 'Add Bin'}
                     </button>
                   </div>
                 </div>
@@ -3606,7 +3607,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 <button
                   type="button"
-                  aria-label="Đóng cấu hình Rack"
+                  aria-label="Close Rack configuration"
                   className="absolute inset-0 bg-slate-950/35 backdrop-blur-[2px]"
                   onClick={() => setIsRackConfigOpen(false)}
                 />
@@ -3623,15 +3624,15 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         Rack configuration
                       </p>
                       <h2 id="rack-config-title" className="mt-1 text-lg font-bold text-slate-900">
-                        Chọn kích thước và sức chứa
+                        Choose dimensions and capacity
                       </h2>
                       <p className="mt-1 text-xs text-slate-600">
-                        Mặc định thêm 1 Rack. Bật thêm nhiều nếu muốn tạo nhiều Rack cùng loại.
+                        One Rack is added by default. Enable multiple to create several Racks of the same type.
                       </p>
                     </div>
                     <button
                       type="button"
-                      aria-label="Đóng"
+                      aria-label="Close"
                       onClick={() => setIsRackConfigOpen(false)}
                       className="rounded-full p-2 text-slate-400 transition hover:bg-white hover:text-slate-700"
                     >
@@ -3684,13 +3685,13 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
 
                             <div className="mt-3 space-y-2 border-t border-slate-200/80 pt-3">
                               <label className="block text-[11px] font-semibold text-slate-600">
-                                Khối lượng tối đa (kg)
+                                Maximum weight (kg)
                                 <input
                                   type="number"
                                   min="0"
                                   step="0.01"
                                   value={maxWeight}
-                                  placeholder="0 = không giới hạn"
+                                  placeholder="0 = unlimited"
                                   onChange={(event) =>
                                     setRackPresetCapacities((current) => ({
                                       ...current,
@@ -3704,17 +3705,17 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                 />
                               </label>
                               <label className="block text-[11px] font-semibold text-slate-600">
-                                Thể tích tối đa (m³) - tự động
+                                Maximum volume (m³) - automatic
                                 <input
                                   type="number"
                                   value={geometricVolume}
-                                  placeholder="Nhập chiều cao Rack trước"
+                                  placeholder="Enter Rack height first"
                                   readOnly
                                   disabled
                                   className={`${inputClass} mt-1 cursor-not-allowed bg-slate-100 text-slate-500`}
                                 />
                                 <span className="mt-1 block text-[11px] font-normal text-slate-500">
-                                  Tự động theo chiều rộng × chiều dài × chiều cao Rack.
+                                  Calculated from Rack width × length × height.
                                 </span>
                               </label>
                             </div>
@@ -3726,7 +3727,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                     <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                          <span>Chiều cao Rack (m)</span>
+                          <span>Rack height (m)</span>
                           <span>
                             <input
                               type="number"
@@ -3735,16 +3736,16 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                               step="0.01"
                               value={newRackHeight}
                               onChange={(event) => setNewRackHeight(event.target.value)}
-                              placeholder="Nhập chiều cao"
+                              placeholder="Enter height"
                               className={`${inputClass} w-28 py-2`}
                             />
                             <span className="mt-1 block text-[11px] font-normal text-slate-500">
-                              Tối đa {formatMeters(layout.height)} (chiều cao kho)
+                              Maximum {formatMeters(layout.height)} (warehouse height)
                             </span>
                           </span>
                         </label>
                         <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                          Số tầng Rack
+                          Rack levels
                           <input
                             type="number"
                             min="1"
@@ -3755,7 +3756,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           />
                         </label>
                         <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                          Số Bin / Rack
+                          Bins / Rack
                           <input
                             type="number"
                             min="1"
@@ -3777,10 +3778,10 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             }}
                             className="h-4 w-4 rounded border-slate-300 text-orange-500 accent-orange-500 focus:ring-orange-200"
                           />
-                          Thêm nhiều Rack
+                          Add multiple Racks
                         </label>
                         <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                          Số lượng
+                          Quantity
                           <input
                             type="number"
                             min="2"
@@ -3796,7 +3797,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       </div>
                       <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-5">
                         <span>
-                          Đang chọn:{' '}
+                          Selected:{' '}
                           <strong className="text-orange-700">
                             {
                               RACK_PRESETS.find((preset) => preset.id === selectedRackPresetId)
@@ -3805,16 +3806,16 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           </strong>
                         </span>
                         <span>
-                          Chiều cao: <strong>{newRackHeight || '—'}m</strong>
+                          Height: <strong>{newRackHeight || '—'}m</strong>
                         </span>
                         <span>
-                          Số tầng: <strong>{newRackShelfCount}</strong>
+                          Levels: <strong>{newRackShelfCount}</strong>
                         </span>
                         <span>
-                          Số Bin: <strong>{newRackBinCount}</strong>
+                          Bins: <strong>{newRackBinCount}</strong>
                         </span>
                         <span>
-                          Sẽ thêm: <strong>{addMultipleRacks ? newRackQuantity : 1} Rack</strong>
+                          Will add: <strong>{addMultipleRacks ? newRackQuantity : 1} Rack</strong>
                         </span>
                       </div>
                     </div>
@@ -3826,7 +3827,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       onClick={() => setIsRackConfigOpen(false)}
                       className={secondaryButtonClass}
                     >
-                      Hủy
+                      Cancel
                     </button>
                     <button
                       type="button"
@@ -3834,7 +3835,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       className={`${primaryButtonClass} inline-flex items-center justify-center`}
                     >
                       <Plus className="mr-1.5 h-4 w-4" />
-                      OK - Thêm Rack
+                      OK - Add Rack
                     </button>
                   </div>
                 </div>
@@ -4053,7 +4054,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           className={`${primaryButtonClass} inline-flex w-full items-center justify-center`}
                         >
                           <Plus className="mr-1.5 h-4 w-4" />
-                          Cấu hình / Thêm Rack
+                          Configure / Add Rack
                         </button>
                         {selectedRack && (
                           <div className="grid grid-cols-2 gap-2">
@@ -4066,7 +4067,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                               className="inline-flex items-center justify-center rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 transition hover:bg-orange-100"
                             >
                               <Plus className="mr-1 h-3.5 w-3.5" />
-                              Thêm Bin
+                              Add Bin
                             </button>
                             {selection.type === 'bin' && (
                               <button
@@ -4074,7 +4075,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                                 onClick={openMoveBinConfiguration}
                                 className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
                               >
-                                Chuyển Rack
+                                Move Rack
                               </button>
                             )}
                           </div>
@@ -4098,8 +4099,8 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                           </button>
                         </div>
                         <p className="text-[11px] leading-4 text-slate-500">
-                          Ctrl/Cmd + click để chọn nhiều. Ctrl/Cmd + C để copy, Ctrl/Cmd + V để dán,
-                          Delete để xóa lựa chọn.
+                          Ctrl/Cmd + click to select multiple. Ctrl/Cmd + C to copy, Ctrl/Cmd + V to paste,
+                          and Delete to remove the selection.
                         </p>
                       </div>
                     )}
@@ -4126,7 +4127,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             setBlockedMode(false)
                           }}
                           aria-expanded={isRackExpanded}
-                          title={isRackExpanded ? 'Thu gọn danh sách Bin' : 'Mở danh sách Bin'}
+                          title={isRackExpanded ? 'Collapse Bin list' : 'Expand Bin list'}
                           className={`w-full rounded-xl px-2 py-2 text-left text-sm font-semibold transition-colors duration-200 ${selectedItemSet.has(`rack:${rack.clientKey}`) ? 'bg-orange-50 text-orange-700' : 'hover:bg-slate-50'}`}
                         >
                           <span className="flex items-center justify-between gap-2">
@@ -4207,7 +4208,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                         }}
                         className="rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-orange-700 shadow-sm"
                       >
-                        ← Sơ đồ 2D
+                        ← 2D layout
                       </button>
                     ) : (
                       <>
@@ -4300,9 +4301,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                       {accessPointMode === 'ENTRY' ? '↓' : '↑'}
                     </span>
                     <span>
-                      Chọn ô ở biên ngoài layout để đặt{' '}
-                      {accessPointMode === 'ENTRY' ? 'cửa vào' : 'cửa ra'}. Bấm lại vào mũi tên đã
-                      đặt để xóa.
+                      Select an outer cell of the layout to place the{' '}
+                      {accessPointMode === 'ENTRY' ? 'entrance' : 'exit'}. Click the placed arrow
+                      again to remove it.
                     </span>
                   </div>
                 )}
@@ -4412,7 +4413,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             </p>
                           </div>
                         ) : (
-                          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+                          <div className="table-scroll-container overflow-x-auto rounded-2xl border border-slate-200 bg-white">
                             <table className="w-full min-w-150 text-left text-sm">
                               <thead className="bg-slate-50 text-xs tracking-wider text-slate-500 uppercase">
                                 <tr>
@@ -4449,9 +4450,9 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                 ) : view === 'rack-section' && layout.racks.length ? (
                   <div className="min-w-0">
                     <div className="mb-4 rounded-2xl border border-orange-100 bg-orange-50/60 px-4 py-3 text-xs text-orange-900 shadow-sm">
-                      Đang hiển thị mặt cắt của tất cả {layout.racks.length} Rack. Có thể kéo Bin
-                      trong từng mặt cắt; chọn Bin rồi dùng <strong>Chuyển Rack</strong> để đổi Rack
-                      chứa.
+                      Showing the cross-section of all {layout.racks.length} Racks. You can drag Bins
+                      within each cross-section; select a Bin and use <strong>Move Rack</strong> to
+                      change its Rack.
                     </div>
                     <div className="max-h-[calc(100vh-15rem)] overflow-y-auto pr-1">
                       <div className="grid min-w-0 gap-4 md:grid-cols-2">
@@ -4768,7 +4769,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                             3D Preview
                           </p>
                           <h3 className="mt-1 text-sm font-bold text-slate-900">
-                            Không gian Rack / Bin
+                            Rack / Bin space
                           </h3>
                         </div>
                         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -4778,11 +4779,11 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
                               onClick={() => setFocusedRackKey(null)}
                               className="rounded-full border border-orange-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-orange-700 transition hover:bg-orange-50"
                             >
-                              Toàn cảnh 3D
+                              3D overview
                             </button>
                           )}
                           <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-semibold text-orange-700">
-                            Double-click Rack để zoom
+                            Double-click a Rack to zoom
                           </span>
                         </div>
                       </div>

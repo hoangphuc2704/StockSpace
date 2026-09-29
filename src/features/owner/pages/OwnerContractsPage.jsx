@@ -28,7 +28,7 @@ import uploadApi from '@/services/uploadApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 import { validateDateRange } from '@/config/validation'
-import { formatVND } from '@/utils/currency'
+import { formatAmountInput, formatVND, parseAmountInput } from '@/utils/currency'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 
 const CONTRACT_STATUS_META = {
@@ -108,8 +108,10 @@ const DraftModal = ({
   const [leasedHeight, setLeasedHeight] = useState(existingData.leasedHeight || '')
 
   const [negotiatedMonthlyRent, setNegotiatedMonthlyRent] = useState(
-    existingData.negotiatedMonthlyRent ??
-      (existingData.pricingType === 'NEGOTIATED' ? existingData.finalMonthlyRent : '')
+    formatAmountInput(
+      existingData.negotiatedMonthlyRent ??
+        (existingData.pricingType === 'NEGOTIATED' ? existingData.finalMonthlyRent : '')
+    )
   )
   const [ownerNote, setOwnerNote] = useState(existingData.ownerNote || '')
 
@@ -140,8 +142,10 @@ const DraftModal = ({
       setLeasedLength(existingData.leasedLength || '')
       setLeasedHeight(existingData.leasedHeight || '')
       setNegotiatedMonthlyRent(
-        existingData.negotiatedMonthlyRent ??
-          (existingData.pricingType === 'NEGOTIATED' ? existingData.finalMonthlyRent : '')
+        formatAmountInput(
+          existingData.negotiatedMonthlyRent ??
+            (existingData.pricingType === 'NEGOTIATED' ? existingData.finalMonthlyRent : '')
+        )
       )
       setOwnerNote(existingData.ownerNote || '')
       setContractFiles([])
@@ -301,7 +305,7 @@ const DraftModal = ({
       return
     }
 
-    if (isNegotiated && Number(negotiatedMonthlyRent) <= 0) {
+    if (isNegotiated && parseAmountInput(negotiatedMonthlyRent) <= 0) {
       setError('Negotiated monthly rent must be greater than 0.')
       return
     }
@@ -325,7 +329,7 @@ const DraftModal = ({
         leasedWidth: requestedDimensions.width,
         leasedLength: requestedDimensions.length,
         leasedHeight: requestedDimensions.height,
-        negotiatedMonthlyRent: isNegotiated ? Number(negotiatedMonthlyRent) : null,
+        negotiatedMonthlyRent: isNegotiated ? parseAmountInput(negotiatedMonthlyRent) : null,
         ownerNote,
         paperContractFiles: uploadedUrls,
       }
@@ -521,10 +525,10 @@ const DraftModal = ({
                   Negotiated Rent (Optional)
                 </label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="numeric"
                   value={negotiatedMonthlyRent}
-                  onChange={(e) => setNegotiatedMonthlyRent(e.target.value)}
+                  onChange={(e) => setNegotiatedMonthlyRent(formatAmountInput(e.target.value))}
                   disabled={Boolean(previewData)}
                   className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none"
                 />
@@ -680,7 +684,9 @@ const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEndDate('')
       setNegotiatedMonthlyRent(
-        sourceContract.pricingType === 'NEGOTIATED' ? sourceContract.finalMonthlyRent || '' : ''
+        formatAmountInput(
+          sourceContract.pricingType === 'NEGOTIATED' ? sourceContract.finalMonthlyRent || '' : ''
+        )
       )
       setOwnerNote('')
       setContractFiles([])
@@ -707,7 +713,7 @@ const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
       setError('A renewal must last at least 7 days.')
       return
     }
-    if (isNegotiated && Number(negotiatedMonthlyRent) <= 0) {
+    if (isNegotiated && parseAmountInput(negotiatedMonthlyRent) <= 0) {
       setError('Negotiated monthly rent must be greater than 0.')
       return
     }
@@ -727,7 +733,7 @@ const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
 
       const payload = {
         endDate,
-        negotiatedMonthlyRent: isNegotiated ? Number(negotiatedMonthlyRent) : null,
+        negotiatedMonthlyRent: isNegotiated ? parseAmountInput(negotiatedMonthlyRent) : null,
         ownerNote: ownerNote.trim() || undefined,
         paperContractFiles: uploadedUrls,
       }
@@ -809,16 +815,13 @@ const RenewalModal = ({ isOpen, onClose, sourceContract, onSuccess }) => {
                 Negotiated Monthly Rent <span className="text-rose-500">*</span>
               </label>
               <input
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
                 required
                 value={negotiatedMonthlyRent}
-                onChange={(event) => setNegotiatedMonthlyRent(event.target.value)}
+                onChange={(event) => setNegotiatedMonthlyRent(formatAmountInput(event.target.value))}
                 className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-900 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600"
               />
-              <p className="mt-1 text-xs text-slate-500">
-                Current amount: {formatVND(sourceContract.finalMonthlyRent || 0)} / month
-              </p>
             </div>
           )}
 

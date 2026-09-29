@@ -559,7 +559,7 @@ const WareHouseManagementPage = () => {
                   There are no suitable warehouses.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="table-scroll-container overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">
@@ -755,17 +755,17 @@ const WareHouseManagementPage = () => {
       </AnimatePresence>
 
       {/* Reject Modal */}
-      <Modal isOpen={rejectModalOpen} onClose={closeRejectModal} title="Từ chối duyệt đăng kho">
+      <Modal isOpen={rejectModalOpen} onClose={closeRejectModal} title="Reject warehouse listing">
         <div className="p-4 sm:p-6">
           <p className="mb-4 text-sm text-slate-600">
-            Bạn đang từ chối phê duyệt kho{' '}
-            <span className="font-bold text-slate-900">{warehouseToReject?.name}</span>. Vui lòng
-            cung cấp lý do cụ thể để người cho thuê có thể nắm rõ và khắc phục.
+            You are rejecting approval for{' '}
+            <span className="font-bold text-slate-900">{warehouseToReject?.name}</span>. Please
+            provide a clear reason so the owner can make corrections.
           </p>
           <textarea
             className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
             rows={4}
-            placeholder="Nhập lý do từ chối (bắt buộc)..."
+            placeholder="Enter a rejection reason (required)..."
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
           />
@@ -774,7 +774,7 @@ const WareHouseManagementPage = () => {
               onClick={closeRejectModal}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
             >
-              Hủy
+              Cancel
             </button>
             <button
               onClick={submitReject}
@@ -784,10 +784,10 @@ const WareHouseManagementPage = () => {
               {actionLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Đang xử lý...
+                  Processing...
                 </>
               ) : (
-                'Xác nhận từ chối'
+                'Confirm rejection'
               )}
             </button>
           </div>

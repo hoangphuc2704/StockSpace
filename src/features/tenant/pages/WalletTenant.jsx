@@ -36,6 +36,7 @@ import { toast } from 'react-hot-toast'
 import { positiveNumber } from '@/config/validation'
 import { showApiErrorToast } from '@/config/apiError'
 import { useLanguage } from '@/i18n/LanguageContext'
+import { formatAmountInput, parseAmountInput } from '@/utils/currency'
 
 // Relative time formatting helper
 const relativeTimeIntervals = [
@@ -246,7 +247,7 @@ const WalletTenant = () => {
   const handleDepositSubmit = async (e) => {
     e.preventDefault()
 
-    const amountNumber = Number(inputAmount)
+    const amountNumber = parseAmountInput(inputAmount)
     const amountError = positiveNumber(amountNumber, t('Enter a valid deposit amount.'))
     if (amountError) {
       toast.error(amountError)
@@ -491,7 +492,7 @@ const WalletTenant = () => {
               {/* TAB CONTENT: 1. TRANSACTIONS LEDGER */}
               {activeTab === 'transactions' && (
                 <div>
-                  <div className="overflow-x-auto">
+                  <div className="table-scroll-container overflow-x-auto">
                     {loadingTransactions ? (
                       <div className="p-8 text-center">
                         <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
@@ -691,7 +692,7 @@ const WalletTenant = () => {
               {/* TAB CONTENT: 2. WITHDRAWAL REQUESTS */}
               {activeTab === 'withdrawals' && (
                 <div>
-                  <div className="overflow-x-auto">
+                  <div className="table-scroll-container overflow-x-auto">
                     {loadingWithdrawals ? (
                       <div className="p-8 text-center">
                         <Loader2 className="mx-auto h-6 w-6 animate-spin text-slate-400" />
@@ -882,14 +883,13 @@ const WalletTenant = () => {
                 </label>
                 <div className="relative">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     autoFocus
                     required
-                    min={1000}
-                    step={1000}
                     value={inputAmount}
-                    onChange={(e) => setInputAmount(e.target.value)}
-                    placeholder={t('e.g. 2000000')}
+                    onChange={(e) => setInputAmount(formatAmountInput(e.target.value))}
+                    placeholder={t('e.g. 2.000.000')}
                     className="w-full rounded-lg border border-slate-200 px-3.5 py-2.5 text-sm font-mono font-bold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                   <span className="absolute top-1/2 right-3.5 -translate-y-1/2 text-xs font-bold text-slate-400">
@@ -903,9 +903,9 @@ const WalletTenant = () => {
                     <button
                       key={amt}
                       type="button"
-                      onClick={() => setInputAmount(String(amt))}
+                      onClick={() => setInputAmount(formatAmountInput(amt))}
                       className={`rounded border px-2 py-1 text-[11px] font-mono font-medium transition-colors ${
-                        Number(inputAmount) === amt
+                        parseAmountInput(inputAmount) === amt
                           ? 'border-blue-600 bg-blue-50 text-blue-700 font-bold'
                           : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                       }`}
@@ -915,14 +915,6 @@ const WalletTenant = () => {
                   ))}
                 </div>
 
-                {inputAmount && !isNaN(Number(inputAmount)) && Number(inputAmount) > 0 && (
-                  <div className="mt-3 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50/70 p-2.5 text-xs text-emerald-800">
-                    <span>{t('Actual deposit amount:')}</span>
-                    <span className="font-mono font-bold text-emerald-900">
-                      {formatVND(Number(inputAmount))}
-                    </span>
-                  </div>
-                )}
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3 text-[11px] text-slate-500 border border-slate-100 space-y-1">
@@ -943,7 +935,7 @@ const WalletTenant = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={depositLoading || !inputAmount || Number(inputAmount) <= 0}
+                  disabled={depositLoading || !inputAmount || parseAmountInput(inputAmount) <= 0}
                   className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-2xs hover:bg-blue-700 transition-colors disabled:bg-slate-300"
                 >
                   {depositLoading ? (

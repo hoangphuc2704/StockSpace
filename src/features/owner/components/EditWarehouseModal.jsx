@@ -5,6 +5,7 @@ import useEscapeKey from '@/hooks/useEscapeKey'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { showApiErrorToast } from '@/config/apiError'
 import { toast } from 'react-hot-toast'
+import { formatAmountInput, parseAmountInput } from '@/utils/currency'
 
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
 
@@ -53,7 +54,7 @@ const EditWarehouseModal = ({ warehouse, onClose, onSaved }) => {
     width: warehouse.width ?? warehouse.layout?.width ?? '',
     length: warehouse.length ?? warehouse.layout?.length ?? '',
     height: warehouse.height ?? warehouse.layout?.height ?? '',
-    rentalPrice: warehouse.rentalPrice ?? '',
+    rentalPrice: formatAmountInput(warehouse.rentalPrice ?? ''),
     rentalPricingType: warehouse.rentalPricingType || 'PER_SQUARE_METER_MONTHLY',
   })
   const [layout, setLayout] = useState(null)
@@ -103,7 +104,7 @@ const EditWarehouseModal = ({ warehouse, onClose, onSaved }) => {
     const width = Number(form.width)
     const length = Number(form.length)
     const height = Number(form.height)
-    const rentalPrice = Number(form.rentalPrice)
+    const rentalPrice = parseAmountInput(form.rentalPrice)
 
     if (!name || !address) return setError('Name and address are required.')
     if (![width, length, height].every((value) => Number.isFinite(value) && value > 0)) {
@@ -156,7 +157,7 @@ const EditWarehouseModal = ({ warehouse, onClose, onSaved }) => {
           <label className="block space-y-1.5 text-sm font-semibold text-slate-700">Address<input value={form.address} onChange={(event) => updateField('address', event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal focus:border-blue-500 focus:bg-white focus:outline-none" /></label>
           <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5 text-sm font-semibold text-slate-700">Pricing model<select value={form.rentalPricingType} onChange={(event) => updateField('rentalPricingType', event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal focus:border-blue-500 focus:bg-white focus:outline-none"><option value="FIXED_MONTHLY">Fixed total monthly price</option><option value="PER_SQUARE_METER_MONTHLY">Price per m²</option><option value="NEGOTIATED">Negotiated with tenant</option></select></label>
-            <label className="space-y-1.5 text-sm font-semibold text-slate-700">Public rental price<input type="number" min="0.01" step="0.01" disabled={form.rentalPricingType === 'NEGOTIATED'} value={form.rentalPrice} onChange={(event) => updateField('rentalPrice', event.target.value)} placeholder={form.rentalPricingType === 'NEGOTIATED' ? 'Agreed directly' : '30000000'} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal focus:border-blue-500 focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100" /></label>
+            <label className="space-y-1.5 text-sm font-semibold text-slate-700">Public rental price<input type="text" inputMode="numeric" disabled={form.rentalPricingType === 'NEGOTIATED'} value={form.rentalPrice} onChange={(event) => updateField('rentalPrice', formatAmountInput(event.target.value))} placeholder={form.rentalPricingType === 'NEGOTIATED' ? 'Agreed directly' : '30.000.000'} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal focus:border-blue-500 focus:bg-white focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-100" /></label>
           </div>
           <label className="block space-y-1.5 text-sm font-semibold text-slate-700">Description<textarea rows={4} value={form.description} onChange={(event) => updateField('description', event.target.value)} className="mt-1.5 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal leading-6 focus:border-blue-500 focus:bg-white focus:outline-none" /></label>
           {error && <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}

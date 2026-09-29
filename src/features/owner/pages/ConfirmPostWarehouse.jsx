@@ -13,6 +13,7 @@ import {
 import Button from '../../../components/atoms/Button'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
+import { parseAmountInput } from '@/utils/currency'
 const pendingOwnerLayoutKey = 'stockspace:pending-owner-layout'
 
 const ConfirmPostWarehouse = () => {
@@ -25,7 +26,7 @@ const ConfirmPostWarehouse = () => {
   const warehouseWidth = Number(formData.warehouseWidth)
   const warehouseLength = Number(formData.warehouseLength)
   const warehouseHeight = Number(formData.warehouseHeight)
-  const rentalPrice = Number(formData.rentalPrice)
+  const rentalPrice = parseAmountInput(formData.rentalPrice)
 
   const handleBack = () => {
     navigate('/owner/postwarehouse', { state: { draft } })

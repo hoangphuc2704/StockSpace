@@ -231,7 +231,7 @@ const AdminInventoryPage = () => {
                 <div className="flex-1 rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 overflow-hidden flex flex-col">
                   {activeTab === 'STOCK' && (
                     <div className="flex-1 flex flex-col">
-                      <div className="overflow-x-auto flex-1">
+                      <div className="table-scroll-container flex-1 overflow-x-auto">
                         <table className="w-full text-left text-sm text-slate-600">
                           <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200 sticky top-0 z-10">
                             <tr>
@@ -307,7 +307,7 @@ const AdminInventoryPage = () => {
                           </select>
                         </div>
                       </div>
-                      <div className="overflow-x-auto flex-1">
+                      <div className="table-scroll-container flex-1 overflow-x-auto">
                         <table className="w-full text-left text-sm text-slate-600">
                           <thead className="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200 sticky top-0 z-10">
                             <tr>

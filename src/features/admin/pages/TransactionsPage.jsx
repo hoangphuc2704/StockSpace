@@ -12,9 +12,10 @@ import {
   Filter,
   ArrowUpRight,
   ArrowDownRight,
-  MoreVertical,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  UserRound,
 } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
 import DataTable from '../../../components/organisms/DataTable'
@@ -22,6 +23,7 @@ import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
+import Modal from '../../../components/organisms/Modal'
 
 // ─── Enum maps từ BE ─────────────────────────────────────────────────────────
 const TRANSACTION_TYPE_LABELS = {
@@ -32,9 +34,11 @@ const TRANSACTION_TYPE_LABELS = {
   DEPOSIT_REFUND: 'Refund deposit',
   PACKAGE_PAYMENT: 'Buy a service package',
   COMMISSION: 'Commission fee',
+  LISTING_FEE: 'Listing fee',
+  LISTING_REFUND: 'Refund listing fee',
 }
 
-const CREDIT_TYPES = new Set(['TOP_UP', 'DEPOSIT_REFUND', 'DEPOSIT_RECEIVED'])
+const DEBIT_TYPES = new Set(['WITHDRAW', 'WITHDRAWAL'])
 
 const STATUS_VARIANT = {
   SUCCESS: 'success',
@@ -60,6 +64,8 @@ const ALL_TYPES = [
   'DEPOSIT_REFUND',
   'PACKAGE_PAYMENT',
   'COMMISSION',
+  'LISTING_FEE',
+  'LISTING_REFUND',
 ]
 const ALL_STATUSES = ['', 'SUCCESS', 'PENDING', 'FAILED', 'EXPIRED']
 
@@ -72,6 +78,53 @@ const formatVND = (amount) =>
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
 
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
+
+const getTransactionDirection = (row) => {
+  // Admin view: every system fee/revenue is money in. Only withdrawals are
+  // money out from the admin wallet.
+  return DEBIT_TYPES.has(row.transactionType) ? 'debit' : 'credit'
+}
+
+const getTransactionActor = (row) => {
+  const name =
+    row.performedByFullName ||
+    row.performedByName ||
+    row.actorName ||
+    row.userFullName ||
+    row.userName ||
+    row.createdByFullName ||
+    row.user?.fullName ||
+    row.actor?.fullName ||
+    row.createdBy?.fullName
+
+  const email =
+    row.performedByEmail ||
+    row.actorEmail ||
+    row.userEmail ||
+    row.email ||
+    row.user?.email ||
+    row.actor?.email ||
+    row.createdBy?.email
+
+  const reference =
+    row.referenceId || row.bookingId || row.subscriptionId || row.listingOrderId || row.paymentCode
+
+  if (name || email) {
+    return {
+      name: name || 'Unnamed user',
+      detail: [email || 'User account', reference && `Ref: ${shortId(reference)}`]
+        .filter(Boolean)
+        .join(' · '),
+      provided: true,
+    }
+  }
+
+  return {
+    name: reference?.toUpperCase().startsWith('SYS-REFUND-') ? 'System revenue' : 'Wallet owner',
+    detail: reference ? `Ref: ${shortId(reference)}` : 'Actor not included in API response',
+    provided: false,
+  }
+}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const TransactionsPage = () => {
@@ -89,6 +142,7 @@ const TransactionsPage = () => {
   const [searchText, setSearchText] = useState('')
   const [localType, setLocalType] = useState('')
   const [localStatus, setLocalStatus] = useState('')
+  const [selectedTransaction, setSelectedTransaction] = useState(null)
 
   // ✅ Trạng thái Sidebar đồng bộ qua Redux Store toàn hệ thống
   const { isSidebarExpanded, isMobileOpen } = useSelector((state) => state.ui)
@@ -118,7 +172,8 @@ const TransactionsPage = () => {
         !q ||
         (t.id && t.id.toLowerCase().includes(q)) ||
         (t.transactionType && t.transactionType.toLowerCase().includes(q)) ||
-        (t.paymentCode && t.paymentCode.toLowerCase().includes(q))
+        (t.paymentCode && t.paymentCode.toLowerCase().includes(q)) ||
+        JSON.stringify(getTransactionActor(t)).toLowerCase().includes(q)
       const matchType = !localType || t.transactionType === localType
       const matchStatus = !localStatus || t.status === localStatus
       return matchSearch && matchType && matchStatus
@@ -138,7 +193,7 @@ const TransactionsPage = () => {
     {
       header: 'Transaction type',
       render: (row) => {
-        const isCredit = CREDIT_TYPES.has(row.transactionType)
+        const isCredit = getTransactionDirection(row) === 'credit'
         return (
           <div className="flex items-center gap-2">
             <div
@@ -159,10 +214,20 @@ const TransactionsPage = () => {
       header: 'Amount',
       render: (row) => {
         const amt = Number(row.amount ?? 0)
-        const isCredit = CREDIT_TYPES.has(row.transactionType)
+        const isCredit = getTransactionDirection(row) === 'credit'
         return (
-          <span className={`font-bold ${isCredit ? 'text-emerald-600' : 'text-slate-800'}`}>
-            {isCredit ? '+' : '-'}
+          <span
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap font-bold tabular-nums ${
+              isCredit ? 'text-emerald-600' : 'text-rose-600'
+            }`}
+          >
+            <span
+              className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-sm leading-none ${
+                isCredit ? 'bg-emerald-100' : 'bg-rose-100'
+              }`}
+            >
+              {isCredit ? '+' : '−'}
+            </span>
             {formatVND(amt)}
           </span>
         )
@@ -199,14 +264,25 @@ const TransactionsPage = () => {
       ),
     },
     {
-      header: '',
-      render: () => (
-        <button className="p-1.5 text-slate-400 transition-colors hover:text-slate-600">
-          <MoreVertical size={18} />
+      header: 'Actions',
+      render: (row) => (
+        <button
+          type="button"
+          onClick={() => setSelectedTransaction(row)}
+          title="View sender details"
+          aria-label={`View sender details for ${shortId(row.id)}`}
+          className="inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-500 transition-colors hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+        >
+          <Eye size={17} />
         </button>
       ),
     },
   ]
+
+  const selectedActor = selectedTransaction ? getTransactionActor(selectedTransaction) : null
+  const selectedIsCredit = selectedTransaction
+    ? getTransactionDirection(selectedTransaction) === 'credit'
+    : false
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -378,6 +454,21 @@ const TransactionsPage = () => {
 
             {/* Table */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                <span className="font-semibold text-slate-600">Amount direction:</span>
+                <span className="inline-flex items-center gap-1.5 text-emerald-600">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 font-bold">
+                    +
+                  </span>
+                  Money in
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-rose-600">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-rose-100 font-bold">
+                    −
+                  </span>
+                  Money out
+                </span>
+              </div>
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 {loading ? (
                   <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-400">
@@ -422,6 +513,107 @@ const TransactionsPage = () => {
           </main>
         </div>
       </div>
+
+      <Modal
+        isOpen={Boolean(selectedTransaction)}
+        onClose={() => setSelectedTransaction(null)}
+        title="Sender details"
+        className="max-w-xl"
+      >
+        {selectedTransaction && selectedActor && (
+          <div className="space-y-5">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                <UserRound size={20} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-base font-bold text-slate-900">{selectedActor.name}</p>
+                <p className="truncate text-sm text-slate-500">{selectedActor.detail}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                  Transaction ID
+                </p>
+                <p className="mt-1 font-mono text-slate-700">{selectedTransaction.id || '—'}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                  Transaction type
+                </p>
+                <p className="mt-1 text-slate-700">
+                  {TRANSACTION_TYPE_LABELS[selectedTransaction.transactionType] ||
+                    selectedTransaction.transactionType ||
+                    '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                  Amount
+                </p>
+                <p
+                  className={`mt-1 font-bold ${selectedIsCredit ? 'text-emerald-600' : 'text-rose-600'}`}
+                >
+                  {selectedIsCredit ? '+' : '−'} {formatVND(Number(selectedTransaction.amount ?? 0))}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">Status</p>
+                <div className="mt-1">
+                  <Badge
+                    variant={STATUS_VARIANT[selectedTransaction.status] || 'slate'}
+                    size="sm"
+                    className="rounded-full"
+                  >
+                    {selectedTransaction.status || '—'}
+                  </Badge>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">Method</p>
+                <p className="mt-1 text-slate-700">
+                  {PAYMENT_METHOD_LABELS[selectedTransaction.paymentMethod] ||
+                    selectedTransaction.paymentMethod ||
+                    '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                  Created at
+                </p>
+                <p className="mt-1 text-slate-700">{formatDate(selectedTransaction.createdAt)}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-slate-200 p-4 text-sm">
+              <p className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                Related references
+              </p>
+              {[
+                ['Payment code', selectedTransaction.paymentCode],
+                ['Reference ID', selectedTransaction.referenceId],
+                ['Booking ID', selectedTransaction.bookingId],
+                ['Subscription ID', selectedTransaction.subscriptionId],
+                ['Listing order ID', selectedTransaction.listingOrderId],
+              ].map(([label, value]) => (
+                <div key={label} className="flex flex-col gap-1 border-b border-slate-100 pb-2 last:border-0 last:pb-0 sm:flex-row sm:justify-between sm:gap-4">
+                  <span className="text-slate-500">{label}</span>
+                  <span className="break-all font-mono text-xs text-slate-700">{value || '—'}</span>
+                </div>
+              ))}
+            </div>
+
+            {!selectedActor.provided && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700">
+                Sender name and contact are not included in the current transaction response. The
+                available wallet/reference information is shown above.
+              </p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

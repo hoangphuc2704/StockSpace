@@ -58,6 +58,7 @@ const WarehouseManagement = () => {
   const [warehouses, setWarehouses] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [isVerifiedFilter, setIsVerifiedFilter] = useState('ALL')
 
   // State quản lý phân trang đồng bộ từ API thực tế
   const [currentPage, setCurrentPage] = useState(0) // API trả về "page": 0 ở trang đầu tiên
@@ -155,7 +156,7 @@ const WarehouseManagement = () => {
     }
   }
 
-  // Gọi API lấy dữ liệu mỗi khi số trang, kích thước trang hoặc refreshTrigger thay đổi
+  // Fetch the complete filtered result set from the server after a short debounce.
   useEffect(() => {
     const fetchWarehouses = async () => {
       try {
@@ -165,6 +166,10 @@ const WarehouseManagement = () => {
             size: pageSize,
             sortBy: 'createdAt',
             sortDir: 'desc',
+            keyword: searchTerm.trim() || undefined,
+            status: statusFilter === 'ALL' ? undefined : statusFilter,
+            isVerified:
+              isVerifiedFilter === 'ALL' ? undefined : isVerifiedFilter === 'VERIFIED',
           }),
           // Load the latest inspection beside the refreshed warehouse permissions.
           warehouseApi.getOwnerInspections({ page: 0, size: 200 }).catch((inspectionError) => {
@@ -213,8 +218,9 @@ const WarehouseManagement = () => {
         setWarehouses([])
       }
     }
-    fetchWarehouses()
-  }, [currentPage, pageSize, refreshTrigger]) // Đã thêm chính xác refreshTrigger vào đây!
+    const timer = setTimeout(fetchWarehouses, 500)
+    return () => clearTimeout(timer)
+  }, [currentPage, pageSize, refreshTrigger, searchTerm, statusFilter, isVerifiedFilter])
 
   // Inspection results can revoke verification/publication while keeping the
   // warehouse AVAILABLE. Always reload both warehouse and inspection data.
@@ -286,18 +292,7 @@ const WarehouseManagement = () => {
     return { status, className, text }
   }
 
-  // Bộ lọc kết hợp Client-side hỗ trợ tìm kiếm nhanh theo dữ liệu hiển thị hiện tại
-  const filteredWarehouses = Array.isArray(warehouses)
-    ? warehouses.filter((wh) => {
-        const name = wh?.name ? wh.name.toLowerCase() : ''
-        const address = wh?.address ? wh.address.toLowerCase() : ''
-
-        const matchesSearch =
-          name.includes(searchTerm.toLowerCase()) || address.includes(searchTerm.toLowerCase())
-        const matchesStatus = statusFilter === 'ALL' || wh.status === statusFilter
-        return matchesSearch && matchesStatus
-      })
-    : []
+  const filteredWarehouses = Array.isArray(warehouses) ? warehouses : []
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
@@ -341,37 +336,88 @@ const WarehouseManagement = () => {
               </Button>
             </div>
 
-            {/* THANH BỘ LỌC VÀ TÌM KIẾM */}
-            <div className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
-              <div className="relative max-w-md flex-1">
-                <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Find warehouse name, address..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 py-2 pr-4 pl-10 text-sm font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
-                />
+            {/* SERVER-SIDE FILTERS */}
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-slate-200 bg-gradient-to-r from-blue-50 via-white to-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-700 text-white shadow-sm">
+                    <Filter className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">Warehouse filters</p>
+                    <p className="text-xs text-slate-500">
+                      Search across all your warehouse listings.
+                    </p>
+                  </div>
+                </div>
+                <span className="w-fit rounded-full border border-blue-100 bg-white px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+                  Auto-applies in 500ms
+                </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 shrink-0 text-slate-400" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="ALL">All status</option>
-                  <option value="PENDING_APPROVAL">Pending</option>
-                  <option value="AVAILABLE">Available</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
+              <div className="grid gap-3 p-4 md:grid-cols-[minmax(0,1.7fr)_minmax(150px,1fr)_minmax(170px,1fr)] sm:p-5">
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-bold tracking-wide text-slate-500 uppercase">
+                    Search
+                  </span>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="search"
+                      placeholder="Warehouse name or address..."
+                      value={searchTerm}
+                      onChange={(event) => {
+                        setSearchTerm(event.target.value)
+                        setCurrentPage(0)
+                      }}
+                      className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pr-3 pl-10 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                    />
+                  </div>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-bold tracking-wide text-slate-500 uppercase">
+                    Status
+                  </span>
+                  <select
+                    value={statusFilter}
+                    onChange={(event) => {
+                      setStatusFilter(event.target.value)
+                      setCurrentPage(0)
+                    }}
+                    className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="ALL">All statuses</option>
+                    <option value="PENDING_APPROVAL">Pending approval</option>
+                    <option value="AVAILABLE">Available</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="INACTIVE">Inactive</option>
+                  </select>
+                </label>
+
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-bold tracking-wide text-slate-500 uppercase">
+                    Verification
+                  </span>
+                  <select
+                    value={isVerifiedFilter}
+                    onChange={(event) => {
+                      setIsVerifiedFilter(event.target.value)
+                      setCurrentPage(0)
+                    }}
+                    className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-800 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                  >
+                    <option value="ALL">All listings</option>
+                    <option value="VERIFIED">Verified only</option>
+                    <option value="UNVERIFIED">Not verified</option>
+                  </select>
+                </label>
               </div>
             </div>
 
             {/* BẢNG HIỂN THỊ DANH SÁCH KHO */}
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs">
-              <div className="overflow-x-auto overscroll-x-contain">
+              <div className="table-scroll-container overflow-x-auto overscroll-x-contain">
                 <table className="w-full min-w-[960px] text-left text-sm sm:min-w-[1120px]">
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold tracking-[0.08em] text-slate-600 uppercase">
                     <tr>
@@ -412,6 +458,7 @@ const WarehouseManagement = () => {
                         const inspectionStatus = String(
                           wh.inspectionStatus || inspection?.status || ''
                         ).toUpperCase()
+                        const warehouseArea = Number(wh.area ?? wh.capacity ?? 0)
                         const canRequestInspection =
                           !isRejectedListing &&
                           (wh.isVerified ?? wh.verified) !== true &&
@@ -423,7 +470,7 @@ const WarehouseManagement = () => {
                             <td className="max-w-xs border-l border-slate-200 px-3 py-3 align-middle first:border-l-0 sm:px-5 sm:py-3.5 md:max-w-sm">
                               <div className="flex items-center gap-2 sm:gap-3">
                                 <img
-                                  src={wh.coverImageUrl}
+                                  src={wh.thumbnail || wh.coverImageUrl || wh.imageUrls?.[0]}
                                   alt={wh.name}
                                   className="h-10 w-14 shrink-0 rounded-lg border border-slate-200 object-cover sm:h-12 sm:w-16"
                                   onError={(e) => {
@@ -436,7 +483,7 @@ const WarehouseManagement = () => {
                                     <ExternalLink className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
                                   </p>
                                   <p className="flex max-w-36 items-center gap-0.5 truncate text-xs text-slate-400 sm:max-w-50">
-                                    <MapPin className="h-3 w-3 shrink-0" /> {wh.address}
+                                    <MapPin className="h-3 w-3 shrink-0" /> {wh.location || wh.address}
                                   </p>
                                 </div>
                               </div>
@@ -452,7 +499,7 @@ const WarehouseManagement = () => {
                             {/* Cột 3: Sức chứa */}
                             <td className="border-l border-slate-200 px-3 py-3 align-middle font-mono font-semibold text-slate-900 first:border-l-0 sm:px-5 sm:py-3.5">
                               <div className="flex items-center gap-1">
-                                {wh.capacity ? wh.capacity.toLocaleString() : 0} m²
+                                {warehouseArea.toLocaleString('en-US')} m²
                               </div>
                             </td>
 

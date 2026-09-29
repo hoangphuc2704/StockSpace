@@ -1129,7 +1129,7 @@ const TransferPage = ({ currentRole }) => {
                   ))}
                 </div>
               ) : filteredTransfers.length ? (
-                <div className="overflow-x-auto">
+                <div className="table-scroll-container overflow-x-auto">
                   <table className="w-full min-w-[1200px] text-left text-sm">
                     <caption className="sr-only">{t('Stock transfer records')}</caption>
                     <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-bold tracking-[0.12em] text-slate-500 uppercase">

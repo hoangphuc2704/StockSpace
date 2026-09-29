@@ -13,6 +13,9 @@ const onwerwarehouseApi = {
     maxCapacity,
     provinceCode,
     districtCode,
+    provinceName,
+    districtName,
+    rentalPricingType,
     warehouseTypeId,
     isVerified,
   }) => {
@@ -29,6 +32,9 @@ const onwerwarehouseApi = {
         maxCapacity,
         provinceCode,
         districtCode,
+        provinceName,
+        districtName,
+        rentalPricingType,
         warehouseTypeId,
         isVerified,
       },
@@ -87,8 +93,10 @@ const onwerwarehouseApi = {
   },
 
   // get danh sách kho
-  getOwnerWarehouses: ({ page, size, sortBy, sortDir } = {}) => {
-    return api.get('/owner/warehouses', { params: { page, size, sortBy, sortDir } })
+  getOwnerWarehouses: ({ page, size, sortBy, sortDir, keyword, status, isVerified } = {}) => {
+    return api.get('/owner/warehouses', {
+      params: { page, size, sortBy, sortDir, keyword, status, isVerified },
+    })
   },
 
   // Tạo warehouse mới (Hỗ trợ upload ảnh/file)

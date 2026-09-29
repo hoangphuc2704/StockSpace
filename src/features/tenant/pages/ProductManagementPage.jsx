@@ -264,7 +264,7 @@ export default function ProductManagementPage() {
                   <h2 className="font-bold">Categories ({categories.length})</h2>
                   <p className="mt-1 text-xs text-slate-500">System categories are read-only.</p>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="table-scroll-container overflow-x-auto">
                   <table className="w-full min-w-[520px] text-left text-sm sm:min-w-[640px]">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                       <tr>
@@ -312,7 +312,7 @@ export default function ProductManagementPage() {
                     Only your custom SKUs can be edited or deleted.
                   </p>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="table-scroll-container overflow-x-auto">
                   <table className="w-full min-w-180 text-left text-sm">
                     <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
                       <tr>
