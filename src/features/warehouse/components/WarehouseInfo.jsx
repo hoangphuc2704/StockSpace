@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { MapPin, CheckCircle2, Phone, Maximize, Ruler, Square, MoveVertical } from 'lucide-react'
 import Badge from '@/components/atoms/Badge'
 import Avatar from '@/components/atoms/Avatar'
 import TranslatableText from '@/components/TranslatableText'
+import LoginModal from '@/features/auth/pages/LoginPage'
 
 const formatDate = (value) => {
   if (!value) return '—'
@@ -17,11 +19,17 @@ const formatDate = (value) => {
 }
 
 const WarehouseInfo = ({ warehouse, layout, extendedData }) => {
+  const [isLoginOpen, setIsLoginOpen] = useState(false)
+
   const stats = [
-    { label: 'Diện Tích / Sức chứa', value: `${warehouse.area || 0} m² / ${warehouse.capacity || warehouse.area || 0} units`, icon: Maximize },
-    { label: 'Chiều Rộng', value: `${layout?.width || 0} m`, icon: Ruler },
-    { label: 'Chiều Dài', value: `${layout?.length || 0} m`, icon: Square },
-    { label: 'Chiều Cao', value: `${layout?.height || 0} m`, icon: MoveVertical },
+    {
+      label: 'Area / Capacity',
+      value: `${warehouse.area || 0} m² / ${warehouse.capacity || warehouse.area || 0} units`,
+      icon: Maximize,
+    },
+    { label: 'Width', value: `${layout?.width || 0} m`, icon: Ruler },
+    { label: 'Length', value: `${layout?.length || 0} m`, icon: Square },
+    { label: 'Height', value: `${layout?.height || 0} m`, icon: MoveVertical },
   ]
 
   return (
@@ -43,19 +51,19 @@ const WarehouseInfo = ({ warehouse, layout, extendedData }) => {
 
         <div className="mt-6 grid grid-cols-2 border-y border-slate-200 py-4 sm:grid-cols-3">
           <div className="border-r border-slate-200 px-3 first:pl-0 sm:px-4">
-            <p className="text-xs font-medium text-slate-500">Ngày đăng</p>
+            <p className="text-xs font-medium text-slate-500">Posted on</p>
             <p className="mt-1 text-sm font-bold text-slate-900">
               {formatDate(warehouse.publishedAt)}
             </p>
           </div>
           <div className="px-3 sm:border-r sm:border-slate-200 sm:px-4">
-            <p className="text-xs font-medium text-slate-500">Ngày hết hạn</p>
+            <p className="text-xs font-medium text-slate-500">Expires on</p>
             <p className="mt-1 text-sm font-bold text-slate-900">
               {formatDate(warehouse.visibleUntil)}
             </p>
           </div>
           <div className="border-r border-slate-200 px-3 pt-4 sm:border-0 sm:px-4 sm:pt-0">
-            <p className="text-xs font-medium text-slate-500">Loại tin</p>
+            <p className="text-xs font-medium text-slate-500">Listing type</p>
             <p className="mt-1 text-sm font-bold text-slate-900">{warehouse.listingType}</p>
           </div>
         </div>
@@ -107,9 +115,13 @@ const WarehouseInfo = ({ warehouse, layout, extendedData }) => {
               {extendedData.owner.phone}
             </a>
           ) : (
-            <span className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500">
-              Chưa cập nhật số điện thoại
-            </span>
+            <button
+              type="button"
+              onClick={() => setIsLoginOpen(true)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-blue-300 hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-blue-200 focus-visible:outline-none"
+            >
+              Login to view contact
+            </button>
           )}
         </div>
       </section>
@@ -131,6 +143,8 @@ const WarehouseInfo = ({ warehouse, layout, extendedData }) => {
           ))}
         </div>
       </section>
+
+      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
     </div>
   )
 }

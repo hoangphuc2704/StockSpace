@@ -55,6 +55,13 @@
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
   }
+
+  .table-scroll-container {
+    max-height: min(62vh, 42rem);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+  }
 }
 
 /* Dashboard pages use fixed headers. Keep their actions inside the viewport on tablets. */

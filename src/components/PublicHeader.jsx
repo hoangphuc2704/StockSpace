@@ -7,6 +7,7 @@ import logoDaidien from '../assets/logoDaidien.png'
 import LoginModal from '../features/auth/pages/LoginPage'
 import RegisterModal from '../features/auth/pages/RegisterPage'
 import NotificationDropdown from './NotificationDropdown'
+import LanguageSwitcher from './LanguageSwitcher'
 
 const PublicHeader = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -167,15 +168,20 @@ const PublicHeader = () => {
                 View Warehouses <ArrowRight size={14} className="ml-1" />
               </Link>
             </div>
+
+            <LanguageSwitcher className="lg:fixed lg:top-2 lg:right-2" />
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="shrink-0 p-2 text-stone-600 hover:text-[#FF5A1F] lg:hidden"
-          >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <div className="flex items-center gap-2 lg:hidden">
+            <LanguageSwitcher />
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="shrink-0 p-2 text-stone-600 hover:text-[#FF5A1F]"
+            >
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
       </header>
 

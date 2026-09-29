@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import { useMemo } from 'react'
 import { Text } from '@react-three/drei'
 import {
   createWoodPalletTexture,
@@ -166,7 +166,7 @@ export default function Rack({
           anchorX="center"
           anchorY="middle"
         >
-          HỆ THỐNG GIÁ KỆ PALLET
+          PALLET RACK SYSTEM
         </Text>
       </group>
 

@@ -134,6 +134,8 @@ export const initializeAuthThunk = createAsyncThunk(
 export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
+    const invalidLoginMessage = 'Wrong email or password. Please try again.'
+
     try {
       const response = await authApi.login(credentials)
       if (response.success && response.data) {
@@ -152,9 +154,9 @@ export const loginUser = createAsyncThunk(
         )
         return response.data
       }
-      return rejectWithValue(response.message || 'Login failed')
-    } catch (err) {
-      return rejectWithValue(err.response?.data?.message || 'Login failed')
+      return rejectWithValue(invalidLoginMessage)
+    } catch {
+      return rejectWithValue(invalidLoginMessage)
     }
   }
 )

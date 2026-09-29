@@ -5,7 +5,7 @@
  */
 export const isStockQuantityMasked = (stock) => stock?.quantityMasked === true
 
-export const formatStockQuantity = (value, quantityMasked, maskedLabel = 'Đang kiểm kê') => {
+export const formatStockQuantity = (value, quantityMasked, maskedLabel = 'Under audit') => {
   if (quantityMasked) return maskedLabel
   if (value === null || value === undefined || value === '') return '—'
 

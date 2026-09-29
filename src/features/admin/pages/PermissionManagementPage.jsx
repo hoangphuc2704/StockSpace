@@ -673,7 +673,7 @@ const PermissionManagementPage = () => {
                     There are no roles.
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="table-scroll-container overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-100 bg-slate-50">

@@ -11,10 +11,10 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
   const isGrid = viewMode === 'grid'
   const isPerSquareMeter = isWarehousePricePerSquareMeter(warehouse)
   const priceLabel = warehouse.rentalPricingType === 'NEGOTIATED'
-    ? 'Giá thuê'
+    ? 'Rental price'
     : isPerSquareMeter
-      ? 'Giá / m² / tháng'
-      : 'Giá / tháng'
+      ? 'Price / m² / month'
+      : 'Price / month'
 
   return (
     <motion.article
@@ -29,7 +29,7 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
     >
       <Link
         to={`/warehouse/${warehouse.id}`}
-        aria-label={`Xem chi tiết ${warehouse.name}`}
+        aria-label={`View details for ${warehouse.name}`}
         className="absolute inset-0 z-10 rounded-lg focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none focus-visible:ring-inset"
       />
 
@@ -53,7 +53,7 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
         {warehouse.isVerified && (
           <span className="absolute top-3 left-3 inline-flex items-center gap-1.5 border border-emerald-200 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-800">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
-            Đã xác minh
+            Verified
           </span>
         )}
       </div>
@@ -71,14 +71,14 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
 
         <div className="mt-4 grid grid-cols-2 border-y border-slate-200 py-3 text-sm">
           <div className="border-r border-slate-200 pr-3">
-            <p className="text-[11px] font-medium text-slate-500">Diện tích</p>
+            <p className="text-[11px] font-medium text-slate-500">Area</p>
             <p className="mt-1 flex items-center gap-1.5 font-semibold text-slate-900 tabular-nums">
               <Maximize2 className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
               {warehouse.area.toLocaleString('vi-VN')} m²
             </p>
           </div>
           <div className="min-w-0 pl-3">
-            <p className="text-[11px] font-medium text-slate-500">Loại kho</p>
+            <p className="text-[11px] font-medium text-slate-500">Warehouse type</p>
             <p className="mt-1 truncate font-semibold text-slate-900">{warehouse.type}</p>
           </div>
         </div>
@@ -87,10 +87,10 @@ const WarehouseCard = ({ warehouse, viewMode = 'grid' }) => {
           <div className="min-w-0">
             <p className="text-[11px] font-medium text-slate-500">{priceLabel}</p>
             <p className="mt-1 truncate text-lg font-semibold text-slate-950 tabular-nums">
-              {formatWarehousePricePerSquareMeter(warehouse, 'Thương lượng')}
+              {formatWarehousePricePerSquareMeter(warehouse, 'Negotiated')}
               {warehouse.rentalPricingType !== 'NEGOTIATED' && (
                 <span className="ml-1 text-xs font-medium text-slate-500">
-                  {isPerSquareMeter ? '/ m² / tháng' : '/ tháng'}
+                  {isPerSquareMeter ? '/ m² / month' : '/ month'}
                 </span>
               )}
             </p>

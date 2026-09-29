@@ -29,7 +29,7 @@ const OwnerDataTable = ({
       }
 
   return (
-    <div className={twMerge('overflow-x-auto', className)}>
+    <div className={twMerge('table-scroll-container overflow-x-auto', className)}>
       <table className={styles.table}>
         <thead className={styles.head}>
           <tr>

@@ -37,7 +37,7 @@ const formatPackageName = (name = '', language) => {
 
 const formatMaxStaff = (maxStaff, language) => {
   if (language === 'vi') {
-    return maxStaff > 0 ? `Tối đa ${maxStaff} nhân viên` : 'Không giới hạn nhân viên'
+    return maxStaff > 0 ? `Up to ${maxStaff} staff members` : 'Unlimited staff members'
   }
   return maxStaff > 0 ? `Up to ${maxStaff} staff members` : 'Unlimited staff'
 }
@@ -152,7 +152,7 @@ const PackageList = () => {
               )}
             </div>
 
-            <div className="mx-auto grid max-w-5xl grid-cols-1 gap-5 md:grid-cols-2 lg:gap-6">
+            <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
               {isLoading
                 ? Array.from({ length: 2 }).map((_, index) => <PackageSkeleton key={index} />)
                 : packages.map((pkg) => {

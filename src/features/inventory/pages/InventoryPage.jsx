@@ -607,7 +607,7 @@ const InventoryPage = () => {
               </div>
 
               {/* Table Content */}
-              <div className="flex-1 overflow-auto">
+              <div className="table-scroll-container flex-1 overflow-auto">
                 {isLoading ? (
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />

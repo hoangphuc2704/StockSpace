@@ -37,7 +37,7 @@ const normalizeWarehouse = (warehouse) => ({
   ownerName: warehouse.ownerName || 'Warehouse Owner',
   publishedAt: warehouse.publishedAt || warehouse.createdAt || null,
   visibleUntil: warehouse.visibleUntil || null,
-  listingType: warehouse.listingType || warehouse.publicationType || 'Tin thường',
+  listingType: warehouse.listingType || warehouse.publicationType || 'Standard listing',
 })
 
 const createClientKey = (prefix) =>

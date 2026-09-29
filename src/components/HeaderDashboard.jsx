@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 // ✅ Đã kết nối trực tiếp action từ Redux store và sửa chính tả uiSlice
 import { toggleSidebar } from '../store/uiSlide'
 import NotificationDropdown from './NotificationDropdown'
+import LanguageSwitcher from './LanguageSwitcher'
 
 const Header = () => {
   const dispatch = useDispatch()
@@ -46,9 +47,9 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Keep the notification bell clear of the fixed EN/VI switcher. */}
-      <div className="mr-20 ml-2 flex shrink-0 items-center gap-1 sm:mr-28 sm:ml-4 sm:gap-2">
+      <div className="ml-2 flex shrink-0 items-center gap-1 sm:ml-4 sm:gap-2">
         <NotificationDropdown />
+        <LanguageSwitcher className="lg:fixed lg:top-1 lg:right-2" />
       </div>
     </header>
   )

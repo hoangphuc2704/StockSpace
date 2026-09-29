@@ -2,7 +2,7 @@ import { twMerge } from 'tailwind-merge'
 
 const DataTable = ({ columns, data, className }) => {
   return (
-    <div className={twMerge('overflow-x-auto rounded-lg border border-slate-200 bg-white', className)}>
+    <div className={twMerge('table-scroll-container overflow-x-auto rounded-lg border border-slate-200 bg-white', className)}>
       <table className="w-full min-w-[680px] text-left text-sm sm:min-w-[800px]">
         <thead className="bg-slate-50 text-slate-700 font-medium">
           <tr>

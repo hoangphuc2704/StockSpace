@@ -70,10 +70,10 @@ const Stats = () => (
   <section className="border-y border-slate-700 bg-slate-900 py-8 text-white">
     <div className="mx-auto grid max-w-[1400px] gap-px px-4 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
       {[
-        ['Kho đã phê duyệt', 'Dữ liệu niêm yết rõ ràng để doanh nghiệp đánh giá.'],
-        ['Hợp đồng số', 'Theo dõi thỏa thuận thuê trong cùng hệ thống.'],
-        ['Quy trình kho', 'Ghi nhận các tác vụ vận hành theo vai trò.'],
-        ['Quyền truy cập', 'Phân quyền theo vai trò trong hoạt động kho.'],
+        ['Approved warehouses', 'Clear listing data for businesses to evaluate.'],
+        ['Digital contracts', 'Track rental agreements in the same workspace.'],
+        ['Warehouse workflows', 'Record operational tasks by role.'],
+        ['Access control', 'Manage role-based access across warehouse operations.'],
       ].map(([title, description]) => (
         <div key={title} className="border border-slate-700 px-4 py-4">
           <h3 className="text-sm font-semibold">{title}</h3>

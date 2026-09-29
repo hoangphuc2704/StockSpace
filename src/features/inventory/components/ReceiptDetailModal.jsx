@@ -138,7 +138,7 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
                             )}
                           </div>
 
-                          <div className="overflow-x-auto rounded-lg border border-slate-100">
+                          <div className="table-scroll-container overflow-x-auto rounded-lg border border-slate-100">
                             <table className="w-full text-left text-sm">
                               <thead className="bg-slate-50 text-xs text-slate-500">
                                 <tr>
@@ -181,7 +181,7 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
                 </h4>
               </div>
               {receipt.items?.length ? (
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <div className="table-scroll-container overflow-x-auto rounded-xl border border-slate-200">
                   <table className="w-full min-w-140 text-left text-sm">
                     <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase">
                       <tr>

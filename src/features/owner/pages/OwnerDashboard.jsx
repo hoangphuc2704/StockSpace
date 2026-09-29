@@ -20,6 +20,41 @@ import { showApiErrorToast } from '@/config/apiError'
 import { positiveNumber } from '@/config/validation'
 import Badge from '../../../components/atoms/Badge'
 import InspectionReportModal from '../components/InspectionReportModal'
+import { formatAmountInput, parseAmountInput } from '@/utils/currency'
+
+const INSPECTION_STATUS_CONFIG = {
+  PENDING: {
+    label: 'PENDING',
+    variant: 'warning',
+    className: 'border-amber-200 bg-amber-50 text-amber-700',
+  },
+  IN_PROGRESS: {
+    label: 'IN PROGRESS',
+    variant: 'primary',
+    className: 'border-sky-200 bg-sky-50 text-sky-700',
+  },
+  PASSED: {
+    label: 'PASSED',
+    variant: 'success',
+    className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  },
+  FAILED: {
+    label: 'FAILED',
+    variant: 'danger',
+    className: 'border-rose-200 bg-rose-50 text-rose-700',
+  },
+}
+
+const getInspectionStatusConfig = (status) => {
+  const normalized = String(status || 'PENDING').toUpperCase()
+  return (
+    INSPECTION_STATUS_CONFIG[normalized] || {
+      label: normalized,
+      variant: 'secondary',
+      className: 'border-slate-200 bg-slate-50 text-slate-600',
+    }
+  )
+}
 
 const OwnerDashboard = () => {
   const dispatch = useDispatch()
@@ -114,7 +149,7 @@ const OwnerDashboard = () => {
   const handleDepositSubmit = async (e) => {
     e.preventDefault()
 
-    const amountNumber = Number(inputAmount)
+    const amountNumber = parseAmountInput(inputAmount)
     const amountError = positiveNumber(amountNumber, 'Enter a valid amount.')
     if (amountError) {
       toast.error(amountError)
@@ -222,10 +257,6 @@ const OwnerDashboard = () => {
                 >
                   <PlusCircle className="mr-2 h-4 w-4" /> Top up your wallet
                 </Button>
-
-                <Button size="sm">
-                  <Warehouse className="mr-2 h-4 w-4" /> List New Warehouse
-                </Button>
               </div>
             </div>
 
@@ -248,33 +279,51 @@ const OwnerDashboard = () => {
                     <p className="text-sm text-slate-500">No inspection requests.</p>
                   ) : (
                     inspections.map((insp, i) => (
-                      <div
-                        key={insp.id || i}
-                        className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-blue-600">
-                          <Clock className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-bold text-slate-900">
-                            {insp.warehouseName || 'Unknown Warehouse'}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            Status: <Badge variant="warning">{insp.status || 'PENDING'}</Badge> ·{' '}
-                            {insp.createdAt ? new Date(insp.createdAt).toLocaleDateString() : 'N/A'}
-                          </p>
-                        </div>
-                        {['PASSED', 'FAILED'].includes(String(insp.status || '').toUpperCase()) && (
-                          <button
-                            type="button"
-                            onClick={() => setInspectionReport(insp)}
-                            className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                      (() => {
+                        const statusConfig = getInspectionStatusConfig(insp.status)
+                        const normalizedStatus = String(insp.status || 'PENDING').toUpperCase()
+
+                        return (
+                          <div
+                            key={insp.id || i}
+                            className="flex items-center gap-4 rounded-xl border border-slate-100 bg-slate-50 p-4"
                           >
-                            <FileText className="h-3.5 w-3.5" />
-                            View report
-                          </button>
-                        )}
-                      </div>
+                            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-blue-600">
+                              <Clock className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-slate-900">
+                                {insp.warehouseName || 'Unknown Warehouse'}
+                              </p>
+                              <p className="flex flex-wrap items-center gap-1 text-xs text-slate-500">
+                                <span>Status:</span>
+                                <Badge
+                                  variant={statusConfig.variant}
+                                  className={`w-fit whitespace-nowrap ${statusConfig.className}`}
+                                >
+                                  {statusConfig.label}
+                                </Badge>
+                                <span>·</span>
+                                <span>
+                                  {insp.createdAt
+                                    ? new Date(insp.createdAt).toLocaleDateString()
+                                    : 'N/A'}
+                                </span>
+                              </p>
+                            </div>
+                            {['PASSED', 'FAILED'].includes(normalizedStatus) && (
+                              <button
+                                type="button"
+                                onClick={() => setInspectionReport(insp)}
+                                className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                View report
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })()
                     ))
                   )}
                 </div>
@@ -323,25 +372,19 @@ const OwnerDashboard = () => {
                 </label>
                 <div className="relative">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     autoFocus
                     required
-                    min={1000}
-                    step={1000}
                     value={inputAmount}
-                    onChange={(e) => setInputAmount(e.target.value)}
-                    placeholder="For example: 2000000"
+                    onChange={(e) => setInputAmount(formatAmountInput(e.target.value))}
+                    placeholder="For example: 2.000.000"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                   <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
                     ₫
                   </span>
                 </div>
-                {inputAmount && !isNaN(Number(inputAmount)) && (
-                  <p className="mt-2 text-xs font-medium text-emerald-600">
-                    Preview: {formatVND(Number(inputAmount))}
-                  </p>
-                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">

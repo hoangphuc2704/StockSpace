@@ -97,6 +97,7 @@ const AUTH_ROLE_TO_CHAT_ROLE = {
 // Owner/Staff/Admin/Inspector chat endpoints may still exist in the BE, but the
 // widget must stay hidden for those roles until their product flows are enabled.
 const CHAT_WIDGET_ENABLED_ROLES = new Set(['guest', 'tenant'])
+const CHAT_BUTTON_POSITION_STORAGE_KEY = 'stockspace-chat-button-position'
 
 const isWarehouseScopedPath = (pathname) =>
   [
@@ -114,6 +115,31 @@ const greeting = (chatRole) => ({
   role: 'assistant',
   content: CHAT_ROLE_CONFIG[chatRole].greeting,
 })
+
+const clampChatButtonPosition = (position, dimensions = { width: 64, height: 64 }) => {
+  if (typeof window === 'undefined') return position
+
+  const margin = 8
+  const maxLeft = Math.max(margin, window.innerWidth - dimensions.width - margin)
+  const maxTop = Math.max(margin, window.innerHeight - dimensions.height - margin)
+
+  return {
+    left: Math.min(Math.max(position.left, margin), maxLeft),
+    top: Math.min(Math.max(position.top, margin), maxTop),
+  }
+}
+
+const snapChatButtonToRight = (position, dimensions = { width: 64, height: 64 }) => {
+  if (typeof window === 'undefined') return position
+
+  const rightMargin = window.innerWidth >= 640 ? 32 : 12
+  const maxTop = Math.max(8, window.innerHeight - dimensions.height - 8)
+
+  return {
+    left: Math.max(8, window.innerWidth - dimensions.width - rightMargin),
+    top: Math.min(Math.max(position.top, 8), maxTop),
+  }
+}
 
 const formatTime = (value) => {
   if (!value) return ''
@@ -247,6 +273,25 @@ const AIChatPanel = ({ chatRole }) => {
   const inputRef = useRef(null)
   const abortRef = useRef(null)
   const messageSequenceRef = useRef(0)
+  const chatButtonRef = useRef(null)
+  const dragRef = useRef(null)
+  const suppressClickRef = useRef(false)
+  const [floatingPosition, setFloatingPosition] = useState(() => {
+    if (typeof window === 'undefined') return null
+
+    try {
+      const savedPosition = JSON.parse(
+        window.localStorage.getItem(CHAT_BUTTON_POSITION_STORAGE_KEY) || 'null'
+      )
+      if (Number.isFinite(savedPosition?.left) && Number.isFinite(savedPosition?.top)) {
+        return snapChatButtonToRight(savedPosition)
+      }
+    } catch {
+      // Ignore malformed or unavailable local storage values.
+    }
+    return null
+  })
+  const [isDragging, setIsDragging] = useState(false)
 
   const activeWarehouseId = useMemo(() => {
     if (!isWarehouseScopedPath(location.pathname)) return null
@@ -258,6 +303,22 @@ const AIChatPanel = ({ chatRole }) => {
   const suggestions = roleConfig.suggestions
 
   useEscapeKey(isOpen, () => setIsOpen(false))
+
+  useEffect(() => {
+    const handleResize = () => {
+      setFloatingPosition((current) => {
+        if (!current) return current
+        const button = chatButtonRef.current
+        return clampChatButtonPosition(current, {
+          width: button?.offsetWidth || 64,
+          height: button?.offsetHeight || 64,
+        })
+      })
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -278,6 +339,82 @@ const AIChatPanel = ({ chatRole }) => {
     setIsOpen(true)
     setTimeout(() => inputRef.current?.focus(), 100)
     if (isAuthenticatedChat) loadUserSessions()
+  }
+
+  const handleChatPointerDown = (event) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+
+    const rect = event.currentTarget.getBoundingClientRect()
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startLeft: rect.left,
+      startTop: rect.top,
+      width: rect.width,
+      height: rect.height,
+      moved: false,
+      position: null,
+    }
+    setIsDragging(false)
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  const handleChatPointerMove = (event) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    if (!drag.moved && Math.hypot(deltaX, deltaY) < 5) return
+
+    drag.moved = true
+    drag.position = clampChatButtonPosition(
+      {
+        left: drag.startLeft + deltaX,
+        top: drag.startTop + deltaY,
+      },
+      { width: drag.width, height: drag.height }
+    )
+    setFloatingPosition(drag.position)
+    setIsDragging(true)
+    event.preventDefault()
+  }
+
+  const finishChatDrag = (event) => {
+    const drag = dragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+
+    if (drag.moved) {
+      suppressClickRef.current = true
+      const snappedPosition = snapChatButtonToRight(drag.position, {
+        width: drag.width,
+        height: drag.height,
+      })
+      setFloatingPosition(snappedPosition)
+      try {
+        window.localStorage.setItem(
+          CHAT_BUTTON_POSITION_STORAGE_KEY,
+          JSON.stringify(snappedPosition)
+        )
+      } catch {
+        // Position persistence is optional when storage is unavailable.
+      }
+    }
+
+    setIsDragging(false)
+    dragRef.current = null
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  const handleChatButtonClick = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false
+      return
+    }
+    handleOpen()
   }
 
   const startNewChat = () => {
@@ -465,14 +602,30 @@ const AIChatPanel = ({ chatRole }) => {
 
   return (
     <div
-      className={`fixed right-3 z-100 transition-[bottom] duration-200 sm:right-8 ${
-        isOpen ? 'bottom-4 sm:bottom-6' : 'bottom-24 sm:bottom-24'
+      style={
+        !isOpen && floatingPosition
+          ? {
+              left: `${floatingPosition.left}px`,
+              top: `${floatingPosition.top}px`,
+              right: 'auto',
+              bottom: 'auto',
+            }
+          : undefined
+      }
+      className={`fixed z-100 ${
+        !isDragging ? 'transition-[top,bottom,left,right] duration-200' : ''
+      } ${
+        isOpen
+          ? 'inset-x-2 top-16 bottom-2 sm:inset-x-auto sm:top-auto sm:right-8 sm:bottom-6 sm:left-auto'
+          : floatingPosition
+            ? ''
+            : 'right-3 bottom-24 sm:right-8 sm:bottom-24'
       }`}
     >
       {isOpen ? (
         <section
           aria-label="StockSpace AI assistant"
-          className="flex h-[min(680px,calc(100vh-2rem))] w-[calc(100vw-1.5rem)] max-w-105 flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:h-162.5 sm:w-105"
+          className="flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:h-162.5 sm:w-105 sm:max-w-105 sm:rounded-3xl"
         >
           <header className="relative overflow-hidden bg-slate-950 px-5 pt-5 pb-4 text-white">
             <div className="absolute -top-12 -right-8 h-32 w-32 rounded-full bg-orange-500/20 blur-2xl" />
@@ -683,7 +836,7 @@ const AIChatPanel = ({ chatRole }) => {
                                   {item.warehouseLinks?.length > 0 && (
                                     <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-2">
                                       <p className="text-xs font-semibold text-slate-500">
-                                        Xem chi tiết kho:
+                                        Warehouse details:
                                       </p>
                                       {item.warehouseLinks.map((warehouse) => (
                                         <div
@@ -698,7 +851,7 @@ const AIChatPanel = ({ chatRole }) => {
                                             onClick={() => setIsOpen(false)}
                                             className="shrink-0 font-semibold text-orange-600 underline underline-offset-2 hover:text-orange-700 focus-visible:ring-2 focus-visible:ring-orange-300 focus-visible:outline-none"
                                           >
-                                            Chi tiết
+                                            Details
                                           </Link>
                                         </div>
                                       ))}
@@ -791,9 +944,15 @@ const AIChatPanel = ({ chatRole }) => {
       ) : (
         <button
           type="button"
-          onClick={handleOpen}
-          className="group relative flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-white shadow-[0_12px_35px_rgba(15,23,42,0.35)] transition hover:-translate-y-1 hover:bg-slate-900 sm:h-16 sm:w-16"
+          ref={chatButtonRef}
+          onClick={handleChatButtonClick}
+          onPointerDown={handleChatPointerDown}
+          onPointerMove={handleChatPointerMove}
+          onPointerUp={finishChatDrag}
+          onPointerCancel={finishChatDrag}
+          className="group relative flex h-14 w-14 touch-none select-none items-center justify-center rounded-2xl bg-slate-950 text-white shadow-[0_12px_35px_rgba(15,23,42,0.35)] transition hover:-translate-y-1 hover:bg-slate-900 active:cursor-grabbing sm:h-16 sm:w-16"
           aria-label="Open StockSpace AI assistant"
+          title="Drag to move the chatbot"
         >
           <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500" />
           <MessageCircleMore size={29} className="transition group-hover:scale-110" />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { FormShell } from '@/form/FormControls'
 import useEscapeKey from '@/hooks/useEscapeKey'
 import TableActionMenu from '@/components/TableActionMenu'
@@ -15,18 +15,15 @@ import {
   X,
   Loader2,
   Edit3,
-  CheckCircle2,
-  Clock,
   AlertCircle,
-  Hash,
   Save,
 } from 'lucide-react'
 import { HiBars3 } from 'react-icons/hi2'
-import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import { required } from '@/config/validation'
+import { formatAmountInput, parseAmountInput } from '@/utils/currency'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDate = (dt) => (dt ? new Date(dt).toLocaleString('en-US', { hour12: false }) : '—')
@@ -53,7 +50,11 @@ const EditConfigModal = ({ configItem, packages, onClose }) => {
   useEscapeKey(true, onClose)
   const dispatch = useDispatch()
   const { actionLoading, actionError } = useSelector((s) => s.adminSystemConfig)
-  const [configValue, setConfigValue] = useState(configItem.configValue || '')
+  const [configValue, setConfigValue] = useState(
+    configItem.configKey === 'inspection_fee'
+      ? formatAmountInput(configItem.configValue || '')
+      : configItem.configValue || ''
+  )
   const [description, setDescription] = useState(configItem.description || '')
   const [localError, setLocalError] = useState(null)
 
@@ -73,7 +74,10 @@ const EditConfigModal = ({ configItem, packages, onClose }) => {
     const result = await dispatch(
       updateSystemConfig({
         key: configItem.configKey,
-        configValue: configValue.trim(),
+        configValue:
+          configItem.configKey === 'inspection_fee'
+            ? String(parseAmountInput(configValue))
+            : configValue.trim(),
         description: description.trim(),
       })
     )
@@ -136,13 +140,20 @@ const EditConfigModal = ({ configItem, packages, onClose }) => {
             ) : (
               <input
                 value={configValue}
-                onChange={(e) => setConfigValue(e.target.value)}
-                placeholder="Enter new configuration values..."
+                onChange={(e) =>
+                  setConfigValue(
+                    configItem.configKey === 'inspection_fee'
+                      ? formatAmountInput(e.target.value)
+                      : e.target.value
+                  )
+                }
+                inputMode={configItem.configKey === 'inspection_fee' ? 'numeric' : undefined}
+                placeholder={configItem.configKey === 'inspection_fee' ? '50.000' : 'Enter new configuration values...'}
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono text-sm focus:border-blue-400 focus:bg-white focus:ring-2 focus:ring-blue-100 focus:outline-none"
               />
             )}
             <p className="mt-1 text-xs text-slate-400">
-              {configItem.configKey === 'inspection_fee' && 'Enter the amount in VND (no commas)'}
+              {configItem.configKey === 'inspection_fee' && 'Amount is grouped automatically in VND'}
               {configItem.configKey === 'warehouse_publish_package_id' &&
                 'Select the default warehouse posting package'}
             </p>
@@ -267,7 +278,7 @@ const SystemConfigueManagementPage = () => {
                   There are no configurations yet.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="table-scroll-container overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-slate-100 bg-slate-50">

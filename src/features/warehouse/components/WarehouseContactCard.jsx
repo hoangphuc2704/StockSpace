@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Copy, LogIn, Phone, ShieldCheck, UserRound } from 'lucide-react'
 import Button from '@/components/atoms/Button'
+import LoginModal from '@/features/auth/pages/LoginPage'
 import {
   formatWarehousePricePerSquareMeter,
   getWarehousePriceUnit,
@@ -16,6 +17,7 @@ const WarehouseContactCard = ({
   onContact,
 }) => {
   const [isCopied, setIsCopied] = useState(false)
+  const [isLoginOpen, setIsLoginOpen] = useState(false)
   const phone = contact?.phone || ''
   const pricingUnit = getWarehousePriceUnit({ rentalPricingType })
   const priceDisplay = formatWarehousePricePerSquareMeter(
@@ -28,6 +30,15 @@ const WarehouseContactCard = ({
     await navigator.clipboard.writeText(phone)
     setIsCopied(true)
     window.setTimeout(() => setIsCopied(false), 1800)
+  }
+
+  const handleContactClick = () => {
+    if (!isAuthenticated) {
+      setIsLoginOpen(true)
+      return
+    }
+
+    onContact()
   }
 
   return (
@@ -95,7 +106,7 @@ const WarehouseContactCard = ({
             <>
               <Button
                 type="button"
-                onClick={onContact}
+                onClick={handleContactClick}
                 isLoading={isLoading}
                 className="w-full rounded-xl py-3.5 text-sm font-bold"
               >
@@ -115,6 +126,7 @@ const WarehouseContactCard = ({
           )}
         </div>
       </div>
+      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
     </aside>
   )
 }

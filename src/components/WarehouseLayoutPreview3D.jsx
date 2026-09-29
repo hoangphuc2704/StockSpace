@@ -974,8 +974,8 @@ function BinMesh({
 
   const capacityLabel = weightCapacity
     ? isOver
-      ? `⚠ QUÁ TẢI (${Math.round(weightCapacity.ratio * 100)}%)`
-      : `${Math.round(weightCapacity.ratio * 100)}% Tải`
+      ? `⚠ OVER CAPACITY (${Math.round(weightCapacity.ratio * 100)}%)`
+      : `${Math.round(weightCapacity.ratio * 100)}% Load`
     : null
 
   const handleBinClick = (event) => {
@@ -1116,7 +1116,7 @@ function BinMesh({
                   outlineWidth={0.01}
                   outlineColor="#0b1120"
                 >
-                  {`${quantity} kiện`}
+                  {`${quantity} items`}
                 </Text>
               )}
               {isSelected && capacityLabel && (
@@ -1490,7 +1490,7 @@ export default function WarehouseLayoutPreview3D({
   showDemoCargo = false,
   showBinLabels = true,
   warehouseAreaM2: providedWarehouseAreaM2 = null,
-  warehouseAreaLabel = 'Diện tích kho',
+  warehouseAreaLabel = 'Warehouse area',
 }) {
   const [cameraPreset, setCameraPreset] = useState('DEFAULT')
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -1604,13 +1604,13 @@ export default function WarehouseLayoutPreview3D({
   const selectedWeightRatio = getMetricRatio(selectedCurrentWeight, selectedMaxWeight)
   const selectedVolumeRatio = getMetricRatio(selectedCurrentVolume, selectedMaxVolume)
   const selectedStatus = selectedBinInfo?.isOver
-    ? { label: 'QUÁ TẢI', className: 'bg-rose-500/15 text-rose-300 ring-1 ring-rose-400/30' }
+    ? { label: 'OVER CAPACITY', className: 'bg-rose-500/15 text-rose-300 ring-1 ring-rose-400/30' }
     : selectedBinInfo?.hasItems
       ? {
-          label: 'ĐANG LƯU HÀNG',
+          label: 'STORING ITEMS',
           className: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-400/30',
         }
-      : { label: 'CÒN TRỐNG', className: 'bg-slate-700/70 text-slate-300 ring-1 ring-white/10' }
+      : { label: 'EMPTY', className: 'bg-slate-700/70 text-slate-300 ring-1 ring-white/10' }
 
   const buildingWidth = useMemo(() => Math.max(worldWidth + 4, 16), [worldWidth])
   const buildingLength = useMemo(() => Math.max(worldDepth + 4, 16), [worldDepth])
@@ -1745,11 +1745,11 @@ export default function WarehouseLayoutPreview3D({
         className={`absolute top-3.5 left-3.5 z-20 flex max-w-[calc(100%-8rem)] flex-col items-stretch gap-1.5 rounded-2xl border border-white/15 bg-slate-900/85 p-1.5 shadow-2xl backdrop-blur-xl ${isFullscreen ? 'md:flex-row md:flex-wrap md:items-center' : ''}`}
       >
         {[
-          ['DEFAULT', '🌐 Toàn cảnh'],
-          ['INSIDE', '🚶 Nhìn bên trong'],
-          ['CLOSE_UP', '🔍 Cận cảnh'],
-          ['TOP_DOWN', '📐 Mặt bằng'],
-          ['FRONT', '🏢 Trực diện'],
+          ['DEFAULT', '🌐 Overview'],
+          ['INSIDE', '🚶 Inside view'],
+          ['CLOSE_UP', '🔍 Close-up'],
+          ['TOP_DOWN', '📐 Top view'],
+          ['FRONT', '🏢 Front view'],
         ].map(([preset, label]) => (
           <button
             key={preset}
@@ -1783,9 +1783,9 @@ export default function WarehouseLayoutPreview3D({
               ? 'bg-emerald-600/90 text-white shadow-[0_0_12px_rgba(16,185,129,0.4)] ring-1 ring-white/20 hover:bg-emerald-500'
               : 'bg-amber-600/90 text-white shadow-[0_0_12px_rgba(245,158,11,0.4)] ring-1 ring-white/20 hover:bg-amber-500'
           }`}
-          title="Chuyển đổi mái kho: Đóng kín / Mở mái"
+          title="Toggle warehouse roof: Solid / Open"
         >
-          {roofMode === 'solid' ? '🏠 Mái: Đóng kín' : '🚫 Mái: Mở'}
+          {roofMode === 'solid' ? '🏠 Roof: Solid' : '🚫 Roof: Open'}
         </button>
       </div>
 
@@ -1799,9 +1799,9 @@ export default function WarehouseLayoutPreview3D({
             type="button"
             onClick={() => setIsSidebarOpen(true)}
             className="flex items-center gap-1.5 rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg backdrop-blur-md transition hover:bg-sky-600 hover:text-white"
-            title="Mở bảng thông tin chi tiết"
+            title="Open details panel"
           >
-            📊 Thông tin kho
+            📊 Warehouse details
           </button>
         )}
 
@@ -1809,25 +1809,25 @@ export default function WarehouseLayoutPreview3D({
           type="button"
           onClick={() => setIsFullscreen((previous) => !previous)}
           className="rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[11px] font-bold text-slate-700 shadow-lg backdrop-blur-md transition hover:bg-sky-600 hover:text-white"
-          title={isFullscreen ? 'Thu nhỏ (Esc)' : 'Mở toàn màn hình'}
+          title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen'}
         >
-          {isFullscreen ? '✕ Thu nhỏ' : '⛶ Toàn màn hình'}
+          {isFullscreen ? '✕ Exit fullscreen' : '⛶ Fullscreen'}
         </button>
       </div>
 
       <div className="absolute bottom-3 left-3 z-20 flex items-center gap-3 rounded-xl border border-white/60 bg-white/85 px-3 py-2 text-[10px] font-semibold text-slate-600 shadow-lg backdrop-blur-md">
-        <span className="font-black tracking-wider text-slate-400 uppercase">Trạng thái</span>
+        <span className="font-black tracking-wider text-slate-400 uppercase">Status</span>
         <span className="inline-flex items-center gap-1">
           <i className="h-2 w-2 rounded-full bg-emerald-400" />
-          Còn trống
+          Empty
         </span>
         <span className="inline-flex items-center gap-1">
           <i className="h-2 w-2 rounded-full bg-yellow-400" />
-          Đang chứa
+          Storing items
         </span>
         <span className="inline-flex items-center gap-1">
           <i className="h-2 w-2 rounded-full bg-red-500" />
-          Đầy
+          Full
         </span>
       </div>
 
@@ -1839,22 +1839,22 @@ export default function WarehouseLayoutPreview3D({
                 Warehouse intelligence
               </p>
               <h3 className="mt-1 truncate text-base font-extrabold text-white">
-                {layout?.name || 'Sơ đồ kho'}
+                {layout?.name || 'Warehouse layout'}
               </h3>
               <p className="mt-0.5 text-[11px] text-slate-400">
                 {selectedBinInfo
-                  ? 'Thông tin Bin được chọn'
+                  ? 'Selected Bin details'
                   : selectedRackInfo
-                    ? 'Thông tin Rack được chọn'
-                    : 'Thông tin chi tiết'}
+                    ? 'Selected Rack details'
+                    : 'Details'}
               </p>
             </div>
             <button
               type="button"
               onClick={() => setIsSidebarOpen(false)}
               className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white"
-              title="Đóng bảng thông tin"
-              aria-label="Đóng bảng thông tin"
+              title="Close details panel"
+              aria-label="Close details panel"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -1878,7 +1878,7 @@ export default function WarehouseLayoutPreview3D({
                 </p>
               </div>
               <div className="min-w-0 shrink-0 text-right text-[10px] text-slate-400">
-                <p>Kích thước mặt bằng</p>
+                <p>Layout dimensions</p>
                 <p className="mt-1 font-bold text-slate-200">
                   {formatMetric(layout?.width, 2)} × {formatMetric(layout?.length, 2)} m
                 </p>
@@ -1899,7 +1899,7 @@ export default function WarehouseLayoutPreview3D({
                         {selectedBinInfo.binCode}
                       </h4>
                       <p className="mt-1 truncate text-xs text-slate-300">
-                        {selectedBinInfo.rackCode} · Tầng {selectedBinInfo.shelfLevel}
+                        {selectedBinInfo.rackCode} · Level {selectedBinInfo.shelfLevel}
                       </p>
                     </div>
                     <span
@@ -1912,7 +1912,7 @@ export default function WarehouseLayoutPreview3D({
 
                 <section className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5">
                   <div className="mb-2 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">Tải trọng</span>
+                    <span className="text-slate-400">Weight</span>
                     <span className="shrink-0 font-bold text-emerald-300">
                       {formatMetric(selectedCurrentWeight, 2)} /{' '}
                       {selectedMaxWeight > 0 ? `${formatMetric(selectedMaxWeight, 2)} kg` : '—'}
@@ -1925,7 +1925,7 @@ export default function WarehouseLayoutPreview3D({
                     />
                   </div>
                   <div className="mt-3 mb-2 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">Thể tích</span>
+                    <span className="text-slate-400">Volume</span>
                     <span className="shrink-0 font-bold text-sky-300">
                       {formatMetric(selectedCurrentVolume, 3)} /{' '}
                       {selectedMaxVolume > 0 ? `${formatMetric(selectedMaxVolume, 3)} m³` : '—'}
@@ -1941,13 +1941,13 @@ export default function WarehouseLayoutPreview3D({
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] text-slate-400">Số lượng</p>
+                    <p className="text-[10px] text-slate-400">Quantity</p>
                     <p className="mt-1 text-lg font-black text-white">
                       {formatMetric(selectedQuantity, 0)}
                     </p>
                   </div>
                   <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] text-slate-400">Kích thước</p>
+                    <p className="text-[10px] text-slate-400">Dimensions</p>
                     <p className="mt-1 truncate text-sm font-black text-white">
                       {formatMetric(selectedBinInfo.bin?.width, 2)} ×{' '}
                       {formatMetric(selectedBinInfo.bin?.length, 2)}
@@ -1980,7 +1980,7 @@ export default function WarehouseLayoutPreview3D({
                       ))
                     ) : (
                       <p className="rounded-xl border border-dashed border-white/15 px-3 py-4 text-center text-[11px] text-slate-500">
-                        Chưa có dữ liệu SKU.
+                        No SKU data.
                       </p>
                     )}
                   </div>
@@ -1996,13 +1996,13 @@ export default function WarehouseLayoutPreview3D({
                     {selectedRackInfo.rackCode}
                   </h4>
                   <p className="mt-1 truncate text-xs text-slate-300">
-                    {selectedRackInfo.rack.name || 'Rack đang chọn'}
+                    {selectedRackInfo.rack.name || 'Selected rack'}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] text-slate-400">Kích thước</p>
+                    <p className="text-[10px] text-slate-400">Dimensions</p>
                     <p className="mt-1 truncate text-sm font-black text-white">
                       {formatMetric(selectedRackInfo.rack.width, 2)} ×{' '}
                       {formatMetric(selectedRackInfo.rack.length, 2)} ×{' '}
@@ -2011,44 +2011,44 @@ export default function WarehouseLayoutPreview3D({
                     <p className="mt-0.5 text-[10px] text-slate-400">W × L × H m</p>
                   </div>
                   <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                    <p className="text-[10px] text-slate-400">Tầng / Bin</p>
+                    <p className="text-[10px] text-slate-400">Levels / Bins</p>
                     <p className="mt-1 text-lg font-black text-white">
                       {selectedRackInfo.shelfCount} / {selectedRackInfo.binCount}
                     </p>
-                    <p className="mt-0.5 text-[10px] text-slate-400">đang cấu hình</p>
+                    <p className="mt-0.5 text-[10px] text-slate-400">configured</p>
                   </div>
                 </div>
 
                 <section className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5 text-[11px]">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-slate-400">Tải trọng tối đa</span>
+                    <span className="text-slate-400">Maximum weight</span>
                     <span className="shrink-0 font-bold text-emerald-300">
                       {selectedRackInfo.maxWeight > 0
                         ? `${formatMetric(selectedRackInfo.maxWeight, 2)} kg`
-                        : 'Không giới hạn'}
+                        : 'Unlimited'}
                     </span>
                   </div>
                   <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className="text-slate-400">Thể tích tối đa</span>
+                    <span className="text-slate-400">Maximum volume</span>
                     <span className="shrink-0 font-bold text-sky-300">
                       {selectedRackInfo.maxVolume > 0
                         ? `${formatMetric(selectedRackInfo.maxVolume, 3)} m³`
-                        : 'Không giới hạn'}
+                        : 'Unlimited'}
                     </span>
                   </div>
                 </section>
               </div>
             ) : (
               <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center">
-                <p className="text-sm font-bold text-slate-200">Chưa chọn Rack hoặc Bin</p>
+                <p className="text-sm font-bold text-slate-200">No Rack or Bin selected</p>
                 <p className="mt-2 text-xs leading-5 text-slate-400">
-                  Nhấn vào Rack hoặc Bin trên mô hình để xem thông tin chi tiết.
+                  Select a Rack or Bin in the model to view its details.
                 </p>
               </div>
             )}
           </div>
           <div className="border-t border-white/10 px-5 py-3 text-[10px] text-slate-500">
-            StockSpace WMS · Đang đồng bộ
+            StockSpace WMS · Syncing
           </div>
         </aside>
       )}

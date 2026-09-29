@@ -32,7 +32,7 @@ const SubscriptionPage = () => {
       setSubscription(res.data?.data || null)
     } catch (err) {
       if (err.response?.status === 404) {
-        toast('Chưa có gói nào', { id: 'subscription-no-active', icon: 'ℹ️' })
+        toast('No active subscription found', { id: 'subscription-no-active', icon: 'ℹ️' })
       } else {
         console.error('Failed to load subscription:', err)
         showApiErrorToast(err)

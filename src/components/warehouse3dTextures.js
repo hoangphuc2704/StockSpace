@@ -217,7 +217,7 @@ export function createCardboardTexture() {
 /**
  * Biển bảng chỉ dẫn tên Dãy (Aisle Signboard) treo đầu kệ
  */
-export function createAisleSignTexture(aisleName, subtitle = 'KHU LƯU KHO') {
+export function createAisleSignTexture(aisleName, subtitle = 'WAREHOUSE STORAGE') {
   if (typeof document === 'undefined') return null
 
   const canvas = document.createElement('canvas')
@@ -542,7 +542,7 @@ export function createSafetySignTexture(type = 'EXIT') {
     ctx.textAlign = 'center'
     ctx.fillText('EXIT ➔', 128, 75)
     ctx.font = 'bold 16px sans-serif'
-    ctx.fillText('LỐI THOÁT HIỂM', 128, 105)
+    ctx.fillText('EMERGENCY EXIT', 128, 105)
   } else if (type === 'FIRE') {
     ctx.fillStyle = '#b91c1c' // Đỏ PCCC
     ctx.fillRect(0, 0, 256, 128)
@@ -554,7 +554,7 @@ export function createSafetySignTexture(type = 'EXIT') {
     ctx.textAlign = 'center'
     ctx.fillText('🚒 FIRE HOSE', 128, 68)
     ctx.font = 'bold 16px sans-serif'
-    ctx.fillText('HỘP CHỮA CHÁY PCCC', 128, 100)
+    ctx.fillText('FIRE SAFETY BOX', 128, 100)
   } else {
     // PPE REQUIRED
     ctx.fillStyle = '#1d4ed8' // Xanh dương bảo hộ
@@ -567,7 +567,7 @@ export function createSafetySignTexture(type = 'EXIT') {
     ctx.textAlign = 'center'
     ctx.fillText('👷 PPE ZONE', 128, 65)
     ctx.font = 'bold 14px sans-serif'
-    ctx.fillText('BẮT BUỘC ĐỒ BẢO HỘ', 128, 98)
+    ctx.fillText('SAFETY GEAR REQUIRED', 128, 98)
   }
 
   const texture = new CanvasTexture(canvas)

@@ -893,7 +893,7 @@ const TenantContractsPage = () => {
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="table-scroll-container overflow-x-auto">
                 {loading ? (
                   <div className="min-w-1060px divide-y divide-slate-200" aria-hidden="true">
                     {Array.from({ length: 5 }).map((_, index) => (

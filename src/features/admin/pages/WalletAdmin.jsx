@@ -39,6 +39,7 @@ import adminApi from '../../../services/admin/adminApi'
 import { toast } from 'react-hot-toast'
 import { positiveNumber } from '@/config/validation'
 import { showApiErrorToast } from '@/config/apiError'
+import { formatAmountInput, parseAmountInput } from '@/utils/currency'
 
 const WalletAdmin = () => {
   const dispatch = useDispatch()
@@ -189,7 +190,7 @@ const WalletAdmin = () => {
   const handleDepositSubmit = async (e) => {
     e.preventDefault()
 
-    const amountNumber = Number(inputAmount)
+    const amountNumber = parseAmountInput(inputAmount)
     const amountError = positiveNumber(amountNumber, 'Enter a valid amount.')
     if (amountError) {
       toast.error(amountError)
@@ -311,12 +312,9 @@ const WalletAdmin = () => {
     {
       header: 'Amount',
       render: (row) => {
-        // Admin wallet receives service-package revenue credited by BE as a
-        // PACKAGE_PAYMENT transaction, so it is an incoming amount here.
-        const isPlus =
-          row.transactionType === 'TOP_UP' ||
-          row.transactionType === 'DEPOSIT_REFUND' ||
-          row.transactionType === 'PACKAGE_PAYMENT'
+        // From the admin wallet's perspective, collected fees/revenue are
+        // incoming. Only a withdrawal leaves the admin wallet.
+        const isPlus = !['WITHDRAW', 'WITHDRAWAL'].includes(row.transactionType)
         const isFailed =
           row.status !== 'SUCCESS' && row.status !== 'APPROVED' && row.status !== 'PENDING'
         return (
@@ -683,7 +681,7 @@ const WalletAdmin = () => {
         </div>
       </div>
 
-      {/* Modal náº¡p tiá»n */}
+      {/* Deposit modal */}
       {isDepositModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
           <div className="animate-in fade-in zoom-in-95 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl duration-150">
@@ -706,25 +704,19 @@ const WalletAdmin = () => {
                 </label>
                 <div className="relative">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     autoFocus
                     required
-                    min={1000}
-                    step={1000}
                     value={inputAmount}
-                    onChange={(e) => setInputAmount(e.target.value)}
-                    placeholder="Example: 2000000"
+                    onChange={(e) => setInputAmount(formatAmountInput(e.target.value))}
+                    placeholder="Example: 2.000.000"
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 focus:outline-none"
                   />
                   <span className="absolute top-1/2 right-4 -translate-y-1/2 text-xs font-bold text-slate-400">
                     VND
                   </span>
                 </div>
-                {inputAmount && !isNaN(Number(inputAmount)) && (
-                  <p className="mt-2 text-xs font-medium text-emerald-600">
-                    Preview: {formatVND(Number(inputAmount))}
-                  </p>
-                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2">
@@ -755,7 +747,7 @@ const WalletAdmin = () => {
         </div>
       )}
 
-      {/* Modal rÃºt tiá»n */}
+      {/* Withdrawal modal */}
       <WithdrawModal
         isOpen={isWithdrawModalOpen}
         onClose={() => setIsWithdrawModalOpen(false)}

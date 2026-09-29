@@ -70,10 +70,10 @@ const STATUS_CONFIG = {
   },
 }
 
-const SCOPE_LABELS = { WAREHOUSE: 'Toàn kho', RACK: 'Theo rack', BIN: 'Theo bin' }
-const COUNT_STATUS_LABELS = { UNCOUNTED: 'Chưa đếm', COUNTED: 'Đã đếm', SKIPPED: 'Bỏ qua' }
+const SCOPE_LABELS = { WAREHOUSE: 'Whole warehouse', RACK: 'By Rack', BIN: 'By Bin' }
+const COUNT_STATUS_LABELS = { UNCOUNTED: 'Uncounted', COUNTED: 'Counted', SKIPPED: 'Skipped' }
 const DUPLICATE_ITEM_MESSAGE =
-  'SKU này đã có tại vị trí. Hãy nhập tổng số thực tế cuối cùng trên dòng hiện có.'
+  'This SKU already exists at this location. Enter the final actual quantity on the existing row.'
 
 const sameId = (firstId, secondId) => String(firstId ?? '') === String(secondId ?? '')
 
@@ -553,7 +553,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         <div className="flex pt-14">
           <Sidebar currentRole={currentRole} />
           <div className="flex flex-1 items-center justify-center py-24 text-sm text-slate-500">
-            Đang tải chi tiết kiểm kê...
+            Loading audit details...
           </div>
         </div>
       </div>
@@ -574,7 +574,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
         {isMobileOpen && (
           <button
             type="button"
-            aria-label="Đóng điều hướng"
+            aria-label="Close navigation"
             className="fixed inset-0 z-40 bg-slate-900/40"
             onClick={() => dispatch(closeMobileSidebar())}
           />
@@ -590,7 +590,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               <button
                 type="button"
                 onClick={handleBack}
-                aria-label="Quay lại danh sách kiểm kê"
+                aria-label="Back to audit list"
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:outline-none"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -598,7 +598,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
                   <ClipboardCheck className="h-3.5 w-3.5" />
-                  Phiếu kiểm kê
+                  Inventory audit
                 </div>
                 <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
                   AUD-{String(audit.id).slice(0, 8).toUpperCase()}
@@ -613,29 +613,29 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
 
             {audit.status === 'RECOUNT_REQUIRED' && audit.reviewReason && (
               <div className="border-l-2 border-orange-500 bg-orange-50 px-4 py-3 text-sm text-orange-900">
-                <strong>Lý do kiểm lại:</strong> {audit.reviewReason}
+                <strong>Recount reason:</strong> {audit.reviewReason}
               </div>
             )}
 
             <section className="grid border border-slate-200 bg-white md:grid-cols-2 xl:grid-cols-4">
               {[
-                ['Kho', audit.warehouseName || '-'],
-                ['Phạm vi', SCOPE_LABELS[audit.scopeType] || audit.scopeType || '-'],
+                ['Warehouse', audit.warehouseName || '-'],
+                ['Scope', SCOPE_LABELS[audit.scopeType] || audit.scopeType || '-'],
                 [
-                  'Người thực hiện',
-                  audit.assignedToName || audit.requestedByName || 'Chưa phân công',
+                  'Assigned to',
+                  audit.assignedToName || audit.requestedByName || 'Not assigned',
                 ],
-                ['Vòng kiểm đếm', audit.countRound || 1],
-                ['Người tạo', audit.requestedByName || '-'],
+                ['Count round', audit.countRound || 1],
+                ['Created by', audit.requestedByName || '-'],
                 [
-                  'Bắt đầu',
+                  'Started',
                   audit.startedAt ? moment(audit.startedAt).format('DD/MM/YYYY HH:mm') : '-',
                 ],
                 [
-                  'Nộp kết quả',
+                  'Submitted',
                   audit.submittedAt ? moment(audit.submittedAt).format('DD/MM/YYYY HH:mm') : '-',
                 ],
-                ['Người duyệt', audit.approvedByName || '-'],
+                ['Approved by', audit.approvedByName || '-'],
               ].map(([label, value]) => (
                 <div
                   key={label}
@@ -654,14 +654,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                 {audit.note && (
                   <div>
                     <h2 className="text-xs font-semibold text-slate-500 uppercase">
-                      Ghi chú kế hoạch
+                      Plan notes
                     </h2>
                     <p className="mt-2 text-sm leading-6 text-slate-700">{audit.note}</p>
                   </div>
                 )}
                 {audit.reviewReason && audit.status !== 'RECOUNT_REQUIRED' && (
                   <div>
-                    <h2 className="text-xs font-semibold text-slate-500 uppercase">Lý do xử lý</h2>
+                    <h2 className="text-xs font-semibold text-slate-500 uppercase">Review reason</h2>
                     <p className="mt-2 text-sm leading-6 text-slate-700">{audit.reviewReason}</p>
                   </div>
                 )}
@@ -675,30 +675,30 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
                 <div>
                   <h2 id="audit-items-heading" className="text-sm font-semibold text-slate-950">
-                    Sản phẩm kiểm đếm
+                    Counted products
                   </h2>
                   <p className="mt-0.5 text-xs text-slate-500">
-                    {items.length} dòng trong vòng kiểm đếm hiện tại
+                    {items.length} items in the current count round
                   </p>
                 </div>
                 {currentRole === 'STAFF' && isCounting && (
-                  <span className="text-xs text-slate-500">Chế độ blind count</span>
+                  <span className="text-xs text-slate-500">Blind count mode</span>
                 )}
                 {canSaveNotes && (
-                  <span className="text-xs text-purple-700">Chỉ có thể cập nhật ghi chú</span>
+                  <span className="text-xs text-purple-700">Notes only</span>
                 )}
               </div>
-              <div className="overflow-x-auto">
+              <div className="table-scroll-container overflow-x-auto">
                 <table className="w-full min-w-[960px] text-left text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
                     <tr>
-                      <th className="px-4 py-3">SKU / Sản phẩm</th>
-                      <th className="px-4 py-3">Vị trí</th>
-                      <th className="px-4 py-3 text-right">Hệ thống</th>
-                      <th className="px-4 py-3 text-right">Thực tế</th>
-                      <th className="px-4 py-3 text-right">Chênh lệch</th>
-                      <th className="px-4 py-3">Trạng thái</th>
-                      <th className="px-4 py-3">Ghi chú</th>
+                      <th className="px-4 py-3">SKU / Product</th>
+                      <th className="px-4 py-3">Location</th>
+                      <th className="px-4 py-3 text-right">System</th>
+                      <th className="px-4 py-3 text-right">Actual</th>
+                      <th className="px-4 py-3 text-right">Difference</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Notes</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -743,7 +743,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                                       : 'border-slate-200 bg-slate-100 text-slate-600'
                                   }`}
                                 >
-                                  {isUnexpected ? 'Hàng phát sinh' : 'Theo sổ'}
+                                  {isUnexpected ? 'Unexpected' : 'From records'}
                                 </span>
                               )}
                             </div>
@@ -758,7 +758,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                             {hasExpected ? (
                               `${item.expectedQuantity} ${item.uomSymbol || ''}`
                             ) : (
-                              <span className="text-xs text-slate-400">Được ẩn</span>
+                                <span className="text-xs text-slate-400">Hidden</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-right">
@@ -771,7 +771,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                                 }}
                                 type="number"
                                 min="0"
-                                aria-label={`Số lượng thực tế ${item.skuCode || item.id}`}
+                                aria-label={`Actual quantity for ${item.skuCode || item.id}`}
                                 value={item.actualQuantity}
                                 onChange={(event) =>
                                   handleItemChange(item.id, 'actualQuantity', event.target.value)
@@ -798,12 +798,12 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                             {isCounting || canSaveNotes ? (
                               <input
                                 type="text"
-                                aria-label={`Ghi chú ${item.skuCode || item.id}`}
+                                aria-label={`Note for ${item.skuCode || item.id}`}
                                 value={item.note}
                                 onChange={(event) =>
                                   handleItemChange(item.id, 'note', event.target.value)
                                 }
-                                placeholder="Ghi chú"
+                                placeholder="Notes"
                                 className="h-9 min-w-36 rounded-md border border-slate-300 px-2 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                               />
                             ) : (
@@ -816,7 +816,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     {!items.length && (
                       <tr>
                         <td colSpan={7} className="px-6 py-12 text-center text-sm text-slate-500">
-                          Chưa có dòng kiểm đếm trong vòng hiện tại.
+                          No count items in the current round.
                         </td>
                       </tr>
                     )}
@@ -828,7 +828,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             <div className="flex flex-wrap justify-end gap-2 border-t border-slate-300 pt-4">
               {currentRole === 'STAFF' && !canOperateAsStaff && (
                 <span className="mr-auto border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-600">
-                  Phiếu này chưa được phân công cho bạn
+                  This audit is not assigned to you
                 </span>
               )}
               {canTenantCancel && (
@@ -838,7 +838,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   onClick={() => setIsCancelModalOpen(true)}
                 >
                   <Ban className="h-4 w-4" />
-                  Hủy phiếu
+                  Cancel audit
                 </Button>
               )}
               {canStart && (
@@ -848,7 +848,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   className="flex items-center gap-2"
                 >
                   <PlayCircle className="h-4 w-4" />
-                  {audit.status === 'RECOUNT_REQUIRED' ? 'Bắt đầu kiểm lại' : 'Bắt đầu kiểm kê'}
+                  {audit.status === 'RECOUNT_REQUIRED' ? 'Start recount' : 'Start audit'}
                 </Button>
               )}
               {isCounting && (
@@ -859,7 +859,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     className="flex items-center gap-2"
                   >
                     <PlusCircle className="h-4 w-4" />
-                    Thêm hàng phát sinh
+                    Add unexpected item
                   </Button>
                   <Button
                     variant="outline"
@@ -868,7 +868,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     className="flex items-center gap-2"
                   >
                     <Save className="h-4 w-4" />
-                    Lưu tiến độ
+                    Save progress
                   </Button>
                   <Button
                     onClick={handleSubmitAudit}
@@ -876,7 +876,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     className="flex items-center gap-2"
                   >
                     <CheckCircle className="h-4 w-4" />
-                    Nộp kết quả
+                    Submit results
                   </Button>
                 </>
               )}
@@ -888,7 +888,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   className="flex items-center gap-2"
                 >
                   <Save className="h-4 w-4" />
-                  Lưu ghi chú
+                  Save notes
                 </Button>
               )}
               {canRequestEdit && (
@@ -898,7 +898,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   className="flex items-center gap-2 text-purple-700"
                 >
                   <RotateCcw className="h-4 w-4" />
-                  Xin sửa số lượng
+                  Request quantity edit
                 </Button>
               )}
               {isSubmitted && currentRole === 'TENANT' && (
@@ -909,7 +909,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                     className="flex items-center gap-2 text-orange-700"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    Yêu cầu kiểm lại
+                    Request recount
                   </Button>
                   {canApprove && (
                     <Button
@@ -918,7 +918,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                       className="flex items-center gap-2 bg-emerald-700 text-white hover:bg-emerald-800"
                     >
                       <CheckCircle className="h-4 w-4" />
-                      Duyệt và cập nhật tồn
+                      Approve and update stock
                     </Button>
                   )}
                 </>
@@ -930,17 +930,17 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   className="flex items-center gap-2 bg-purple-700 text-white hover:bg-purple-800"
                 >
                   <CheckCircle className="h-4 w-4" />
-                  Cho phép sửa lại
+                  Allow editing
                 </Button>
               )}
               {isSubmitted && currentRole === 'STAFF' && (
                 <span className="border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-600">
-                  Đang chờ Tenant duyệt kết quả
+                  Waiting for tenant approval
                 </span>
               )}
               {isEditRequested && currentRole === 'STAFF' && (
                 <span className="border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-800">
-                  Đang chờ Tenant cho phép sửa số lượng
+                  Waiting for tenant edit approval
                 </span>
               )}
             </div>
@@ -951,30 +951,30 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       <Modal
         isOpen={isCancelModalOpen}
         onClose={() => setIsCancelModalOpen(false)}
-        title="Hủy phiếu kiểm kê"
+        title="Cancel inventory audit"
         size="md"
       >
         <FormShell onSubmit={handleCancel} className="space-y-4">
           <label className="block text-sm font-medium text-slate-700">
-            Lý do (không bắt buộc)
+            Reason (optional)
             <textarea
               rows={3}
               value={cancelReason}
               onChange={(event) => setCancelReason(event.target.value)}
-              placeholder="Nhập lý do hủy..."
+              placeholder="Enter a cancellation reason..."
               className="mt-1.5 w-full rounded-md border border-slate-300 p-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
           </label>
           <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsCancelModalOpen(false)}>
-              Đóng
+              Close
             </Button>
             <Button
               type="submit"
               className="bg-rose-700 text-white hover:bg-rose-800"
               isLoading={cancelling}
             >
-              Xác nhận hủy
+              Confirm cancellation
             </Button>
           </div>
         </FormShell>
@@ -983,21 +983,21 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       <Modal
         isOpen={isEditRequestModalOpen}
         onClose={() => setIsEditRequestModalOpen(false)}
-        title="Xin mở lại phiếu kiểm kê"
+        title="Request audit reopening"
         size="md"
       >
         <FormShell onSubmit={handleRequestEdit} className="space-y-4">
           <div className="rounded-lg border border-purple-100 bg-purple-50 px-3 py-2 text-sm text-purple-900">
-            Tenant sẽ xem xét yêu cầu trước khi cho phép cập nhật lại số lượng đã kiểm đếm.
+            The tenant will review this request before allowing the counted quantities to be updated.
           </div>
           <label className="block text-sm font-medium text-slate-700">
-            Lý do <span className="text-red-600">*</span>
+            Reason <span className="text-red-600">*</span>
             <textarea
               rows={4}
               value={editReason}
               onChange={(event) => setEditReason(event.target.value)}
               required
-              placeholder="Mô tả lý do cần sửa lại số lượng..."
+              placeholder="Describe why the quantities need to be edited..."
               className="mt-1.5 w-full rounded-md border border-slate-300 p-3 outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-100"
             />
           </label>
@@ -1007,14 +1007,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               variant="outline"
               onClick={() => setIsEditRequestModalOpen(false)}
             >
-              Hủy
+              Cancel
             </Button>
             <Button
               type="submit"
               className="bg-purple-700 text-white hover:bg-purple-800"
               isLoading={requestingEdit}
             >
-              Gửi yêu cầu
+              Send request
             </Button>
           </div>
         </FormShell>
@@ -1023,31 +1023,31 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       <Modal
         isOpen={isRecountModalOpen}
         onClose={() => setIsRecountModalOpen(false)}
-        title="Yêu cầu kiểm đếm lại"
+        title="Request recount"
         size="md"
       >
         <FormShell onSubmit={handleRecount} className="space-y-4">
           <label className="block text-sm font-medium text-slate-700">
-            Lý do <span className="text-red-600">*</span>
+            Reason <span className="text-red-600">*</span>
             <textarea
               rows={3}
               value={recountReason}
               onChange={(event) => setRecountReason(event.target.value)}
               required
-              placeholder="Mô tả lý do cần kiểm lại..."
+              placeholder="Describe why a recount is needed..."
               className="mt-1.5 w-full rounded-md border border-slate-300 p-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
           </label>
           <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsRecountModalOpen(false)}>
-              Hủy
+              Cancel
             </Button>
             <Button
               type="submit"
               className="bg-orange-700 text-white hover:bg-orange-800"
               isLoading={recounting}
             >
-              Yêu cầu kiểm lại
+              Request recount
             </Button>
           </div>
         </FormShell>
@@ -1056,7 +1056,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
       <Modal
         isOpen={isUnexpectedModalOpen}
         onClose={() => setIsUnexpectedModalOpen(false)}
-        title="Thêm hàng phát sinh"
+        title="Add unexpected item"
         size="md"
       >
         <FormShell onSubmit={handleAddUnexpectedItem} className="space-y-4">
@@ -1069,7 +1069,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               required
               className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
             >
-              <option value="">{unexpectedOptionsLoading ? 'Đang tải SKU...' : 'Chọn SKU'}</option>
+              <option value="">{unexpectedOptionsLoading ? 'Loading SKUs...' : 'Select SKU'}</option>
               {skuOptions.map((sku) => (
                 <option key={sku.id} value={sku.id}>
                   [{sku.skuCode}] {sku.name}
@@ -1080,14 +1080,14 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
           {scopeType === 'BIN' && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                Vị trí cố định
+                Fixed location
               </p>
               <p className="mt-1 text-sm font-medium text-slate-900">
                 {[audit.scopeRackName, audit.scopeBinName].filter(Boolean).join(' / ') ||
-                  'Chưa có thông tin vị trí'}
+                  'Location information unavailable'}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                Hàng phát sinh sẽ được ghi nhận vào đúng Bin thuộc phạm vi phiếu.
+                Unexpected items will be recorded in the Bin covered by this audit.
               </p>
             </div>
           )}
@@ -1095,10 +1095,10 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             <div className="space-y-4">
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                 <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
-                  Rack cố định
+                  Fixed Rack
                 </p>
                 <p className="mt-1 text-sm font-medium text-slate-900">
-                  {audit.scopeRackName || 'Chưa có thông tin Rack'}
+                  {audit.scopeRackName || 'Rack information unavailable'}
                 </p>
               </div>
               <label className="block text-sm font-medium text-slate-700">
@@ -1111,7 +1111,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
                 >
                   <option value="">
-                    {unexpectedOptionsLoading ? 'Đang tải bin...' : 'Chọn bin'}
+                    {unexpectedOptionsLoading ? 'Loading bins...' : 'Select bin'}
                   </option>
                   {unexpectedBins.map((bin) => (
                     <option key={bin.id} value={bin.id}>
@@ -1135,7 +1135,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   required
                   className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                 >
-                  <option value="">Chọn rack</option>
+                  <option value="">Select rack</option>
                   {unexpectedRacks.map((rack) => (
                     <option key={rack.id} value={rack.id}>
                       {rack.name || rack.code || rack.id}
@@ -1152,7 +1152,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   required
                   className="mt-1.5 min-h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
                 >
-                  <option value="">Chọn bin</option>
+                  <option value="">Select bin</option>
                   {unexpectedBins.map((bin) => (
                     <option key={bin.id} value={bin.id}>
                       {bin.name || bin.code || bin.id}
@@ -1172,7 +1172,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             </div>
           )}
           <label className="block text-sm font-medium text-slate-700">
-            Số lượng tìm thấy <span className="text-red-600">*</span>
+            Found quantity <span className="text-red-600">*</span>
             <input
               type="number"
               min="0"
@@ -1183,18 +1183,18 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             />
           </label>
           <label className="block text-sm font-medium text-slate-700">
-            Ghi chú
+            Notes
             <textarea
               rows={2}
               value={unexpectedNote}
               onChange={(event) => setUnexpectedNote(event.target.value)}
-              placeholder="Tình trạng hoặc mô tả bổ sung..."
+              placeholder="Condition or additional description..."
               className="mt-1.5 w-full rounded-md border border-slate-300 p-3 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
             />
           </label>
           <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
             <Button type="button" variant="outline" onClick={() => setIsUnexpectedModalOpen(false)}>
-              Đóng
+              Close
             </Button>
             <Button
               type="submit"
@@ -1205,7 +1205,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                 hasUnexpectedLocationConfigurationError
               }
             >
-              Thêm sản phẩm
+              Add product
             </Button>
           </div>
         </FormShell>

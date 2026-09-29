@@ -22,6 +22,7 @@ import logoDaidien from '../../../assets/logoDaidien.png'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import ownerApi from '../../../services/warehouse/warehouseApi'
 import addressApi from '../../../services/addressApi'
+import { formatAmountInput, parseAmountInput } from '@/utils/currency'
 
 const normalizeLocationName = (value) =>
   String(value || '')
@@ -59,16 +60,18 @@ const CreateWarehouse = () => {
   // Form text
   const [formData, setFormData] = useState(
     () =>
-      draft?.formData || {
-        typeId: '',
-        name: '',
-        description: '',
-        warehouseWidth: '',
-        warehouseLength: '',
-        warehouseHeight: '',
-        rentalPricingType: 'PER_SQUARE_METER_MONTHLY',
-        rentalPrice: '',
-      }
+      draft?.formData
+        ? { ...draft.formData, rentalPrice: formatAmountInput(draft.formData.rentalPrice) }
+        : {
+            typeId: '',
+            name: '',
+            description: '',
+            warehouseWidth: '',
+            warehouseLength: '',
+            warehouseHeight: '',
+            rentalPricingType: 'PER_SQUARE_METER_MONTHLY',
+            rentalPrice: '',
+          }
   )
 
   // Ảnh bìa (tuỳ chọn)
@@ -199,10 +202,9 @@ const CreateWarehouse = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target
     const processedValue =
-      name === 'rentalPrice' ||
-      name === 'warehouseWidth' ||
-      name === 'warehouseLength' ||
-      name === 'warehouseHeight'
+      name === 'rentalPrice'
+        ? formatAmountInput(value)
+        : name === 'warehouseWidth' || name === 'warehouseLength' || name === 'warehouseHeight'
         ? value === ''
           ? ''
           : Number(value)
@@ -249,7 +251,7 @@ const CreateWarehouse = () => {
     Number(formData.warehouseWidth) > 0 &&
     Number(formData.warehouseLength) > 0 &&
     Number(formData.warehouseHeight) > 0 &&
-    (formData.rentalPricingType === 'NEGOTIATED' || Number(formData.rentalPrice) > 0)
+    (formData.rentalPricingType === 'NEGOTIATED' || parseAmountInput(formData.rentalPrice) > 0)
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -595,14 +597,13 @@ const CreateWarehouse = () => {
                           <div className="relative">
                             <DollarSign className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
                               name="rentalPrice"
                               value={formData.rentalPrice}
                               onChange={handleInputChange}
-                              step="0.01"
-                              placeholder="30000000"
+                              placeholder="30.000.000"
                               className="w-full rounded-xl border border-[#e8e1de] bg-white py-3 pr-14 pl-10 text-sm transition focus:border-[#f97316] focus:bg-white focus:ring-2 focus:ring-[#ffedd5] focus:outline-none"
-                              min="0.01"
                               required
                             />
                             <span className="absolute top-1/2 right-3 -translate-y-1/2 text-xs font-semibold text-slate-400">

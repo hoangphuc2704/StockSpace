@@ -858,13 +858,13 @@ const OutboundPage = () => {
                       </div>
                     </div>
 
-                    <div className="overflow-x-auto bg-white">
+                    <div className="table-scroll-container overflow-x-auto bg-white">
                       {isLoading ? (
                         <div className="flex justify-center p-8">
                           <Loader2 className="animate-spin text-slate-400 h-6 w-6" />
                         </div>
                       ) : (
-                        <table className="w-full text-left text-sm whitespace-nowrap">
+                        <table className="w-full min-w-[1280px] text-left text-sm whitespace-nowrap">
                           <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                             <tr>
                               <th className="border-x border-slate-200 px-4 py-3">{t('Receipt Code')}</th>
@@ -1055,7 +1055,7 @@ const OutboundPage = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 title={t('Create New Outbound Shipment')}
-                className="max-h-[calc(100vh-1rem)] max-w-4xl overflow-auto sm:max-h-[calc(100vh-2rem)]"
+                className="h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] max-w-4xl sm:h-[calc(100dvh-2rem)] sm:max-h-[calc(100dvh-2rem)]"
               >
                 <FormShell onSubmit={handleCreateReceipt} className="space-y-4">
                   <div className="space-y-2 border-b border-slate-200 pb-4">
@@ -1466,7 +1466,7 @@ const OutboundPage = () => {
                                       </span>
                                     </div>
                                     
-                                    <div className="overflow-x-auto rounded-lg border border-slate-100">
+                                    <div className="table-scroll-container overflow-x-auto rounded-lg border border-slate-100">
                                       <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50 text-xs text-slate-500">
                                           <tr>
