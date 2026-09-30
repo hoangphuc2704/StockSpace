@@ -616,7 +616,7 @@ const AIChatPanel = ({ chatRole }) => {
         !isDragging ? 'transition-[top,bottom,left,right] duration-200' : ''
       } ${
         isOpen
-          ? 'inset-x-2 top-16 bottom-2 sm:inset-x-auto sm:top-auto sm:right-8 sm:bottom-6 sm:left-auto'
+          ? 'inset-x-2 top-16 bottom-2 sm:inset-x-auto sm:top-1/2 sm:right-8 sm:bottom-auto sm:left-auto sm:h-[calc(100dvh-2rem)] sm:max-h-[650px] sm:-translate-y-1/2'
           : floatingPosition
             ? ''
             : 'right-3 bottom-24 sm:right-8 sm:bottom-24'
@@ -625,7 +625,7 @@ const AIChatPanel = ({ chatRole }) => {
       {isOpen ? (
         <section
           aria-label="StockSpace AI assistant"
-          className="flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:h-162.5 sm:w-105 sm:max-w-105 sm:rounded-3xl"
+          className="flex h-full min-h-0 w-full max-w-none flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)] sm:w-105 sm:max-w-105 sm:rounded-3xl"
         >
           <header className="relative overflow-hidden bg-slate-950 px-5 pt-5 pb-4 text-white">
             <div className="absolute -top-12 -right-8 h-32 w-32 rounded-full bg-orange-500/20 blur-2xl" />
