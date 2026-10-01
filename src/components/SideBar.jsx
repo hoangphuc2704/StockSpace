@@ -179,7 +179,7 @@ const Sidebar = ({ currentRole = 'ADMIN' }) => {
                 <span
                   className={`${
                     isMenuExpanded
-                      ? 'min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap'
+                      ? 'min-w-0 flex-1 overflow-hidden text-left text-ellipsis whitespace-nowrap'
                       : 'sr-only'
                   }`}
                 >
