@@ -6,7 +6,6 @@ import Modal from '../../../components/organisms/Modal'
 import TableActionMenu from '@/components/TableActionMenu'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 import { showApiErrorToast } from '@/config/apiError'
 import { useLanguage } from '@/i18n/LanguageContext'
 import { HiBars3 } from 'react-icons/hi2'
@@ -156,9 +155,6 @@ const AdminAuditsPage = () => {
               StockSpace Admin
             </span>
           </div>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 

@@ -4,7 +4,6 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 // ✅ Đã kết nối trực tiếp action từ Redux store và sửa chính tả uiSlice
 import { toggleSidebar } from '../store/uiSlide'
-import NotificationDropdown from './NotificationDropdown'
 import LanguageSwitcher from './LanguageSwitcher'
 
 const Header = () => {
@@ -48,7 +47,6 @@ const Header = () => {
       </div>
 
       <div className="ml-2 flex shrink-0 items-center gap-1 sm:ml-4 sm:gap-2">
-        <NotificationDropdown />
         <LanguageSwitcher className="lg:fixed lg:top-1 lg:right-2" />
       </div>
     </header>
