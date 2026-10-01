@@ -3181,11 +3181,6 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
       if (saved) setLayout(normalizeLayout(saved))
 
       updateSelection({ type: 'layout', key: null }, false, true)
-      toast.success(
-        isContractLayout
-          ? 'Contract layout saved successfully.'
-          : 'Warehouse layout saved successfully.'
-      )
       if (isMandatorySetup) {
         try {
           sessionStorage.removeItem(pendingOwnerLayoutKey)
@@ -3193,9 +3188,7 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
           // Ignore storage cleanup errors; the saved layout is still valid.
         }
         setLayoutSetupComplete(true)
-        toast.success(
-          'Warehouse created and submitted for Admin approval. Listing packages will be available after approval.'
-        )
+        toast.success('Warehouse created successfully.')
         const nextParams = new URLSearchParams(searchParams)
         nextParams.delete('setupRequired')
         if (targetWarehouseId) nextParams.set('warehouseId', targetWarehouseId)
@@ -3205,6 +3198,12 @@ function LayoutWarehouse({ currentRole = 'TENANT', initialView = '2d', stockOnly
             search: nextParams.toString() ? `?${nextParams.toString()}` : '',
           },
           { replace: true, state: null }
+        )
+      } else {
+        toast.success(
+          isContractLayout
+            ? 'Contract layout saved successfully.'
+            : 'Warehouse layout saved successfully.'
         )
       }
     } catch (requestError) {
