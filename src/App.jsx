@@ -75,6 +75,7 @@ import ListingPackagesPage from './features/admin/pages/ListingPackagesPage'
 import InspectorInspectionsPage from './features/inspector/pages/InspectorInspectionsPage'
 import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
 import AIChatWidget from './features/chat/components/AIChatWidget'
+import NotificationDropdown from './components/NotificationDropdown'
 
 // Dev Sandbox
 // import DevApiSandbox from './features/dev/DevApiSandbox'
@@ -110,6 +111,21 @@ const OwnerLayoutSetupGuard = () => {
   }
 
   return <Outlet />
+}
+
+const ROLE_ROUTE_PATTERN = /^\/(admin|tenant|owner|staff|inspector)(\/|$)/
+
+const GlobalRoleNotification = () => {
+  const location = useLocation()
+  const user = useSelector((state) => state.auth.user)
+
+  if (!user || !ROLE_ROUTE_PATTERN.test(location.pathname)) return null
+
+  return (
+    <div className="pointer-events-auto fixed top-1 right-16 z-[100] sm:right-20">
+      <NotificationDropdown />
+    </div>
+  )
 }
 
 const App = () => {
@@ -266,6 +282,7 @@ const App = () => {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <GlobalRoleNotification />
       <AIChatWidget />
     </BrowserRouter>
   )

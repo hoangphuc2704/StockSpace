@@ -23,7 +23,6 @@ import {
 import StatCard from '../../../components/molecules/StatCard'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 
 // Mock pending approvals
 
@@ -135,9 +134,6 @@ const AdminDashboard = () => {
               StockSpace Admin
             </span>
           </div>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 

@@ -34,7 +34,6 @@ import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 import { parseFeaturesToList } from '../../../utils/formatFeatures'
 import { formatAmountInput, parseAmountInput } from '@/utils/currency'
 
@@ -336,9 +335,6 @@ const Packages_SubcriptionsManagementPage = () => {
               StockSpace Admin
             </span>
           </div>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 

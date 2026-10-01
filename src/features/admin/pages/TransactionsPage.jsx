@@ -22,7 +22,6 @@ import DataTable from '../../../components/organisms/DataTable'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 import Modal from '../../../components/organisms/Modal'
 
 // ─── Enum maps từ BE ─────────────────────────────────────────────────────────
@@ -306,9 +305,6 @@ const TransactionsPage = () => {
               StockSpace Admin
             </span>
           </div>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 

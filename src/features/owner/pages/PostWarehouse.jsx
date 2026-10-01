@@ -19,7 +19,6 @@ import {
 import Button from '../../../components/atoms/Button'
 import TranslatableText from '../../../components/TranslatableText'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 import ownerApi from '../../../services/warehouse/warehouseApi'
 import addressApi from '../../../services/addressApi'
 import { formatAmountInput, parseAmountInput } from '@/utils/currency'
@@ -286,9 +285,6 @@ const CreateWarehouse = () => {
           >
             <img src={logoDaidien} alt="StockSpace Logo" className="h-10 w-16 object-contain" />
           </button>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 

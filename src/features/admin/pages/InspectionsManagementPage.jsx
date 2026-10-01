@@ -33,7 +33,6 @@ import { HiBars3 } from 'react-icons/hi2'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 import adminApi from '../../../services/admin/adminApi'
 import { required } from '@/config/validation'
 
@@ -575,9 +574,6 @@ const InspectionsManagementPage = () => {
               StockSpace Admin
             </span>
           </div>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 

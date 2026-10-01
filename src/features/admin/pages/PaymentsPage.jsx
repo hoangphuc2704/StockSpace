@@ -7,7 +7,6 @@ import Button from '../../../components/atoms/Button'
 import Avatar from '../../../components/atoms/Avatar'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 
 const MOCK_PAYMENTS = [
   {
@@ -134,9 +133,6 @@ const PaymentsPage = () => {
               StockSpace Admin
             </span>
           </div>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 

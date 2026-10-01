@@ -12,8 +12,6 @@ import {
   PackageSearch,
   History,
   Download,
-  FileSpreadsheet,
-  Upload,
 } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import Header from '@/components/HeaderDashboard'
@@ -27,9 +25,7 @@ import Modal from '@/components/organisms/Modal'
 import DataTable from '@/components/organisms/DataTable'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 import Button from '@/components/atoms/Button'
-import WmsImportDialog from '@/features/inventory/components/WmsImportDialog'
 import dataContinuityApi from '@/services/wms/dataContinuityApi'
-import { WMS_IMPORT_TYPE } from '@/services/wms/wmsDataTypes'
 import { formatStockQuantity, sumStockQuantity } from '@/utils/stockQuantity'
 import { toast } from 'react-hot-toast'
 import { useLanguage } from '@/i18n/LanguageContext'
@@ -141,7 +137,6 @@ const InventoryPage = () => {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [batchHistory, setBatchHistory] = useState([])
   const [isHistoryLoading, setIsHistoryLoading] = useState(false)
-  const [isOfflineImportOpen, setIsOfflineImportOpen] = useState(false)
   const [downloadingWorkbook, setDownloadingWorkbook] = useState('')
 
   const loadWarehouses = useCallback(async () => {
@@ -294,6 +289,11 @@ const InventoryPage = () => {
     [allStock]
   )
 
+  const totalInventoryQuantity = useMemo(
+    () => sumStockQuantity(allStock, 'quantity'),
+    [allStock]
+  )
+
   const toggleExpand = (skuId) => {
     const newExpanded = new Set(expandedSkus)
     if (newExpanded.has(skuId)) {
@@ -332,24 +332,19 @@ const InventoryPage = () => {
     }
   }
 
-  const handleDownloadWorkbook = async (type) => {
+  const handleDownloadSnapshot = async () => {
     if (!selectedWarehouseId || downloadingWorkbook) return
-    if (type === 'snapshot' && hasMaskedQuantities) {
+    if (hasMaskedQuantities) {
       toast.error(t('Inventory snapshot export is unavailable during a blind count.'))
       return
     }
     try {
-      setDownloadingWorkbook(type)
-      if (type === 'snapshot') {
-        await dataContinuityApi.exportInventorySnapshot(selectedWarehouseId)
-        toast.success(t('Inventory snapshot downloaded.'))
-      } else {
-        await dataContinuityApi.downloadOfflineMovementTemplate(selectedWarehouseId)
-        toast.success(t('Offline movement template downloaded.'))
-      }
+      setDownloadingWorkbook('snapshot')
+      await dataContinuityApi.exportInventorySnapshot(selectedWarehouseId)
+      toast.success(t('Inventory snapshot downloaded.'))
     } catch (error) {
       const errorCode = error?.response?.data?.errorCode || error?.response?.data?.code
-      if (type === 'snapshot' && errorCode === 'AUDIT_MOVEMENT_LOCKED') {
+      if (errorCode === 'AUDIT_MOVEMENT_LOCKED') {
         toast.error(
           t(
             'The warehouse is under a blind count. Wait for the staff audit to finish before exporting the snapshot.'
@@ -359,9 +354,7 @@ const InventoryPage = () => {
       }
       showApiErrorToast(
         error,
-        type === 'snapshot'
-          ? t('Could not export the inventory snapshot.')
-          : t('Could not download the offline movement template.')
+        t('Could not export the inventory snapshot.')
       )
     } finally {
       setDownloadingWorkbook('')
@@ -412,6 +405,20 @@ const InventoryPage = () => {
                 <h1 className="text-xl font-bold text-slate-900">{t('Inventory Management')}</h1>
                 <p className="text-sm text-slate-500">{t('View detailed inventory by physical layout')}</p>
               </div>
+              <div className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-600 shadow-sm">
+                  <PackageSearch className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-emerald-700">{t('Current inventory')}</p>
+                  <p className="text-lg font-bold leading-tight text-emerald-800">
+                    {isLoading
+                      ? '—'
+                      : formatStockQuantity(totalInventoryQuantity, hasMaskedQuantities, '—')}
+                    <span className="ml-1 text-xs font-medium">{t('units')}</span>
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
@@ -434,7 +441,7 @@ const InventoryPage = () => {
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => handleDownloadWorkbook('snapshot')}
+                   onClick={handleDownloadSnapshot}
                   isLoading={downloadingWorkbook === 'snapshot'}
                   disabled={
                     !selectedWarehouseId || Boolean(downloadingWorkbook) || hasMaskedQuantities
@@ -447,26 +454,6 @@ const InventoryPage = () => {
                   className="w-full gap-2 sm:w-auto"
                 >
                   <Download className="h-4 w-4" /> {t('Export snapshot')}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleDownloadWorkbook('template')}
-                  isLoading={downloadingWorkbook === 'template'}
-                  disabled={!selectedWarehouseId || Boolean(downloadingWorkbook)}
-                  className="w-full gap-2 sm:w-auto"
-                >
-                  <FileSpreadsheet className="h-4 w-4" /> {t('Offline template')}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => setIsOfflineImportOpen(true)}
-                  disabled={!selectedWarehouseId}
-                  className="w-full gap-2 sm:w-auto"
-                >
-                  <Upload className="h-4 w-4" /> {t('Import movements')}
                 </Button>
               </div>
             </div>
@@ -813,33 +800,6 @@ const InventoryPage = () => {
         )}
       </Modal>
 
-      <WmsImportDialog
-        isOpen={isOfflineImportOpen}
-        onClose={() => setIsOfflineImportOpen(false)}
-        title={t('Import offline inbound / outbound movements')}
-        description={t(
-          'Use only the newest template downloaded for the selected warehouse. Movements are validated and later applied in sequence_no order as one atomic operation.'
-        )}
-        importType={WMS_IMPORT_TYPE.OFFLINE_MOVEMENT}
-        scopeKey={selectedWarehouseId}
-        validateWorkbook={(file) =>
-          dataContinuityApi.validateOfflineMovements(selectedWarehouseId, file)
-        }
-        applyWorkbook={dataContinuityApi.applyOfflineMovements}
-        allowApply={currentRole === 'TENANT'}
-        applyUnavailableMessage={t(
-          'Staff can validate offline movements when permitted, but only the tenant can apply them.'
-        )}
-        confirmation={{
-          title: t('Apply offline movements'),
-          message: t(
-            'Create and approve every inbound/outbound receipt in workbook sequence. Inventory will change atomically. Are you sure you want to continue?'
-          ),
-          confirmText: t('Apply movements'),
-        }}
-        onApplied={fetchData}
-        onStale={fetchData}
-      />
     </div>
   )
 }

@@ -48,6 +48,16 @@ const formatOutboundDate = (dateString, language = 'en') => {
   }).format(new Date(dateString))
 }
 
+const formatOutboundPickingStrategy = (strategy) => {
+  if (!strategy) return ''
+
+  const knownLabels = {
+    FIFO_SERPENTINE_XY_V1: 'FIFO',
+    MANUAL_LOCATION_FIFO_V1: 'Manual location + FIFO',
+  }
+  return knownLabels[strategy] || String(strategy).replace(/_/g, ' ')
+}
+
 const compareReceiptsByDateDesc = (firstReceipt, secondReceipt) => {
   const firstTime = Date.parse(firstReceipt?.createdAt || '')
   const secondTime = Date.parse(secondReceipt?.createdAt || '')
@@ -129,7 +139,7 @@ const OutboundPage = () => {
   const [activeOutboundLineId, setActiveOutboundLineId] = useState(null)
   const [formNote, setFormNote] = useState('')
   const [formReceiverName, setFormReceiverName] = useState('')
-  
+
   // Manual Outbound states
   const [isLocationsLoading, setIsLocationsLoading] = useState(false)
   const [warehouseStockBatches, setWarehouseStockBatches] = useState([])
@@ -260,9 +270,9 @@ const OutboundPage = () => {
         allocations = allocations.map((allocation) => (
           allocation.id === allocationId
             ? {
-                ...allocation,
-                quantity: Math.min(remainingQuantity, selectedLocationQuantity),
-              }
+              ...allocation,
+              quantity: Math.min(remainingQuantity, selectedLocationQuantity),
+            }
             : allocation
         ))
       }
@@ -291,18 +301,18 @@ const OutboundPage = () => {
     setOutboundLines((previous) => previous.map((line) => (
       line.id === lineId
         ? {
-            ...line,
-            allocations: [
-              ...(line.allocations || []),
-              {
-                ...createOutboundAllocation(),
-                quantity: Math.max(
-                  Number(line.quantity) - getOutboundAllocationCapacity(line.allocations || []),
-                  1
-                ),
-              },
-            ],
-          }
+          ...line,
+          allocations: [
+            ...(line.allocations || []),
+            {
+              ...createOutboundAllocation(),
+              quantity: Math.max(
+                Number(line.quantity) - getOutboundAllocationCapacity(line.allocations || []),
+                1
+              ),
+            },
+          ],
+        }
         : line
     )))
   }
@@ -310,9 +320,9 @@ const OutboundPage = () => {
     setOutboundLines((previous) => previous.map((line) => (
       line.id === lineId
         ? {
-            ...line,
-            allocations: (line.allocations || []).filter((allocation) => allocation.id !== allocationId),
-          }
+          ...line,
+          allocations: (line.allocations || []).filter((allocation) => allocation.id !== allocationId),
+        }
         : line
     )))
   }
@@ -427,7 +437,7 @@ const OutboundPage = () => {
     }
     const csvRows = []
     csvRows.push(['Receipt ID', 'Status', 'Outbound date', 'Responsible person', 'Receiver name', 'Item name', 'SKU', 'Quantity'].join(','))
-    
+
     receipt.items.forEach(item => {
       csvRows.push([
         receipt.id.substring(0, 8).toUpperCase(),
@@ -446,7 +456,7 @@ const OutboundPage = () => {
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', `phieu-xuat-${receipt.id.substring(0,8)}.csv`)
+    link.setAttribute('download', `phieu-xuat-${receipt.id.substring(0, 8)}.csv`)
     document.body.appendChild(link)
     link.click()
     link.remove()
@@ -718,6 +728,7 @@ const OutboundPage = () => {
     }
   })
   const hasAnyStockShortage = outboundLineSummaries.some((line) => line.shortageQuantity > 0)
+  const previewStrategyLabel = formatOutboundPickingStrategy(previewData?.strategy)
   const allOutboundLinesValid = outboundLineSummaries.every(
     (line) => line.skuId && positiveInteger(line.quantity) === '' && line.summary
   )
@@ -752,9 +763,8 @@ const OutboundPage = () => {
       <div className="flex pt-14">
         <Sidebar currentRole={currentRole} />
         <div
-          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${
-            isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
-          }`}
+          className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'
+            }`}
         >
           <main className="mx-auto w-full max-w-[1600px] space-y-8 p-4 sm:p-6 md:p-8">
             <div className="space-y-6">
@@ -821,9 +831,8 @@ const OutboundPage = () => {
                             setActiveTab(tab.id)
                             setPage(0)
                           }}
-                          className={`relative pb-3 text-sm font-medium transition-colors ${
-                            activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-700'
-                          }`}
+                          className={`relative pb-3 text-sm font-medium transition-colors ${activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-700'
+                            }`}
                         >
                           {tab.label}
                           {activeTab === tab.id && (
@@ -868,13 +877,13 @@ const OutboundPage = () => {
                           <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                             <tr>
                               <th className="border-x border-slate-200 px-4 py-3">{t('Receipt Code')}</th>
-                              <th className="border-r border-slate-200 px-4 py-3">{t('Status')}</th>
                               <th className="border-r border-slate-200 px-4 py-3">{t('Method')}</th>
                               <th className="border-r border-slate-200 px-4 py-3">{t('Outbound Date')}</th>
                               <th className="border-r border-slate-200 px-4 py-3">{t('Receiver')}</th>
                               <th className="border-r border-slate-200 px-4 py-3">{t('Person in charge')}</th>
                               <th className="border-r border-slate-200 px-4 py-3">{t('Items')}</th>
                               <th className="border-r border-slate-200 px-4 py-3 text-right">{t('Total Qty')}</th>
+                              <th className="border-r border-slate-200 px-4 py-3 text-center">{t('Status')}</th>
                               <th className="border-r border-slate-200 px-4 py-3 text-center">{t('Actions')}</th>
                               <th className="px-4 py-3 text-center">{t('Export')}</th>
                             </tr>
@@ -894,27 +903,11 @@ const OutboundPage = () => {
                               const itemSummary = itemNames.length > 1
                                 ? `${itemNames[0]} +${itemNames.length - 1}`
                                 : itemNames[0] || '—'
-                              
+
                               return (
                                 <tr key={r.id} className="transition-colors hover:bg-slate-50/80">
                                   <td className="border-r border-slate-100 px-4 py-3 font-medium text-primary">
                                     {r.id.substring(0, 8).toUpperCase()}
-                                  </td>
-                                  <td className="border-r border-slate-100 px-4 py-3 text-center">
-                                    <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                                        r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                                          r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
-                                            r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
-                                              r.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                                                'bg-slate-100 text-slate-600'
-                                    }`}>
-                                      {r.status === 'PENDING' ? t('Pending Approval') :
-                                       r.status === 'APPROVED' ? t('Approved') :
-                                       r.status === 'IN_PROGRESS' ? t('In progress') :
-                                       r.status === 'COMPLETED' ? t('Completed') :
-                                       r.status === 'REJECTED' ? t('Rejected') :
-                                       r.status}
-                                    </span>
                                   </td>
                                   <td className="border-r border-slate-100 px-4 py-3">
                                     <span className="text-slate-500">{t('OUTBOUND')}</span>
@@ -948,6 +941,22 @@ const OutboundPage = () => {
                                   </td>
                                   <td className="border-r border-slate-100 px-4 py-3 text-right font-semibold text-slate-700">
                                     {totalQty}
+                                  </td>
+                                  <td className="border-r border-slate-100 px-4 py-3 text-center">
+                                    <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full ${r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                      r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                                        r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
+                                          r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                            r.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                                              'bg-slate-100 text-slate-600'
+                                      }`}>
+                                      {r.status === 'PENDING' ? t('Pending Approval') :
+                                        r.status === 'APPROVED' ? t('Approved') :
+                                          r.status === 'IN_PROGRESS' ? t('In progress') :
+                                            r.status === 'COMPLETED' ? t('Completed') :
+                                              r.status === 'REJECTED' ? t('Rejected') :
+                                                r.status}
+                                    </span>
                                   </td>
                                   <td className="border-r border-slate-100 px-4 py-3 text-center">
                                     <div className="flex items-center justify-center gap-2">
@@ -985,7 +994,7 @@ const OutboundPage = () => {
                                   <td className="px-4 py-3 text-center">
                                     <button
                                       onClick={() => handleExportSingleReceipt(r)}
-                                      className="text-slate-400 hover:text-slate-600 transition-colors p-1" 
+                                      className="text-slate-400 hover:text-slate-600 transition-colors p-1"
                                       title={t('Print / Export receipt')}
                                     >
                                       <Download className="h-4 w-4 mx-auto" />
@@ -1062,9 +1071,9 @@ const OutboundPage = () => {
                     <label className="text-sm font-medium text-slate-700">{t('Outbound Method')}</label>
                     <div className="flex gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="outboundMethod" 
+                        <input
+                          type="radio"
+                          name="outboundMethod"
                           className="accent-brand-600"
                           checked={outboundMethod === 'AUTO'}
                           onChange={() => setOutboundMethod('AUTO')}
@@ -1072,9 +1081,9 @@ const OutboundPage = () => {
                         <span className="text-sm text-slate-700">{t('Automatic picking (FIFO)')}</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input 
-                          type="radio" 
-                          name="outboundMethod" 
+                        <input
+                          type="radio"
+                          name="outboundMethod"
                           className="accent-brand-600"
                           checked={outboundMethod === 'MANUAL'}
                           onChange={() => {
@@ -1305,17 +1314,17 @@ const OutboundPage = () => {
                     </div>
                   </section>
 
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">
-                        {t('Receiver Name')} <span className="text-rose-500">*</span>
-                      </label>
-                      <InputField
-                        placeholder={t('e.g. Customer B')}
-                        required
-                        value={formReceiverName}
-                        onChange={(e) => setFormReceiverName(e.target.value)}
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">
+                      {t('Receiver Name')} <span className="text-rose-500">*</span>
+                    </label>
+                    <InputField
+                      placeholder={t('e.g. Customer B')}
+                      required
+                      value={formReceiverName}
+                      onChange={(e) => setFormReceiverName(e.target.value)}
+                    />
+                  </div>
 
                   {formSkuId && (
                     <section className="rounded-xl border border-slate-200 bg-slate-50/80 p-4" aria-live="polite">
@@ -1417,7 +1426,9 @@ const OutboundPage = () => {
                     <div className="space-y-4 pt-2">
                       <div className="flex items-center justify-between">
                         <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                          <MapIcon className="h-4 w-4 text-emerald-600" /> {t('Suggested picking route (FIFO)')}
+                          <MapIcon className="h-4 w-4 text-emerald-600" />
+                          {t('Suggested picking route')}
+                          {previewStrategyLabel ? ` (${previewStrategyLabel})` : ''}
                         </label>
                         <Button
                           type="button"
@@ -1432,7 +1443,7 @@ const OutboundPage = () => {
                       </div>
 
                       {!previewData ? (
-                          <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
                           {t('Click "Preview route" to calculate the optimal picking route.')}
                         </div>
                       ) : (
@@ -1465,7 +1476,7 @@ const OutboundPage = () => {
                                         {t('Level')} {stop.shelfLevel}
                                       </span>
                                     </div>
-                                    
+
                                     <div className="table-scroll-container overflow-x-auto rounded-lg border border-slate-100">
                                       <table className="w-full text-left text-sm">
                                         <thead className="bg-slate-50 text-xs text-slate-500">

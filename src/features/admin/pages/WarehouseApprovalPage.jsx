@@ -34,7 +34,6 @@ import WarehouseLayoutPreview3D from '../../../components/WarehouseLayoutPreview
 import TableActionMenu from '@/components/TableActionMenu'
 import warehouseApi from '../../../services/warehouse/warehouseApi'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 import { required } from '@/config/validation'
 import {
   formatWarehousePricePerSquareMeter,
@@ -336,9 +335,6 @@ const WarehouseApprovalPage = () => {
               StockSpace Admin
             </span>
           </div>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 
