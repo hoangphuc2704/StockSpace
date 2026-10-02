@@ -31,7 +31,6 @@ import {
 import { HiBars3 } from 'react-icons/hi2'
 import Sidebar from '../../../components/SideBar'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 import { required } from '@/config/validation'
 
 const shortId = (id) => (id ? `#${String(id).slice(0, 8).toUpperCase()}` : '—')
@@ -280,9 +279,6 @@ const WarehousesTypePage = () => {
               StockSpace Admin
             </span>
           </div>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 

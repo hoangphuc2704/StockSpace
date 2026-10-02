@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import Button from '../../../components/atoms/Button'
 import logoDaidien from '../../../assets/logoDaidien.png'
-import NotificationDropdown from '@/components/NotificationDropdown'
 import { parseAmountInput } from '@/utils/currency'
 const pendingOwnerLayoutKey = 'stockspace:pending-owner-layout'
 
@@ -79,9 +78,6 @@ const ConfirmPostWarehouse = () => {
           >
             <img src={logoDaidien} alt="StockSpace Logo" className="h-10 w-16 object-contain" />
           </button>
-        </div>
-        <div className="mr-20 ml-auto flex items-center sm:mr-28">
-          <NotificationDropdown />
         </div>
       </header>
 

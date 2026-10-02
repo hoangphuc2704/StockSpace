@@ -951,8 +951,7 @@ const InboundPage = () => {
                         <table className="w-full min-w-[1180px] text-left text-sm whitespace-nowrap">
                           <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                             <tr>
-                              <th className="px-4 py-3 w-10 text-center"><input type="checkbox" className="rounded border-slate-300" /></th>
-                              <th className="px-4 py-3 border-x border-slate-200">{t('Expected Receipt No.')}</th>
+                              <th className="px-4 py-3 border-x border-slate-200">{t('Receipt ID')}</th>
                               <th className="px-4 py-3 border-r border-slate-200">{t('Sender')}</th>
                               <th className="px-4 py-3 border-r border-slate-200">{t('Person in charge')}</th>
                               <th className="px-4 py-3 border-r border-slate-200">{t('Item Name [Specs]')}</th>
@@ -966,7 +965,7 @@ const InboundPage = () => {
                           <tbody className="divide-y divide-slate-100">
                             {filteredReceipts.length === 0 ? (
                               <tr>
-                                <td colSpan={10} className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
                                   {t('No inbound receipt data found.')}
                                 </td>
                               </tr>
@@ -977,7 +976,6 @@ const InboundPage = () => {
                                 : '—'
                               return (
                                 <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                                  <td className="px-4 py-3 text-center border-r border-slate-100"><input type="checkbox" className="rounded border-slate-300" /></td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-primary font-medium">{r.id.substring(0, 8).toUpperCase()}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-500">{r.senderName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-700">{r.createdByFullName || '—'}</td>
@@ -986,16 +984,16 @@ const InboundPage = () => {
                                   <td className="px-4 py-3 border-r border-slate-100 text-right font-semibold text-slate-700">{totalQty}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-center">
                                     <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wider ${r.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
-                                        r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
-                                          r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
-                                            r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
-                                              'bg-slate-100 text-slate-600'
+                                      r.status === 'APPROVED' ? 'bg-blue-100 text-blue-700' :
+                                        r.status === 'IN_PROGRESS' ? 'bg-purple-100 text-purple-700' :
+                                          r.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                                            'bg-slate-100 text-slate-600'
                                       }`}>
                                       {r.status === 'PENDING' ? t('Pending Approval') :
-                                       r.status === 'APPROVED' ? t('Approved') :
-                                       r.status === 'IN_PROGRESS' ? t('In progress') :
-                                       r.status === 'COMPLETED' ? t('Completed') :
-                                       r.status}
+                                        r.status === 'APPROVED' ? t('Approved') :
+                                          r.status === 'IN_PROGRESS' ? t('In progress') :
+                                            r.status === 'COMPLETED' ? t('Completed') :
+                                              r.status}
                                     </span>
                                   </td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-center">
@@ -1226,17 +1224,17 @@ const InboundPage = () => {
                     </div>
                   </section>
 
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">
-                        {t('Sender Name')} <span className="text-rose-500">*</span>
-                      </label>
-                      <InputField
-                        placeholder={t('e.g. Supplier A')}
-                        required
-                        value={formSenderName}
-                        onChange={(e) => setFormSenderName(e.target.value)}
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">
+                      {t('Sender Name')} <span className="text-rose-500">*</span>
+                    </label>
+                    <InputField
+                      placeholder={t('e.g. Supplier A')}
+                      required
+                      value={formSenderName}
+                      onChange={(e) => setFormSenderName(e.target.value)}
+                    />
+                  </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -1303,302 +1301,314 @@ const InboundPage = () => {
                               return Number(secondHasSuggestion) - Number(firstHasSuggestion)
                             })
                             .map((rack) => {
-                            const rackCapacity = getRackCapacity(rack)
-                            const rackCurrentWeightKg = Number(rackCapacity.currentWeightKg) || 0
-                            const rackMetric = inboundRackMetrics[String(rack.id)] || {
-                              units: 0,
-                              weightKg: 0,
-                              volumeM3: 0,
-                            }
-                            const rackCurrentVolumeM3 = Number(rackCapacity.currentVolumeM3) || 0
-                            const rackIncomingWeightKg = rackMetric.weightKg
-                            const rackIncomingVolumeM3 = rackMetric.volumeM3
-                            const totalBinWeightLimit = (rack.bins || []).reduce(
-                              (total, bin) => total + (Number(bin.maxWeight) || 0),
-                              0
-                            )
-                            const totalBinVolumeLimit = (rack.bins || []).reduce(
-                              (total, bin) => total + (Number(bin.maxVolume) || 0),
-                              0
-                            )
-                            return (
-                              <section
-                                key={rack.id}
-                                className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
-                              >
-                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
-                                  <div>
-                                    <h4 className="text-sm font-bold text-slate-900">
-                                      {rack.name}
-                                      {rack.code && (
-                                        <span className="ml-2 font-normal text-slate-400">
-                                          {rack.code}
-                                        </span>
-                                      )}
-                                    </h4>
-                                    <p className="mt-1 text-xs text-slate-500">
-                                      {(rack.bins || []).length} bins · Current load{' '}
-                                      {rackCurrentWeightKg.toLocaleString('en-US', {
-                                        maximumFractionDigits: 6,
-                                      })}{' '}
-                                      kg · Incoming{' '}
-                                      {rackIncomingWeightKg.toLocaleString('en-US', {
-                                        maximumFractionDigits: 6,
-                                      })}{' '}
-                                      kg · Incoming volume{' '}
-                                      {rackIncomingVolumeM3.toLocaleString('en-US', {
-                                        maximumFractionDigits: 6,
-                                      })}{' '}
-                                      m³
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600">
-                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                                      Rack limit:{' '}
-                                      {Number(rackCapacity.maxWeight) > 0
-                                        ? `${Number(rackCapacity.maxWeight).toLocaleString('en-US')} kg`
-                                        : 'Not set'}
-                                    </span>
-                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                                      Bin limits: {totalBinWeightLimit.toLocaleString('en-US')} kg
-                                    </span>
-                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                                      Rack volume:{' '}
-                                      {Number(rackCapacity.maxVolume) > 0
-                                        ? `${Number(rackCapacity.maxVolume).toLocaleString('en-US')} m³`
-                                        : 'Not set'}
-                                    </span>
-                                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                                      Bin volume limits:{' '}
-                                      {totalBinVolumeLimit.toLocaleString('en-US')} m³
-                                    </span>
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-3 p-3 md:grid-cols-2">
-                                  {[...(rack.bins || [])]
-                                    .sort((firstBin, secondBin) => (
-                                      Number(suggestedBinIds.has(String(secondBin.id))) -
-                                      Number(suggestedBinIds.has(String(firstBin.id)))
-                                    ))
-                                    .map((bin) => {
-                                    const capacity = binCapacities[bin.id] || {
-                                      currentUnits: 0,
-                                      currentWeightKg: 0,
-                                      currentVolumeM3: 0,
-                                      maxWeight: Number(bin.maxWeight) || 0,
-                                      maxVolume: Number(bin.maxVolume) || 0,
-                                    }
-                                    const currentAllocation = Number(allocations[bin.id]) || 0
-                                    const isSuggestedBin = suggestedBinIds.has(String(bin.id))
-                                    const binMetric = inboundBinMetrics[String(bin.id)] || {
-                                      units: 0,
-                                      weightKg: 0,
-                                      volumeM3: 0,
-                                    }
-                                    const binAllocationLines = inboundAllocationsByBin[String(bin.id)] || []
-                                    const remainingReceiptUnits = Math.max(
-                                      Number(formTotalQuantity) -
-                                      (allocatedQuantity - currentAllocation),
-                                      0
-                                    )
-                                    const binWeightUnits =
-                                      capacity.maxWeight > 0 && selectedUnitWeightKg > 0
-                                        ? Math.floor(
-                                          Math.max(
-                                            capacity.maxWeight -
-                                            capacity.currentWeightKg -
-                                            (binMetric.weightKg - currentAllocation * selectedUnitWeightKg),
-                                            0
-                                          ) / selectedUnitWeightKg
-                                        ) + currentAllocation
-                                        : Number.POSITIVE_INFINITY
-                                    const binVolumeUnits =
-                                      capacity.maxVolume > 0 && selectedUnitVolumeM3 > 0
-                                        ? Math.floor(
-                                          Math.max(
-                                            capacity.maxVolume -
-                                            capacity.currentVolumeM3 -
-                                            (binMetric.volumeM3 - currentAllocation * selectedUnitVolumeM3),
-                                            0
-                                          ) / selectedUnitVolumeM3
-                                        ) + currentAllocation
-                                        : Number.POSITIVE_INFINITY
-                                    const otherRackIncomingWeight =
-                                      rackMetric.weightKg - currentAllocation * selectedUnitWeightKg
-                                    const otherRackIncomingVolume =
-                                      rackMetric.volumeM3 - currentAllocation * selectedUnitVolumeM3
-                                    const rackWeightUnits =
-                                      Number(rackCapacity.maxWeight) > 0 && selectedUnitWeightKg > 0
-                                        ? Math.floor(
-                                          Math.max(
-                                            Number(rackCapacity.maxWeight) -
-                                            rackCurrentWeightKg -
-                                            otherRackIncomingWeight,
-                                            0
-                                          ) / selectedUnitWeightKg
-                                        ) + currentAllocation
-                                        : Number.POSITIVE_INFINITY
-                                    const rackVolumeUnits =
-                                      Number(rackCapacity.maxVolume) > 0 && selectedUnitVolumeM3 > 0
-                                        ? Math.floor(
-                                          Math.max(
-                                            Number(rackCapacity.maxVolume) -
-                                            rackCurrentVolumeM3 -
-                                            otherRackIncomingVolume,
-                                            0
-                                          ) / selectedUnitVolumeM3
-                                        ) + currentAllocation
-                                        : Number.POSITIVE_INFINITY
-                                    const maximumForBin = Math.max(
-                                      Math.min(
-                                        remainingReceiptUnits,
-                                        binWeightUnits,
-                                        binVolumeUnits,
-                                        rackWeightUnits,
-                                        rackVolumeUnits
-                                      ),
-                                      0
-                                    )
-                                    const inputMaximum = Number.isFinite(maximumForBin)
-                                      ? maximumForBin
-                                      : undefined
-                                    return (
-                                      <article
-                                        key={bin.id}
-                                        ref={(element) => {
-                                          if (element) allocationBinRefs.current[String(bin.id)] = element
-                                          else delete allocationBinRefs.current[String(bin.id)]
-                                        }}
-                                        className={`rounded-xl border bg-white p-3 transition-shadow ${isSuggestedBin
-                                            ? 'border-emerald-300 bg-emerald-50/20 ring-2 ring-emerald-100'
-                                            : 'border-slate-200'
-                                          }`}
-                                      >
-                                        <div className="flex items-start justify-between gap-3">
-                                          <div className="min-w-0">
-                                            <p className="truncate text-sm font-bold text-slate-800">
-                                              {bin.name}
-                                            </p>
-                                            <p className="mt-0.5 text-[11px] text-slate-400">
-                                              {bin.code || 'No code'} · Shelf {bin.shelfLevel ?? '—'}
-                                            </p>
-                                          </div>
-                                          <label className="shrink-0 text-right text-[10px] font-bold tracking-wide text-slate-500 uppercase">
-                                            {currentAllocation > 0
-                                              ? `Edit ${selectedSku?.skuCode || 'SKU'}`
-                                              : `${selectedSku?.skuCode || 'SKU'} not assigned`}
-                                            <input
-                                              type="number"
-                                              min="0"
-                                              max={inputMaximum}
-                                              disabled={
-                                                !selectedSku ||
-                                                selectedUnitWeightKg <= 0 ||
-                                                selectedUnitVolumeM3 <= 0
-                                              }
-                                              placeholder={isSuggestedBin ? 'Not assigned' : '0'}
-                                              className="focus:ring-primary mt-1 block w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-semibold text-slate-800 focus:ring-2 focus:outline-none"
-                                              value={allocations[bin.id] || ''}
-                                              onChange={(event) => {
-                                                const rawValue = event.target.value
-                                                const nextValue =
-                                                  rawValue === ''
-                                                    ? ''
-                                                    : Math.min(
-                                                      Math.floor(
-                                                        Math.max(Number(rawValue) || 0, 0)
-                                                      ),
-                                                      maximumForBin
-                                                    )
-                                                updateInboundLine(activeInboundLine?.id, {
-                                                  allocations: {
-                                                    ...(activeInboundLine?.allocations || {}),
-                                                    [bin.id]: nextValue,
-                                                  },
-                                                })
-                                              }}
-                                            />
-                                          </label>
-                                        </div>
-
-                                        {binAllocationLines.length > 0 && (
-                                          <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50/60 px-2.5 py-2 text-[11px]">
-                                            <p className="font-semibold text-blue-700">Suggested by SKU</p>
-                                            <div className="mt-1 space-y-1">
-                                              {binAllocationLines.map((allocationLine) => (
-                                                <button
-                                                  key={allocationLine.lineId}
-                                                  type="button"
-                                                  onClick={() => setActiveInboundLineId(allocationLine.lineId)}
-                                                  className="flex w-full items-center justify-between gap-2 rounded px-1 py-0.5 text-left text-blue-700 transition-colors hover:bg-blue-100"
-                                                  title={`Edit ${allocationLine.skuCode} allocation`}
-                                                >
-                                                  <span className="truncate">{allocationLine.skuCode} · {allocationLine.skuName}</span>
-                                                  <strong className="shrink-0">{allocationLine.quantity} units</strong>
-                                                </button>
-                                              ))}
-                                            </div>
-                                          </div>
+                              const rackCapacity = getRackCapacity(rack)
+                              const rackCurrentWeightKg = Number(rackCapacity.currentWeightKg) || 0
+                              const rackMetric = inboundRackMetrics[String(rack.id)] || {
+                                units: 0,
+                                weightKg: 0,
+                                volumeM3: 0,
+                              }
+                              const rackCurrentVolumeM3 = Number(rackCapacity.currentVolumeM3) || 0
+                              const rackIncomingWeightKg = rackMetric.weightKg
+                              const rackIncomingVolumeM3 = rackMetric.volumeM3
+                              const totalBinWeightLimit = (rack.bins || []).reduce(
+                                (total, bin) => total + (Number(bin.maxWeight) || 0),
+                                0
+                              )
+                              const totalBinVolumeLimit = (rack.bins || []).reduce(
+                                (total, bin) => total + (Number(bin.maxVolume) || 0),
+                                0
+                              )
+                              return (
+                                <section
+                                  key={rack.id}
+                                  className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+                                >
+                                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+                                    <div>
+                                      <h4 className="text-sm font-bold text-slate-900">
+                                        {rack.name}
+                                        {rack.code && (
+                                          <span className="ml-2 font-normal text-slate-400">
+                                            {rack.code}
+                                          </span>
                                         )}
+                                      </h4>
+                                      <p className="mt-1 text-xs text-slate-500">
+                                        {(rack.bins || []).length} bins · Current load{' '}
+                                        {rackCurrentWeightKg.toLocaleString('en-US', {
+                                          maximumFractionDigits: 6,
+                                        })}{' '}
+                                        kg · Incoming{' '}
+                                        {rackIncomingWeightKg.toLocaleString('en-US', {
+                                          maximumFractionDigits: 6,
+                                        })}{' '}
+                                        kg · Incoming volume{' '}
+                                        {rackIncomingVolumeM3.toLocaleString('en-US', {
+                                          maximumFractionDigits: 6,
+                                        })}{' '}
+                                        m³
+                                      </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600">
+                                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+                                        Rack limit:{' '}
+                                        {Number(rackCapacity.maxWeight) > 0
+                                          ? `${Number(rackCapacity.maxWeight).toLocaleString('en-US')} kg`
+                                          : 'Not set'}
+                                      </span>
+                                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+                                        Bin limits: {totalBinWeightLimit.toLocaleString('en-US')} kg
+                                      </span>
+                                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+                                        Rack volume:{' '}
+                                        {Number(rackCapacity.maxVolume) > 0
+                                          ? `${Number(rackCapacity.maxVolume).toLocaleString('en-US')} m³`
+                                          : 'Not set'}
+                                      </span>
+                                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+                                        Bin volume limits:{' '}
+                                        {totalBinVolumeLimit.toLocaleString('en-US')} m³
+                                      </span>
+                                    </div>
+                                  </div>
 
-                                        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                                          <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
-                                            <span className="block text-slate-400">
-                                              Current load
-                                            </span>
-                                            <strong>
-                                              {capacity.currentWeightKg.toLocaleString('en-US', {
-                                                maximumFractionDigits: 6,
-                                              })}{' '}
-                                              kg
-                                            </strong>
-                                          </div>
-                                          <div className="rounded-lg bg-blue-50 px-2.5 py-2 text-blue-700">
-                                            <span className="block text-blue-400">
-                                              Planned total (all SKUs)
-                                            </span>
-                                            <strong>{binMetric.units.toLocaleString('en-US')} units</strong>
-                                          </div>
-                                          <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
-                                            <span className="block text-slate-400">
-                                              Weight limit
-                                            </span>
-                                            <strong>
-                                              {capacity.maxWeight > 0
-                                                ? `${capacity.maxWeight.toLocaleString('en-US')} kg`
-                                                : 'Not set'}
-                                            </strong>
-                                          </div>
-                                          <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
-                                            <span className="block text-slate-400">
-                                              Current volume
-                                            </span>
-                                            <strong>
-                                              {capacity.currentVolumeM3.toLocaleString('en-US', {
-                                                maximumFractionDigits: 6,
-                                              })}{' '}
-                                              m³
-                                            </strong>
-                                          </div>
-                                          <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
-                                            <span className="block text-slate-400">
-                                              Volume limit
-                                            </span>
-                                            <strong>
-                                              {capacity.maxVolume > 0
-                                                ? `${capacity.maxVolume.toLocaleString('en-US')} m³`
-                                                : 'Not set'}
-                                            </strong>
-                                          </div>
-                                        </div>
-                                      </article>
-                                    )
-                                  })}
-                                </div>
-                              </section>
-                            )
-                          })}
+                                  <div className="grid grid-cols-1 gap-3 p-3 md:grid-cols-2">
+                                    {[...(rack.bins || [])]
+                                      .sort((firstBin, secondBin) => (
+                                        Number(suggestedBinIds.has(String(secondBin.id))) -
+                                        Number(suggestedBinIds.has(String(firstBin.id)))
+                                      ))
+                                      .map((bin) => {
+                                        const capacity = binCapacities[bin.id] || {
+                                          currentUnits: 0,
+                                          currentWeightKg: 0,
+                                          currentVolumeM3: 0,
+                                          maxWeight: Number(bin.maxWeight) || 0,
+                                          maxVolume: Number(bin.maxVolume) || 0,
+                                        }
+                                        const currentAllocation = Number(allocations[bin.id]) || 0
+                                        const isSuggestedBin = suggestedBinIds.has(String(bin.id))
+                                         const binMetric = inboundBinMetrics[String(bin.id)] || {
+                                           units: 0,
+                                           weightKg: 0,
+                                           volumeM3: 0,
+                                         }
+                                         const binAllocationLines = inboundAllocationsByBin[String(bin.id)] || []
+                                         const isSuggestedForActiveLine = Boolean(
+                                           activeInboundLine?.id &&
+                                           suggestedBinIdsByLine[activeInboundLine.id]?.has(String(bin.id))
+                                         )
+                                        const remainingReceiptUnits = Math.max(
+                                          Number(formTotalQuantity) -
+                                          (allocatedQuantity - currentAllocation),
+                                          0
+                                        )
+                                        const binWeightUnits =
+                                          capacity.maxWeight > 0 && selectedUnitWeightKg > 0
+                                            ? Math.floor(
+                                              Math.max(
+                                                capacity.maxWeight -
+                                                capacity.currentWeightKg -
+                                                (binMetric.weightKg - currentAllocation * selectedUnitWeightKg),
+                                                0
+                                              ) / selectedUnitWeightKg
+                                            ) + currentAllocation
+                                            : Number.POSITIVE_INFINITY
+                                        const binVolumeUnits =
+                                          capacity.maxVolume > 0 && selectedUnitVolumeM3 > 0
+                                            ? Math.floor(
+                                              Math.max(
+                                                capacity.maxVolume -
+                                                capacity.currentVolumeM3 -
+                                                (binMetric.volumeM3 - currentAllocation * selectedUnitVolumeM3),
+                                                0
+                                              ) / selectedUnitVolumeM3
+                                            ) + currentAllocation
+                                            : Number.POSITIVE_INFINITY
+                                        const otherRackIncomingWeight =
+                                          rackMetric.weightKg - currentAllocation * selectedUnitWeightKg
+                                        const otherRackIncomingVolume =
+                                          rackMetric.volumeM3 - currentAllocation * selectedUnitVolumeM3
+                                        const rackWeightUnits =
+                                          Number(rackCapacity.maxWeight) > 0 && selectedUnitWeightKg > 0
+                                            ? Math.floor(
+                                              Math.max(
+                                                Number(rackCapacity.maxWeight) -
+                                                rackCurrentWeightKg -
+                                                otherRackIncomingWeight,
+                                                0
+                                              ) / selectedUnitWeightKg
+                                            ) + currentAllocation
+                                            : Number.POSITIVE_INFINITY
+                                        const rackVolumeUnits =
+                                          Number(rackCapacity.maxVolume) > 0 && selectedUnitVolumeM3 > 0
+                                            ? Math.floor(
+                                              Math.max(
+                                                Number(rackCapacity.maxVolume) -
+                                                rackCurrentVolumeM3 -
+                                                otherRackIncomingVolume,
+                                                0
+                                              ) / selectedUnitVolumeM3
+                                            ) + currentAllocation
+                                            : Number.POSITIVE_INFINITY
+                                        const maximumForBin = Math.max(
+                                          Math.min(
+                                            remainingReceiptUnits,
+                                            binWeightUnits,
+                                            binVolumeUnits,
+                                            rackWeightUnits,
+                                            rackVolumeUnits
+                                          ),
+                                          0
+                                        )
+                                        const inputMaximum = Number.isFinite(maximumForBin)
+                                          ? maximumForBin
+                                          : undefined
+                                        return (
+                                          <article
+                                            key={bin.id}
+                                            ref={(element) => {
+                                              if (element) allocationBinRefs.current[String(bin.id)] = element
+                                              else delete allocationBinRefs.current[String(bin.id)]
+                                            }}
+                                            className={`rounded-xl border bg-white p-3 transition-shadow ${isSuggestedBin
+                                              ? 'border-emerald-300 bg-emerald-50/20 ring-2 ring-emerald-100'
+                                              : 'border-slate-200'
+                                              }`}
+                                          >
+                                            <div className="flex items-start justify-between gap-3">
+                                              <div className="min-w-0">
+                                                <p className="truncate text-sm font-bold text-slate-800">
+                                                  {bin.name}
+                                                </p>
+                                                <p className="mt-0.5 text-[11px] text-slate-400">
+                                                  {bin.code || 'No code'} · Shelf {bin.shelfLevel ?? '—'}
+                                                </p>
+                                              </div>
+                                               <div className="shrink-0 text-right text-[10px] font-bold tracking-wide text-slate-500 uppercase">
+                                                 {binAllocationLines.length > 0 && (
+                                                   <div className="mb-1.5 max-w-56 space-y-1 text-left normal-case">
+                                                     <span className="block text-[10px] font-bold tracking-wide text-blue-700 uppercase">
+                                                       Allocated products
+                                                     </span>
+                                                     {binAllocationLines.map((allocationLine) => (
+                                                       <button
+                                                         key={allocationLine.lineId}
+                                                         type="button"
+                                                         onClick={() => setActiveInboundLineId(allocationLine.lineId)}
+                                                         className={`flex w-full items-center justify-between gap-2 rounded-md px-1.5 py-1 text-left transition-colors ${allocationLine.lineId === activeInboundLine?.id
+                                                           ? 'bg-blue-100 text-blue-800'
+                                                           : 'text-slate-600 hover:bg-blue-50 hover:text-blue-700'
+                                                           }`}
+                                                         title={`Edit ${allocationLine.skuCode} allocation`}
+                                                       >
+                                                         <span className="min-w-0 truncate">
+                                                           {allocationLine.skuCode} · {allocationLine.skuName}
+                                                         </span>
+                                                         <strong className="shrink-0 whitespace-nowrap">
+                                                           {allocationLine.quantity} units
+                                                         </strong>
+                                                       </button>
+                                                     ))}
+                                                   </div>
+                                                 )}
+                                                 <span className="block">
+                                                   {currentAllocation > 0
+                                                     ? `Edit ${selectedSku?.skuCode || 'SKU'}`
+                                                     : `${selectedSku?.skuCode || 'SKU'} not assigned`}
+                                                 </span>
+                                                 <input
+                                                  type="number"
+                                                  min="0"
+                                                  max={inputMaximum}
+                                                  disabled={
+                                                    !selectedSku ||
+                                                    selectedUnitWeightKg <= 0 ||
+                                                    selectedUnitVolumeM3 <= 0
+                                                  }
+                                                   placeholder={isSuggestedForActiveLine ? 'Not assigned' : '0'}
+                                                  className="focus:ring-primary mt-1 block w-24 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-center text-sm font-semibold text-slate-800 focus:ring-2 focus:outline-none"
+                                                  value={allocations[bin.id] || ''}
+                                                  onChange={(event) => {
+                                                    const rawValue = event.target.value
+                                                    const nextValue =
+                                                      rawValue === ''
+                                                        ? ''
+                                                        : Math.min(
+                                                          Math.floor(
+                                                            Math.max(Number(rawValue) || 0, 0)
+                                                          ),
+                                                          maximumForBin
+                                                        )
+                                                    updateInboundLine(activeInboundLine?.id, {
+                                                      allocations: {
+                                                        ...(activeInboundLine?.allocations || {}),
+                                                        [bin.id]: nextValue,
+                                                      },
+                                                    })
+                                                  }}
+                                                />
+                                              </div>
+                                            </div>
+
+                                            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                                              <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
+                                                <span className="block text-slate-400">
+                                                  Current load
+                                                </span>
+                                                <strong>
+                                                  {capacity.currentWeightKg.toLocaleString('en-US', {
+                                                    maximumFractionDigits: 6,
+                                                  })}{' '}
+                                                  kg
+                                                </strong>
+                                              </div>
+                                              <div className="rounded-lg bg-blue-50 px-2.5 py-2 text-blue-700">
+                                                <span className="block text-blue-400">
+                                                  Planned total (all SKUs)
+                                                </span>
+                                                <strong>{binMetric.units.toLocaleString('en-US')} units</strong>
+                                              </div>
+                                              <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
+                                                <span className="block text-slate-400">
+                                                  Weight limit
+                                                </span>
+                                                <strong>
+                                                  {capacity.maxWeight > 0
+                                                    ? `${capacity.maxWeight.toLocaleString('en-US')} kg`
+                                                    : 'Not set'}
+                                                </strong>
+                                              </div>
+                                              <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
+                                                <span className="block text-slate-400">
+                                                  Current volume
+                                                </span>
+                                                <strong>
+                                                  {capacity.currentVolumeM3.toLocaleString('en-US', {
+                                                    maximumFractionDigits: 6,
+                                                  })}{' '}
+                                                  m³
+                                                </strong>
+                                              </div>
+                                              <div className="rounded-lg bg-slate-50 px-2.5 py-2 text-slate-600">
+                                                <span className="block text-slate-400">
+                                                  Volume limit
+                                                </span>
+                                                <strong>
+                                                  {capacity.maxVolume > 0
+                                                    ? `${capacity.maxVolume.toLocaleString('en-US')} m³`
+                                                    : 'Not set'}
+                                                </strong>
+                                              </div>
+                                            </div>
+                                          </article>
+                                        )
+                                      })}
+                                  </div>
+                                </section>
+                              )
+                            })}
                         </div>
                       )}
                     </div>
