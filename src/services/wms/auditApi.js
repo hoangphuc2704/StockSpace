@@ -1,13 +1,16 @@
 import api from '../apiConfig'
+import { cleanQueryParams, toApiDate } from '@/utils/wmsDateFilter'
 
 const auditApi = {
-  getAudits: (warehouseId, { page, size } = {}) => {
+  getAudits: (warehouseId, { page, size, fromDate, toDate } = {}) => {
     return api.get('/tenant/inventory/audits', {
-      params: {
+      params: cleanQueryParams({
         ...(warehouseId ? { warehouseId } : {}),
         page,
         size,
-      },
+        fromDate: toApiDate(fromDate),
+        toDate: toApiDate(toDate),
+      }),
     })
   },
 

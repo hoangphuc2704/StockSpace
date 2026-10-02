@@ -23,6 +23,7 @@ import staffApi from '../../../services/staff/staffApi'
 import { showApiErrorToast } from '@/config/apiError'
 import Modal from '@/components/organisms/Modal'
 import DataTable from '@/components/organisms/DataTable'
+import WmsDateRangeFilter from '@/components/molecules/WmsDateRangeFilter'
 import useActiveWarehouseContext from '@/hooks/useActiveWarehouseContext'
 import Button from '@/components/atoms/Button'
 import dataContinuityApi from '@/services/wms/dataContinuityApi'
@@ -132,10 +133,12 @@ const InventoryPage = () => {
   // Search filters
   const [locationSearch, setLocationSearch] = useState('')
   const [productSearch, setProductSearch] = useState('')
+  const [dateFilter, setDateFilter] = useState({ fromDate: undefined, toDate: undefined })
 
   // History Modal
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [batchHistory, setBatchHistory] = useState([])
+  const [historyBatch, setHistoryBatch] = useState(null)
   const [isHistoryLoading, setIsHistoryLoading] = useState(false)
   const [downloadingWorkbook, setDownloadingWorkbook] = useState('')
 
@@ -176,7 +179,10 @@ const InventoryPage = () => {
 
       const [layoutRes, stockRes] = await Promise.all([
         layoutRequest,
-        stockApi.getAllStock(selectedWarehouseId),
+        stockApi.getAllStock(selectedWarehouseId, {
+          fromDate: dateFilter.fromDate,
+          toDate: dateFilter.toDate,
+        }),
       ])
 
       setLayout(layoutRes.data?.data || null)
@@ -188,7 +194,7 @@ const InventoryPage = () => {
     } finally {
       setIsLoading(false)
     }
-  }, [currentRole, selectedWarehouseId, t])
+  }, [currentRole, dateFilter.fromDate, dateFilter.toDate, selectedWarehouseId, t])
 
   useEffect(() => {
     // Load the server-backed warehouse list when the page scope changes.
@@ -319,11 +325,12 @@ const InventoryPage = () => {
     })
   }
 
-  const handleViewHistory = async (batchId) => {
+  const handleViewHistory = async (batch) => {
     setIsHistoryModalOpen(true)
     setIsHistoryLoading(true)
+    setHistoryBatch(batch)
     try {
-      const res = await stockApi.getStockTransactions(batchId)
+      const res = await stockApi.getStockTransactions(batch.id)
       setBatchHistory(res.data?.data?.content || [])
     } catch (err) {
       showApiErrorToast(err, t('Could not load transaction history.'))
@@ -436,6 +443,15 @@ const InventoryPage = () => {
                   </option>
                 ))}
               </select>
+              <WmsDateRangeFilter
+                value={dateFilter}
+                onApply={(nextFilter) => {
+                  setDateFilter(nextFilter)
+                  setSelectedLocation({ type: 'all', id: null })
+                }}
+                disabled={isLoading}
+                className="w-full lg:min-w-[34rem]"
+              />
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
                 <Button
                   type="button"
@@ -704,8 +720,8 @@ const InventoryPage = () => {
                                   >
                                     {t('Arrival date:')}{' '}
                                     <span className="font-medium text-slate-700">
-                                      {batch.arrivalDate
-                                        ? new Date(batch.arrivalDate).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')
+                                      {(batch.arrivalDate || batch.createdAt)
+                                        ? new Date(batch.arrivalDate || batch.createdAt).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')
                                         : '—'}
                                     </span>
                                   </td>
@@ -731,7 +747,7 @@ const InventoryPage = () => {
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        handleViewHistory(batch.id)
+                                        handleViewHistory(batch)
                                       }}
                                       className="ml-auto flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600"
                                       title={t('Transaction history')}
@@ -765,6 +781,27 @@ const InventoryPage = () => {
             <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
           </div>
         ) : (
+          <div className="space-y-4">
+            {historyBatch && (
+              <div className="grid gap-3 rounded-xl border border-emerald-100 bg-emerald-50 p-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-emerald-700">{t('Product')}</p>
+                  <p className="mt-1 font-semibold text-slate-900">{historyBatch.skuName || historyBatch.skuCode || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-emerald-700">{t('Current stock')}</p>
+                  <p className="mt-1 text-lg font-bold text-slate-900">
+                    {formatStockQuantity(historyBatch.quantity, historyBatch.quantityMasked, '—')} {t('units')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-emerald-700">{t('Available stock')}</p>
+                  <p className="mt-1 text-lg font-bold text-slate-900">
+                    {formatStockQuantity(historyBatch.availableQuantity, historyBatch.quantityMasked, '—')} {t('units')}
+                  </p>
+                </div>
+              </div>
+            )}
           <DataTable
             columns={[
               { header: t('Date'), render: (row) => new Date(row.createdAt).toLocaleString(language === 'vi' ? 'vi-VN' : 'en-US') },
@@ -790,6 +827,16 @@ const InventoryPage = () => {
                 ),
               },
               {
+                header: t('Current stock'),
+                render: () => (
+                  <span className="font-semibold text-slate-700">
+                    {historyBatch
+                      ? formatStockQuantity(historyBatch.quantity, historyBatch.quantityMasked, '—')
+                      : '—'}
+                  </span>
+                ),
+              },
+              {
                 header: t('Receipt Code'),
                 render: (row) =>
                   row.receiptId ? row.receiptId.substring(0, 8).toUpperCase() : '—',
@@ -797,6 +844,7 @@ const InventoryPage = () => {
             ]}
             data={batchHistory}
           />
+          </div>
         )}
       </Modal>
 

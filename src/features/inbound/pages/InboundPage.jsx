@@ -17,6 +17,7 @@ import {
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
+import WmsDateRangeFilter from '@/components/molecules/WmsDateRangeFilter'
 import receiptApi from '@/services/wms/receiptApi'
 import productApi from '../../../services/wms/productApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
@@ -83,6 +84,8 @@ const InboundPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
   const [activeTab, setActiveTab] = useState('ALL')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [dateFilter, setDateFilter] = useState({ fromDate: undefined, toDate: undefined })
 
   // Form states. The BE accepts multiple receipt items, so keep one editable
   // line per SKU and only use the active line for the bin allocation view.
@@ -380,8 +383,8 @@ const InboundPage = () => {
         type: 'INBOUND',
         page,
         size: pageSize,
-        sortBy: 'createdAt',
-        sortDir: 'desc',
+        fromDate: dateFilter.fromDate,
+        toDate: dateFilter.toDate,
       })
       if (requestId !== receiptRequestIdRef.current) return
 
@@ -417,7 +420,7 @@ const InboundPage = () => {
     } finally {
       if (requestId === receiptRequestIdRef.current) setIsLoading(false)
     }
-  }, [page, pageSize, selectedWarehouseId])
+  }, [dateFilter.fromDate, dateFilter.toDate, page, pageSize, selectedWarehouseId])
 
   useEffect(() => {
     // Initial server data is intentionally loaded when this screen mounts.
@@ -438,7 +441,7 @@ const InboundPage = () => {
     if (!selectedWarehouseId) return
     setIsExporting(true)
     try {
-      const response = await receiptApi.exportReceipts(selectedWarehouseId, 'INBOUND')
+      const response = await receiptApi.exportReceipts(selectedWarehouseId, 'INBOUND', dateFilter)
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
@@ -775,10 +778,12 @@ const InboundPage = () => {
 
   const handleApprove = async (id) => {
     try {
-      await receiptApi.approveReceipt(id)
+      const response = await receiptApi.approveReceipt(id)
       toast.success('Inbound receipt approved.')
       await fetchReceipts()
       setCapacityRefreshKey((current) => current + 1)
+      setDetailReceipt(response?.data?.data ?? response?.data)
+      setIsDetailModalOpen(true)
     } catch (error) {
       console.error('Error approving receipt:', error)
       showApiErrorToast(error, 'Could not approve receipt.')
@@ -801,17 +806,37 @@ const InboundPage = () => {
   }
 
   const filteredReceipts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
     return receipts
       .filter((r) => {
-        if (activeTab === 'ALL') return true
-        if (activeTab === 'PENDING' && r.status === 'PENDING') return true
-        if (activeTab === 'APPROVED' && r.status === 'APPROVED') return true
-        if (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') return true
-        if (activeTab === 'COMPLETED' && r.status === 'COMPLETED') return true
-        return false
+        const matchesTab =
+          activeTab === 'ALL' ||
+          (activeTab === 'PENDING' && r.status === 'PENDING') ||
+          (activeTab === 'APPROVED' && r.status === 'APPROVED') ||
+          (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') ||
+          (activeTab === 'COMPLETED' && r.status === 'COMPLETED')
+
+        if (!matchesTab) return false
+        if (!query) return true
+
+        const searchableText = [
+          r.id,
+          r.status,
+          r.warehouseName,
+          r.senderName,
+          r.createdByFullName,
+          r.note,
+          ...(r.items || []).flatMap((item) => [item.skuCode, item.skuName]),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+
+        return searchableText.includes(query)
       })
       .sort(compareReceiptsByDateDesc)
-  }, [receipts, activeTab])
+  }, [receipts, activeTab, searchQuery])
 
   const firstReceiptNumber = totalElements === 0 ? 0 : page * pageSize + 1
   const lastReceiptNumber = Math.min(totalElements, page * pageSize + receipts.length)
@@ -916,14 +941,28 @@ const InboundPage = () => {
                     </div>
 
                     {/* Toolbar */}
-                    <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-white">
-                      <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-3 border-b border-slate-100 bg-white p-4 xl:flex-row xl:items-end xl:justify-between">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div className="relative w-72">
                           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <InputField placeholder={t('Search inbound receipts...')} className="h-9 pl-9" />
+                          <InputField
+                            placeholder={t('Search inbound receipts...')}
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            className="h-9 pl-9"
+                          />
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                        <WmsDateRangeFilter
+                          value={dateFilter}
+                          onApply={(nextFilter) => {
+                            setDateFilter(nextFilter)
+                            setPage(0)
+                          }}
+                          disabled={isLoading}
+                          className="w-full lg:min-w-[34rem]"
+                        />
                         <Button
                           variant="outline"
                           size="sm"

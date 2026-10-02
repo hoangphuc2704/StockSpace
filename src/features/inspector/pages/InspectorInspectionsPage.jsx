@@ -13,6 +13,7 @@ import {
   Clock3,
   Eye,
   FileText,
+  Image as ImageIcon,
   ImagePlus,
   Loader2,
   MapPin,
@@ -80,6 +81,20 @@ const getSummaryText = (inspection) =>
   inspection?.description ||
   inspection?.inspectionNote ||
   'No additional description is available.'
+
+const getReportImages = (inspection) => {
+  const images =
+    inspection?.images ||
+    inspection?.reportImages ||
+    inspection?.imageUrls ||
+    inspection?.reportImageUrls
+
+  if (!Array.isArray(images)) return []
+
+  return images
+    .map((image) => (typeof image === 'string' ? image : image?.url || image?.imageUrl))
+    .filter(Boolean)
+}
 
 const STATUS_CONFIG = {
   ALL: { label: 'All', variant: 'outline' },
@@ -150,6 +165,7 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
 
   const statusConfig = STATUS_CONFIG[inspection.status] || STATUS_CONFIG.ALL
   const canSubmit = inspection.status === 'PENDING' || inspection.status === 'IN_PROGRESS'
+  const reportImages = getReportImages(inspection)
 
   return (
     <div
@@ -248,6 +264,35 @@ const InspectionDetailModal = ({ inspection, onClose, onOpenSubmit }) => {
                   {getSummaryText(inspection)}
                 </p>
               </div>
+
+              {reportImages.length > 0 && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <ImageIcon className="h-4 w-4 text-slate-500" />
+                    Signed report images ({reportImages.length})
+                  </h3>
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {reportImages.map((url, index) => (
+                      <a
+                        key={`${url}-${index}`}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group aspect-video overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+                      >
+                        <img
+                          src={url}
+                          alt={`Signed inspection report ${index + 1}`}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none'
+                          }}
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
 
             <aside className="space-y-4">
