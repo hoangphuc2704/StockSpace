@@ -4,6 +4,8 @@ import {
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
+  Clock3,
+  Image as ImageIcon,
   MapPin,
   User,
   Warehouse,
@@ -25,6 +27,14 @@ const OWNER_INFORMATION_LABELS = {
   physicalDetails: 'Warehouse type, capacity, dimensions and layout',
   descriptionAndImages: 'Warehouse description and submitted images',
 }
+
+const getChecklistLabel = (key) =>
+  OWNER_INFORMATION_LABELS[key] ||
+  GENERAL_CHECKLIST.find((item) => item.key === key)?.label ||
+  String(key)
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/^./, (character) => character.toUpperCase())
 
 const parseChecklist = (value) => {
   if (!value) return {}
@@ -64,6 +74,77 @@ const formatDateTime = (value) =>
       })
     : 'Not available'
 
+const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString('en-US')
+    : 'Not available'
+
+const getInspectionDate = (inspection) =>
+  inspection?.inspectedAt ||
+  inspection?.inspectionDate ||
+  inspection?.scheduledAt ||
+  inspection?.appointmentDate ||
+  inspection?.createdAt ||
+  null
+
+const getOwnerName = (inspection, warehouse) =>
+  inspection?.ownerName ||
+  inspection?.warehouseOwnerName ||
+  inspection?.createdByName ||
+  warehouse?.ownerName ||
+  warehouse?.owner?.fullName ||
+  warehouse?.owner?.name ||
+  'Not available'
+
+const getInspectorName = (inspection) =>
+  inspection?.inspectorName ||
+  inspection?.inspectorFullName ||
+  inspection?.inspector?.fullName ||
+  inspection?.inspector?.name ||
+  'Not available'
+
+const getWarehouseAddress = (inspection, warehouse) =>
+  inspection?.warehouseAddress ||
+  inspection?.address ||
+  inspection?.location ||
+  warehouse?.address ||
+  'Not available'
+
+const getDescription = (inspection) =>
+  inspection?.notes ||
+  inspection?.reportNotes ||
+  inspection?.description ||
+  inspection?.inspectionNote ||
+  'No description was provided.'
+
+const getReportImages = (inspection) => {
+  const images =
+    inspection?.images ||
+    inspection?.reportImages ||
+    inspection?.imageUrls ||
+    inspection?.reportImageUrls
+  if (!Array.isArray(images)) return []
+
+  return images
+    .map((image) => (typeof image === 'string' ? image : image?.url || image?.imageUrl))
+    .filter(Boolean)
+}
+
+const getReason = (value) =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value.reason : null
+
+const getChecklistEntries = (checklist) => {
+  const knownEntries = GENERAL_CHECKLIST.filter((item) =>
+    Object.prototype.hasOwnProperty.call(checklist, item.key)
+  )
+  const knownKeys = new Set(knownEntries.map((item) => item.key))
+  const extraEntries = Object.keys(checklist)
+    .filter((key) => key !== 'ownerInformation' && !knownKeys.has(key))
+    .map((key) => ({ key, label: getChecklistLabel(key) }))
+
+  return [...knownEntries, ...extraEntries]
+}
+
 const getStatusConfig = (status) => {
   const normalized = String(status || '').toUpperCase()
   if (normalized === 'PASSED') {
@@ -98,17 +179,28 @@ const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
   useEscapeKey(Boolean(inspection), onClose)
   if (!inspection) return null
 
-  const statusConfig = getStatusConfig(inspection.status)
+  const normalizedStatus = String(inspection.status || '').toUpperCase()
+  const statusConfig = getStatusConfig(normalizedStatus)
   const checklist = parseChecklist(inspection.checklistData)
-  const ownerInformation = checklist.ownerInformation || {}
+  const ownerInformation = parseChecklist(checklist.ownerInformation)
+  const ownerInformationKeys = Object.keys(OWNER_INFORMATION_LABELS)
+  const ownerInformationEntries = [
+    ...ownerInformationKeys.map((key) => [key, ownerInformation[key]]),
+    ...Object.entries(ownerInformation).filter(([key]) => !ownerInformationKeys.includes(key)),
+  ]
+  const checklistEntries = getChecklistEntries(checklist)
   const warehouseName = inspection.warehouseName || warehouse?.name || 'Unknown warehouse'
-  const warehouseAddress = inspection.warehouseAddress || warehouse?.address || 'Not available'
-  const ownerName = inspection.ownerName || warehouse?.ownerName || 'Not available'
-  const inspectorName = inspection.inspectorName || 'Not available'
+  const warehouseAddress = getWarehouseAddress(inspection, warehouse)
+  const ownerName = getOwnerName(inspection, warehouse)
+  const inspectorName = getInspectorName(inspection)
+  const reportImages = getReportImages(inspection)
+  const passedChecklistCount = checklistEntries.filter(
+    ({ key }) => getChecklistBoolean(checklist[key]) === true
+  ).length
 
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -145,7 +237,7 @@ const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
               <div>
                 <p className="font-medium text-slate-500">Inspection date</p>
                 <p className="mt-1 font-semibold text-slate-900">
-                  {formatDateTime(inspection.inspectedAt || inspection.createdAt)}
+                  {formatDateTime(getInspectionDate(inspection))}
                 </p>
               </div>
             </div>
@@ -154,6 +246,15 @@ const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
               <div>
                 <p className="font-medium text-slate-500">Inspector</p>
                 <p className="mt-1 font-semibold text-slate-900">{inspectorName}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <Clock3 className="mt-0.5 h-4 w-4 text-slate-400" />
+              <div>
+                <p className="font-medium text-slate-500">Last updated</p>
+                <p className="mt-1 font-semibold text-slate-900">
+                  {formatDate(inspection.updatedAt || inspection.createdAt)}
+                </p>
               </div>
             </div>
             <div className="flex items-start gap-3 sm:col-span-2">
@@ -179,81 +280,122 @@ const InspectionReportModal = ({ inspection, warehouse, onClose }) => {
           <section className="rounded-2xl border border-slate-200 bg-white p-4">
             <h3 className="text-sm font-semibold text-slate-900">Inspection Description</h3>
             <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
-              {inspection.notes || inspection.reportNotes || 'No description was provided.'}
+              {getDescription(inspection)}
             </p>
           </section>
 
-          {Object.keys(ownerInformation).length > 0 && (
-            <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Owner Information Check</h3>
-              <div className="mt-3 space-y-3">
-                {Object.entries(ownerInformation).map(([key, item]) => {
-                  const verified = getChecklistBoolean(item?.verified) !== false
-                  return (
-                    <div
-                      key={key}
-                      className={`rounded-xl border bg-white px-3 py-3 ${
-                        verified ? 'border-emerald-200' : 'border-rose-200'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2 text-sm">
-                        {verified ? (
-                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                        ) : (
-                          <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
-                        )}
-                        <span className="font-semibold text-slate-800">
-                          {OWNER_INFORMATION_LABELS[key] || key}
-                        </span>
-                      </div>
-                      {!verified && item?.reason && (
-                        <p className="mt-2 pl-6 text-sm leading-5 text-rose-700">{item.reason}</p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-          )}
-
-          <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-semibold text-slate-900">Inspection Checklist</h3>
-              <span className="text-xs font-semibold text-slate-500">
-                {GENERAL_CHECKLIST.filter((item) => getChecklistBoolean(checklist[item.key]) === true).length}/
-                {GENERAL_CHECKLIST.length} passed
-              </span>
-            </div>
-            <div className="mt-3 space-y-2">
-              {GENERAL_CHECKLIST.map((item) => {
-                const hasResult = Object.prototype.hasOwnProperty.call(checklist, item.key)
-                const passed = hasResult && getChecklistBoolean(checklist[item.key]) === true
+          <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+            <h3 className="text-sm font-semibold text-slate-900">Owner Information Check</h3>
+            <div className="mt-3 space-y-3">
+              {ownerInformationEntries.map(([key, item]) => {
+                const result = getChecklistBoolean(item)
+                const reason = getReason(item)
                 return (
                   <div
-                    key={item.key}
-                    className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700"
+                    key={key}
+                    className={`rounded-xl border bg-white px-3 py-3 ${
+                      result === true
+                        ? 'border-emerald-200'
+                        : result === false
+                          ? 'border-rose-200'
+                          : 'border-slate-200'
+                    }`}
                   >
-                    {!hasResult ? (
-                      <span className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-slate-300" />
-                    ) : passed ? (
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-                    ) : (
-                      <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                    <div className="flex items-start gap-2 text-sm">
+                      {result === true ? (
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                      ) : result === false ? (
+                        <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                      ) : (
+                        <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                      )}
+                      <span className="font-semibold text-slate-800">
+                        {getChecklistLabel(key)}
+                      </span>
+                      {result === null && (
+                        <span className="ml-auto text-xs text-slate-400">Not recorded</span>
+                      )}
+                    </div>
+                    {reason && (
+                      <p className="mt-2 pl-6 text-sm leading-5 text-rose-700">{reason}</p>
                     )}
-                    <span>{item.label}</span>
-                    {!hasResult && <span className="ml-auto text-xs text-slate-400">Not recorded</span>}
                   </div>
                 )
               })}
             </div>
           </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-slate-900">Inspection Checklist</h3>
+              <span className="text-xs font-semibold text-slate-500">
+                {passedChecklistCount}/{checklistEntries.length || GENERAL_CHECKLIST.length} passed
+              </span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {(checklistEntries.length ? checklistEntries : GENERAL_CHECKLIST).map((item) => {
+                const hasResult = Object.prototype.hasOwnProperty.call(checklist, item.key)
+                const result = hasResult ? getChecklistBoolean(checklist[item.key]) : null
+                return (
+                  <div
+                    key={item.key}
+                    className="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700"
+                  >
+                    {result === true ? (
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                    ) : result === false ? (
+                      <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+                    ) : (
+                      <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                    )}
+                    <span className="min-w-0 flex-1">{item.label}</span>
+                    {result === null && (
+                      <span className="ml-auto shrink-0 text-xs text-slate-400">Not recorded</span>
+                    )}
+                    {result === false && getReason(checklist[item.key]) && (
+                      <span className="sr-only">{getReason(checklist[item.key])}</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
+          {reportImages.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-4">
+              <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <ImageIcon className="h-4 w-4 text-slate-500" />
+                Inspection Report Images ({reportImages.length})
+              </h3>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {reportImages.map((url, index) => (
+                  <a
+                    key={`${url}-${index}`}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group aspect-video overflow-hidden rounded-xl border border-slate-200 bg-slate-100"
+                  >
+                    <img
+                      src={url}
+                      alt={`Inspection report ${index + 1}`}
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <div
           className={`flex shrink-0 items-center justify-between gap-4 border-t px-6 py-4 ${
-            String(inspection.status || '').toUpperCase() === 'PASSED'
+            normalizedStatus === 'PASSED'
               ? 'border-emerald-200 bg-emerald-50'
-              : String(inspection.status || '').toUpperCase() === 'FAILED'
+              : normalizedStatus === 'FAILED'
                 ? 'border-rose-200 bg-rose-50'
                 : 'border-slate-100 bg-slate-50'
           }`}

@@ -1,13 +1,21 @@
 import api from '../apiConfig'
+import { cleanQueryParams, toApiDate } from '@/utils/wmsDateFilter'
 
 const receiptApi = {
   // Lấy danh sách phiếu nhập/xuất kho (có phân trang)
   getReceipts: (
     warehouseId,
-    { type, page, size, sortBy = 'createdAt', sortDir = 'desc' } = {}
+    { type, page, size, fromDate, toDate } = {}
   ) => {
     return api.get('/tenant/inventory/receipts', {
-      params: { warehouseId, type, page, size, sortBy, sortDir }
+      params: cleanQueryParams({
+        warehouseId,
+        type,
+        page,
+        size,
+        fromDate: toApiDate(fromDate),
+        toDate: toApiDate(toDate),
+      }),
     })
   },
 
@@ -23,7 +31,10 @@ const receiptApi = {
 
   // Duyệt phiếu nhập/xuất kho (Approve)
   approveReceipt: (id) => {
-    return api.patch(`/tenant/inventory/receipts/${id}/approve`)
+    return api.patch(`/tenant/inventory/receipts/${id}/approve`, null, {
+      // The page-level catch renders the backend capacity message.
+      skipErrorToast: true,
+    })
   },
 
   // Từ chối phiếu nhập/xuất kho (Reject)
@@ -32,9 +43,14 @@ const receiptApi = {
   },
 
   // Xuất file Excel/CSV danh sách phiếu nhập/xuất kho
-  exportReceipts: (warehouseId, type) => {
+  exportReceipts: (warehouseId, type, { fromDate, toDate } = {}) => {
     return api.get('/tenant/inventory/receipts/export', {
-      params: { warehouseId, type },
+      params: cleanQueryParams({
+        warehouseId,
+        type,
+        fromDate: toApiDate(fromDate),
+        toDate: toApiDate(toDate),
+      }),
       responseType: 'blob'
     })
   },

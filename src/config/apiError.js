@@ -28,6 +28,15 @@ export const API_ERROR_MESSAGE_OVERRIDES = {
   // EMAIL_ALREADY_EXISTS: 'Email này đã được sử dụng.',
 }
 
+// WMS capacity messages can contain Vietnamese warehouse/rack names while
+// still being actionable English messages from the backend. Keep them intact
+// instead of replacing them with the generic error toast.
+const WMS_CAPACITY_MESSAGE_PATTERN =
+  /(?:physical\s+(?:weight|volume)\s+capacity\s+exceeded|capacity\s+exceeded).*?(?:limit=|requested=)/i
+
+const isActionableWmsMessage = (message) =>
+  typeof message === 'string' && WMS_CAPACITY_MESSAGE_PATTERN.test(message)
+
 const toMessage = (value) => {
   if (typeof value === 'string' && value.trim()) return value.trim()
   if (Array.isArray(value)) return value.map(toMessage).filter(Boolean).join(', ')
@@ -61,13 +70,16 @@ export const getApiErrorMessage = (
     toMessage(payload?.errors) ||
     (error?.__apiErrorMessageSanitized ? '' : toMessage(error?.message))
 
-  return message && !VIETNAMESE_MESSAGE_PATTERN.test(message) ? message : fallback
+  return message && (isActionableWmsMessage(message) || !VIETNAMESE_MESSAGE_PATTERN.test(message))
+    ? message
+    : fallback
 }
 
 /** Prevent raw Vietnamese backend messages from leaking into inline FE errors. */
 export const normalizeApiErrorForUi = (error) => {
   const payload = error?.response?.data
   const rawMessage = toMessage(payload?.message || payload?.error || payload?.detail)
+  if (isActionableWmsMessage(rawMessage)) return error
   if (!error || !rawMessage || !VIETNAMESE_MESSAGE_PATTERN.test(rawMessage)) return error
 
   if (payload && typeof payload === 'object') {

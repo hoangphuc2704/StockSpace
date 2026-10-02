@@ -30,9 +30,9 @@ const Modal = ({ isOpen, onClose, title, children, className }) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-[200] bg-black/50 backdrop-blur-sm"
           />
-          <div className="fixed inset-0 z-[60] flex min-h-[100dvh] items-center justify-center overflow-y-auto p-2 pointer-events-none sm:p-4">
+          <div className="fixed inset-0 z-[210] flex min-h-[100dvh] items-center justify-center overflow-y-auto p-2 pointer-events-none sm:p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

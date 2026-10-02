@@ -122,7 +122,7 @@ const GlobalRoleNotification = () => {
   if (!user || !ROLE_ROUTE_PATTERN.test(location.pathname)) return null
 
   return (
-    <div className="pointer-events-auto fixed top-1 right-16 z-[100] sm:right-20">
+    <div className="pointer-events-auto fixed top-1 right-16 z-[55] sm:right-20">
       <NotificationDropdown />
     </div>
   )
