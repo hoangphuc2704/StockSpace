@@ -281,12 +281,31 @@ const manualTranslations = {
   Failed: 'Thất bại',
   Expired: 'Đã hết hạn',
   Canceled: 'Đã hủy',
+  'Warehouse inspection result': 'Kết quả kiểm định kho bãi',
+  'Withdrawal request approved': 'Yêu cầu rút tiền được duyệt',
+  'Withdrawal request rejected': 'Yêu cầu rút tiền bị từ chối',
+  'Rental contract renewal scheduled': 'Đã lên lịch gia hạn hợp đồng thuê',
+  'Rental contract confirmed': 'Hợp đồng thuê đã được xác nhận',
+  'Warehouse listing approved': 'Bài đăng kho bãi đã được duyệt',
+  'Warehouse listing rejected': 'Bài đăng kho bãi bị từ chối',
+  'Warehouse published': 'Kho bãi đã được đăng tải',
+  'Warehouse contract expiry reminder': 'Nhắc nhở hợp đồng thuê kho sắp hết hạn',
+  'Warehouse contract expired': 'Hợp đồng thuê kho đã hết hạn',
+  'Deposit successful': 'Nạp tiền thành công',
+  'Deposit request approved': 'Yêu cầu nạp tiền được duyệt',
+  'Deposit request rejected': 'Yêu cầu nạp tiền bị từ chối',
+  'All notifications marked read.': 'Đã đánh dấu tất cả thông báo là đã đọc.',
+  'Could not update notifications.': 'Không thể cập nhật thông báo.',
+
 }
 
-const translations = { ...vietnameseTranslations, ...additionalTranslations, ...manualTranslations }
-const LanguageContext = createContext(null)
-
 const normalize = (value) => value.replace(/\s+/g, ' ').trim()
+
+const translations = { ...vietnameseTranslations, ...additionalTranslations, ...manualTranslations }
+const reverseTranslations = Object.fromEntries(
+  Object.entries(translations).map(([en, vi]) => [normalize(vi), en])
+)
+const LanguageContext = createContext(null)
 
 const replaceKeepingWhitespace = (source, replacement) => {
   const leading = source.match(/^\s*/)?.[0] || ''
@@ -321,9 +340,21 @@ const createDomTranslator = (root) => {
       return
     }
 
-    const translated = translatedText.get(node)
+        const translated = translatedText.get(node)
     const original = originalText.get(node)
-    if (original !== undefined && current === translated) node.nodeValue = original
+    if (original !== undefined && current === translated) {
+      node.nodeValue = original
+      return
+    }
+
+    const normalized = normalize(current)
+    const enTranslation = reverseTranslations[normalized]
+    if (enTranslation) {
+      originalText.set(node, current)
+      const nextValue = replaceKeepingWhitespace(current, enTranslation)
+      translatedText.set(node, nextValue)
+      if (current !== nextValue) node.nodeValue = nextValue
+    }
   }
 
   const translateElementAttributes = (element) => {
@@ -343,8 +374,17 @@ const createDomTranslator = (root) => {
         originalAttributes.set(element, originals)
         translatedAttributes.set(element, translated)
         if (current !== translation) element.setAttribute(attribute, translation)
-      } else if (current === translated.get(attribute) && originals.has(attribute)) {
+            } else if (current === translated.get(attribute) && originals.has(attribute)) {
         element.setAttribute(attribute, originals.get(attribute))
+      } else {
+        const enTranslation = reverseTranslations[normalize(current)]
+        if (enTranslation && current !== enTranslation) {
+          originals.set(attribute, current)
+          translated.set(attribute, enTranslation)
+          originalAttributes.set(element, originals)
+          translatedAttributes.set(element, translated)
+          element.setAttribute(attribute, enTranslation)
+        }
       }
     }
   }
@@ -424,10 +464,14 @@ export const LanguageProvider = ({ children }) => {
     if (SUPPORTED_LANGUAGES.includes(nextLanguage)) setLanguageState(nextLanguage)
   }, [])
 
-  const t = useCallback(
-    (englishText) => {
-      if (language !== 'vi') return englishText
-      return translations[normalize(englishText)] || englishText
+    const t = useCallback(
+    (text) => {
+      if (!text || typeof text !== 'string') return text
+      const normalized = normalize(text)
+      if (language === 'vi') {
+        return translations[normalized] || text
+      }
+      return reverseTranslations[normalized] || text
     },
     [language]
   )

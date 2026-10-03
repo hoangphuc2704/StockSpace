@@ -105,6 +105,35 @@ const translateUom = (uom, language) => {
   return UOM_EN_TO_VI[key] || uom
 }
 
+const getTransactionTimestamp = (transaction) => {
+  const value = transaction?.createdAt || transaction?.occurredAt
+  const timestamp = Date.parse(value || '')
+  return Number.isFinite(timestamp) ? timestamp : Number.MAX_SAFE_INTEGER
+}
+
+const withStockAfterTransaction = (transactions = [], finalQuantity) => {
+  const totalChange = transactions.reduce(
+    (total, transaction) => total + (Number(transaction.quantityChanged) || 0),
+    0
+  )
+  const numericFinalQuantity = Number(finalQuantity)
+  let runningQuantity = Number.isFinite(numericFinalQuantity)
+    ? numericFinalQuantity - totalChange
+    : 0
+
+  return [...transactions]
+    .sort((first, second) => {
+      const timestampDifference = getTransactionTimestamp(first) - getTransactionTimestamp(second)
+      if (timestampDifference !== 0) return timestampDifference
+      return String(first?.id || '').localeCompare(String(second?.id || ''))
+    })
+    .map((transaction) => {
+      runningQuantity += Number(transaction.quantityChanged) || 0
+      return { ...transaction, stockAfterQuantity: runningQuantity }
+    })
+    .reverse()
+}
+
 const InventoryPage = () => {
   const [searchParams] = useSearchParams()
   const { isSidebarExpanded } = useSelector((state) => state.ui)
@@ -330,8 +359,8 @@ const InventoryPage = () => {
     setIsHistoryLoading(true)
     setHistoryBatch(batch)
     try {
-      const res = await stockApi.getStockTransactions(batch.id)
-      setBatchHistory(res.data?.data?.content || [])
+      const transactions = await stockApi.getAllStockTransactions(batch.id)
+      setBatchHistory(withStockAfterTransaction(transactions, batch.quantity))
     } catch (err) {
       showApiErrorToast(err, t('Could not load transaction history.'))
     } finally {
@@ -827,11 +856,11 @@ const InventoryPage = () => {
                 ),
               },
               {
-                header: t('Current stock'),
-                render: () => (
+                header: t('Stock after operation'),
+                render: (row) => (
                   <span className="font-semibold text-slate-700">
-                    {historyBatch
-                      ? formatStockQuantity(historyBatch.quantity, historyBatch.quantityMasked, '—')
+                    {historyBatch && row.stockAfterQuantity != null
+                      ? formatStockQuantity(row.stockAfterQuantity, historyBatch.quantityMasked, '—')
                       : '—'}
                   </span>
                 ),

@@ -120,7 +120,6 @@ const getStops = (receipt, batchDates) => {
 const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
   const { language, t } = useLanguage()
   const [batchDates, setBatchDates] = useState({})
-  const [stockSnapshot, setStockSnapshot] = useState([])
   const isOutbound = type === 'OUTBOUND'
   const statusKey = String(receipt?.status || '').toUpperCase()
   const movementApplied = APPLIED_RECEIPT_STATUSES.has(statusKey)
@@ -128,63 +127,48 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
   useEffect(() => {
     let active = true
 
-    if (isOpen && receipt?.warehouseId && receipt?.items?.length) {
-      const fetchDates = async () => {
+    // The receipt detail endpoint does not expose arrival dates on each item.
+    // Only outbound details need the stock snapshot for the picking route;
+    // inbound details should not trigger hidden transaction-history requests.
+    if (isOpen && isOutbound && receipt?.warehouseId && receipt?.items?.length) {
+      const fetchStockHistory = async () => {
         try {
-          const allStock = await stockApi.getAllStock(receipt.warehouseId)
+          const allStockPromise = stockApi.getAllStock(receipt.warehouseId)
+          const allStock = await allStockPromise
           if (!active) return
 
-          setStockSnapshot(allStock)
           const dates = {}
           allStock.forEach((batch) => {
             if (batch.id && batch.arrivalDate) dates[batch.id] = batch.arrivalDate
           })
           setBatchDates(dates)
         } catch (error) {
-          console.error('Failed to fetch batch dates', error)
+          console.error('Failed to fetch receipt stock snapshot', error)
+          if (active) {
+            setBatchDates({})
+          }
         }
       }
 
-      fetchDates()
-    } else {
-      setStockSnapshot([])
+      fetchStockHistory()
     }
 
     return () => {
       active = false
       setBatchDates({})
-      setStockSnapshot([])
     }
-  }, [isOpen, receipt?.id, receipt?.warehouseId, receipt?.items?.length])
+  }, [isOpen, isOutbound, receipt?.id, receipt?.warehouseId, receipt?.items])
 
-  const items = Array.isArray(receipt?.items) ? receipt.items : []
+  const items = useMemo(
+    () => (Array.isArray(receipt?.items) ? receipt.items : []),
+    [receipt]
+  )
   const stops = useMemo(
     () => (isOutbound ? getStops(receipt, batchDates) : []),
     [isOutbound, receipt, batchDates]
   )
   const statusMeta = STATUS_META[statusKey] || { label: receipt?.status || 'Unknown', variant: 'outline' }
   const pickingStrategy = formatPickingStrategy(receipt?.pickList?.strategy)
-  const stockByBatchId = useMemo(
-    () => new Map(stockSnapshot.map((batch) => [String(batch.id), batch])),
-    [stockSnapshot]
-  )
-  const getCurrentBatchQuantity = (batchId) => {
-    if (!movementApplied || !batchId) return null
-    const batch = stockByBatchId.get(String(batchId))
-    if (!batch || batch.quantityMasked === true) return null
-    const quantity = Number(batch.quantity)
-    return Number.isFinite(quantity) ? quantity : null
-  }
-  const affectedCurrentQuantity = useMemo(() => {
-    if (!movementApplied) return null
-
-    const batchIds = [...new Set(items.map((item) => item.stockBatchId).filter(Boolean).map(String))]
-    if (batchIds.length === 0) return null
-
-    const quantities = batchIds.map((batchId) => getCurrentBatchQuantity(batchId))
-    if (quantities.some((quantity) => quantity == null)) return null
-    return quantities.reduce((total, quantity) => total + quantity, 0)
-  }, [items, movementApplied, stockByBatchId])
   const totalQuantity = items.length > 0
     ? items.reduce((total, item) => total + (Number(item.quantity) || 0), 0)
     : stops.flatMap((stop) => stop.lines || []).reduce((total, line) => total + (Number(line.quantity) || 0), 0)
@@ -269,7 +253,7 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
             </section>
           )}
 
-          <section className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2">
+          <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div>
               <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">{t('Stock movement')}</p>
               <p className={`mt-1 text-xl font-bold tabular-nums ${movementApplied ? (isOutbound ? 'text-rose-600' : 'text-emerald-600') : 'text-slate-400'}`}>
@@ -281,14 +265,6 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
               <p className="mt-1 text-xs text-slate-500">
                 {movementApplied ? t('Applied to inventory') : t('Inventory changes after approval')}
               </p>
-            </div>
-            <div>
-              <p className="text-xs font-bold tracking-wide text-slate-500 uppercase">{t('Current stock')}</p>
-              <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
-                {affectedCurrentQuantity == null ? EMPTY_VALUE : formatQuantity(affectedCurrentQuantity, language)}
-                <span className="ml-1 text-xs font-medium text-slate-500">{t('units')}</span>
-              </p>
-              <p className="mt-1 text-xs text-slate-500">{t('Current quantity in affected batches')}</p>
             </div>
           </section>
 
@@ -359,7 +335,6 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
                                 <th className="px-4 py-3">{t('Arrival date')}</th>
                                 <th className="px-4 py-3 text-right">{t('Pick Quantity')}</th>
                                 <th className="px-4 py-3 text-right">{t('Change')}</th>
-                                <th className="px-4 py-3 text-right">{t('Current stock')}</th>
                                 <th className="px-4 py-3">{t('Note')}</th>
                               </tr>
                             </thead>
@@ -375,12 +350,6 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
                                   <td className="px-4 py-3 text-right font-bold tabular-nums text-emerald-700">{formatQuantity(line.quantity, language)}</td>
                                   <td className="px-4 py-3 text-right font-bold tabular-nums text-rose-600">
                                     {movementApplied ? `-${formatQuantity(line.quantity, language)}` : EMPTY_VALUE}
-                                  </td>
-                                  <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-700">
-                                    {(() => {
-                                      const currentQuantity = getCurrentBatchQuantity(line.stockBatchId)
-                                      return currentQuantity == null ? EMPTY_VALUE : formatQuantity(currentQuantity, language)
-                                    })()}
                                   </td>
                                   <td className="max-w-48 px-4 py-3 text-slate-500"><span className="block truncate" title={line.note || ''}>{line.note || EMPTY_VALUE}</span></td>
                                 </tr>
@@ -411,7 +380,6 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
                         <th className="px-4 py-3">{t('Bin')}</th>
                         <th className="px-4 py-3 text-right">{t('Quantity')}</th>
                         <th className="px-4 py-3 text-right">{t('Change')}</th>
-                        <th className="px-4 py-3 text-right">{t('Current stock')}</th>
                         <th className="px-4 py-3">{t('Note')}</th>
                       </tr>
                     </thead>
@@ -427,12 +395,6 @@ const ReceiptDetailModal = ({ isOpen, onClose, receipt, isLoading, type }) => {
                           <td className="px-4 py-3 text-right font-bold tabular-nums text-slate-900">{formatQuantity(item.quantity, language)}</td>
                           <td className="px-4 py-3 text-right font-bold tabular-nums text-emerald-600">
                             {movementApplied ? `+${formatQuantity(item.quantity, language)}` : EMPTY_VALUE}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-700">
-                            {(() => {
-                              const currentQuantity = getCurrentBatchQuantity(item.stockBatchId)
-                              return currentQuantity == null ? EMPTY_VALUE : formatQuantity(currentQuantity, language)
-                            })()}
                           </td>
                           <td className="max-w-56 px-4 py-3 text-slate-500"><span className="block truncate" title={item.note || ''}>{item.note || EMPTY_VALUE}</span></td>
                         </tr>

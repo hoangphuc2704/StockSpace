@@ -76,6 +76,7 @@ import InspectorInspectionsPage from './features/inspector/pages/InspectorInspec
 import WithdrawsHistory from './features/owner/pages/WithdrawsHistory'
 import AIChatWidget from './features/chat/components/AIChatWidget'
 import NotificationDropdown from './components/NotificationDropdown'
+import LanguageSwitcher from './components/LanguageSwitcher'
 
 // Dev Sandbox
 // import DevApiSandbox from './features/dev/DevApiSandbox'
@@ -124,6 +125,20 @@ const GlobalRoleNotification = () => {
   return (
     <div className="pointer-events-auto fixed top-1 right-16 z-[55] sm:right-20">
       <NotificationDropdown />
+    </div>
+  )
+}
+
+const GlobalAdminLanguage = () => {
+  const location = useLocation()
+  const user = useSelector((state) => state.auth.user)
+  const isAdmin = String(user?.role || '').toUpperCase() === 'ROLE_ADMIN'
+
+  if (!isAdmin || !/^\/admin(\/|$)/.test(location.pathname)) return null
+
+  return (
+    <div className="pointer-events-auto fixed top-1 right-2 z-[55]">
+      <LanguageSwitcher />
     </div>
   )
 }
@@ -283,6 +298,7 @@ const App = () => {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <GlobalRoleNotification />
+      <GlobalAdminLanguage />
       <AIChatWidget />
     </BrowserRouter>
   )
