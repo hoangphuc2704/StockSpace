@@ -9,6 +9,7 @@ import Badge from '@/components/atoms/Badge'
 import TableActionMenu from '@/components/TableActionMenu'
 import { ListTodo } from 'lucide-react'
 import staffApi from '@/services/staff/staffApi'
+import receiptApi from '@/services/wms/receiptApi'
 import { toast } from 'react-hot-toast'
 import { showApiErrorToast } from '@/config/apiError'
 
@@ -38,6 +39,51 @@ const StaffTasksPage = () => {
     }
     fetchTasks()
   }, [currentWarehouseId])
+
+  const handleViewTask = async (row) => {
+    if (row.operationType === 'AUDIT') {
+      navigate(`/staff/inventory-audits/${row.operationId}`)
+      return
+    }
+
+    if (row.operationType === 'TRANSFER') {
+      navigate(`/staff/transfers?transferId=${row.operationId}&action=VIEW`)
+      return
+    }
+
+    if (row.operationType === 'RECEIPT') {
+      try {
+        const response = await receiptApi.getReceiptDetail(row.operationId)
+        const receipt = response?.data?.data ?? response?.data
+        const receiptType = String(receipt?.type || receipt?.documentType || '').toUpperCase()
+        const page = receiptType === 'OUTBOUND' ? 'outbound' : 'inbound'
+        const params = new URLSearchParams({
+          warehouseId: row.warehouseId,
+          receiptId: row.operationId,
+        })
+        navigate(`/staff/${page}?${params.toString()}`)
+      } catch (error) {
+        showApiErrorToast(error, 'Could not load receipt details.')
+      }
+      return
+    }
+
+    toast.info(`Open ${row.operationType.toLowerCase()} ${row.operationId} to continue.`)
+  }
+
+  const handleTaskAction = (row, action) => {
+    if (action === 'VIEW') {
+      handleViewTask(row)
+      return
+    }
+
+    if (row.operationType === 'TRANSFER') {
+      navigate(`/staff/transfers?transferId=${row.operationId}&action=${action}`)
+      return
+    }
+
+    toast.info(`Open ${row.operationType.toLowerCase()} ${row.operationId} to continue.`)
+  }
 
   const columns = [
     {
@@ -94,14 +140,8 @@ const StaffTasksPage = () => {
       header: 'Actions',
       render: (row) => {
         const actionItems = (row.allowedActions || []).map(action => ({
-          label: action,
-          onClick: () => {
-            if (row.operationType === 'TRANSFER') {
-              navigate(`/staff/transfers?transferId=${row.operationId}&action=${action}`)
-              return
-            }
-            toast.info(`Open ${row.operationType.toLowerCase()} ${row.operationId} to continue.`)
-          }
+          label: action === 'VIEW' ? 'View' : action,
+          onClick: () => handleTaskAction(row, action),
         }))
 
         if (actionItems.length === 0) {

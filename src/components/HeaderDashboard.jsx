@@ -10,6 +10,7 @@ const Header = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { user } = useSelector((state) => state.auth)
+  const isAdmin = String(user?.role || '').toUpperCase() === 'ROLE_ADMIN'
 
   const displayRole = user?.role
     ? user.role.replace('ROLE_', '').charAt(0) +
@@ -46,9 +47,11 @@ const Header = () => {
         </div>
       </div>
 
-      <div className="ml-2 flex shrink-0 items-center gap-1 sm:ml-4 sm:gap-2">
-        <LanguageSwitcher className="lg:fixed lg:top-1 lg:right-2" />
-      </div>
+      {!isAdmin && (
+        <div className="ml-2 flex shrink-0 items-center gap-1 sm:ml-4 sm:gap-2">
+          <LanguageSwitcher className="lg:fixed lg:top-1 lg:right-2" />
+        </div>
+      )}
     </header>
   )
 }

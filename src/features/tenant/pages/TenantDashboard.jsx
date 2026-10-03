@@ -54,6 +54,7 @@ import tenantApi from '@/services/tenant/tenantApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import receiptApi from '@/services/wms/receiptApi'
 import notificationApi, { normalizeNotification } from '@/services/notificationApi'
+import { getLocalizedNotification } from '@/utils/englishMessages'
 
 const RECEIPT_STATUS_META = {
   APPROVED: {
@@ -121,27 +122,9 @@ const formatRelativeTime = (value, language = 'en') => {
 
 const translateNotificationText = (text = '', language = 'en', t) => {
   if (!text) return ''
-  if (language === 'en') {
-    const viToEn = {
-      'Kết quả kiểm kê đã được nộp': 'Audit result submitted',
-      'Yêu cầu chỉnh sửa kiểm kê': 'Audit revision requested',
-      'Chuyển kho đã hoàn tất': 'Warehouse transfer completed',
-      'Không có thông báo mới': 'No new notifications',
-    }
-    if (viToEn[text]) return viToEn[text]
-    if (text.includes('đã sẵn sàng để đối soát')) {
-      return text.replace('Phiếu kiểm kê cho', 'Audit sheet for').replace('đã sẵn sàng để đối soát.', 'is ready for review.')
-    }
-    if (text.includes('cần được mở để chỉnh sửa:')) {
-      return text.replace('Phiếu kiểm kê cho', 'Audit sheet for').replace('cần được mở để chỉnh sửa:', 'needs to be reopened for revision:')
-    }
-    if (text.includes('yêu cầu chuyển kho từ kho')) {
-      return text
-        .replace('yêu cầu chuyển kho từ kho', 'Transfer request from warehouse')
-        .replace('đến kho', 'to warehouse')
-        .replace('đã được tiếp nhận thành công. Tồn kho tại kho đích đã được cập nhật.', 'has been successfully received. Inventory at the destination warehouse has been updated.')
-    }
-  }
+  const localized = getLocalizedNotification({ title: text, message: text }, language)
+  if (localized.title && localized.title !== text) return localized.title
+  if (localized.message && localized.message !== text) return localized.message
   return t ? t(text) : text
 }
 
