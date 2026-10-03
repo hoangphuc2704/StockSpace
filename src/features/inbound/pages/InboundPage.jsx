@@ -7,8 +7,6 @@ import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import {
   ArrowDownLeft,
-  ChevronLeft,
-  ChevronRight,
   Search,
   Plus,
   Download,
@@ -32,7 +30,7 @@ import { positiveInteger, required } from '@/config/validation'
 import { useLanguage } from '@/i18n/LanguageContext'
 
 const CAPACITY_EPSILON = 1e-9
-const RECEIPT_PAGE_SIZE_OPTIONS = [10, 20, 50]
+const RECEIPT_FETCH_PAGE_SIZE = 50
 
 const compareReceiptsByDateDesc = (firstReceipt, secondReceipt) => {
   const firstTime = Date.parse(firstReceipt?.createdAt || '')
@@ -71,10 +69,6 @@ const InboundPage = () => {
   const [warehouses, setWarehouses] = useState([])
   const [skus, setSkus] = useState([])
   const [layout, setLayout] = useState(null)
-  const [page, setPage] = useState(0)
-  const [pageSize, setPageSize] = useState(20)
-  const [totalElements, setTotalElements] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
   const receiptRequestIdRef = useRef(0)
 
   // Selection states
@@ -381,8 +375,8 @@ const InboundPage = () => {
     try {
       const res = await receiptApi.getReceipts(selectedWarehouseId, {
         type: 'INBOUND',
-        page,
-        size: pageSize,
+        page: 0,
+        size: RECEIPT_FETCH_PAGE_SIZE,
         fromDate: dateFilter.fromDate,
         toDate: dateFilter.toDate,
       })
@@ -390,28 +384,40 @@ const InboundPage = () => {
 
       const payload = res.data?.data || {}
       const content = Array.isArray(payload) ? payload : payload.content || []
-      const responsePage = Number(payload.page ?? payload.pageNo ?? page)
-      const responseSize = Number(payload.size ?? payload.pageSize ?? pageSize)
+      const responseSize = Number(payload.size ?? payload.pageSize ?? RECEIPT_FETCH_PAGE_SIZE)
       const responseTotalElements = Number(payload.totalElements ?? content.length)
       const calculatedTotalPages = responseSize > 0
         ? Math.ceil(responseTotalElements / responseSize)
         : 1
       const responseTotalPages = Number(payload.totalPages ?? calculatedTotalPages)
+      let allReceipts = content
 
-      setReceipts(content)
-      setTotalElements(Number.isFinite(responseTotalElements) ? responseTotalElements : 0)
-      setTotalPages(
-        Number.isFinite(responseTotalPages) ? Math.max(responseTotalPages, 1) : 1
-      )
-      if (Number.isInteger(responsePage) && responsePage >= 0 && responsePage !== page) {
-        setPage(responsePage)
+      if (!Array.isArray(payload) && responseTotalPages > 1) {
+        const remainingResponses = await Promise.all(
+          Array.from({ length: responseTotalPages - 1 }, (_, index) => receiptApi.getReceipts(selectedWarehouseId, {
+            type: 'INBOUND',
+            page: index + 1,
+            size: responseSize,
+            fromDate: dateFilter.fromDate,
+            toDate: dateFilter.toDate,
+          }))
+        )
+        allReceipts = [
+          ...content,
+          ...remainingResponses.flatMap((response) => {
+            const nextPayload = response.data?.data || {}
+            return Array.isArray(nextPayload) ? nextPayload : nextPayload.content || []
+          }),
+        ]
       }
+
+      if (requestId !== receiptRequestIdRef.current) return
+
+      setReceipts(allReceipts)
     } catch (error) {
       if (requestId !== receiptRequestIdRef.current) return
       console.error('Error fetching receipts:', error)
       setReceipts([])
-      setTotalElements(0)
-      setTotalPages(1)
       if (error.response?.data?.errorCode === 'SUBSCRIPTION_REQUIRED') {
         // Only show if not already shown by initial data
       } else {
@@ -420,7 +426,7 @@ const InboundPage = () => {
     } finally {
       if (requestId === receiptRequestIdRef.current) setIsLoading(false)
     }
-  }, [dateFilter.fromDate, dateFilter.toDate, page, pageSize, selectedWarehouseId])
+  }, [dateFilter.fromDate, dateFilter.toDate, selectedWarehouseId])
 
   useEffect(() => {
     // Initial server data is intentionally loaded when this screen mounts.
@@ -656,8 +662,7 @@ const InboundPage = () => {
       await receiptApi.createReceipt(payload)
       toast.success('Inbound receipt created.')
       setIsModalOpen(false)
-      if (page === 0) await fetchReceipts()
-      else setPage(0)
+      await fetchReceipts()
 
       const emptyLine = createInboundLine()
       setInboundLines([emptyLine])
@@ -838,10 +843,6 @@ const InboundPage = () => {
       .sort(compareReceiptsByDateDesc)
   }, [receipts, activeTab, searchQuery])
 
-  const firstReceiptNumber = totalElements === 0 ? 0 : page * pageSize + 1
-  const lastReceiptNumber = Math.min(totalElements, page * pageSize + receipts.length)
-
-
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       <Header />
@@ -880,12 +881,9 @@ const InboundPage = () => {
                     onChange={(e) => {
                       const warehouseId = e.target.value
                       setSelectedWarehouseId(warehouseId)
-                      setPage(0)
                       if (!warehouseId) {
                         receiptRequestIdRef.current += 1
                         setReceipts([])
-                        setTotalElements(0)
-                        setTotalPages(1)
                         setIsLoading(false)
                       }
                       setInboundLines((previous) => previous.map((line) => ({ ...line, allocations: {} })))
@@ -927,7 +925,6 @@ const InboundPage = () => {
                           key={tab.id}
                           onClick={() => {
                             setActiveTab(tab.id)
-                            setPage(0)
                           }}
                           className={`relative pb-3 text-sm font-medium transition-colors ${activeTab === tab.id ? 'text-primary' : 'text-slate-500 hover:text-slate-700'
                             }`}
@@ -958,7 +955,6 @@ const InboundPage = () => {
                           value={dateFilter}
                           onApply={(nextFilter) => {
                             setDateFilter(nextFilter)
-                            setPage(0)
                           }}
                           disabled={isLoading}
                           className="w-full lg:min-w-[34rem]"
@@ -981,16 +977,16 @@ const InboundPage = () => {
                     </div>
 
                     {/* Table */}
-                    <div className="table-scroll-container overflow-x-auto bg-white">
+                    <div className="table-scroll-container min-w-0 max-w-full overflow-x-auto bg-white">
                       {isLoading ? (
                         <div className="flex justify-center p-8">
                           <Loader2 className="animate-spin text-slate-400 h-6 w-6" />
                         </div>
                       ) : (
                         <table className="w-full min-w-[1180px] text-left text-sm whitespace-nowrap">
-                          <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+                          <thead className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 text-slate-700 font-semibold shadow-sm">
                             <tr>
-                              <th className="px-4 py-3 border-x border-slate-200">{t('Receipt ID')}</th>
+                              <th className="sticky left-0 z-30 border-x border-slate-200 bg-slate-50 px-4 py-3 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.2)]">{t('Receipt ID')}</th>
                               <th className="px-4 py-3 border-r border-slate-200">{t('Sender')}</th>
                               <th className="px-4 py-3 border-r border-slate-200">{t('Person in charge')}</th>
                               <th className="px-4 py-3 border-r border-slate-200">{t('Item Name [Specs]')}</th>
@@ -1014,8 +1010,8 @@ const InboundPage = () => {
                                 ? `${r.items[0].skuName}${r.items.length > 1 ? ` ${t('and')} ${r.items.length - 1} ${t('other items')}` : ''}`
                                 : '—'
                               return (
-                                <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                                  <td className="px-4 py-3 border-r border-slate-100 text-primary font-medium">{r.id.substring(0, 8).toUpperCase()}</td>
+                                <tr key={r.id} className="group transition-colors hover:bg-slate-50/80">
+                                  <td className="sticky left-0 z-10 border-r border-slate-100 bg-white px-4 py-3 font-medium text-primary shadow-[2px_0_4px_-2px_rgba(15,23,42,0.14)] group-hover:bg-slate-50/80">{r.id.substring(0, 8).toUpperCase()}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-500">{r.senderName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 text-slate-700">{r.createdByFullName || '—'}</td>
                                   <td className="px-4 py-3 border-r border-slate-100 whitespace-normal min-w-[200px]">{itemName}</td>
@@ -1082,54 +1078,6 @@ const InboundPage = () => {
                         </table>
                       )}
                     </div>
-                    <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                      <span className="text-slate-500">
-                        {t('Showing')} {firstReceiptNumber}-{lastReceiptNumber} {t('of')} {totalElements} {t('receipts')}
-                      </span>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <label className="flex items-center gap-2 text-slate-500">
-                          {t('Rows per page')}
-                          <select
-                            value={pageSize}
-                            disabled={isLoading}
-                            onChange={(event) => {
-                              setPageSize(Number(event.target.value))
-                              setPage(0)
-                            }}
-                            className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 disabled:opacity-50"
-                          >
-                            {RECEIPT_PAGE_SIZE_OPTIONS.map((size) => (
-                              <option key={size} value={size}>
-                                {size}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                        <span className="min-w-24 text-center text-slate-600">
-                          {t('Page')} {page + 1} {t('of')} {totalPages}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            disabled={page === 0 || isLoading}
-                            onClick={() => setPage((current) => Math.max(0, current - 1))}
-                            aria-label={t('Previous receipt page')}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={page >= totalPages - 1 || isLoading}
-                            onClick={() => setPage((current) => current + 1)}
-                            aria-label={t('Next receipt page')}
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </footer>
                   </div>
                 </div>
               </div>

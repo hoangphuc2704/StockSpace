@@ -433,8 +433,7 @@ const TenantDashboard = () => {
       detail: `${metrics.stockBatchCount.toLocaleString('vi-VN')} ${t('batches in system')}`,
       icon: Layers,
       path: '/tenant/inventory',
-      featured: true,
-      dividerClass: 'border-r border-b border-slate-200 xl:border-b-0',
+      dividerClass: 'border-b border-slate-200 sm:border-r xl:border-b-0',
     },
     {
       label: 'Leased warehouses',
@@ -452,7 +451,7 @@ const TenantDashboard = () => {
       detail: 'Product catalog under management',
       icon: Boxes,
       path: '/tenant/skus',
-      dividerClass: 'border-r border-slate-200 xl:border-r',
+      dividerClass: 'border-b border-slate-200 sm:border-r xl:border-b-0',
     },
     {
       label: 'Operational staff',
@@ -729,21 +728,21 @@ const TenantDashboard = () => {
               aria-busy={isLoading || isRefreshing}
               className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs"
             >
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-3 sm:px-5">
-                <div>
-                  <h2 id="summary-heading" className="text-sm font-semibold text-slate-950">
+              <div className="flex flex-col gap-2 border-b border-slate-200 bg-slate-50/70 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                <div className="min-w-0">
+                  <h2 id="summary-heading" className="text-base font-semibold text-slate-950">
                     {t('Managed resources')}
                   </h2>
-                  <p className="mt-0.5 text-xs text-slate-500">
+                  <p className="mt-1 text-sm text-slate-500">
                     {t('Aggregated metrics across all leased warehouses')}
                   </p>
                 </div>
-                <span className="text-xs font-medium text-slate-500">
+                <span className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
                   {t('Click metric to view details')}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 xl:grid-cols-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
                 {summaryMetrics.map((metric) => {
                   const Icon = metric.icon
                   return (
@@ -753,49 +752,28 @@ const TenantDashboard = () => {
                       onClick={() => navigate(metric.path)}
                       className={`group relative min-h-32 p-4 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none focus-visible:ring-inset sm:min-h-36 sm:p-5 ${
                         metric.dividerClass
-                      } ${metric.featured ? 'bg-slate-900 hover:bg-slate-800' : 'bg-white hover:bg-slate-50'}`}
+                      } bg-white hover:bg-slate-50`}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span
-                          className={`text-xs font-semibold tracking-[0.1em] uppercase ${
-                            metric.featured ? 'text-slate-300' : 'text-slate-500'
-                          }`}
-                        >
+                        <span className="text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
                           {t(metric.label)}
                         </span>
-                        <Icon
-                          className={`h-4 w-4 ${metric.featured ? 'text-blue-300' : 'text-slate-400'}`}
-                          aria-hidden="true"
-                        />
+                        <Icon className="h-4 w-4 text-slate-400" aria-hidden="true" />
                       </div>
 
                       <div className="mt-4 flex items-baseline gap-2">
                         {isLoading ? (
-                          <span
-                            className={`h-8 w-24 animate-pulse rounded ${
-                              metric.featured ? 'bg-slate-700' : 'bg-slate-200'
-                            }`}
-                          />
+                          <span className="h-8 w-24 animate-pulse rounded bg-slate-200" />
                         ) : (
-                          <span
-                            className={`text-2xl font-bold tracking-tight tabular-nums sm:text-3xl ${
-                              metric.featured ? 'text-white' : 'text-slate-950'
-                            }`}
-                          >
+                          <span className="text-2xl font-bold tracking-tight text-slate-950 tabular-nums sm:text-3xl">
                             {initialDashboardUnavailable ? '—' : metric.value}
                           </span>
                         )}
-                        <span
-                          className={`text-xs font-medium ${metric.featured ? 'text-slate-400' : 'text-slate-500'}`}
-                        >
-                          {t(metric.unit)}
-                        </span>
+                        <span className="text-xs font-medium text-slate-500">{t(metric.unit)}</span>
                       </div>
 
                       <div className="mt-3 flex items-center justify-between gap-3">
-                        <span
-                          className={`line-clamp-2 text-xs sm:text-sm ${metric.featured ? 'text-slate-300' : 'text-slate-600'}`}
-                        >
+                        <span className="line-clamp-2 text-xs text-slate-500 sm:text-sm">
                           {isLoading
                             ? t('Synchronizing metrics')
                             : initialDashboardUnavailable

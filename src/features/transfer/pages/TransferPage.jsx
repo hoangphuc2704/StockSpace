@@ -229,7 +229,7 @@ const ProgressRail = ({ status }) => {
 
 const SummaryCard = ({ label, value, unit, description, icon: Icon, tone, featured }) => (
   <article
-    className={`min-h-32 p-4 sm:p-5 ${featured ? 'bg-slate-900' : 'bg-white'} border-r border-slate-200 last:border-r-0`}
+    className={`min-h-26 p-3 sm:p-4 ${featured ? 'bg-slate-900' : 'bg-white'} border-r border-slate-200 last:border-r-0`}
   >
     <div className="flex items-center justify-between gap-3">
       <p
@@ -238,13 +238,13 @@ const SummaryCard = ({ label, value, unit, description, icon: Icon, tone, featur
         {label}
       </p>
       <span
-        className={`inline-flex h-8 w-8 items-center justify-center rounded-lg ${featured ? 'bg-slate-800 text-blue-300' : tone}`}
+        className={`inline-flex h-7 w-7 items-center justify-center rounded-lg ${featured ? 'bg-slate-800 text-blue-300' : tone}`}
       >
-        <Icon className="h-4 w-4" />
+        <Icon className="h-3.5 w-3.5" />
       </span>
     </div>
     <p
-      className={`mt-4 text-3xl font-bold tracking-tight tabular-nums ${featured ? 'text-white' : 'text-slate-950'}`}
+      className={`mt-2 text-2xl font-bold tracking-tight tabular-nums ${featured ? 'text-white' : 'text-slate-950'}`}
     >
       {value}
       <span
@@ -253,7 +253,7 @@ const SummaryCard = ({ label, value, unit, description, icon: Icon, tone, featur
         {unit}
       </span>
     </p>
-    <p className={`mt-2 text-xs leading-5 ${featured ? 'text-slate-300' : 'text-slate-600'}`}>
+    <p className={`mt-1 text-xs leading-4 ${featured ? 'text-slate-300' : 'text-slate-600'}`}>
       {description}
     </p>
   </article>
@@ -894,11 +894,6 @@ const TransferPage = ({ currentRole }) => {
     ].filter(Boolean)
   }
 
-  const clearFilters = () => {
-    setSelectedWarehouseId('')
-    setSearchQuery('')
-    setStatusFilter('ALL')
-  }
   const handleCreated = async (createdTransfer) => {
     await refreshAfterMutation()
     setStatusFilter('PENDING')
@@ -928,7 +923,7 @@ const TransferPage = ({ currentRole }) => {
           className={`flex min-w-0 flex-1 flex-col transition-all duration-150 ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
           <main className="mx-auto w-full max-w-[1600px] min-w-0 space-y-5 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
-            <header className="flex flex-col justify-between gap-5 border-b border-slate-300 pb-5 xl:flex-row xl:items-end">
+            <header className="flex flex-col justify-between gap-4 border-b border-slate-300 pb-4 xl:flex-row xl:items-end">
               <div className="max-w-3xl min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-slate-500">
                   <span className="inline-flex items-center gap-1.5 tracking-[0.12em] uppercase">
@@ -959,12 +954,12 @@ const TransferPage = ({ currentRole }) => {
                   </span>
                 )}
                 <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto">
-                  <label className="flex min-w-56 flex-1 flex-col gap-1.5 text-xs font-semibold text-slate-600 sm:flex-none">
+                  <label className="flex min-w-52 flex-1 flex-col gap-1 text-xs font-semibold text-slate-600 sm:flex-none">
                     {t('Warehouse context')}
                     <select
                       value={selectedWarehouseId}
                       onChange={(event) => setSelectedWarehouseId(event.target.value)}
-                      className="min-h-10 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-sm font-medium text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                      className="h-9 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     >
                       <option value="">{t('All warehouses')}</option>
                       {warehouses.map((warehouse) => (
@@ -978,13 +973,13 @@ const TransferPage = ({ currentRole }) => {
                     value={dateFilter}
                     onApply={(nextFilter) => setDateFilter(nextFilter)}
                     disabled={loading || refreshing}
-                    className="w-full xl:min-w-[34rem]"
+                    className="w-full sm:w-[28rem] sm:min-w-0"
                   />
                   <button
                     type="button"
                     onClick={() => fetchTransfers({ silent: true })}
                     disabled={refreshing || loading}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                   >
                     <RefreshCw
                       className={`h-4 w-4 ${refreshing ? 'animate-spin text-blue-600' : 'text-slate-500'}`}
@@ -995,7 +990,7 @@ const TransferPage = ({ currentRole }) => {
                     <button
                       type="button"
                       onClick={() => setCreateOpen(true)}
-                      className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800"
+                      className="inline-flex h-9 items-center gap-2 rounded-lg bg-blue-700 px-3 text-sm font-semibold text-white hover:bg-blue-800"
                     >
                       <Plus className="h-4 w-4" />
                       {t('Create transfer')}
@@ -1064,8 +1059,8 @@ const TransferPage = ({ currentRole }) => {
             </section>
 
             <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xs">
-              <div className="border-b border-slate-200 px-4 py-4 sm:px-5">
-                <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+              <div className="border-b border-slate-200 px-4 py-3 sm:px-5">
+                <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
                   <div>
                     <div className="flex items-center gap-2">
                       <h2 className="text-sm font-semibold text-slate-950">{t('Transfer records')}</h2>
@@ -1079,8 +1074,8 @@ const TransferPage = ({ currentRole }) => {
                     {contextTransfers.length} {contextTransfers.length === 1 ? t('record in this view') : t('records in this view')}
                   </span>
                 </div>
-                <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="flex flex-wrap gap-1.5" role="tablist">
+                <div className="mt-3 flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex flex-wrap gap-1" role="tablist">
                     {STATUS_FILTERS.map((filter) => (
                       <button
                         key={filter.id}
@@ -1088,11 +1083,11 @@ const TransferPage = ({ currentRole }) => {
                         role="tab"
                         aria-selected={statusFilter === filter.id}
                         onClick={() => setStatusFilter(filter.id)}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition ${statusFilter === filter.id ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-transparent text-slate-600 hover:bg-slate-50'}`}
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${statusFilter === filter.id ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-transparent text-slate-600 hover:bg-slate-50'}`}
                       >
                         {t(filter.label)}
                         <span
-                          className={`rounded-md px-1.5 py-0.5 text-[10px] ${statusFilter === filter.id ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'}`}
+                          className={`rounded-md px-1 py-0.5 text-[10px] ${statusFilter === filter.id ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-500'}`}
                         >
                           {counts[filter.id] || 0}
                         </span>
@@ -1100,14 +1095,14 @@ const TransferPage = ({ currentRole }) => {
                     ))}
                   </div>
                   <label className="relative block w-full xl:max-w-xs">
-                    <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Search className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     <span className="sr-only">{t('Search transfers')}</span>
                     <input
                       type="search"
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       placeholder={t('Search ID, warehouse, SKU or note')}
-                      className="min-h-10 w-full rounded-lg border border-slate-300 bg-white pr-3 pl-9 text-sm outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                      className="h-9 w-full rounded-lg border border-slate-300 bg-white pr-3 pl-8 text-sm outline-none placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     />
                   </label>
                 </div>
@@ -1142,12 +1137,12 @@ const TransferPage = ({ currentRole }) => {
                   ))}
                 </div>
               ) : filteredTransfers.length ? (
-                <div className="table-scroll-container overflow-x-auto">
+                <div className="table-scroll-container min-w-0 max-w-full overflow-x-auto">
                   <table className="w-full min-w-[1200px] text-left text-sm">
                     <caption className="sr-only">{t('Stock transfer records')}</caption>
-                    <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-bold tracking-[0.12em] text-slate-500 uppercase">
+                    <thead className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 text-[10px] font-bold tracking-[0.12em] text-slate-500 uppercase shadow-sm">
                       <tr>
-                        <th className="px-5 py-3.5">{t('Transfer')}</th>
+                        <th className="sticky left-0 z-30 bg-slate-50 px-5 py-3.5 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.2)]">{t('Transfer')}</th>
                         <th className="px-5 py-3.5">{t('Warehouse route')}</th>
                         <th className="px-5 py-3.5">{t('Workflow status')}</th>
                         <th className="px-5 py-3.5">{t('Created & assigned')}</th>
@@ -1165,8 +1160,8 @@ const TransferPage = ({ currentRole }) => {
                           transfer.destinationWarehouse?.name || t('Unknown destination')
                         const currentDestination = transfer.currentDestinationWarehouse?.name
                         return (
-                          <tr key={transfer.id} className="transition-colors hover:bg-blue-50/30">
-                            <td className="px-5 py-4 align-top">
+                          <tr key={transfer.id} className="group transition-colors hover:bg-blue-50/30">
+                            <td className="sticky left-0 z-10 bg-white px-5 py-4 align-top shadow-[2px_0_4px_-2px_rgba(15,23,42,0.14)] group-hover:bg-blue-50/30">
                               <button
                                 type="button"
                                 onClick={() => setDetailId(transfer.id)}
@@ -1325,18 +1320,10 @@ const TransferPage = ({ currentRole }) => {
                       ? t('Try another status, warehouse or search term.')
                       : t('Create a transfer request to start moving stock between active warehouses.')}
                   </p>
-                  {contextTransfers.length ||
-                  searchQuery ||
-                  statusFilter !== 'ALL' ||
-                  selectedWarehouseId ? (
-                    <button
-                      type="button"
-                      onClick={clearFilters}
-                      className="mt-4 min-h-10 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                    >
-                      {t('Clear filters')}
-                    </button>
-                  ) : (
+                  {!contextTransfers.length &&
+                    !searchQuery &&
+                    statusFilter === 'ALL' &&
+                    !selectedWarehouseId &&
                     ['TENANT', 'STAFF'].includes(currentRole) && (
                       <button
                         type="button"
@@ -1346,8 +1333,7 @@ const TransferPage = ({ currentRole }) => {
                         <Plus className="h-4 w-4" />
                         {t('Create transfer')}
                       </button>
-                    )
-                  )}
+                    )}
                 </div>
               )}
               {!loading && !loadError && filteredTransfers.length > 0 && (

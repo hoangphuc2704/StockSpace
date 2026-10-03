@@ -113,7 +113,7 @@ const WarehouseListingPage = () => {
         <section className="border-b border-slate-200 bg-white">
           <div className="mx-auto max-w-[1500px] px-4 py-5 sm:px-6 lg:px-8">
             <form
-              className="flex flex-col gap-2 sm:flex-row"
+              className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
               onSubmit={(event) => {
                 event.preventDefault()
                 setSearchTerm((current) => current.trim())
@@ -122,7 +122,7 @@ const WarehouseListingPage = () => {
               <label htmlFor="warehouse-search" className="sr-only">
                 Search warehouses by name or area
               </label>
-              <div className="relative min-w-0 flex-1">
+              <div className="relative min-w-0 rounded-lg border border-slate-300 bg-slate-50 transition focus-within:border-blue-600 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100">
                 <Search
                   className="pointer-events-none absolute top-1/2 left-4 h-5 w-5 -translate-y-1/2 text-slate-500"
                   aria-hidden="true"
@@ -133,15 +133,15 @@ const WarehouseListingPage = () => {
                   placeholder="Search warehouse name, city, or area"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  className="min-h-13 w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pr-4 pl-12 text-base text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-100"
+                  className="min-h-11 w-full rounded-lg border-0 bg-transparent py-2.5 pr-28 pl-12 text-base text-slate-800 outline-none placeholder:text-slate-400"
                 />
+                <button
+                  type="submit"
+                  className="absolute top-1/2 right-1 min-h-9 -translate-y-1/2 rounded-md bg-red-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-red-700 focus-visible:ring-2 focus-visible:ring-red-600 focus-visible:ring-offset-1 focus-visible:outline-none"
+                >
+                  Tìm kiếm
+                </button>
               </div>
-              <button
-                type="submit"
-                className="min-h-13 rounded-xl bg-blue-700 px-6 text-sm font-bold text-white shadow-sm transition hover:bg-blue-800 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 focus-visible:outline-none"
-              >
-                Search
-              </button>
             </form>
 
             <div className="mt-6">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ClipboardCheck, ChevronLeft, ChevronRight, Eye, Plus } from 'lucide-react'
+import { ClipboardCheck, Eye, Plus } from 'lucide-react'
 import { FormShell } from '@/form/FormControls'
 import Button from '@/components/atoms/Button'
 import Modal from '@/components/organisms/Modal'
@@ -69,6 +69,8 @@ const SCOPE_LABELS = {
   BIN: { vi: 'Theo bin', en: 'By bin' },
 }
 
+const AUDIT_FETCH_PAGE_SIZE = 50
+
 const InventoryAuditPage = ({ currentRole }) => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -78,9 +80,6 @@ const InventoryAuditPage = ({ currentRole }) => {
 
   const [audits, setAudits] = useState([])
   const [loading, setLoading] = useState(false)
-  const [page, setPage] = useState(0)
-  const [totalPages, setTotalPages] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [warehouses, setWarehouses] = useState([])
   const [staffOptions, setStaffOptions] = useState([])
@@ -103,21 +102,48 @@ const InventoryAuditPage = ({ currentRole }) => {
     try {
       setLoading(true)
       const res = await auditApi.getAudits(selectedWarehouseId || '', {
-        page,
-        size: pageSize,
+        page: 0,
+        size: AUDIT_FETCH_PAGE_SIZE,
         fromDate: dateFilter.fromDate,
         toDate: dateFilter.toDate,
       })
       if (res.data?.success) {
-        setAudits(res.data.data.content || [])
-        setTotalPages(Math.max(res.data.data.totalPages || 1, 1))
+        const payload = res.data.data || {}
+        const content = Array.isArray(payload) ? payload : payload.content || []
+        const responseSize = Number(payload.size ?? payload.pageSize ?? AUDIT_FETCH_PAGE_SIZE)
+        const responseTotalElements = Number(payload.totalElements ?? content.length)
+        const calculatedTotalPages = responseSize > 0
+          ? Math.ceil(responseTotalElements / responseSize)
+          : 1
+        const responseTotalPages = Number(payload.totalPages ?? calculatedTotalPages)
+        let allAudits = content
+
+        if (!Array.isArray(payload) && responseTotalPages > 1) {
+          const remainingResponses = await Promise.all(
+            Array.from({ length: responseTotalPages - 1 }, (_, index) => auditApi.getAudits(selectedWarehouseId || '', {
+              page: index + 1,
+              size: responseSize,
+              fromDate: dateFilter.fromDate,
+              toDate: dateFilter.toDate,
+            }))
+          )
+          allAudits = [
+            ...content,
+            ...remainingResponses.flatMap((response) => {
+              const nextPayload = response.data?.data || {}
+              return Array.isArray(nextPayload) ? nextPayload : nextPayload.content || []
+            }),
+          ]
+        }
+
+        setAudits(allAudits)
       }
     } catch (error) {
       showApiErrorToast(error, 'Could not load audit records.')
     } finally {
       setLoading(false)
     }
-  }, [dateFilter.fromDate, dateFilter.toDate, page, pageSize, selectedWarehouseId])
+  }, [dateFilter.fromDate, dateFilter.toDate, selectedWarehouseId])
 
   const fetchWarehouses = useCallback(async () => {
     try {
@@ -308,7 +334,6 @@ const InventoryAuditPage = ({ currentRole }) => {
       if (res.data?.success) {
         toast.success('Audit plan created.')
         setIsCreateModalOpen(false)
-        setPage(0)
         fetchAudits()
       }
     } catch (error) {
@@ -342,7 +367,7 @@ const InventoryAuditPage = ({ currentRole }) => {
           className={`flex min-w-0 flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
           <main className="mx-auto w-full max-w-[1500px] space-y-5 px-4 py-6 sm:px-6 md:py-8 lg:px-8">
-            <header className="flex flex-col gap-4 border-b border-slate-300 pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <header className="flex flex-col gap-3 border-b border-slate-300 pb-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <div className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-[0.1em] text-slate-500 uppercase">
                   <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
@@ -356,13 +381,12 @@ const InventoryAuditPage = ({ currentRole }) => {
                 </p>
               </div>
               <div className="flex flex-wrap items-end gap-2">
-                <label className="flex min-w-52 flex-col gap-1 text-xs font-semibold text-slate-600">
+                <label className="flex min-w-48 flex-col gap-1 text-xs font-semibold text-slate-600">
                   {t('Warehouse')}
                   <select
-                    className="min-h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                    className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
                     value={selectedWarehouseId}
                     onChange={(event) => {
-                      setPage(0)
                       setSelectedWarehouseId(event.target.value)
                     }}
                   >
@@ -378,14 +402,14 @@ const InventoryAuditPage = ({ currentRole }) => {
                   value={dateFilter}
                   onApply={(nextFilter) => {
                     setDateFilter(nextFilter)
-                    setPage(0)
                   }}
                   disabled={loading}
-                  className="w-full lg:min-w-[34rem]"
+                  className="w-full sm:w-[28rem] sm:min-w-0"
                 />
                 <Button
                   onClick={handleOpenCreateModal}
-                  className="flex min-h-10 items-center gap-2 rounded-md"
+                  size="sm"
+                  className="flex h-9 items-center gap-2 rounded-md px-3"
                 >
                   <Plus className="h-4 w-4" aria-hidden="true" />
                   {t('Create Plan')}
@@ -407,30 +431,13 @@ const InventoryAuditPage = ({ currentRole }) => {
                     {t('Showing newest created audits')}
                   </p>
                 </div>
-                <label className="flex items-center gap-2 text-xs text-slate-500">
-                  {t('Rows per page')}
-                  <select
-                    value={pageSize}
-                    onChange={(event) => {
-                      setPage(0)
-                      setPageSize(Number(event.target.value))
-                    }}
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700"
-                  >
-                    {[10, 20, 50].map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </label>
               </div>
-              <div className="table-scroll-container overflow-x-auto">
+              <div className="table-scroll-container min-w-0 max-w-full overflow-x-auto">
                 <table className="w-full min-w-[920px] text-left text-sm">
                   <caption className="sr-only">{t('Inventory audit receipt list')}</caption>
-                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
+                  <thead className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase shadow-sm">
                     <tr>
-                      <th scope="col" className="px-5 py-3">
+                      <th scope="col" className="sticky left-0 z-30 bg-slate-50 px-5 py-3 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.2)]">
                         {t('Receipt')}
                       </th>
                       <th scope="col" className="px-5 py-3">
@@ -459,9 +466,14 @@ const InventoryAuditPage = ({ currentRole }) => {
                   <tbody className="divide-y divide-slate-200">
                     {loading ? (
                       Array.from({ length: 5 }).map((_, index) => (
-                        <tr key={index} aria-hidden="true">
+                          <tr key={index} aria-hidden="true">
                           {Array.from({ length: 8 }).map((__, cellIndex) => (
-                            <td key={cellIndex} className="px-5 py-4">
+                              <td
+                                key={cellIndex}
+                                className={cellIndex === 0
+                                  ? 'sticky left-0 z-10 bg-white px-5 py-4 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.14)]'
+                                  : 'px-5 py-4'}
+                              >
                               <span className="block h-4 animate-pulse rounded bg-slate-200" />
                             </td>
                           ))}
@@ -474,8 +486,8 @@ const InventoryAuditPage = ({ currentRole }) => {
                           className: 'border-slate-200 bg-slate-100 text-slate-700',
                         }
                         return (
-                          <tr key={audit.id} className="hover:bg-slate-50">
-                            <td className="px-5 py-3.5 font-mono text-xs font-semibold text-slate-900">
+                          <tr key={audit.id} className="group hover:bg-slate-50">
+                            <td className="sticky left-0 z-10 bg-white px-5 py-3.5 font-mono text-xs font-semibold text-slate-900 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.14)] group-hover:bg-slate-50">
                               AUD-{String(audit.id).slice(0, 8).toUpperCase()}
                             </td>
                             <td className="px-5 py-3.5 font-semibold text-slate-900">
@@ -534,31 +546,6 @@ const InventoryAuditPage = ({ currentRole }) => {
                   </tbody>
                 </table>
               </div>
-              <footer className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-3 text-sm">
-                <span className="text-slate-500">
-                  {t('Page')} {page + 1} / {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={page === 0 || loading}
-                    onClick={() => setPage((current) => Math.max(0, current - 1))}
-                    aria-label={t('Previous page')}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={page + 1 >= totalPages || loading}
-                    onClick={() => setPage((current) => current + 1)}
-                    aria-label={t('Next page')}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded border border-slate-300 bg-white text-slate-600 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </footer>
             </section>
           </main>
         </div>

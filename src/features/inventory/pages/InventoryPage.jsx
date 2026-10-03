@@ -403,22 +403,22 @@ const InventoryPage = () => {
 
         <main className="flex flex-1 flex-col gap-4 overflow-hidden p-4 pt-20 md:p-6 md:pt-24">
           {/* Top Bar */}
-          <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-                <PackageSearch className="h-5 w-5" />
+          <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 xl:flex-row xl:gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                <PackageSearch className="h-4 w-4" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-xl font-bold text-slate-900">{t('Inventory Management')}</h1>
-                <p className="text-sm text-slate-500">{t('View detailed inventory by physical layout')}</p>
+                <p className="truncate text-sm text-slate-500">{t('View detailed inventory by physical layout')}</p>
               </div>
-              <div className="flex items-center gap-3 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-600 shadow-sm">
-                  <PackageSearch className="h-4 w-4" />
+              <div className="flex shrink-0 items-center gap-2 rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-600 shadow-sm">
+                  <PackageSearch className="h-3.5 w-3.5" />
                 </div>
                 <div>
                   <p className="text-xs font-medium text-emerald-700">{t('Current inventory')}</p>
-                  <p className="text-lg font-bold leading-tight text-emerald-800">
+                  <p className="text-base font-bold leading-tight text-emerald-800">
                     {isLoading
                       ? '—'
                       : formatStockQuantity(totalInventoryQuantity, hasMaskedQuantities, '—')}
@@ -428,9 +428,9 @@ const InventoryPage = () => {
               </div>
             </div>
 
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-end xl:w-auto xl:flex-1">
               <select
-                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:w-64"
+                className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none sm:w-56 xl:w-60"
                 value={selectedWarehouseId}
                 onChange={(e) => {
                   setSelectedWarehouseId(e.target.value)
@@ -450,9 +450,9 @@ const InventoryPage = () => {
                   setSelectedLocation({ type: 'all', id: null })
                 }}
                 disabled={isLoading}
-                className="w-full lg:min-w-[34rem]"
+                className="w-full min-w-0 sm:flex-1 xl:w-[28rem] xl:flex-none"
               />
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
+              <div className="flex w-full sm:w-auto sm:shrink-0 sm:justify-end">
                 <Button
                   type="button"
                   size="sm"
@@ -467,7 +467,7 @@ const InventoryPage = () => {
                       ? t('Cannot export snapshot during blind count')
                       : t('Export snapshot')
                   }
-                  className="w-full gap-2 sm:w-auto"
+                  className="h-9 w-full gap-2 sm:w-auto"
                 >
                   <Download className="h-4 w-4" /> {t('Export snapshot')}
                 </Button>
@@ -578,7 +578,7 @@ const InventoryPage = () => {
             </div>
 
             {/* RIGHT PANE: Data Table */}
-            <div className="flex flex-1 flex-col overflow-hidden bg-white">
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white">
               {/* Table Toolbar */}
               <div className="flex items-center justify-between border-b border-slate-200 p-4">
                 <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -610,7 +610,7 @@ const InventoryPage = () => {
               </div>
 
               {/* Table Content */}
-              <div className="table-scroll-container flex-1 overflow-auto">
+              <div className="table-scroll-container min-w-0 max-w-full flex-1 overflow-auto">
                 {isLoading ? (
                   <div className="flex h-full items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
@@ -621,11 +621,11 @@ const InventoryPage = () => {
                     <p>{t('No inventory found at this location.')}</p>
                   </div>
                 ) : (
-                  <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="sticky top-0 z-10 bg-slate-50 font-medium text-slate-600 shadow-sm">
+                  <table className="w-full min-w-[980px] text-left text-sm whitespace-nowrap">
+                    <thead className="sticky top-0 z-20 bg-slate-50 font-medium text-slate-600 shadow-sm">
                       <tr>
-                        <th className="w-10 px-4 py-3"></th>
-                        <th className="px-4 py-3">{t('SKU Code')}</th>
+                        <th className="sticky left-0 z-30 w-10 bg-slate-50 px-2 py-3"></th>
+                        <th className="sticky left-10 z-30 bg-slate-50 px-4 py-3 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.2)]">{t('SKU Code')}</th>
                         <th className="px-4 py-3">{t('Product Name')}</th>
                         <th className="px-4 py-3">{t('UOM')}</th>
                         <th className="px-4 py-3 text-right">{t('Total Quantity')}</th>
@@ -651,17 +651,17 @@ const InventoryPage = () => {
                           <React.Fragment key={group.skuId}>
                             {/* Parent Row */}
                             <tr
-                              className={`cursor-pointer transition-colors hover:bg-emerald-50/50 ${isExpanded ? 'bg-slate-50/50' : ''}`}
+                              className={`group cursor-pointer transition-colors hover:bg-emerald-50/50 ${isExpanded ? 'bg-slate-50/50' : ''}`}
                               onClick={() => toggleExpand(group.skuId)}
                             >
-                              <td className="px-4 py-3 text-slate-400">
+                              <td className="sticky left-0 z-10 bg-white px-2 py-3 text-slate-400 group-hover:bg-emerald-50/50">
                                 {isExpanded ? (
                                   <ChevronDown className="h-5 w-5 text-emerald-600" />
                                 ) : (
                                   <ChevronRight className="h-5 w-5" />
                                 )}
                               </td>
-                              <td className="px-4 py-3 font-medium text-slate-900">
+                              <td className="sticky left-10 z-10 bg-white px-4 py-3 font-medium text-slate-900 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.14)] group-hover:bg-emerald-50/50">
                                 {group.skuCode}
                               </td>
                               <td className="min-w-[200px] px-4 py-3 font-medium whitespace-normal text-slate-700">
@@ -700,10 +700,10 @@ const InventoryPage = () => {
                               group.batches.map((batch) => (
                                 <tr
                                   key={batch.id}
-                                  className="border-b border-white bg-slate-50/80 text-slate-600"
+                                  className="group border-b border-white bg-slate-50/80 text-slate-600"
                                 >
-                                  <td className="px-4 py-2.5"></td>
-                                  <td className="relative px-4 py-2.5">
+                                  <td className="sticky left-0 z-10 bg-slate-50/80 px-2 py-2.5"></td>
+                                  <td className="sticky left-10 z-10 relative bg-slate-50/80 px-4 py-2.5 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]">
                                     {/* Tree Connector Line */}
                                     <div className="absolute top-0 -left-6 h-full w-px bg-slate-200" />
                                     <div className="absolute top-1/2 -left-6 h-px w-4 bg-slate-200" />

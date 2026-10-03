@@ -639,7 +639,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
               ].map(([label, value]) => (
                 <div
                   key={label}
-                  className="border-b border-slate-200 px-4 py-3 md:border-r xl:[&:nth-child(4n)]:border-r-0 xl:[&:nth-last-child(-n+4)]:border-b-0"
+                  className="border-b border-slate-200 px-3 py-2.5 md:border-r xl:[&:nth-child(4n)]:border-r-0 xl:[&:nth-last-child(-n+4)]:border-b-0"
                 >
                   <p className="text-[11px] font-semibold tracking-[0.08em] text-slate-500 uppercase">
                     {label}
@@ -650,19 +650,19 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
             </section>
 
             {(audit.note || (audit.reviewReason && audit.status !== 'RECOUNT_REQUIRED')) && (
-              <section className="grid gap-4 border border-slate-200 bg-white p-4 md:grid-cols-2">
+              <section className="grid gap-3 border border-slate-200 bg-white p-3 md:grid-cols-2">
                 {audit.note && (
                   <div>
                     <h2 className="text-xs font-semibold text-slate-500 uppercase">
                       Plan notes
                     </h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">{audit.note}</p>
+                    <p className="mt-1.5 text-sm leading-6 text-slate-700">{audit.note}</p>
                   </div>
                 )}
                 {audit.reviewReason && audit.status !== 'RECOUNT_REQUIRED' && (
                   <div>
                     <h2 className="text-xs font-semibold text-slate-500 uppercase">Review reason</h2>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">{audit.reviewReason}</p>
+                    <p className="mt-1.5 text-sm leading-6 text-slate-700">{audit.reviewReason}</p>
                   </div>
                 )}
               </section>
@@ -688,11 +688,11 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                   <span className="text-xs text-purple-700">Notes only</span>
                 )}
               </div>
-              <div className="table-scroll-container overflow-x-auto">
+              <div className="table-scroll-container min-w-0 max-w-full overflow-x-auto">
                 <table className="w-full min-w-[960px] text-left text-sm">
-                  <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase">
+                  <thead className="sticky top-0 z-20 border-b border-slate-200 bg-slate-50 text-[11px] font-semibold tracking-[0.08em] text-slate-600 uppercase shadow-sm">
                     <tr>
-                      <th className="px-4 py-3">SKU / Product</th>
+                      <th className="sticky left-0 z-30 bg-slate-50 px-4 py-3 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.2)]">SKU / Product</th>
                       <th className="px-4 py-3">Location</th>
                       <th className="px-4 py-3 text-right">System</th>
                       <th className="px-4 py-3 text-right">Actual</th>
@@ -722,7 +722,7 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                             else itemRowRefs.current.delete(itemKey)
                           }}
                           data-audit-item-id={item.id}
-                          className={`align-top transition-colors ${
+                          className={`group align-top transition-colors ${
                             highlightedItemId === String(item.id)
                               ? 'bg-amber-100 ring-2 ring-amber-400 ring-inset'
                               : isUnexpected
@@ -730,7 +730,15 @@ const InventoryAuditDetailPage = ({ currentRole }) => {
                                 : 'hover:bg-slate-50'
                           }`}
                         >
-                          <td className="px-4 py-3">
+                          <td
+                            className={`sticky left-0 z-10 px-4 py-3 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.14)] ${
+                              highlightedItemId === String(item.id)
+                                ? 'bg-amber-100'
+                                : isUnexpected
+                                  ? 'bg-amber-50/70 group-hover:bg-amber-100/70'
+                                  : 'bg-white group-hover:bg-slate-50'
+                            }`}
+                          >
                             <div className="flex flex-wrap items-center gap-1.5">
                               <p className="font-mono text-xs font-semibold text-slate-900">
                                 {item.skuCode || '-'}

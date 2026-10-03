@@ -13,6 +13,7 @@ import {
   Hash,
   Download,
   Upload,
+  Search,
 } from 'lucide-react'
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
@@ -363,7 +364,7 @@ const SkuPage = () => {
         <div
           className={`flex flex-1 flex-col transition-all duration-150 ease-in-out ${isSidebarExpanded ? 'md:pl-60' : 'md:pl-18'}`}
         >
-          <main className="mx-auto w-full max-w-400 space-y-8 p-4 sm:p-6 md:p-8">
+          <main className="mx-auto w-full max-w-400 space-y-5 p-4 sm:p-6 md:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h1 className="flex items-center gap-3 text-2xl font-bold text-slate-900">
@@ -375,87 +376,91 @@ const SkuPage = () => {
               </div>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-end">
                 <Button
+                  size="sm"
                   variant="outline"
                   onClick={handleExportCatalog}
                   isLoading={isExportingCatalog}
                   disabled={isExportingCatalog}
-                  className="w-full gap-2 sm:w-auto"
+                  className="h-9 w-full gap-1.5 px-2.5 text-xs sm:w-auto"
                 >
-                  <Download className="h-4 w-4" /> Export catalog
+                  <Download className="h-3.5 w-3.5" /> Export catalog
                 </Button>
                 {isTenant && (
                   <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => setIsCatalogImportOpen(true)}
-                    className="w-full gap-2 sm:w-auto"
+                    className="h-9 w-full gap-1.5 px-2.5 text-xs sm:w-auto"
                   >
-                    <Upload className="h-4 w-4" /> Import catalog
+                    <Upload className="h-3.5 w-3.5" /> Import catalog
                   </Button>
                 )}
-                <Button onClick={handleOpenCreate} className="w-full sm:w-auto">
-                  <Plus className="mr-2 h-4 w-4" /> Add SKU
+                <Button
+                  size="sm"
+                  onClick={handleOpenCreate}
+                  className="h-9 w-full gap-1.5 px-3 text-xs sm:w-auto"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add SKU
                 </Button>
               </div>
             </div>
 
             {/* Top Search Area */}
-            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="space-y-4">
-                <InputField
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full border-blue-400 focus:border-blue-500 focus:ring-blue-500"
-                />
-                <div className="grid grid-cols-1 gap-4">
+            <div className="min-w-0">
+              <form
+                onSubmit={(event) => event.preventDefault()}
+                className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center"
+              >
+                <div className="relative min-w-0 flex-1 rounded-lg border border-slate-300 bg-white transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200">
+                  <Search className="pointer-events-none absolute top-1/2 left-3 z-10 h-4 w-4 -translate-y-1/2 text-slate-700" />
+                  <InputField
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-9 rounded-none border-0 bg-transparent pl-9 shadow-none focus-visible:ring-0"
+                  />
+                </div>
+                <div className="min-w-0 sm:w-56 sm:shrink-0">
                   <select
-                    className="w-full rounded-md border border-slate-200 p-2 text-sm text-slate-600 focus:border-blue-500 focus:ring-blue-500"
+                    id="sku-search-category"
+                    aria-label="Search by category"
+                    className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-600 focus:border-blue-500 focus:ring-blue-500"
                     value={searchCategory}
-                    onChange={(e) => setSearchCategory(e.target.value)}
+                    onChange={(event) => setSearchCategory(event.target.value)}
                   >
                     <option value="">Search by Category...</option>
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
                       </option>
                     ))}
                   </select>
                 </div>
-                <div className="flex justify-center gap-3 pt-2">
-                  <Button className="w-32 bg-slate-500 hover:bg-slate-600">Search</Button>
-                  <Button
-                    variant="outline"
-                    className="w-32 border-slate-200 bg-slate-50 text-slate-600"
-                    onClick={() => {
-                      setSearchQuery('')
-                      setSearchCategory('')
-                    }}
-                  >
-                    <div className="flex items-center justify-center gap-2">
-                      <X className="h-4 w-4" /> Clear
-                    </div>
-                  </Button>
-                </div>
-              </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-9 shrink-0 rounded-md bg-red-600 px-5 text-sm font-semibold hover:bg-red-700"
+                >
+                  Tìm kiếm
+                </Button>
+              </form>
             </div>
 
             {/* Table Area */}
             <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               {/* Summary Tabs */}
-              <div className="flex items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 pt-3">
-                <button className="relative pb-3 text-sm font-semibold text-slate-700 transition-colors">
-                  <div className="flex flex-col items-center gap-1">
-                    <span>Products</span>
-                    <span className="rounded-full bg-blue-100 px-3 py-0.5 text-xs text-blue-700">
-                      {filteredProducts.length}
-                    </span>
-                  </div>
+              <div className="flex items-center border-b border-slate-200 bg-slate-50 px-4 pt-2">
+                <button className="relative inline-flex items-center gap-2 pb-2 text-sm font-semibold text-slate-700 transition-colors">
+                  <span>Products</span>
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                    {filteredProducts.length}
+                  </span>
                   <div className="absolute bottom-0 left-0 h-0.5 w-full bg-slate-400" />
                 </button>
               </div>
 
               {/* Table Controls */}
-              <div className="border-b border-slate-200 bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-600">
+              <div className="border-b border-slate-200 bg-slate-100 px-4 py-1.5 text-xs font-semibold text-slate-600">
                 <span>
                   Showing (1 - {filteredProducts.length}) | Found (
                   {filteredProducts.length}) | Total ({products.length})
