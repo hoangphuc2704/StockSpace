@@ -23,6 +23,7 @@ import {
 import Button from '@/components/atoms/Button'
 import InputField from '@/components/atoms/InputField'
 import Modal from '@/components/organisms/Modal'
+import WmsDateRangeFilter from '@/components/molecules/WmsDateRangeFilter'
 import receiptApi from '@/services/wms/receiptApi'
 import stockApi from '@/services/wms/stockApi'
 import productApi from '@/services/wms/productApi'
@@ -119,6 +120,8 @@ const OutboundPage = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [dateFilter, setDateFilter] = useState({ fromDate: undefined, toDate: undefined })
   const [activeTab, setActiveTab] = useState('ALL')
 
   // Form states. Manual outbound lines can be split across multiple Rack/Bin
@@ -187,8 +190,8 @@ const OutboundPage = () => {
         type: 'OUTBOUND',
         page,
         size: pageSize,
-        sortBy: 'createdAt',
-        sortDir: 'desc',
+        fromDate: dateFilter.fromDate,
+        toDate: dateFilter.toDate,
       })
       if (requestId !== receiptRequestIdRef.current) return
 
@@ -224,7 +227,7 @@ const OutboundPage = () => {
     } finally {
       if (requestId === receiptRequestIdRef.current) setIsLoading(false)
     }
-  }, [page, pageSize, selectedWarehouseId])
+  }, [dateFilter.fromDate, dateFilter.toDate, page, pageSize, selectedWarehouseId])
 
   useEffect(() => {
     // Load the initial warehouse and SKU data for this page.
@@ -413,7 +416,7 @@ const OutboundPage = () => {
     if (!selectedWarehouseId) return
     setIsExporting(true)
     try {
-      const response = await receiptApi.exportReceipts(selectedWarehouseId, 'OUTBOUND')
+      const response = await receiptApi.exportReceipts(selectedWarehouseId, 'OUTBOUND', dateFilter)
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
       link.href = url
@@ -637,9 +640,11 @@ const OutboundPage = () => {
 
   const handleApprove = async (id) => {
     try {
-      await receiptApi.approveReceipt(id)
+      const response = await receiptApi.approveReceipt(id)
       toast.success('Outbound receipt approved.')
       await fetchReceipts()
+      setDetailReceipt(response?.data?.data ?? response?.data)
+      setIsDetailModalOpen(true)
     } catch (error) {
       if (
         error.response?.data?.errorCode === 'OUTBOUND_PICK_LIST_STALE' ||
@@ -688,17 +693,37 @@ const OutboundPage = () => {
   }
 
   const filteredReceipts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
     return receipts
       .filter((r) => {
-        if (activeTab === 'ALL') return true
-        if (activeTab === 'PENDING' && r.status === 'PENDING') return true
-        if (activeTab === 'APPROVED' && r.status === 'APPROVED') return true
-        if (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') return true
-        if (activeTab === 'COMPLETED' && r.status === 'COMPLETED') return true
-        return false
+        const matchesTab =
+          activeTab === 'ALL' ||
+          (activeTab === 'PENDING' && r.status === 'PENDING') ||
+          (activeTab === 'APPROVED' && r.status === 'APPROVED') ||
+          (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') ||
+          (activeTab === 'COMPLETED' && r.status === 'COMPLETED')
+
+        if (!matchesTab) return false
+        if (!query) return true
+
+        const searchableText = [
+          r.id,
+          r.status,
+          r.warehouseName,
+          r.receiverName,
+          r.createdByFullName,
+          r.note,
+          ...(r.items || []).flatMap((item) => [item.skuCode, item.skuName]),
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+
+        return searchableText.includes(query)
       })
       .sort(compareReceiptsByDateDesc)
-  }, [receipts, activeTab])
+  }, [receipts, activeTab, searchQuery])
 
   const firstReceiptNumber = totalElements === 0 ? 0 : page * pageSize + 1
   const lastReceiptNumber = Math.min(totalElements, page * pageSize + receipts.length)
@@ -842,14 +867,28 @@ const OutboundPage = () => {
                       ))}
                     </div>
 
-                    <div className="p-4 flex items-center justify-between border-b border-slate-100 bg-white">
-                      <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-3 border-b border-slate-100 bg-white p-4 xl:flex-row xl:items-end xl:justify-between">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div className="relative w-72">
                           <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                          <InputField placeholder={t('Search outbound receipts...')} className="h-9 pl-9" />
+                          <InputField
+                            placeholder={t('Search outbound receipts...')}
+                            value={searchQuery}
+                            onChange={(event) => setSearchQuery(event.target.value)}
+                            className="h-9 pl-9"
+                          />
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                        <WmsDateRangeFilter
+                          value={dateFilter}
+                          onApply={(nextFilter) => {
+                            setDateFilter(nextFilter)
+                            setPage(0)
+                          }}
+                          disabled={isLoading}
+                          className="w-full lg:min-w-[34rem]"
+                        />
                         <Button
                           variant="outline"
                           size="sm"
@@ -876,7 +915,7 @@ const OutboundPage = () => {
                         <table className="w-full min-w-[1280px] text-left text-sm whitespace-nowrap">
                           <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                             <tr>
-                              <th className="border-x border-slate-200 px-4 py-3">{t('Receipt Code')}</th>
+                              <th className="border-x border-slate-200 px-4 py-3">{t('Receipt ID')}</th>
                               <th className="border-r border-slate-200 px-4 py-3">{t('Method')}</th>
                               <th className="border-r border-slate-200 px-4 py-3">{t('Outbound Date')}</th>
                               <th className="border-r border-slate-200 px-4 py-3">{t('Receiver')}</th>

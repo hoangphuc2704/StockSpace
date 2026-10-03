@@ -1,4 +1,5 @@
 import api from '../apiConfig'
+import { cleanQueryParams, toApiDate } from '@/utils/wmsDateFilter'
 
 const idempotencyConfig = (idempotencyKey) =>
   idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : {}
@@ -17,7 +18,14 @@ const transferApi = {
   // Xem danh sách yêu cầu chuyển kho (có phân trang và filter)
   // params có thể bao gồm: sourceWarehouseId, destinationWarehouseId, status, page, size
   getTransfers: (params) => {
-    return api.get('/tenant/inventory/transfers', { params })
+    const { fromDate, toDate, ...otherParams } = params || {}
+    return api.get('/tenant/inventory/transfers', {
+      params: cleanQueryParams({
+        ...otherParams,
+        fromDate: toApiDate(fromDate),
+        toDate: toApiDate(toDate),
+      }),
+    })
   },
 
   // Xem chi tiết yêu cầu chuyển kho

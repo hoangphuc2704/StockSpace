@@ -1,10 +1,17 @@
 import api from '../apiConfig'
 import { sumStockQuantity } from '@/utils/stockQuantity'
+import { cleanQueryParams, toApiDate } from '@/utils/wmsDateFilter'
 
-const fetchAllStock = async (warehouseId, size = 100) => {
+const fetchAllStock = async (warehouseId, size = 100, { fromDate, toDate } = {}) => {
   const getPage = (page) =>
     api.get('/tenant/inventory/stock', {
-      params: { warehouseId, page, size },
+      params: cleanQueryParams({
+        warehouseId,
+        page,
+        size,
+        fromDate: toApiDate(fromDate),
+        toDate: toApiDate(toDate),
+      }),
     })
 
   const firstResponse = await getPage(0)
@@ -23,9 +30,15 @@ const fetchAllStock = async (warehouseId, size = 100) => {
 
 const stockApi = {
   // Xem toàn bộ tồn kho trong kho đang thuê
-  getStock: (warehouseId, { page, size } = {}) => {
+  getStock: (warehouseId, { page, size, fromDate, toDate } = {}) => {
     return api.get('/tenant/inventory/stock', {
-      params: { warehouseId, page, size },
+      params: cleanQueryParams({
+        warehouseId,
+        page,
+        size,
+        fromDate: toApiDate(fromDate),
+        toDate: toApiDate(toDate),
+      }),
     })
   },
 
@@ -37,7 +50,8 @@ const stockApi = {
   },
 
   // Tải toàn bộ tồn kho một lần để các màn hình có thể tổng hợp theo Rack/Bin.
-  getAllStock: (warehouseId, { size = 100 } = {}) => fetchAllStock(warehouseId, size),
+  getAllStock: (warehouseId, { size = 100, fromDate, toDate } = {}) =>
+    fetchAllStock(warehouseId, size, { fromDate, toDate }),
 
   /**
    * Xem các mặt hàng và số lượng đang nằm trong một Bin.

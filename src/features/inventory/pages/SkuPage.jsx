@@ -62,7 +62,6 @@ const SkuPage = () => {
   // Form states
   const [searchQuery, setSearchQuery] = useState('')
   const [searchCategory, setSearchCategory] = useState('')
-  const [searchUom, setSearchUom] = useState('')
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -336,7 +335,6 @@ const SkuPage = () => {
 
   const filteredProducts = products.filter((p) => {
     if (searchCategory && p.categoryId !== searchCategory) return false
-    if (searchUom && p.uomId !== searchUom) return false
     if (searchQuery) {
       const q = searchQuery.toLowerCase()
       return (
@@ -409,7 +407,7 @@ const SkuPage = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full border-blue-400 focus:border-blue-500 focus:ring-blue-500"
                 />
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4">
                   <select
                     className="w-full rounded-md border border-slate-200 p-2 text-sm text-slate-600 focus:border-blue-500 focus:ring-blue-500"
                     value={searchCategory}
@@ -422,18 +420,6 @@ const SkuPage = () => {
                       </option>
                     ))}
                   </select>
-                  <select
-                    className="w-full rounded-md border border-slate-200 p-2 text-sm text-slate-600 focus:border-blue-500 focus:ring-blue-500"
-                    value={searchUom}
-                    onChange={(e) => setSearchUom(e.target.value)}
-                  >
-                    <option value="">Search by UOM...</option>
-                    {uoms.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 <div className="flex justify-center gap-3 pt-2">
                   <Button className="w-32 bg-slate-500 hover:bg-slate-600">Search</Button>
@@ -443,7 +429,6 @@ const SkuPage = () => {
                     onClick={() => {
                       setSearchQuery('')
                       setSearchCategory('')
-                      setSearchUom('')
                     }}
                   >
                     <div className="flex items-center justify-center gap-2">

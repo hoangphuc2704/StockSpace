@@ -40,6 +40,8 @@ const manualTranslations = {
   'Tenant Email': 'Email người thuê',
   'Start Date': 'Ngày bắt đầu',
   'End Date': 'Ngày kết thúc',
+  'Please enter valid dates.': 'Vui lòng nhập ngày hợp lệ.',
+  'Start date cannot be after end date.': 'Ngày bắt đầu không được sau ngày kết thúc.',
   'Leased Width (m)': 'Chiều rộng thuê (m)',
   'Leased Length (m)': 'Chiều dài thuê (m)',
   'Leased Height (m)': 'Chiều cao thuê (m)',

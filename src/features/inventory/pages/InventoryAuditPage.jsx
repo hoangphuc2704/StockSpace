@@ -3,6 +3,7 @@ import { ClipboardCheck, ChevronLeft, ChevronRight, Eye, Plus } from 'lucide-rea
 import { FormShell } from '@/form/FormControls'
 import Button from '@/components/atoms/Button'
 import Modal from '@/components/organisms/Modal'
+import WmsDateRangeFilter from '@/components/molecules/WmsDateRangeFilter'
 import TableActionMenu from '@/components/TableActionMenu'
 import Header from '@/components/HeaderDashboard'
 import Sidebar from '@/components/SideBar'
@@ -94,13 +95,19 @@ const InventoryAuditPage = ({ currentRole }) => {
   const [formNote, setFormNote] = useState('')
   const [creating, setCreating] = useState(false)
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('')
+  const [dateFilter, setDateFilter] = useState({ fromDate: undefined, toDate: undefined })
 
   useActiveWarehouseContext(selectedWarehouseId)
 
   const fetchAudits = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await auditApi.getAudits(selectedWarehouseId || '', { page, size: pageSize })
+      const res = await auditApi.getAudits(selectedWarehouseId || '', {
+        page,
+        size: pageSize,
+        fromDate: dateFilter.fromDate,
+        toDate: dateFilter.toDate,
+      })
       if (res.data?.success) {
         setAudits(res.data.data.content || [])
         setTotalPages(Math.max(res.data.data.totalPages || 1, 1))
@@ -110,7 +117,7 @@ const InventoryAuditPage = ({ currentRole }) => {
     } finally {
       setLoading(false)
     }
-  }, [page, pageSize, selectedWarehouseId])
+  }, [dateFilter.fromDate, dateFilter.toDate, page, pageSize, selectedWarehouseId])
 
   const fetchWarehouses = useCallback(async () => {
     try {
@@ -367,6 +374,15 @@ const InventoryAuditPage = ({ currentRole }) => {
                     ))}
                   </select>
                 </label>
+                <WmsDateRangeFilter
+                  value={dateFilter}
+                  onApply={(nextFilter) => {
+                    setDateFilter(nextFilter)
+                    setPage(0)
+                  }}
+                  disabled={loading}
+                  className="w-full lg:min-w-[34rem]"
+                />
                 <Button
                   onClick={handleOpenCreateModal}
                   className="flex min-h-10 items-center gap-2 rounded-md"

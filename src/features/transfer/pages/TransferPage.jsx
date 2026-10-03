@@ -23,6 +23,7 @@ import { closeMobileSidebar } from '@/store/uiSlide'
 import Sidebar from '@/components/SideBar'
 import Header from '@/components/HeaderDashboard'
 import TableActionMenu from '@/components/TableActionMenu'
+import WmsDateRangeFilter from '@/components/molecules/WmsDateRangeFilter'
 import transferApi, { createTransferIdempotencyKey } from '@/services/wms/transferApi'
 import warehouseApi from '@/services/warehouse/warehouseApi'
 import { toast } from 'react-hot-toast'
@@ -426,6 +427,7 @@ const TransferPage = ({ currentRole }) => {
   const [lastUpdated, setLastUpdated] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [dateFilter, setDateFilter] = useState({ fromDate: undefined, toDate: undefined })
   const [decision, setDecision] = useState(null)
   const [decisionReason, setDecisionReason] = useState('')
   const [decisionSubmitting, setDecisionSubmitting] = useState(false)
@@ -468,7 +470,12 @@ const TransferPage = ({ currentRole }) => {
       if (silent) setRefreshing(true)
       else setLoading(true)
       setLoadError('')
-      const response = await transferApi.getTransfers({ page: 0, size: 100 })
+      const response = await transferApi.getTransfers({
+        page: 0,
+        size: 100,
+        fromDate: dateFilter.fromDate,
+        toDate: dateFilter.toDate,
+      })
       const payload = response.data?.data
       setTransfers(Array.isArray(payload) ? payload : payload?.content || [])
       setLastUpdated(new Date())
@@ -479,7 +486,7 @@ const TransferPage = ({ currentRole }) => {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [t])
+  }, [dateFilter.fromDate, dateFilter.toDate, t])
 
   useEffect(() => {
     // Screen entry intentionally synchronizes both server-backed resources.
@@ -967,6 +974,12 @@ const TransferPage = ({ currentRole }) => {
                       ))}
                     </select>
                   </label>
+                  <WmsDateRangeFilter
+                    value={dateFilter}
+                    onApply={(nextFilter) => setDateFilter(nextFilter)}
+                    disabled={loading || refreshing}
+                    className="w-full xl:min-w-[34rem]"
+                  />
                   <button
                     type="button"
                     onClick={() => fetchTransfers({ silent: true })}
