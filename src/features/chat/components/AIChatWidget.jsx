@@ -543,14 +543,6 @@ const AIChatPanel = ({ chatRole }) => {
         },
       })
 
-      if (streamedAssistantText) {
-        setMessages((current) =>
-          current.map((item) =>
-            item.id === assistantId ? { ...item, content: streamedAssistantText } : item
-          )
-        )
-      }
-
       if (streamError) throw streamError
       if (!receivedContent) {
         setMessages((current) =>
