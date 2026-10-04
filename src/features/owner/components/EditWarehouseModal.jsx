@@ -6,6 +6,7 @@ import warehouseApi from '@/services/warehouse/warehouseApi'
 import { showApiErrorToast } from '@/config/apiError'
 import { toast } from 'react-hot-toast'
 import { formatAmountInput, parseAmountInput } from '@/utils/currency'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
 
@@ -47,6 +48,7 @@ const toLayoutPayload = (layout, dimensions) => ({
 
 const EditWarehouseModal = ({ warehouse, onClose, onSaved }) => {
   useEscapeKey(true, onClose)
+  const { language } = useLanguage()
   const [form, setForm] = useState({
     name: warehouse.name || '',
     address: warehouse.address || '',
@@ -63,6 +65,10 @@ const EditWarehouseModal = ({ warehouse, onClose, onSaved }) => {
   const [isSaving, setIsSaving] = useState(false)
 
   const updateField = (field, value) => setForm((current) => ({ ...current, [field]: value }))
+
+  const publicationEditBlockedMessage = language === 'vi'
+    ? 'Không thể sửa: bài đăng đã được Admin duyệt hoặc đang hoạt động.'
+    : 'Cannot edit: the listing is approved or currently active.'
 
   useEffect(() => {
     let isActive = true
@@ -133,8 +139,21 @@ const EditWarehouseModal = ({ warehouse, onClose, onSaved }) => {
       onSaved()
       onClose()
     } catch (apiError) {
-      setError(apiError.response?.data?.message || 'Could not update warehouse.')
-      showApiErrorToast(apiError, 'Could not update warehouse.')
+      const errorCode = apiError.response?.data?.code || apiError.response?.data?.errorCode
+      if (errorCode === 'LISTING_PUBLICATION_ACTION_NOT_ALLOWED') {
+        setError(publicationEditBlockedMessage)
+        toast.error(publicationEditBlockedMessage, {
+          id: 'listing-publication-action-not-allowed-edit',
+          style: {
+            maxWidth: 'min(360px, calc(100vw - 32px))',
+            whiteSpace: 'normal',
+            overflowWrap: 'anywhere',
+          },
+        })
+      } else {
+        setError(apiError.response?.data?.message || 'Could not update warehouse.')
+        showApiErrorToast(apiError, 'Could not update warehouse.')
+      }
     } finally {
       setIsSaving(false)
     }

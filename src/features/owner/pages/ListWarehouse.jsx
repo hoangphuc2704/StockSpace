@@ -194,7 +194,10 @@ const WarehouseManagement = () => {
             const refreshed = refreshedWarehouses.find(
               (warehouse) => String(warehouse.id) === String(current.id)
             )
-            return refreshed?.canPublish === true || refreshed?.canRenew === true ? refreshed : null
+            const canRenew =
+              refreshed?.canRenew === true &&
+              String(refreshed?.publicationStatus || '').toUpperCase() === 'EXPIRED'
+            return refreshed?.canPublish === true || canRenew ? refreshed : null
           })
           setTotalPages(apiResult.totalPages || 0)
           setTotalElements(apiResult.totalElements || 0)
@@ -630,17 +633,23 @@ const WarehouseManagement = () => {
                                           onClick: () => setDeleteWarehouseConfirm(wh),
                                           danger: true,
                                         },
-                                        ...(wh.canPublish === true || wh.canRenew === true
-                                          ? [
-                                              {
-                                                label: wh.canRenew
-                                                  ? 'Renew listing'
-                                                  : 'Publish listing',
-                                                icon: Megaphone,
-                                                onClick: () => setPublicationWarehouse(wh),
-                                              },
-                                            ]
-                                          : []),
+                                        ...(
+                                          wh.canPublish === true ||
+                                          (wh.canRenew === true &&
+                                            String(wh.publicationStatus || '').toUpperCase() === 'EXPIRED')
+                                            ? [
+                                                {
+                                                  label:
+                                                    wh.canRenew === true &&
+                                                    String(wh.publicationStatus || '').toUpperCase() === 'EXPIRED'
+                                                      ? 'Renew listing'
+                                                      : 'Publish listing',
+                                                  icon: Megaphone,
+                                                  onClick: () => setPublicationWarehouse(wh),
+                                                },
+                                              ]
+                                            : []
+                                        )
                                       ]
                                 }
                               />

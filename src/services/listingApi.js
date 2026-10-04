@@ -9,7 +9,10 @@ const listingApi = {
     api.get(`/owner/warehouses/${warehouseId}/publications`),
 
   purchasePublication: (warehouseId, payload) =>
-    api.post(`/owner/warehouses/${warehouseId}/publications`, payload),
+    api.post(`/owner/warehouses/${warehouseId}/publications`, payload, {
+      // The publication modal renders a code-specific message for 409 errors.
+      skipErrorToast: true,
+    }),
 
   getAdminPackages: () => api.get('/admin/listing-packages'),
 

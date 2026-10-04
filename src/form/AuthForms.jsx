@@ -278,7 +278,7 @@ export function StaffAcceptInvitationForm({
 }
 
 // Form name: User profile
-export function ProfileForm({ embedded = false, fullName, email, phone, bio, isActive = true, joinedText, onSubmit, isLoading }) {
+export function ProfileForm({ embedded = false, fullName, email, phone, bio, showBio = true, isActive = true, joinedText, onSubmit, isLoading }) {
   return (
     <FormCard
       title="User profile"
@@ -298,7 +298,9 @@ export function ProfileForm({ embedded = false, fullName, email, phone, bio, isA
         <span className={`ml-2 ${isActive ? 'text-emerald-600' : 'text-rose-600'}`}>{isActive ? 'Active' : 'Inactive'}</span>
         {joinedText && <span className="float-right text-xs text-slate-400">Joined {joinedText}</span>}
       </div>
-      <TextAreaField label="Short introduction" name="bio" rows={4} placeholder="Describe a little about yourself..." defaultValue={bio} />
+      {showBio && (
+        <TextAreaField label="Short introduction" name="bio" rows={4} placeholder="Describe a little about yourself..." defaultValue={bio} />
+      )}
     </FormCard>
   )
 }

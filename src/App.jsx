@@ -270,6 +270,7 @@ const App = () => {
         <Route element={<RoleGuard allowedRoles={['ROLE_STAFF']} />}>
           <Route path="/staff/dashboard" element={<StaffDashboard />} />
           <Route path="/staff/tasks" element={<StaffTasksPage />} />
+          <Route path="/staff/profile" element={<OwnerProfile currentRole="STAFF" />} />
           <Route path="/staff/inventory" element={<InventoryPage />} />
           <Route
             path="/staff/inventory-audits"

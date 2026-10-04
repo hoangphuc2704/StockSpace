@@ -4,6 +4,7 @@ import Button from '@/components/atoms/Button'
 import listingApi from '@/services/listingApi'
 import { showApiErrorToast } from '@/config/apiError'
 import { toast } from 'react-hot-toast'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const formatVND = (value) =>
   value == null ? '—' : `${Number(value).toLocaleString('vi-VN', { maximumFractionDigits: 0 })} ₫`
@@ -27,13 +28,20 @@ const addDays = (date, days) => {
 }
 
 const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = false }) => {
+  const { language } = useLanguage()
   const [packages, setPackages] = useState([])
   const [history, setHistory] = useState([])
   const [selectedPackageId, setSelectedPackageId] = useState(warehouse.preferredPackageId || '')
   const [startDate, setStartDate] = useState(() => formatDateInput(new Date()))
   const [isLoading, setIsLoading] = useState(true)
   const [isPurchasing, setIsPurchasing] = useState(false)
-  const canPurchasePublication = warehouse.canPublish === true || warehouse.canRenew === true
+  const publicationStatus = String(warehouse.publicationStatus || '').toUpperCase()
+  const canRenewPublication = warehouse.canRenew === true && publicationStatus === 'EXPIRED'
+  const canPurchasePublication = warehouse.canPublish === true || canRenewPublication
+  const hasActivePublication = ['PUBLISHED', 'SCHEDULED', 'PENDING_APPROVAL'].includes(publicationStatus)
+  const publicationPendingMessage = language === 'vi'
+    ? 'Kho này đã có gói đăng bài đang hoạt động hoặc yêu cầu đăng bài đang chờ Admin duyệt. Hệ thống không hỗ trợ cộng dồn ngày đăng bài; vui lòng chờ gói hiện tại hết hạn.'
+    : 'This warehouse already has an active listing or a publication request pending Admin approval. Listing periods cannot be accumulated; please wait until the current listing expires.'
   const selectedPackage = packages.find((pkg) => String(pkg.id) === String(selectedPackageId))
   const now = new Date()
   const todayInputValue = formatDateInput(now)
@@ -91,11 +99,16 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
         listingPackageId: selectedPackageId,
         startDate,
       })
-      toast.success(warehouse.canRenew ? 'Warehouse listing renewed.' : 'Warehouse listing published.')
+      toast.success(canRenewPublication ? 'Warehouse listing renewed.' : 'Warehouse listing published.')
       onSuccess()
       onClose()
     } catch (error) {
-      showApiErrorToast(error, 'Could not purchase the listing package.')
+      const errorCode = error?.response?.data?.code || error?.response?.data?.errorCode
+      if (errorCode === 'LISTING_PUBLICATION_PENDING') {
+        toast.error(publicationPendingMessage, { id: 'listing-publication-pending' })
+      } else {
+        showApiErrorToast(error, 'Could not purchase the listing package.')
+      }
     } finally {
       setIsPurchasing(false)
     }
@@ -115,7 +128,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
             <h2 className="mt-2 text-xl font-bold text-slate-900">
               {historyOnly
                 ? 'Payment history'
-                : warehouse.canRenew
+                : canRenewPublication
                   ? 'Renew listing'
                   : 'Publish warehouse'}
             </h2>
@@ -183,7 +196,9 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
             )
           ) : !canPurchasePublication ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-              This warehouse is not currently eligible to publish or renew a listing.
+              {hasActivePublication
+                ? publicationPendingMessage
+                : 'This warehouse is not currently eligible to publish or renew a listing.'}
             </div>
           ) : packages.length === 0 ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -277,7 +292,7 @@ const ListingPublicationModal = ({ warehouse, onClose, onSuccess, historyOnly = 
             <Button type="button" onClick={handlePurchase} isLoading={isPurchasing} disabled={!canPurchasePublication || isLoading || packages.length === 0 || !selectedPackageId || !startDate}>
               <CreditCard className="mr-2 h-4 w-4" />
               {selectedPackage
-                ? `Pay ${formatVND(selectedPackage.price)} & ${warehouse.canRenew ? 'renew' : 'publish'}`
+                ? `Pay ${formatVND(selectedPackage.price)} & ${canRenewPublication ? 'renew' : 'publish'}`
                 : 'Select a package'}
             </Button>
           )}
