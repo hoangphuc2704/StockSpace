@@ -27,6 +27,10 @@ import { toast } from 'react-hot-toast'
 import { useConfirmDialog } from '@/components/ConfirmDialogProvider'
 import { showApiErrorToast } from '@/config/apiError'
 import { required } from '@/config/validation'
+import {
+  CATEGORY_DUPLICATE_MESSAGE,
+  hasDuplicateCategoryName,
+} from '@/utils/categoryValidation'
 import WmsImportDialog from '@/features/inventory/components/WmsImportDialog'
 import dataContinuityApi from '@/services/wms/dataContinuityApi'
 import { WMS_IMPORT_TYPE } from '@/services/wms/wmsDataTypes'
@@ -210,6 +214,10 @@ const SkuPage = () => {
     const categoryNameError = required(categoryName, 'Category name')
     if (categoryNameError) {
       toast.error(categoryNameError)
+      return
+    }
+    if (hasDuplicateCategoryName(categories, categoryName)) {
+      toast.error(CATEGORY_DUPLICATE_MESSAGE, { id: 'category-name-duplicate' })
       return
     }
 

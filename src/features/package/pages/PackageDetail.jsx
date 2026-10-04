@@ -11,11 +11,13 @@ import { showApiErrorToast } from '@/config/apiError'
 import Modal from '@/components/organisms/Modal'
 import Button from '@/components/atoms/Button'
 import TranslatableText from '@/components/TranslatableText'
+import { useLanguage } from '@/i18n/LanguageContext'
 
 const PackageDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user, isAuthenticated } = useSelector((state) => state.auth)
+  const { t } = useLanguage()
 
   const [pkg, setPkg] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -62,7 +64,15 @@ const PackageDetail = () => {
       const data = res.data?.data || res.data
 
       if (data && data.canProceed === false) {
-        showApiErrorToast({ response: { data } }, 'Transaction unavailable.')
+        showApiErrorToast(
+          { response: { data } },
+          t('You can subscribe to a new package only after your current package expires.'),
+          {
+            message: t(
+              'You can subscribe to a new package only after your current package expires.'
+            ),
+          }
+        )
         return
       }
 
@@ -87,7 +97,7 @@ const PackageDetail = () => {
       toast.success('Subscription activated.')
       navigate('/tenant/dashboard')
     } catch (error) {
-      const errorCode = error.response?.data?.errorCode
+      const errorCode = error.response?.data?.errorCode || error.response?.data?.code
       if (['INSUFFICIENT_BALANCE', 'WALLET_INSUFFICIENT_BALANCE'].includes(errorCode)) {
         setShowWalletConfirm(true)
       } else if (errorCode === 'PACKAGE_NOT_FOUND' || error.response?.status === 404) {

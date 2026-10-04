@@ -21,11 +21,40 @@ export const API_ERROR_MESSAGE_OVERRIDES = {
   WMS_IMPORT_STALE:
     'Warehouse, inventory, layout, or audit data changed. Download a fresh workbook and start again.',
   SUBSCRIPTION_REQUIRED: 'Please purchase a subscription to use this feature.',
+  SUBSCRIPTION_ALREADY_ACTIVE:
+    'You can subscribe to a new package only after your current package expires.',
   INSUFFICIENT_BALANCE: 'Your balance is insufficient.',
   WALLET_INSUFFICIENT_BALANCE: 'Your balance is insufficient.',
+  SKU_CODE_DUPLICATE: 'This SKU code already exists. Please use a different code.',
+  SKU_IN_USE:
+    'Cannot delete this SKU because it is linked to existing inventory batches. Remove the related inventory first.',
+  PRODUCT_CATEGORY_IN_USE:
+    'Cannot delete this category because it is linked to one or more SKUs. Remove or reassign those SKUs first.',
   AUDIT_MOVEMENT_LOCKED:
     'The warehouse is under a blind count. Wait for the staff audit to finish before changing or exporting inventory.',
   // EMAIL_ALREADY_EXISTS: 'Email này đã được sử dụng.',
+}
+
+const API_ERROR_MESSAGE_OVERRIDES_VI = {
+  SUBSCRIPTION_ALREADY_ACTIVE:
+    'Bạn chỉ có thể đăng ký gói mới sau khi gói hiện tại hết hạn.',
+}
+
+const getCurrentLanguage = () => {
+  if (typeof document !== 'undefined' && document.documentElement.lang) {
+    return document.documentElement.lang
+  }
+
+  if (typeof localStorage !== 'undefined') return localStorage.getItem('stockspace_language')
+  return 'en'
+}
+
+const getErrorOverride = (errorCode) => {
+  if (getCurrentLanguage() === 'vi') {
+    return API_ERROR_MESSAGE_OVERRIDES_VI[errorCode] || API_ERROR_MESSAGE_OVERRIDES[errorCode]
+  }
+
+  return API_ERROR_MESSAGE_OVERRIDES[errorCode]
 }
 
 // WMS capacity messages can contain Vietnamese warehouse/rack names while
@@ -61,7 +90,7 @@ export const getApiErrorMessage = (
     byStatus[status] ||
     error?.config?.toastMessage ||
     error?.config?.toastMessages?.[errorCode] ||
-    API_ERROR_MESSAGE_OVERRIDES[errorCode]
+    getErrorOverride(errorCode)
 
   if (customMessage) return customMessage
 
@@ -104,7 +133,7 @@ export const showApiErrorToast = (error, fallback = DEFAULT_API_ERROR, options =
     error?.config?.toastMessages?.[
       error?.response?.data?.errorCode || error?.response?.data?.code
     ] ||
-    API_ERROR_MESSAGE_OVERRIDES[error?.response?.data?.errorCode || error?.response?.data?.code]
+    getErrorOverride(error?.response?.data?.errorCode || error?.response?.data?.code)
   const errorMessage = getApiErrorMessage(error, fallback, options)
   if (error?.__apiErrorToastShown && !customMessage) return errorMessage
 
