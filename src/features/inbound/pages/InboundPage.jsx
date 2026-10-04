@@ -80,6 +80,7 @@ const InboundPage = () => {
   const [activeTab, setActiveTab] = useState('ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [dateFilter, setDateFilter] = useState({ fromDate: undefined, toDate: undefined })
+  const requestedReceiptId = searchParams.get('receiptId')
 
   // Form states. The BE accepts multiple receipt items, so keep one editable
   // line per SKU and only use the active line for the bin allocation view.
@@ -442,6 +443,34 @@ const InboundPage = () => {
       fetchLayout()
     }
   }, [fetchLayout, fetchReceipts, selectedWarehouseId])
+
+  useEffect(() => {
+    if (!requestedReceiptId) return undefined
+
+    let active = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsDetailModalOpen(true)
+    setDetailReceipt(null)
+    setIsDetailLoading(true)
+
+    receiptApi.getReceiptDetail(requestedReceiptId)
+      .then((response) => {
+        if (!active) return
+        setDetailReceipt(response?.data?.data ?? response?.data)
+      })
+      .catch((error) => {
+        if (!active) return
+        setIsDetailModalOpen(false)
+        showApiErrorToast(error, 'Could not load receipt details.')
+      })
+      .finally(() => {
+        if (active) setIsDetailLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [requestedReceiptId])
 
   const handleExport = async () => {
     if (!selectedWarehouseId) return
@@ -820,7 +849,7 @@ const InboundPage = () => {
           (activeTab === 'PENDING' && r.status === 'PENDING') ||
           (activeTab === 'APPROVED' && r.status === 'APPROVED') ||
           (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') ||
-          (activeTab === 'COMPLETED' && r.status === 'COMPLETED')
+          (activeTab === 'COMPLETED' && ['APPROVED', 'COMPLETED'].includes(r.status))
 
         if (!matchesTab) return false
         if (!query) return true
@@ -917,8 +946,6 @@ const InboundPage = () => {
                       {[
                         { id: 'ALL', label: t('All') },
                         { id: 'PENDING', label: t('Pending Approval') },
-                        { id: 'APPROVED', label: t('Confirmed') },
-                        { id: 'IN_PROGRESS', label: t('In progress') },
                         { id: 'COMPLETED', label: t('Completed') }
                       ].map(tab => (
                         <button

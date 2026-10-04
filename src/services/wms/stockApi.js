@@ -28,6 +28,10 @@ const fetchAllStock = async (warehouseId, size = 100, { fromDate, toDate } = {})
   })
 }
 
+const stockTransactionsCache = new Map()
+const stockTransactionsInFlight = new Map()
+const STOCK_TRANSACTIONS_CACHE_TTL_MS = 15_000
+
 const stockApi = {
   // Xem toàn bộ tồn kho trong kho đang thuê
   getStock: (warehouseId, { page, size, fromDate, toDate } = {}) => {
@@ -83,6 +87,52 @@ const stockApi = {
     return api.get(`/tenant/inventory/stock/${batchId}/transactions`, {
       params: { page, size },
     })
+  },
+
+  // Tải đủ lịch sử của một batch để FE có thể tính tồn sau từng giao dịch.
+  getAllStockTransactions: async (batchId, { size = 100 } = {}) => {
+    const cacheKey = `${batchId}:${size}`
+    const cached = stockTransactionsCache.get(cacheKey)
+    if (cached && cached.expiresAt > Date.now()) return cached.value
+    if (stockTransactionsInFlight.has(cacheKey)) {
+      return stockTransactionsInFlight.get(cacheKey)
+    }
+
+    const getPage = (page) =>
+      api.get(`/tenant/inventory/stock/${batchId}/transactions`, {
+        params: { page, size },
+      })
+
+    const request = (async () => {
+      const firstResponse = await getPage(0)
+      const firstPage = firstResponse?.data?.data ?? firstResponse?.data ?? {}
+      const totalPages = Math.max(Number(firstPage.totalPages) || 1, 1)
+      const responses = [firstResponse]
+
+      // Keep pagination sequential. A receipt can reference many batches and
+      // the API rate limiter rejects a burst of transaction-history requests.
+      for (let page = 1; page < totalPages; page += 1) {
+        responses.push(await getPage(page))
+      }
+
+      const transactions = responses.flatMap((response) => {
+        const pageData = response?.data?.data ?? response?.data ?? {}
+        return Array.isArray(pageData.content) ? pageData.content : []
+      })
+
+      stockTransactionsCache.set(cacheKey, {
+        value: transactions,
+        expiresAt: Date.now() + STOCK_TRANSACTIONS_CACHE_TTL_MS,
+      })
+      return transactions
+    })()
+
+    stockTransactionsInFlight.set(cacheKey, request)
+    try {
+      return await request
+    } finally {
+      stockTransactionsInFlight.delete(cacheKey)
+    }
   },
 
   // Xem tồn kho chi tiết theo SKU

@@ -29,6 +29,7 @@ import { HiBars3 } from 'react-icons/hi2'
 import logoDaidien from '../../../assets/logoDaidien.png'
 import Badge from '../../../components/atoms/Badge'
 import Sidebar from '../../../components/SideBar'
+import LanguageSwitcher from '../../../components/LanguageSwitcher'
 import { closeMobileSidebar, toggleSidebar } from '../../../store/uiSlide'
 import {
   clearActionError,
@@ -831,6 +832,8 @@ const InspectorInspectionsPage = () => {
               StockSpace Inspector
             </span>
           </div>
+
+          <LanguageSwitcher className="lg:fixed lg:top-1 lg:right-2" />
         </div>
       </header>
 

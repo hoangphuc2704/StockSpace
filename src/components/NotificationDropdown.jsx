@@ -5,29 +5,47 @@ import { useSelector } from 'react-redux'
 import notificationApi, { normalizeNotification } from '../services/notificationApi'
 import { toast } from 'react-hot-toast'
 import useEscapeKey from '@/hooks/useEscapeKey'
-import { getEnglishNotification } from '@/utils/englishMessages'
+import { useLanguage } from '@/i18n/LanguageContext'
+import { getLocalizedNotification } from '@/utils/englishMessages'
 
-const timeAgo = (dateString) => {
+const timeAgo = (dateString, language = 'en') => {
   const date = new Date(dateString)
   const now = new Date()
   const seconds = Math.floor((now - date) / 1000)
+  const labels = language === 'vi'
+    ? {
+        year: 'năm trước',
+        month: 'tháng trước',
+        day: 'ngày trước',
+        hour: 'giờ trước',
+        minute: 'phút trước',
+        seconds: 'Vài giây trước',
+      }
+    : {
+        year: 'last year',
+        month: 'last month',
+        day: 'days ago',
+        hour: 'hours ago',
+        minute: 'minutes ago',
+        seconds: 'A few seconds ago',
+      }
 
   let interval = seconds / 31536000
-  if (interval > 1) return <>{Math.floor(interval)} <span>last year</span></>
+  if (interval > 1) return <>{Math.floor(interval)} <span>{labels.year}</span></>
   
   interval = seconds / 2592000
-  if (interval > 1) return <>{Math.floor(interval)} <span>last month</span></>
+  if (interval > 1) return <>{Math.floor(interval)} <span>{labels.month}</span></>
   
   interval = seconds / 86400
-  if (interval > 1) return <>{Math.floor(interval)} <span>days ago</span></>
+  if (interval > 1) return <>{Math.floor(interval)} <span>{labels.day}</span></>
   
   interval = seconds / 3600
-  if (interval > 1) return <>{Math.floor(interval)} <span>hours ago</span></>
+  if (interval > 1) return <>{Math.floor(interval)} <span>{labels.hour}</span></>
   
   interval = seconds / 60
-  if (interval > 1) return <>{Math.floor(interval)} <span>minutes ago</span></>
+  if (interval > 1) return <>{Math.floor(interval)} <span>{labels.minute}</span></>
   
-  return "A few seconds ago"
+  return labels.seconds
 }
 
 const NotificationDropdown = () => {
@@ -36,7 +54,7 @@ const NotificationDropdown = () => {
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifications, setNotifications] = useState([])
   const [isLoading, setIsLoading] = useState(false)
-  
+
   // Pagination
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
@@ -46,6 +64,7 @@ const NotificationDropdown = () => {
   const notificationIdsRef = useRef(new Set())
   const navigate = useNavigate()
   const user = useSelector(state => state.auth.user)
+  const { language, t } = useLanguage()
 
   // Ánh xạ Type thành Icon và Route
   const getNotificationProps = (type) => {
@@ -53,17 +72,17 @@ const NotificationDropdown = () => {
 
     switch (type) {
       case 'PAYMENT':
-        return { 
-          Icon: Wallet, 
-          color: 'text-green-500', 
-          bg: 'bg-green-100', 
-          route: role === 'ROLE_TENANT' ? '/tenant/wallet' : (role === 'ROLE_ADMIN' ? '/admin/deposits' : null) 
+        return {
+          Icon: Wallet,
+          color: 'text-green-500',
+          bg: 'bg-green-100',
+          route: role === 'ROLE_TENANT' ? '/tenant/wallet' : (role === 'ROLE_ADMIN' ? '/admin/deposits' : null)
         }
       case 'CONTRACT':
-        return { 
-          Icon: FileText, 
-          color: 'text-purple-500', 
-          bg: 'bg-purple-100', 
+        return {
+          Icon: FileText,
+          color: 'text-purple-500',
+          bg: 'bg-purple-100',
           route: role === 'ROLE_TENANT' ? '/tenant/contracts' : '/owner/contracts'
         }
       case 'RENTAL':
@@ -88,25 +107,25 @@ const NotificationDropdown = () => {
           route: role === 'ROLE_TENANT' ? '/tenant/contracts' : '/owner/contracts',
         }
       case 'WAREHOUSE':
-        return { 
-          Icon: Warehouse, 
-          color: 'text-orange-500', 
-          bg: 'bg-orange-100', 
+        return {
+          Icon: Warehouse,
+          color: 'text-orange-500',
+          bg: 'bg-orange-100',
           route: role === 'ROLE_OWNER' ? '/owner/listwarehouse' : '/admin/warehouses-management'
         }
       case 'INSPECTION':
-        return { 
-          Icon: ClipboardCheck, 
-          color: 'text-teal-500', 
-          bg: 'bg-teal-100', 
-          route: role === 'ROLE_INSPECTOR' ? '/inspector/inspections' : '/owner/listwarehouse' 
+        return {
+          Icon: ClipboardCheck,
+          color: 'text-teal-500',
+          bg: 'bg-teal-100',
+          route: role === 'ROLE_INSPECTOR' ? '/inspector/inspections' : '/owner/listwarehouse'
         }
       case 'AUDIT':
-        return { 
-          Icon: Boxes, 
-          color: 'text-slate-700', 
-          bg: 'bg-slate-200', 
-          route: role === 'ROLE_TENANT' ? '/tenant/inventory-audits' : (role === 'ROLE_STAFF' ? '/staff/inventory-audits' : '/admin/wms-audits') 
+        return {
+          Icon: Boxes,
+          color: 'text-slate-700',
+          bg: 'bg-slate-200',
+          route: role === 'ROLE_TENANT' ? '/tenant/inventory-audits' : (role === 'ROLE_STAFF' ? '/staff/inventory-audits' : '/admin/wms-audits')
         }
       case 'TRANSFER':
         return {
@@ -130,11 +149,11 @@ const NotificationDropdown = () => {
           route: role === 'ROLE_TENANT' ? '/tenant/inventory' : (role === 'ROLE_STAFF' ? '/staff/inventory' : null)
         }
       default:
-        return { 
-          Icon: Info, 
-          color: 'text-primary', 
-          bg: 'bg-primary/10', 
-          route: null 
+        return {
+          Icon: Info,
+          color: 'text-primary',
+          bg: 'bg-primary/10',
+          route: null
         }
     }
   }
@@ -160,7 +179,7 @@ const NotificationDropdown = () => {
       setNotifications((prev) => [data, ...prev])
       if (!data.read) setUnreadCount((count) => count + 1)
     }
-    
+
     window.addEventListener('new_notification', handleNewNotification)
     return () => window.removeEventListener('new_notification', handleNewNotification)
   }, [])
@@ -220,10 +239,10 @@ const NotificationDropdown = () => {
     try {
       if (!isLoadMore) setIsLoading(true)
       else setIsLoadingMore(true)
-      
+
       const targetPage = isLoadMore ? page + 1 : 0
       const res = await notificationApi.getMyNotifications({ page: targetPage, size: 10 })
-      
+
       if (res.success && res.data) {
         const incoming = res.data.content || []
         if (isLoadMore) {
@@ -240,7 +259,7 @@ const NotificationDropdown = () => {
           )
           setNotifications(incoming)
         }
-        
+
         setPage(res.data.page)
         setHasMore(!res.data.last)
       }
@@ -291,7 +310,7 @@ const NotificationDropdown = () => {
 
   const handleMarkAllAsRead = async () => {
     if (unreadCount === 0) return
-    
+
     try {
       const res = await notificationApi.markAllAsRead()
       if (res.success) {
@@ -332,14 +351,14 @@ const NotificationDropdown = () => {
         <div className="absolute right-0 mt-2 flex max-h-[85vh] w-[min(24rem,calc(100vw-1rem))] origin-top-right flex-col overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none">
           {/* Header của Dropdown */}
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/50">
-            <h3 className="text-sm font-bold text-slate-800">Notice</h3>
+            <h3 className="text-sm font-bold text-slate-800">{t('Notice')}</h3>
             {unreadCount > 0 && (
-              <button 
+              <button
                 onClick={handleMarkAllAsRead}
                 className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-dark hover:underline"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Mark them all
+                {t('Mark them all')}
               </button>
             )}
           </div>
@@ -357,13 +376,13 @@ const NotificationDropdown = () => {
                   <Bell className="h-6 w-6 text-slate-300" />
                 </div>
                 <p className="text-sm font-medium text-slate-600">There are no announcements yet</p>
-                <p className="text-xs text-slate-400 mt-1">When there are new announcements, they will appear here.</p>
+                <p className="text-xs text-slate-400 mt-1">{t('When there are new announcements, they will appear here.')}</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-50">
                 {notifications.map((notif) => {
                   const { Icon, color, bg } = getNotificationProps(notif.type)
-                  const copy = getEnglishNotification(notif)
+                  const copy = getLocalizedNotification(notif, language)
                   return (
                     <div
                       key={notif.id}
@@ -382,7 +401,7 @@ const NotificationDropdown = () => {
                             {copy.message}
                           </p>
                           <p className="mt-1.5 text-[10px] font-medium text-slate-400 uppercase tracking-wider">
-                            {timeAgo(notif.createdAt)}
+                            {timeAgo(notif.createdAt, language)}
                           </p>
                         </div>
                         {!notif.read && (
@@ -394,7 +413,7 @@ const NotificationDropdown = () => {
                     </div>
                   )
                 })}
-                
+
                 {/* Nút Load More */}
                 {hasMore && (
                   <div className="p-3 bg-white border-t border-slate-50">

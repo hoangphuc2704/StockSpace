@@ -117,6 +117,7 @@ const OutboundPage = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [dateFilter, setDateFilter] = useState({ fromDate: undefined, toDate: undefined })
   const [activeTab, setActiveTab] = useState('ALL')
+  const requestedReceiptId = searchParams.get('receiptId')
 
   // Form states. Manual outbound lines can be split across multiple Rack/Bin
   // allocations; each allocation becomes one item in the API payload.
@@ -248,6 +249,34 @@ const OutboundPage = () => {
       fetchReceipts()
     }
   }, [fetchReceipts, selectedWarehouseId])
+
+  useEffect(() => {
+    if (!requestedReceiptId) return undefined
+
+    let active = true
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsDetailModalOpen(true)
+    setDetailReceipt(null)
+    setIsDetailLoading(true)
+
+    receiptApi.getReceiptDetail(requestedReceiptId)
+      .then((response) => {
+        if (!active) return
+        setDetailReceipt(response?.data?.data ?? response?.data)
+      })
+      .catch((error) => {
+        if (!active) return
+        setIsDetailModalOpen(false)
+        showApiErrorToast(error, 'Could not load receipt details.')
+      })
+      .finally(() => {
+        if (active) setIsDetailLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [requestedReceiptId])
 
   const activeOutboundLine = outboundLines.find((line) => line.id === activeOutboundLineId) || outboundLines[0]
   const formSkuId = activeOutboundLine?.skuId || ''
@@ -707,7 +736,7 @@ const OutboundPage = () => {
           (activeTab === 'PENDING' && r.status === 'PENDING') ||
           (activeTab === 'APPROVED' && r.status === 'APPROVED') ||
           (activeTab === 'IN_PROGRESS' && r.status === 'IN_PROGRESS') ||
-          (activeTab === 'COMPLETED' && r.status === 'COMPLETED')
+          (activeTab === 'COMPLETED' && ['APPROVED', 'COMPLETED'].includes(r.status))
 
         if (!matchesTab) return false
         if (!query) return true
@@ -845,8 +874,6 @@ const OutboundPage = () => {
                       {[
                         { id: 'ALL', label: t('All') },
                         { id: 'PENDING', label: t('Pending Approval') },
-                        { id: 'APPROVED', label: t('Confirmed') },
-                        { id: 'IN_PROGRESS', label: t('In progress') },
                         { id: 'COMPLETED', label: t('Completed') }
                       ].map(tab => (
                         <button
@@ -1116,6 +1143,19 @@ const OutboundPage = () => {
                           (total, allocation) => total + (Number(allocation.quantity) || 0),
                           0
                         )
+                        const requestedLineQuantity = Number(line.quantity) || 0
+                        const allocationExceedsSkuQuantity =
+                          allocatedQuantity > requestedLineQuantity
+                        const allocationExceedsLocationStock = lineAllocations.some((allocation) => {
+                          const location = parseOutboundLocation(allocation.location)
+                          return Boolean(location)
+                            && Number(allocation.quantity) > Number(location.quantity)
+                        })
+                        const allocationError = allocationExceedsSkuQuantity
+                          ? `${t('Allocated quantity cannot exceed SKU quantity')} (${requestedLineQuantity}).`
+                          : allocationExceedsLocationStock
+                            ? t('Allocated quantity exceeds the selected Rack/Bin stock.')
+                            : ''
                         const isActive = line.id === activeOutboundLine?.id
                         const lineShortage = Math.max(
                           Number(line.quantity || 0) - Number(lineSummary?.totalQuantity || 0),
@@ -1199,15 +1239,26 @@ const OutboundPage = () => {
                             </div>
 
                             {outboundMethod === 'MANUAL' && (
-                              <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                              <div
+                                className={`mt-3 rounded-md border p-3 ${
+                                  allocationError
+                                    ? 'border-rose-300 bg-rose-50/40'
+                                    : 'border-slate-200 bg-slate-50'
+                                }`}
+                              >
                                 <div className="flex items-center justify-between gap-3">
                                   <div>
                                     <p className="text-xs font-semibold text-slate-700">
                                       {t('Rack/Bin Allocation')} <span className="text-rose-500">*</span>
                                     </p>
-                                    <p className="mt-0.5 text-xs text-slate-500">
+                                    <p className={`mt-0.5 text-xs ${allocationError ? 'font-semibold text-rose-600' : 'text-slate-500'}`}>
                                       {t('Allocated')} {allocatedQuantity} / {Number(line.quantity) || 0}
                                     </p>
+                                    {allocationError && (
+                                      <p className="mt-1 text-xs font-semibold text-rose-600" role="alert">
+                                        {allocationError}
+                                      </p>
+                                    )}
                                   </div>
                                   <button
                                     type="button"
@@ -1274,6 +1325,7 @@ const OutboundPage = () => {
                                           type="number"
                                           min="1"
                                           required
+                                          error={allocationError}
                                           value={allocation.quantity}
                                           onFocus={() => setActiveOutboundLineId(line.id)}
                                           onChange={(event) => updateOutboundAllocation(
