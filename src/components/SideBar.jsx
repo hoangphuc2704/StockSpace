@@ -85,6 +85,7 @@ const SIDEBAR_MENUS = {
   STAFF: [
     // { text: 'Dashboard', icon: HiOutlineRectangleGroup, path: '/staff/dashboard' },
     { text: 'Tasks', icon: HiOutlineClipboardDocumentList, path: '/staff/tasks' },
+    { text: 'Settings', icon: HiOutlineCog6Tooth, path: '/staff/profile' },
     { text: 'Inventory', icon: HiOutlineCircleStack, path: '/staff/inventory' },
     { text: 'Inbound', icon: HiOutlineArrowDownOnSquare, path: '/staff/inbound' },
     { text: 'Outbound', icon: HiOutlineArrowUpOnSquare, path: '/staff/outbound' },

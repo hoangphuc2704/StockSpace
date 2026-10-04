@@ -64,7 +64,10 @@ const onwerwarehouseApi = {
   },
 
   saveOwnerWarehouseLayout: (warehouseId, data) => {
-    return api.put(`/owner/warehouses/${warehouseId}/layout`, data)
+    return api.put(`/owner/warehouses/${warehouseId}/layout`, data, {
+      // The edit modal renders publication-state errors inline.
+      skipErrorToast: true,
+    })
   },
 
   // Owner gửi warehouse đã cấu hình layout lên Admin duyệt
@@ -74,7 +77,10 @@ const onwerwarehouseApi = {
 
   //cập nhật thông tin kho
   updateWarehouseInfo: (warehouseId, data) => {
-    return api.put(`/owner/warehouses/${warehouseId}`, data)
+    return api.put(`/owner/warehouses/${warehouseId}`, data, {
+      // The edit modal renders publication-state errors inline.
+      skipErrorToast: true,
+    })
   },
 
   //xóa kho

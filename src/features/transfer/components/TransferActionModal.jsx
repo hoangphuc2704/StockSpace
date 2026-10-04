@@ -63,6 +63,14 @@ const allocationRemainingQuantity = (allocation) =>
 const itemRemainingToPick = (item) =>
   Math.max(0, Number(item?.requestedQuantity || 0) - Number(item?.pickedQuantity || 0))
 
+const createReturnAllocation = () => ({
+  quantity: '',
+  sourceRackId: '',
+  sourceBinId: '',
+  disposition: 'GOOD',
+  note: '',
+})
+
 const Field = ({ label, children, hint }) => (
   <div>
     <label className="mb-1.5 block text-sm font-semibold text-slate-700">{label}</label>
@@ -147,11 +155,7 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
           .filter((item) => returnableQuantity(item) > 0)
           .map((item) => ({
             itemId: item.id,
-            quantity: '',
-            sourceRackId: '',
-            sourceBinId: '',
-            disposition: 'GOOD',
-            note: '',
+            allocations: [createReturnAllocation()],
           }))
       )
     } else {
@@ -232,6 +236,53 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
     )
   }
 
+  const updateReturnAllocation = (lineIndex, allocationIndex, field, value) => {
+    setLines((current) =>
+      current.map((line, currentLineIndex) => {
+        if (currentLineIndex !== lineIndex) return line
+        return {
+          ...line,
+          allocations: (line.allocations || []).map((allocation, currentAllocationIndex) => {
+            if (currentAllocationIndex !== allocationIndex) return allocation
+            return {
+              ...allocation,
+              [field]: value,
+              ...(field === 'sourceRackId' ? { sourceBinId: '' } : {}),
+              ...(field === 'disposition' && value === 'GOOD' ? { note: '' } : {}),
+            }
+          }),
+        }
+      })
+    )
+  }
+
+  const addReturnAllocation = (lineIndex) => {
+    setLines((current) =>
+      current.map((line, currentLineIndex) =>
+        currentLineIndex === lineIndex
+          ? { ...line, allocations: [...(line.allocations || []), createReturnAllocation()] }
+          : line
+      )
+    )
+  }
+
+  const removeReturnAllocation = (lineIndex, allocationIndex) => {
+    setLines((current) =>
+      current.map((line, currentLineIndex) => {
+        if (currentLineIndex !== lineIndex) return line
+        const allocations = line.allocations || []
+        if (allocations.length <= 1) return line
+        return {
+          ...line,
+          allocations: allocations.filter((_, currentAllocationIndex) => currentAllocationIndex !== allocationIndex),
+        }
+      })
+    )
+  }
+
+  const returnAllocationTotal = (line) =>
+    (line.allocations || []).reduce((sum, allocation) => sum + Math.max(0, Number(allocation.quantity || 0)), 0)
+
   const fillAllocationRemaining = (index) => {
     const allocation = sourceAllocations[index]
     if (!allocation) return
@@ -289,18 +340,31 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       }
     } else if (mode === 'returnReceive') {
-      const returnLines = lines.filter((line) => Number(line.quantity) > 0)
+      const returnLines = lines.flatMap((line) =>
+        (line.allocations || [])
+          .filter((allocation) => Number(allocation.quantity) > 0)
+          .map((allocation) => ({ ...allocation, itemId: line.itemId }))
+      )
       if (!returnLines.length) return toast.error('Enter at least one returned quantity.')
-      if (returnLines.some((line) => !line.sourceRackId || !line.sourceBinId))
-        return toast.error('Select a source rack and bin for every returned line.')
       if (
         returnLines.some(
           (line) =>
-            Number(line.quantity) >
-            returnableQuantity(findItemById(line.itemId))
+            !Number.isInteger(Number(line.quantity)) ||
+            Number(line.quantity) <= 0 ||
+            !line.sourceRackId ||
+            !line.sourceBinId
         )
       )
-        return toast.error('Returned quantity exceeds the returnable quantity.')
+        return toast.error('Select a source rack and bin for every returned line.')
+      const returnedByItem = returnLines.reduce((totals, line) => {
+        totals.set(line.itemId, (totals.get(line.itemId) || 0) + Number(line.quantity))
+        return totals
+      }, new Map())
+      for (const [itemId, quantity] of returnedByItem) {
+        if (quantity > returnableQuantity(findItemById(itemId))) {
+          return toast.error('Returned quantity exceeds the returnable quantity.')
+        }
+      }
       if (
         returnLines.some(
           (line) => (line.disposition || 'GOOD') === 'REJECTED' && !line.note?.trim()
@@ -339,7 +403,16 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
       if (mode === 'assignDestinationStaff')
         await transferApi.assignDestinationStaff(transfer.id, payload, createTransferIdempotencyKey())
       if (mode === 'returnReceive') {
-        await transferApi.receiveReturn(transfer.id, payload, createTransferIdempotencyKey())
+        // The current BE accepts one return line per transfer item. Send each
+        // rack/bin allocation as a partial receipt so one SKU can be split
+        // across multiple locations without changing the BE contract.
+        for (const line of payload.lines) {
+          await transferApi.receiveReturn(
+            transfer.id,
+            { ...payload, lines: [line] },
+            createTransferIdempotencyKey()
+          )
+        }
         if (typeof window !== 'undefined' && transfer.sourceWarehouse?.id) {
           window.dispatchEvent(
             new CustomEvent('stockspace:inventory-refresh', {
@@ -558,7 +631,9 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                   {lines.map((line, index) => {
                     const item = findItemById(line.itemId)
                     if (!item) return null
-                    const rack = layout?.racks?.find((entry) => entry.id === line.sourceRackId)
+                    const allocations = line.allocations || []
+                    const totalAllocated = returnAllocationTotal(line)
+                    const returnable = returnableQuantity(item)
                     return (
                       <div key={line.itemId} className="rounded-xl border border-slate-200 p-4">
                         <div className="mb-3 flex items-center justify-between gap-3">
@@ -567,79 +642,127 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                               {item?.skuCode} · {item?.skuName}
                             </p>
                             <p className="mt-1 text-xs text-slate-500">
-                              Returnable: {returnableQuantity(item)} units
+                              Returnable: {returnable} units · Allocated:{' '}
+                              <span className={totalAllocated > returnable ? 'font-semibold text-rose-600' : 'font-semibold text-blue-700'}>
+                                {totalAllocated}/{returnable}
+                              </span>
                             </p>
                           </div>
-                          <input
-                            type="number"
-                            min="1"
-                            max={returnableQuantity(item)}
-                            value={line.quantity}
-                            onChange={(e) => updateLine(index, 'quantity', e.target.value)}
-                            placeholder="Qty"
-                            className={`${inputClass} max-w-28`}
-                          />
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <select
-                            value={line.sourceRackId}
-                            onChange={(e) => updateLine(index, 'sourceRackId', e.target.value)}
-                            className={selectClass}
+                          <button
+                            type="button"
+                            onClick={() => addReturnAllocation(index)}
+                            disabled={submitting}
+                            className="shrink-0 rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            <option value="">Select rack</option>
-                            {(layout?.racks || []).map((rackOption) => (
-                              <option key={rackOption.id} value={rackOption.id}>
-                                {rackOption.name}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            value={line.sourceBinId}
-                            disabled={!line.sourceRackId}
-                            onChange={(e) => updateLine(index, 'sourceBinId', e.target.value)}
-                            className={selectClass}
-                          >
-                            <option value="">Select bin</option>
-                            {(rack?.bins || []).map((bin) => (
-                              <option key={bin.id} value={bin.id}>
-                                {bin.name}
-                              </option>
-                            ))}
-                          </select>
-                          <div className="sm:col-span-2">
-                            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                              Returned stock condition
-                            </label>
-                            <select
-                              value={line.disposition || 'GOOD'}
-                              onChange={(event) =>
-                                updateLine(index, 'disposition', event.target.value)
-                              }
-                              className={selectClass}
-                            >
-                              <option value="GOOD">Good - add to source inventory</option>
-                              <option value="REJECTED">
-                                Rejected - add to source inventory with a reason
-                              </option>
-                            </select>
-                          </div>
+                            + Add rack/bin
+                          </button>
                         </div>
-                        {line.disposition === 'REJECTED' && (
-                          <div className="mt-3">
-                            <label className="mb-1.5 block text-xs font-semibold text-slate-700">
-                              Separate handling reason <span className="text-rose-600">*</span>
-                            </label>
-                            <textarea
-                              required
-                              maxLength={1000}
-                              rows={2}
-                              value={line.note}
-                              onChange={(event) => updateLine(index, 'note', event.target.value)}
-                              placeholder="Explain why the returned stock needs separate handling"
-                              className={`${inputClass} resize-none py-2.5`}
-                            />
-                          </div>
-                        )}
+                        <div className="space-y-3">
+                          {allocations.map((allocation, allocationIndex) => {
+                            const rack = layout?.racks?.find(
+                              (entry) => entry.id === allocation.sourceRackId
+                            )
+                            return (
+                              <div
+                                key={`${line.itemId}-${allocationIndex}`}
+                                className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                              >
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <span className="text-xs font-semibold text-slate-600">
+                                    Location {allocationIndex + 1}
+                                  </span>
+                                  {allocations.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => removeReturnAllocation(index, allocationIndex)}
+                                      disabled={submitting}
+                                      className="text-xs font-semibold text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                                    >
+                                      Remove
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-[120px_minmax(0,1fr)_minmax(0,1fr)]">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    value={allocation.quantity}
+                                    onChange={(event) =>
+                                      updateReturnAllocation(index, allocationIndex, 'quantity', event.target.value)
+                                    }
+                                    placeholder="Qty"
+                                    className={inputClass}
+                                  />
+                                  <select
+                                    value={allocation.sourceRackId}
+                                    onChange={(event) =>
+                                      updateReturnAllocation(index, allocationIndex, 'sourceRackId', event.target.value)
+                                    }
+                                    className={selectClass}
+                                  >
+                                    <option value="">Select rack</option>
+                                    {(layout?.racks || []).map((rackOption) => (
+                                      <option key={rackOption.id} value={rackOption.id}>
+                                        {rackOption.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <select
+                                    value={allocation.sourceBinId}
+                                    disabled={!allocation.sourceRackId}
+                                    onChange={(event) =>
+                                      updateReturnAllocation(index, allocationIndex, 'sourceBinId', event.target.value)
+                                    }
+                                    className={selectClass}
+                                  >
+                                    <option value="">Select bin</option>
+                                    {(rack?.bins || []).map((bin) => (
+                                      <option key={bin.id} value={bin.id}>
+                                        {bin.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="mt-3">
+                                  <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                                    Returned stock condition
+                                  </label>
+                                  <select
+                                    value={allocation.disposition || 'GOOD'}
+                                    onChange={(event) =>
+                                      updateReturnAllocation(index, allocationIndex, 'disposition', event.target.value)
+                                    }
+                                    className={selectClass}
+                                  >
+                                    <option value="GOOD">Good - add to source inventory</option>
+                                    <option value="REJECTED">
+                                      Rejected - add to source inventory with a reason
+                                    </option>
+                                  </select>
+                                </div>
+                                {allocation.disposition === 'REJECTED' && (
+                                  <div className="mt-3">
+                                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                                      Separate handling reason <span className="text-rose-600">*</span>
+                                    </label>
+                                    <textarea
+                                      required
+                                      maxLength={1000}
+                                      rows={2}
+                                      value={allocation.note}
+                                      onChange={(event) =>
+                                        updateReturnAllocation(index, allocationIndex, 'note', event.target.value)
+                                      }
+                                      placeholder="Explain why the returned stock needs separate handling"
+                                      className={`${inputClass} resize-none py-2.5`}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     )
                   })}
