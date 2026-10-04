@@ -19,6 +19,10 @@ import Header from '@/components/HeaderDashboard'
 import Sidebar from '@/components/SideBar'
 import productApi from '@/services/wms/productApi'
 import { closeMobileSidebar } from '@/store/uiSlide'
+import {
+  CATEGORY_DUPLICATE_MESSAGE,
+  hasDuplicateCategoryName,
+} from '@/utils/categoryValidation'
 
 const apiData = (response) => response?.data?.data ?? response?.data ?? null
 const emptySku = {
@@ -128,6 +132,10 @@ export default function ProductManagementPage() {
 
   const createCategory = async (event) => {
     event.preventDefault()
+    if (hasDuplicateCategoryName(categories, categoryName)) {
+      toast.error(CATEGORY_DUPLICATE_MESSAGE, { id: 'category-name-duplicate' })
+      return
+    }
     try {
       setSaving(true)
       await productApi.createCategory({

@@ -771,7 +771,7 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
             {mode === 'reconcile' && (
               <Field
                 label="Resolution *"
-                hint="Accept as-is completes the transfer. Declare lost records the missing quantity. Return to source starts a return attempt."
+                hint="Accept as-is completes the transfer. Return to source starts a return attempt."
               >
                 <select
                   required
@@ -781,7 +781,6 @@ const TransferActionModal = ({ mode, isOpen, onClose, transfer, warehouses = [],
                 >
                   <option value="">Choose a resolution</option>
                   <option value="ACCEPT_AS_IS">Accept as-is</option>
-                  <option value="DECLARE_LOST">Declare lost</option>
                   <option value="RETURN_TO_SOURCE">Return to source</option>
                 </select>
               </Field>

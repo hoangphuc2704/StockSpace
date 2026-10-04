@@ -1077,7 +1077,7 @@
   "Dispatch": "Xuất chuyển",
   "Receive": "Nhận hàng",
   "No further action": "Không có thao tác tiếp theo",
-  "Reason for rejected items": "Lý do hàng không đạt",
+  "Reason for rejected items": "Lý do hàng từ chối",
   "Enter rejection reason": "Nhập lý do hàng không đạt",
   "Create Withdrawal Request": "Tạo yêu cầu rút tiền",
   "Transfer wallet balance to your beneficiary bank account": "Chuyển số dư ví về tài khoản ngân hàng thụ hưởng",
@@ -1185,6 +1185,7 @@
   "Audit result submitted": "Kết quả kiểm kê đã được nộp",
   "Audit revision requested": "Yêu cầu chỉnh sửa kiểm kê",
   "Warehouse transfer completed": "Chuyển kho đã hoàn tất",
+  "Stock transfer request approved for dispatch": "Yêu cầu chuyển kho đã được duyệt xuất",
   "New inspection request": "Yêu cầu kiểm định mới",
   "Inspection scheduled": "Lịch kiểm định đã được xếp",
   "Inspection completed": "Kiểm định hoàn tất",
@@ -1209,5 +1210,6 @@
   "MINUTES AGO": "PHÚT TRƯỚC",
   "LAST MONTH": "THÁNG TRƯỚC",
   "LAST YEAR": "NĂM TRƯỚC",
-  "A FEW SECONDS AGO": "VÀI GIÂY TRƯỚC"
+  "A FEW SECONDS AGO": "VÀI GIÂY TRƯỚC",
+  "You can subscribe to a new package only after your current package expires.": "Bạn chỉ có thể đăng ký gói mới sau khi gói hiện tại hết hạn."
 }
