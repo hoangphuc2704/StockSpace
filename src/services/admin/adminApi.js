@@ -234,6 +234,27 @@ const adminApi = {
   getTransactions: ({ page = 0, size = 10 } = {}) =>
     api.get('/admin/transactions', { params: { page, size } }),
 
+  // The revenue endpoint currently aggregates listing and subscription fees
+  // only. Load all transaction pages so the FE can also include inspection
+  // commissions in the admin revenue chart.
+  getAllTransactions: async ({ size = 100 } = {}) => {
+    const transactions = []
+    let page = 0
+    let totalPages
+
+    do {
+      const response = await adminApi.getTransactions({ page, size })
+      const payload = response?.data?.data ?? response?.data ?? {}
+      const content = Array.isArray(payload?.content) ? payload.content : []
+
+      transactions.push(...content)
+      totalPages = Number(payload?.totalPages) || 1
+      page += 1
+    } while (page < totalPages)
+
+    return transactions
+  },
+
   // =========================
   // STATS (Summary & Revenue)
   // =========================

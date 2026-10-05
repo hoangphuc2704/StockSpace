@@ -7,7 +7,7 @@ const EMPTY_FILTERS = {
   maxRentalPrice: '',
   minCapacity: '',
   maxCapacity: '',
-  districtName: '',
+  wardName: '',
   rentalPricingType: '',
   isVerified: '',
 }
@@ -43,6 +43,10 @@ const DISTRICT_OPTIONS = [
   ['Nhà Bè', 'Nha Be'],
   ['Cần Giờ', 'Can Gio'],
 ]
+
+// Kept only for backwards-compatible module shape; location filtering now uses
+// ward options extracted from the actual warehouse addresses.
+void DISTRICT_OPTIONS
 
 const toSliderValue = (value, maximum) => {
   const parsed = Number(parseAmountInput(value) || 0)
@@ -172,29 +176,29 @@ const RangeFilterPanel = ({
   )
 }
 
-const LocationPanel = ({ filters, onInputChange }) => (
+const LocationPanel = ({ filters, onInputChange, wardOptions }) => (
   <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
     <div className="flex items-center gap-2">
       <MapPin className="h-4 w-4 text-blue-600" aria-hidden="true" />
       <div>
         <h3 className="text-sm font-bold text-slate-900">Location</h3>
-        <p className="mt-0.5 text-xs text-slate-500">Choose a district to narrow the results.</p>
+        <p className="mt-0.5 text-xs text-slate-500">Choose a ward to narrow the results.</p>
       </div>
     </div>
     <label className="mt-4 block">
       <span className="mb-1 block text-[11px] font-bold tracking-wide text-slate-500 uppercase">
-        District
+        Ward
       </span>
       <select
-        name="districtName"
-        value={filters.districtName}
+        name="wardName"
+        value={filters.wardName}
         onChange={onInputChange}
         className={inputClass}
       >
-        <option value="">All districts</option>
-        {DISTRICT_OPTIONS.map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
+        <option value="">All wards</option>
+        {wardOptions.map((ward) => (
+          <option key={ward} value={ward}>
+            {ward}
           </option>
         ))}
       </select>
@@ -220,7 +224,7 @@ const PricingPanel = ({ filters, onInputChange }) => (
   </div>
 )
 
-const WarehouseFilters = ({ value = EMPTY_FILTERS, onFilterChange }) => {
+const WarehouseFilters = ({ value = EMPTY_FILTERS, onFilterChange, wardOptions = [] }) => {
   const [activePanel, setActivePanel] = useState(null)
   const filters = { ...EMPTY_FILTERS, ...value }
 
@@ -257,8 +261,8 @@ const WarehouseFilters = ({ value = EMPTY_FILTERS, onFilterChange }) => {
   const areaSummary = filters.minCapacity || filters.maxCapacity
     ? `${filters.minCapacity || '0'} – ${filters.maxCapacity || 'Any'} m²`
     : ''
-  const locationSummary = filters.districtName
-    ? DISTRICT_OPTIONS.find(([value]) => value === filters.districtName)?.[1] || filters.districtName
+  const locationSummary = filters.wardName
+    ? filters.wardName
     : ''
   const pricingSummary = {
     FIXED_MONTHLY: 'Fixed monthly',
@@ -300,7 +304,7 @@ const WarehouseFilters = ({ value = EMPTY_FILTERS, onFilterChange }) => {
       )
     }
     if (activePanel === 'location') {
-      return <LocationPanel filters={filters} onInputChange={handleInputChange} />
+      return <LocationPanel filters={filters} onInputChange={handleInputChange} wardOptions={wardOptions} />
     }
     if (activePanel === 'pricing') {
       return <PricingPanel filters={filters} onInputChange={handleInputChange} />
@@ -331,7 +335,7 @@ const WarehouseFilters = ({ value = EMPTY_FILTERS, onFilterChange }) => {
           onSliderChange={handleSliderChange}
           onInputChange={handleInputChange}
         />
-        <LocationPanel filters={filters} onInputChange={handleInputChange} />
+        <LocationPanel filters={filters} onInputChange={handleInputChange} wardOptions={wardOptions} />
         <PricingPanel filters={filters} onInputChange={handleInputChange} />
       </div>
     )

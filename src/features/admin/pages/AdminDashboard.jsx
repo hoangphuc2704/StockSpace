@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import adminApi from '../../../services/admin/adminApi'
+import { addInspectionFeesToRevenue } from '@/utils/adminRevenue'
 // Import các action từ uiSlice (Điều chỉnh lại đường dẫn cho đúng với dự án của bạn nếu cần)
 import { toggleSidebar, closeMobileSidebar } from '../../../store/uiSlide'
 import {
@@ -58,11 +59,22 @@ const AdminDashboard = () => {
         // Fetch revenue for current year
         const revenueRes = await adminApi.getRevenueStats(currentYear)
         const revenuePayload = revenueRes?.data?.data ?? revenueRes?.data
+        let allTransactions = []
+
+        try {
+          allTransactions = await adminApi.getAllTransactions({ size: 100 })
+        } catch (transactionError) {
+          // Keep the BE-provided listing/subscription totals visible if the
+          // transaction history request is temporarily unavailable.
+          console.error('Failed to load transactions for inspection revenue:', transactionError)
+        }
+
         if (revenuePayload) {
-          setTotalRevenue(Number(revenuePayload.totalRevenue) || 0)
+          const mergedRevenue = addInspectionFeesToRevenue(revenuePayload, allTransactions)
+          setTotalRevenue(Number(mergedRevenue.totalRevenue) || 0)
 
           // Map to chart format
-          const formattedRevenue = (revenuePayload.monthlyRevenue || []).map((item) => ({
+          const formattedRevenue = (mergedRevenue.monthlyRevenue || []).map((item) => ({
             name: `T${item.month}`,
             revenue: Number(item.revenue) || 0,
           }))
