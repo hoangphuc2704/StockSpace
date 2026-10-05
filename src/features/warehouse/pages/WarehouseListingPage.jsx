@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { LayoutGrid, List, Search, Warehouse } from 'lucide-react'
 import { AnimatePresence } from 'framer-motion'
 import WarehouseCard from '../components/WarehouseCard'
 import WarehouseFilters from '../components/WarehouseFilters'
 import warehouseApi from '@/services/warehouse/warehouseApi'
+import addressApi from '@/services/addressApi'
 import PublicHeader from '@/components/PublicHeader'
 import { parseAmountInput } from '@/utils/currency'
 
@@ -12,7 +13,7 @@ const EMPTY_FILTERS = {
   maxRentalPrice: '',
   minCapacity: '',
   maxCapacity: '',
-  districtName: '',
+  wardName: '',
   rentalPricingType: '',
   isVerified: '',
 }
@@ -31,6 +32,14 @@ const WarehouseSkeleton = () => (
     </div>
   </div>
 )
+
+const normalizeLocationText = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toLowerCase()
+    .trim()
 
 const normalizeWarehouse = (warehouse) => ({
   id: warehouse.id,
@@ -53,9 +62,27 @@ const WarehouseListingPage = () => {
   const [viewMode, setViewMode] = useState('grid')
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [warehouses, setWarehouses] = useState([])
+  const [allWarehouses, setAllWarehouses] = useState([])
+  const [wards, setWards] = useState([])
   const [error, setError] = useState('')
   const [apiFilters, setApiFilters] = useState(EMPTY_FILTERS)
+
+  useEffect(() => {
+    let isActive = true
+
+    addressApi
+      .getHoChiMinhCityWards()
+      .then((wardOptions) => {
+        if (isActive) setWards(wardOptions)
+      })
+      .catch(() => {
+        if (isActive) setWards([])
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   useEffect(() => {
     const fetchWarehouses = async () => {
@@ -64,7 +91,9 @@ const WarehouseListingPage = () => {
         setError('')
         const params = {
           page: 0,
-          size: 24,
+          // The public API allows at most 50 items per page. The selected ward
+          // is matched against the same full address format used by Post Warehouse.
+          size: 50,
           sortBy: 'createdAt',
           sortDir: 'desc',
           keyword: searchTerm.trim() || undefined,
@@ -75,7 +104,6 @@ const WarehouseListingPage = () => {
         if (maxRentalPrice !== '') params.maxRentalPrice = maxRentalPrice
         if (apiFilters.minCapacity) params.minCapacity = apiFilters.minCapacity
         if (apiFilters.maxCapacity) params.maxCapacity = apiFilters.maxCapacity
-        if (apiFilters.districtName?.trim()) params.districtName = apiFilters.districtName.trim()
         if (apiFilters.rentalPricingType) {
           params.rentalPricingType = apiFilters.rentalPricingType
         }
@@ -88,10 +116,10 @@ const WarehouseListingPage = () => {
           : Array.isArray(payload)
             ? payload
             : []
-        setWarehouses(content.map(normalizeWarehouse))
+        setAllWarehouses(content.map(normalizeWarehouse))
       } catch (err) {
         setError(err.response?.data?.message || err.message || 'Unable to load warehouses.')
-        setWarehouses([])
+        setAllWarehouses([])
       } finally {
         setIsLoading(false)
       }
@@ -100,6 +128,19 @@ const WarehouseListingPage = () => {
     const timer = setTimeout(fetchWarehouses, 500)
     return () => clearTimeout(timer)
   }, [apiFilters, searchTerm])
+
+  const wardOptions = useMemo(() => {
+    return wards.map((ward) => ward.name).filter(Boolean)
+  }, [wards])
+
+  const warehouses = useMemo(() => {
+    const selectedWard = normalizeLocationText(apiFilters.wardName)
+    if (!selectedWard) return allWarehouses
+
+    return allWarehouses.filter(
+      (warehouse) => normalizeLocationText(warehouse.location).includes(selectedWard)
+    )
+  }, [allWarehouses, apiFilters.wardName])
 
   const resetAllFilters = () => {
     setSearchTerm('')
@@ -160,7 +201,11 @@ const WarehouseListingPage = () => {
 
         <div className="sticky top-[72px] z-40 border-b border-slate-200 bg-slate-50/95 py-3 backdrop-blur sm:top-20">
           <div className="mx-auto max-w-[1500px] px-4 sm:px-6 lg:px-8">
-            <WarehouseFilters value={apiFilters} onFilterChange={setApiFilters} />
+            <WarehouseFilters
+              value={apiFilters}
+              onFilterChange={setApiFilters}
+              wardOptions={wardOptions}
+            />
           </div>
         </div>
 

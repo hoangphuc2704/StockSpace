@@ -11,7 +11,6 @@ import {
   CreditCard,
   X,
   Loader2,
-  CircleDollarSign,
   MinusCircle,
   TrendingUp,
 } from 'lucide-react'
@@ -40,6 +39,7 @@ import { toast } from 'react-hot-toast'
 import { positiveNumber } from '@/config/validation'
 import { showApiErrorToast } from '@/config/apiError'
 import { formatAmountInput, parseAmountInput } from '@/utils/currency'
+import { addInspectionFeesToRevenue } from '@/utils/adminRevenue'
 
 const WalletAdmin = () => {
   const dispatch = useDispatch()
@@ -49,7 +49,6 @@ const WalletAdmin = () => {
   const [activeTab, setActiveTab] = useState('transactions') // 'transactions' | 'withdrawals'
 
   const [wallet, setWallet] = useState(null)
-  const [loadingWallet, setLoadingWallet] = useState(true)
 
   const [transactions, setTransactions] = useState([])
   const [loadingTransactions, setLoadingTransactions] = useState(true)
@@ -87,7 +86,6 @@ const WalletAdmin = () => {
   // --- HÃ€M Láº¤Y Dá»® LIá»†U ---
   const fetchWallet = async () => {
     try {
-      setLoadingWallet(true)
       const res = await walletApi.getWallet()
       if (res?.data?.success) {
         setWallet(res.data.data)
@@ -96,8 +94,6 @@ const WalletAdmin = () => {
       }
     } catch (error) {
       console.error('Failed to load wallet data:', error)
-    } finally {
-      setLoadingWallet(false)
     }
   }
 
@@ -147,9 +143,21 @@ const WalletAdmin = () => {
     try {
       setLoadingRevenue(true)
       const res = await adminApi.getRevenueStats(currentYear)
-      if (res?.data) {
-        setTotalRevenue(res.data.totalRevenue || 0)
-        const formattedRevenue = (res.data.monthlyRevenue || []).map((item) => ({
+      const revenuePayload = res?.data?.data ?? res?.data
+      let allTransactions = []
+
+      try {
+        allTransactions = await adminApi.getAllTransactions({ size: 100 })
+      } catch (transactionError) {
+        // Keep the BE-provided listing/subscription totals visible if the
+        // transaction history request is temporarily unavailable.
+        console.error('Failed to load transactions for inspection revenue:', transactionError)
+      }
+
+      if (revenuePayload) {
+        const mergedRevenue = addInspectionFeesToRevenue(revenuePayload, allTransactions)
+        setTotalRevenue(mergedRevenue.totalRevenue || 0)
+        const formattedRevenue = (mergedRevenue.monthlyRevenue || []).map((item) => ({
           name: `T${item.month}`,
           revenue: item.revenue,
         }))
@@ -448,21 +456,7 @@ const WalletAdmin = () => {
             </div>
 
             {/* Wallet Info Card */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                    <CircleDollarSign className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">System wallet balance</p>
-                    <h2 className="text-3xl font-bold text-slate-900">
-                      {loadingWallet ? 'Loading...' : formatVND(wallet?.balance)}
-                    </h2>
-                  </div>
-                </div>
-              </div>
-
+            <div className="grid grid-cols-1 gap-4">
               <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div className="flex items-center gap-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
